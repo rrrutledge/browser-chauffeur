@@ -1,14 +1,15 @@
 # browser-chauffeur
 
-Claude Code skill that teaches Claude to perform tasks on any website using an iterative inspect → interact → verify loop. Claude is your chauffeur — you give directions, Claude drives.
+**Stop wrestling with browser automation.** Just tell Claude what you need done on a website — browser-chauffeur handles the rest.
 
-## What it does
+Claude becomes your personal browser chauffeur: you give directions, Claude drives. Navigate complex web apps, fill out forms, extract data, click through multi-step workflows — all through natural language. No more writing fragile Selenium scripts or fighting with selectors that break every deployment.
 
-- Navigates to a page, inspects it via accessibility snapshot, and performs the steps you describe
-- Adapts when the UI changes or an overlay blocks interaction
-- Optionally writes a reusable Node.js script once a flow is verified
-- Recovers from script failures by re-entering discovery mode
-- Two modes: MCP Playwright tools (Mode A) for public sites, Node.js CDP scripts (Mode B) for SSO-protected apps
+## Why browser-chauffeur?
+
+- **Self-healing automation** — when something breaks (and it will), Claude doesn't give up. It reads diagnostic screenshots, figures out what changed, fixes the script, and retries. Overlays, UI updates, login redirects — handled automatically.
+- **Two modes for any situation** — MCP Playwright tools for quick public-site tasks, or Node.js CDP scripts that connect to your existing browser session with all your logins intact. Corporate SSO? Already solved.
+- **Zero selector guesswork** — Claude inspects the live page before every action, uses semantic selectors (roles, labels, text) instead of brittle CSS classes, and verifies each step succeeded before moving on.
+- **Scripts that get better over time** — once a flow works, save it as a reusable script. When the UI changes, browser-chauffeur's recovery loop patches the script automatically.
 
 ## Prerequisite
 
