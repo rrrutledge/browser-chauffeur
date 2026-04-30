@@ -1,0 +1,14 @@
+{
+  "name": "browser-chauffeur",
+  "owner": {
+    "name": "Russell Rutledge"
+  },
+  "description": "Claude Code plugin marketplace for browser-chauffeur — browser automation with self-healing recovery",
+  "plugins": [
+    {
+      "name": "browser-chauffeur",
+      "source": "./plugins/browser-chauffeur",
+      "description": "Guides Claude through performing tasks on any website using an iterative inspect-interact-verify methodology. Claude operates the browser on your behalf — you give directions, Claude drives. Requires playwright MCP plugin."
+    }
+  ]
+}
