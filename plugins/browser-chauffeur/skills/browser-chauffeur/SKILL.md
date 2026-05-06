@@ -1,6 +1,6 @@
 ---
 name: browser-chauffeur
-description: Use when performing any browser automation task — creating new browser scripts, OR running/re-running existing ones. The script is the directions; this skill is the chauffeur. Never run a Mode B browser script (node scripts/*.js) without this skill loaded — it provides the recovery loop (screenshot → diagnose → fix → retry) that prevents silent failures.
+description: REQUIRED for ALL browser automation — both creating NEW scripts AND running existing ones. When user asks to create/write/build a browser automation script, invoke this skill BEFORE writing any code. When running scripts, this skill handles browser detection, CDP setup, and autonomous error recovery (screenshot → diagnose → fix → retry). Never create or run browser automation outside this skill.
 allowed-tools: Bash, Write, Edit, Read
 ---
 
@@ -32,57 +32,59 @@ node --version && node -e "require('playwright'); console.log('ok')"
 
 ---
 
-## Phase 0: Browser Detection (do this before Phase 1)
+## Phase 0: Browser Launch (do this before Phase 1)
 
-Before opening any browser, check what is running and whether CDP is already available. Both Chrome and Edge speak the Chrome DevTools Protocol identically — `chromium.connectOverCDP()` works for either.
+**Always launch a fresh browser instance** — never reuse an active browser. This prevents interfering with the user's browsing while still having SSO credentials (Windows profile transfers cookies).
 
-**Step 1 — Probe CDP ports first** (fastest path; skip steps 2–3 if this succeeds):
+**Step 1 — Find an available CDP port**
 
 ```bash
-for port in 9222 9223 9224; do
-  result=$(curl -s --connect-timeout 1 "http://localhost:$port/json/version" 2>/dev/null)
-  if [ -n "$result" ]; then echo "CDP on port $port: $result"; break; fi
+for port in 9222 9223 9224 9225; do
+  nc -z localhost $port 2>/dev/null || { echo "Port $port available"; break; }
 done
-echo "probe done"
 ```
 
-If a port responds → record it and continue to Step 4.
+If all ports busy, use 9226.
 
-**Step 2 — No CDP found: detect which browsers are running**
+**Step 2 — Detect installed browsers**
 
 ```bash
 powershell -NoProfile -Command "Get-Process msedge,chrome -ErrorAction SilentlyContinue | Select-Object -Unique Name | Format-Table -AutoSize"
 ```
 
-Note **all** running browsers — both may be present:
+Note **all** installed browsers:
 - `msedge` → Edge is available
 - `chrome` → Chrome is available
-- neither → no supported browser detected → use Mode A (MCP tools) only; do **not** launch an unknown browser
+- neither → check if executables exist (see Step 3)
 
-**Step 3 — Launch a detected browser with CDP**
+**Step 3 — Launch fresh browser with unique temp profile**
 
-The flags are identical for both browsers. First confirm the executable path exists, then launch:
-
-```bash
-# Confirm Edge path:
-ls "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe" 2>/dev/null && echo "edge ok"
-
-# Confirm Chrome path (try both locations):
-ls "C:/Program Files/Google/Chrome/Application/chrome.exe" 2>/dev/null && echo "chrome ok"
-ls "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe" 2>/dev/null && echo "chrome x86 ok"
-```
+Use a **unique profile directory** for each session to avoid conflicts:
 
 ```bash
-# Launch Edge (if msedge was detected):
-powershell -NoProfile -Command "Start-Process 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe' -ArgumentList '--remote-debugging-port=9222','--user-data-dir=C:\path\to\.tmp\cdp-profile','--no-first-run','--no-default-browser-check'"
+# Generate unique profile path
+TIMESTAMP=$(date +%s)
+PROFILE_DIR="$(pwd)/.tmp/cdp-profile-$TIMESTAMP"
 
-# Launch Chrome (if chrome was detected):
-powershell -NoProfile -Command "Start-Process 'C:\Program Files\Google\Chrome\Application\chrome.exe' -ArgumentList '--remote-debugging-port=9222','--user-data-dir=C:\path\to\.tmp\cdp-profile','--no-first-run','--no-default-browser-check'"
+# Try Edge first (usually has better Windows SSO integration)
+if [ -f "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe" ]; then
+  powershell -NoProfile -Command "Start-Process 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe' -ArgumentList '--remote-debugging-port=$PORT','--user-data-dir=$PROFILE_DIR','--no-first-run','--no-default-browser-check'"
+  echo "Launched Edge on port $PORT"
+  
+# Fallback to Chrome
+elif [ -f "C:/Program Files/Google/Chrome/Application/chrome.exe" ]; then
+  powershell -NoProfile -Command "Start-Process 'C:\Program Files\Google\Chrome\Application\chrome.exe' -ArgumentList '--remote-debugging-port=$PORT','--user-data-dir=$PROFILE_DIR','--no-first-run','--no-default-browser-check'"
+  echo "Launched Chrome on port $PORT"
+  
+else
+  echo "No supported browser found - use Mode A (MCP tools)"
+  exit 1
+fi
 ```
 
-Wait 3s, then verify: `curl -s http://localhost:9222/json/version`
+Wait 3s for browser startup, then verify: `curl -s http://localhost:$PORT/json/version`
 
-**Key constraint:** You cannot attach CDP to a browser already running *without* `--remote-debugging-port`. A new instance with a temp profile is the only option. For corporate SSO apps, Windows WAM tokens often authenticate automatically in the new instance — manual login may not be needed.
+**Why fresh browser works:** Windows profile transfers SSO cookies to the temp profile, so corporate apps authenticate automatically without manual login.
 
 **Overlay dismissal:** A fresh browser profile will often show first-run overlays (Edge sync prompts, cookie consent banners, "What's new" modals) that block the real UI. Dismiss these before waiting for app-specific elements. See the overlay dismissal pattern in the Script Output section.
 
@@ -110,9 +112,8 @@ async function validate() {
 validate().catch(e => { console.error(e.message); process.exit(1); });
 ```
 
-- If validation succeeds → record the working CDP port. This is the port you will pass to scripts via `--cdp-port`.
-- If validation fails → close this browser instance, try the next detected browser (Step 3), and validate again.
-- If all browsers fail validation → ask the user to sign in manually in the browser window, then re-validate.
+- If validation succeeds → record the CDP port. This is the port you will pass to scripts via `--cdp-port`.
+- If validation fails (login page) → ask the user to sign in manually in the browser window, then re-validate.
 
 **The CDP port you validate here is what you pass to scripts.** Scripts do not perform browser detection or SSO validation — that is your job during Phase 0.
 
@@ -175,13 +176,25 @@ Find the frame with the real content and target all locators at that frame objec
 For each step in the desired flow:
 
 1. **Interact** — Mode A: use refs from the most recent snapshot (`browser_click`, `browser_type`, etc.). Mode B: use Playwright locators (`page.getByRole(...)`, `frame.locator('[aria-label="..."]')`)
-2. **Verify** — re-read page state immediately after. Confirm the expected change happened: new element appeared, field value set, URL changed, success message shown. If the page state after verification is unexpected (CAPTCHA, error page, or an unrecognized screen), treat it as a blocker and apply Phase 4 recovery before proceeding.
-3. **If blocked** — re-snapshot/re-read immediately to diagnose. Common blockers:
+
+2. **Screenshot after dropdown/menu clicks** — **CRITICAL:** After clicking any button that should reveal a dropdown menu, context menu, or modal dialog:
+   - Wait briefly (500ms-1s) for the UI to appear
+   - Take a screenshot with `page.screenshot({ path: '.tmp/diag-after-click.png' })`
+   - Read the screenshot with the Read tool to SEE what menu items are actually visible
+   - Query the DOM for menu items AFTER you've visually confirmed the menu is open
+   
+   **Why:** DOM queries alone can miss visual menus. The screenshot shows you exactly what the user would see, including menu items, their text, and layout. This prevents blindly clicking buttons and querying for items that may not be rendered yet or may be in unexpected locations.
+
+3. **Verify** — re-read page state immediately after. Confirm the expected change happened: new element appeared, field value set, URL changed, success message shown. If the page state after verification is unexpected (CAPTCHA, error page, or an unrecognized screen), treat it as a blocker and apply Phase 4 recovery before proceeding.
+
+4. **If blocked** — re-snapshot/re-read immediately to diagnose. Common blockers:
    - Modal or overlay in front of the target → dismiss it first, then retry
    - Element not yet rendered → wait with `locator.waitFor()` or `page.waitForSelector()`
    - Stale ref (element re-rendered since last snapshot) → re-snapshot and get fresh ref
-4. **If layout-dependent** — take a screenshot and read it with the Read tool to see visual context
-5. Move to the next step **only after** the current step is confirmed
+   
+5. **If layout-dependent** — take a screenshot and read it with the Read tool to see visual context
+
+6. Move to the next step **only after** the current step is confirmed
 
 ---
 
@@ -189,8 +202,9 @@ For each step in the desired flow:
 
 1. Take a final snapshot or read confirming the full flow succeeded
 2. **Close the browser.** Mode A: call `browser_close`. Mode B: close all pages you opened — if they were the only pages, the browser process exits on its own. Don't leave the browser running after the task is done.
-3. Report what was accomplished to the user. Base your report on what you read from the final page state — do not summarize from memory or inference. If specific values were requested (a title, a field value, a count), quote them directly from the page content.
-4. If the user asks for a reusable script, write it using the Script Output template below.
+3. **Clean up temp profile** (optional): The browser will auto-clean on exit, but you can manually remove `.tmp/cdp-profile-*` directories to free disk space.
+4. Report what was accomplished to the user. Base your report on what you read from the final page state — do not summarize from memory or inference. If specific values were requested (a title, a field value, a count), quote them directly from the page content.
+5. If the user asks for a reusable script, write it using the Script Output template below.
 
 **Exception:** If the task ended in a failure that requires user intervention (Phase 4 escalation), leave the browser open so the user can see and interact with the current state.
 
@@ -277,8 +291,8 @@ Read the full output and categorize:
 ### Step 3: Reporting
 
 **Only report to user when:**
-- ✅ **100% success achieved** → Report: "Fixed N issues: [brief summary]. Verification now passing."
-- ❌ **Exhausted all recovery options** → Show diagnostics, explain what you tried, what you found, ask for help
+- **100% success achieved** → Report: "Fixed N issues: [brief summary]. Verification now passing."
+- **Exhausted all recovery options** → Show diagnostics, explain what you tried, what you found, ask for help
 
 **Critical Rule:** "Script ran to completion" ≠ "task succeeded"
 - Trust verification output, not exit codes
@@ -334,6 +348,80 @@ Summary shows non-zero error counts
 
 ---
 
+## Common Anti-Patterns (Real Failures)
+
+### Anti-Pattern 1: Text-Based Filters Match Multiple Elements
+
+**Problem:**
+```javascript
+// ❌ Can match both parent <div> and child <button>
+const btn = page.locator('button').filter({ hasText: /^Power-ups$/i });
+await btn.click(); // Error: "locator resolved to 2 elements"
+```
+
+**Why it fails:** If a parent div contains the text "Power-ups" and so does the child button, the filter matches BOTH elements. Playwright strict mode requires exactly one match.
+
+**Solution - Use semantic selectors instead:**
+```javascript
+// ✅ Much more reliable
+const btn = page.getByRole('button', { name: /Power-ups/i });
+await btn.click();
+```
+
+Prefer `getByRole`, `getByLabel`, `aria-label` over text filters.
+
+### Anti-Pattern 2: page.evaluate Clicks Don't Trigger Framework Events
+
+**Problem:**
+```javascript
+// ❌ Fires a native DOM click but does NOT trigger React/Fluent UI synthetic event handlers
+await page.evaluate(() => {
+  document.querySelector('button.confirm').click();
+});
+```
+
+**Why it fails:** React, Angular, and Fluent UI use synthetic event systems that listen for events dispatched through the browser's event pipeline. A raw `element.click()` in evaluate fires a native DOM click that bypasses these frameworks. The UI may update visually (element disappears, dialog closes), but the framework never processes the action — so **no API call goes to the server**. The change vanishes on page refresh.
+
+**Solution — Use Playwright's event dispatch:**
+```javascript
+// ✅ For unstable elements (menus that re-render and detach during click):
+await locator.dispatchEvent('click');
+
+// ✅ For elements that fail stability checks but are actually clickable:
+await locator.click({ force: true });
+
+// ✅ For stable elements (always prefer this):
+await locator.click();
+```
+
+Use `page.evaluate` for **reading** DOM state (querying elements, checking visibility, extracting text). Never use it for **clicking** elements that trigger server-side actions.
+
+### Anti-Pattern 3: Don't Diagnose Click Failures from Error Messages
+
+**Problem:** When a click times out or fails with "intercepts pointer events", don't try to guess what's wrong from the error message.
+
+**Solution - Look at the screenshot:**
+```javascript
+try {
+  await element.click({ timeout: 5000 });
+} catch (e) {
+  // Take screenshot immediately
+  await page.screenshot({ path: '.tmp/click-failed.png' });
+  console.log('Click failed - see .tmp/click-failed.png');
+  throw e;
+}
+```
+
+Then **use the Read tool to view the screenshot**. You'll SEE what's actually blocking:
+- Modal overlay in front of element
+- Element scrolled out of view
+- Wrong element selected
+- Element not yet rendered
+
+Diagnose visually, not from error text. Then fix based on what you SEE (dismiss overlay, scroll element into view, use better selector, add wait, etc.).
+
+---
+
 ## Key Rules
 
 **Selectors:** Prefer `aria-label`, `role`, and text-based selectors over CSS classes. CSS classes change across deployments and tenants; semantic attributes don't.
@@ -350,9 +438,94 @@ Summary shows non-zero error counts
 
 **Two-pass element reveal:** Some UIs hide form inputs behind clickable summary rows. If expected inputs aren't in the snapshot, click the summary row, re-snapshot, then find the revealed inputs.
 
+**Hard verification after mutating actions:** After any create, update, or delete action, navigate away from the page and back (or close and reopen it) to confirm the change persisted server-side. DOM changes alone (element disappearing, success toast appearing) do NOT prove the server processed the action — the UI may have updated optimistically while the API call silently failed or never fired. Never report a mutating action as successful until you've seen the result survive a fresh page load.
+
 **Snapshot vs Screenshot:**
 - Snapshot/innerText is primary — gives actionable content and element structure
 - Screenshot is the fallback — use when spatial/visual layout matters (diagnosing why a click doesn't land, reading a visual overlay)
+
+---
+
+## Script Quality Standards
+
+**All browser automation scripts must comply with these requirements.** Reference this section when writing AND when validating scripts.
+
+### BANNED: Fixed Delays
+
+**Never use:**
+```javascript
+await page.waitForTimeout(1000);
+await new Promise(r => setTimeout(r, 1000));
+```
+
+**Why:** Wastes time when ready sooner, fails when page is slow. You don't know what you're waiting for.
+
+**Always use element/condition-based waits:**
+```javascript
+await locator.waitFor({ state: 'visible', timeout: 5000 });
+await page.waitForLoadState('networkidle');
+await page.waitForFunction(() => document.readyState === 'complete');
+```
+
+**Exception:** Short poll loops (≤300ms interval) with a deadline when no waitable locator exists.
+
+### REQUIRED: Verification Code
+
+**Every script must output explicit success/failure:**
+```javascript
+// ❌ WRONG - no verification
+console.log('Done.');
+
+// ✅ CORRECT - explicit verification
+if (failCount === 0) {
+  console.log('Verification passed ✅');
+} else {
+  console.error(`Verification FAILED - ${failCount} errors`);
+}
+```
+
+This enables Phase 4.5 autonomous recovery.
+
+### REQUIRED: Semantic Selectors
+
+Use `aria-label`, `role`, visible text — **never CSS class selectors** (they change across deployments).
+
+### REQUIRED: Browser Connection
+
+Scripts receive `--cdp-port=<port>` from Claude. Connect with `chromium.connectOverCDP('http://localhost:<port>')` — no browser detection logic in scripts.
+
+### REQUIRED: Navigation
+
+Scripts must navigate to their target URL themselves — don't assume the browser is already there.
+
+### Additional Requirements
+
+- `console.log` after each major step for progress tracking
+- Check `page.frames()` when `body.innerText` is unexpectedly short
+- Use `page.route()` for request interception (not `frame.route()` — it doesn't exist)
+
+---
+
+## Phase 0.5: Script Validation (when creating Mode B scripts)
+
+**CRITICAL:** When you write a new browser automation script, **immediately validate it before running** or reporting completion.
+
+### Step 1: Scan for Violations
+
+After writing script to `scripts/<task>.js`, scan for violations of **Script Quality Standards** (above):
+- Fixed delays (`waitForTimeout`, `setTimeout`)
+- Missing verification code
+- CSS class selectors
+- Missing browser connection logic
+
+### Step 2: Auto-Fix if Violations Found
+
+If you detect violations:
+1. **Edit the script** to fix them
+2. **Explain what was wrong** and what you fixed
+3. **Re-scan** to confirm clean
+
+**Do not ask permission** - violations are always wrong.
 
 ---
 
@@ -474,12 +647,13 @@ run().catch(e => { console.error(e.message); process.exit(1); });
 ```
 
 ### Rules for scripts
-- **Browser connection:** Scripts receive `--cdp-port=<port>` from Claude after Phase 0 completes. Connect with `chromium.connectOverCDP('http://localhost:<port>')` — no detection, fallback, or SSO validation logic in scripts
-- **No browser detection or fallback:** Browser detection, CDP launch, and SSO validation are Claude's responsibility (Phase 0). Scripts trust the port they're given
-- **Navigate to target URL:** Scripts should navigate to their target URL themselves — don't assume the browser is already on the right page
-- Semantic selectors only (`aria-label`, `role`, text) — no CSS class selectors
-- Element-based waits only — no `waitForTimeout`, no `new Promise(r => setTimeout(r, N))`. Use `locator.waitFor()`, `page.waitForFunction()`, `page.waitForURL()`, or `page.waitForLoadState()`
-- Short poll loops (≤300 ms interval with a deadline) are acceptable when waiting for a frame or condition that has no waitable locator
-- `console.log` after each major step so the user can follow progress
-- Check `page.frames()` when `body.innerText` is unexpectedly short
-- Note: `frame.route()` does not exist; use `page.route()` for request interception
+
+All scripts must comply with **Script Quality Standards** (see above). Key points:
+
+- **No fixed delays** — use element-based waits only
+- **Verification code required** — output explicit pass/fail
+- **Semantic selectors** — `aria-label`, `role`, text (no CSS classes)
+- **Browser connection** — accept `--cdp-port`, connect via CDP
+- **Navigate to target** — don't assume browser is on the right page
+
+See **Script Quality Standards** section for complete requirements and examples.

@@ -1,7 +1,7 @@
 {
   "name": "browser-chauffeur",
   "version": "1.0.0",
-  "description": "Guides Claude through performing tasks on any website using an iterative inspect-interact-verify methodology. Claude operates the browser on your behalf — you give directions, Claude drives. Requires playwright MCP plugin.",
+  "description": "Guides Claude through performing tasks on any website using an iterative inspect-interact-verify methodology. Claude operates the browser on your behalf — you give directions, Claude drives. Requires playwright-cli MCP plugin.",
   "author": {
     "name": "Russell Rutledge"
   },
