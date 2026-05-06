@@ -23,8 +23,8 @@ Requires the **playwright MCP plugin**:
 ## Install
 
 ```
-/plugin marketplace add rrrutledge/browser-chauffeur
-/plugin install browser-chauffeur@browser-chauffeur
+/plugin marketplace add rrrutledge/rrrutledge-claude-code-plugins
+/plugin install browser-chauffeur@rrrutledge-plugins
 ```
 
 ## Usage

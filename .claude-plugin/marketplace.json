@@ -1,9 +1,9 @@
 {
-  "name": "browser-chauffeur",
+  "name": "rrrutledge-claude-code-plugins",
   "owner": {
     "name": "Russell Rutledge"
   },
-  "description": "Claude Code plugin marketplace for browser-chauffeur — browser automation with self-healing recovery",
+  "description": "A curated collection of Claude Code plugins by Russell Rutledge",
   "plugins": [
     {
       "name": "browser-chauffeur",
