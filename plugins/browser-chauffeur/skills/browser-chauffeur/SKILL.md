@@ -59,22 +59,26 @@ Note **all** installed browsers:
 
 **Step 3 — Launch fresh browser with unique temp profile**
 
-Use a **unique profile directory** for each session to avoid conflicts:
+Use a **unique profile directory** for each session to avoid conflicts. Use `-PassThru` to capture the browser PID for safe cleanup later.
+
+**Windows path format:** The `--user-data-dir` argument requires Windows-style backslash paths (e.g., `C:\\Users\\...`). Forward-slash Unix paths from Git Bash silently fail, causing CDP to not bind.
+
+**Edge sidebar hijack:** Edge with Microsoft 365 accounts has a built-in Teams/Chat sidebar that intercepts Teams URLs into a popup widget instead of a full-page tab. Always disable it with `--disable-features` flags and pass the target URL as a positional argument to open it as a full tab.
 
 ```bash
-# Generate unique profile path
+# Generate unique profile path (Windows-style backslashes required)
 TIMESTAMP=$(date +%s)
-PROFILE_DIR="$(pwd)/.tmp/cdp-profile-$TIMESTAMP"
+PROFILE_DIR="C:\\path\\to\\project\\.tmp\\cdp-profile-$TIMESTAMP"
 
 # Try Edge first (usually has better Windows SSO integration)
 if [ -f "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe" ]; then
-  powershell -NoProfile -Command "Start-Process 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe' -ArgumentList '--remote-debugging-port=$PORT','--user-data-dir=$PROFILE_DIR','--no-first-run','--no-default-browser-check'"
-  echo "Launched Edge on port $PORT"
+  BROWSER_PID=$(powershell -NoProfile -Command "\$proc = Start-Process 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe' -ArgumentList '--remote-debugging-port=$PORT','--user-data-dir=$PROFILE_DIR','--no-first-run','--no-default-browser-check','--disable-features=msEdgeSidebarV2,msEdgeSidebar,msEdgeChatAndNotification,msTeamsLeftChrome,EdgeSidebar,msEdgeSidebarPwaIntegration','--start-maximized','$TARGET_URL' -PassThru; \$proc.Id")
+  echo "Launched Edge on port $PORT (PID $BROWSER_PID)"
   
 # Fallback to Chrome
 elif [ -f "C:/Program Files/Google/Chrome/Application/chrome.exe" ]; then
-  powershell -NoProfile -Command "Start-Process 'C:\Program Files\Google\Chrome\Application\chrome.exe' -ArgumentList '--remote-debugging-port=$PORT','--user-data-dir=$PROFILE_DIR','--no-first-run','--no-default-browser-check'"
-  echo "Launched Chrome on port $PORT"
+  BROWSER_PID=$(powershell -NoProfile -Command "\$proc = Start-Process 'C:\Program Files\Google\Chrome\Application\chrome.exe' -ArgumentList '--remote-debugging-port=$PORT','--user-data-dir=$PROFILE_DIR','--no-first-run','--no-default-browser-check','--start-maximized','$TARGET_URL' -PassThru; \$proc.Id")
+  echo "Launched Chrome on port $PORT (PID $BROWSER_PID)"
   
 else
   echo "No supported browser found - use Mode A (MCP tools)"
@@ -82,11 +86,15 @@ else
 fi
 ```
 
-Wait 3s for browser startup, then verify: `curl -s http://localhost:$PORT/json/version`
+Wait 3-5s for browser startup, then verify: `curl -s http://localhost:$PORT/json/version`
+
+**Save the PID** — you will need it in Phase 3 to close only the browser you launched, without killing the user's personal browser instances.
 
 **Why fresh browser works:** Windows profile transfers SSO cookies to the temp profile, so corporate apps authenticate automatically without manual login.
 
-**Overlay dismissal:** A fresh browser profile will often show first-run overlays (Edge sync prompts, cookie consent banners, "What's new" modals) that block the real UI. Dismiss these before waiting for app-specific elements. See the overlay dismissal pattern in the Script Output section.
+**Overlay dismissal:** A fresh browser profile will often show first-run overlays (cookie consent banners, "What's new" modals) that block the real UI. Dismiss these before waiting for app-specific elements. See the overlay dismissal pattern in the Script Output section.
+
+**Known quirk — Edge sync dialog:** The "We are now syncing your browsing data" dialog on fresh Edge profiles is rendered in Edge's browser chrome layer, outside the page DOM. Playwright cannot see or dismiss it. It does **not** block script execution — scripts can interact with page elements behind it. Do not waste time trying to close it.
 
 **Step 4 — Validate SSO session (for corporate apps)**
 
@@ -201,7 +209,7 @@ For each step in the desired flow:
 ## Phase 3: Wrap Up
 
 1. Take a final snapshot or read confirming the full flow succeeded
-2. **Close the browser.** Mode A: call `browser_close`. Mode B: close all pages you opened — if they were the only pages, the browser process exits on its own. Don't leave the browser running after the task is done.
+2. **Close the browser.** Mode A: call `browser_close`. Mode B: kill only the browser PID you saved in Phase 0 Step 3 with `powershell -NoProfile -Command "Stop-Process -Id <PID> -Force"`. **Never** kill all browser processes (e.g., `Get-Process msedge | Stop-Process`) — that destroys the user's personal browser sessions.
 3. **Clean up temp profile** (optional): The browser will auto-clean on exit, but you can manually remove `.tmp/cdp-profile-*` directories to free disk space.
 4. Report what was accomplished to the user. Base your report on what you read from the final page state — do not summarize from memory or inference. If specific values were requested (a title, a field value, a count), quote them directly from the page content.
 5. If the user asks for a reusable script, write it using the Script Output template below.
@@ -339,8 +347,8 @@ Read the full output and categorize:
 ### Step 3: Reporting
 
 **Only report to user when:**
-- **100% success achieved** → Report: "Fixed N issues: [brief summary]. Verification now passing."
-- **Exhausted all recovery options** → Show diagnostics, explain what you tried, what you found, ask for help
+- ✅ **100% success achieved** → Report: "Fixed N issues: [brief summary]. Verification now passing."
+- ❌ **Exhausted all recovery options** → Show diagnostics, explain what you tried, what you found, ask for help
 
 **Critical Rule:** "Script ran to completion" ≠ "task succeeded"
 - Trust verification output, not exit codes
@@ -498,7 +506,7 @@ Diagnose visually, not from error text. Then fix based on what you SEE (dismiss 
 
 **All browser automation scripts must comply with these requirements.** Reference this section when writing AND when validating scripts.
 
-### BANNED: Fixed Delays
+### ❌ BANNED: Fixed Delays
 
 **Never use:**
 ```javascript
@@ -517,7 +525,7 @@ await page.waitForFunction(() => document.readyState === 'complete');
 
 **Exception:** Short poll loops (≤300ms interval) with a deadline when no waitable locator exists.
 
-### REQUIRED: Verification Code
+### ✅ REQUIRED: Verification Code
 
 **Every script must output explicit success/failure:**
 ```javascript
@@ -534,15 +542,15 @@ if (failCount === 0) {
 
 This enables Phase 4.5 autonomous recovery.
 
-### REQUIRED: Semantic Selectors
+### ✅ REQUIRED: Semantic Selectors
 
 Use `aria-label`, `role`, visible text — **never CSS class selectors** (they change across deployments).
 
-### REQUIRED: Browser Connection
+### ✅ REQUIRED: Browser Connection
 
 Scripts receive `--cdp-port=<port>` from Claude. Connect with `chromium.connectOverCDP('http://localhost:<port>')` — no browser detection logic in scripts.
 
-### REQUIRED: Navigation
+### ✅ REQUIRED: Navigation
 
 Scripts must navigate to their target URL themselves — don't assume the browser is already there.
 
@@ -698,10 +706,10 @@ run().catch(e => { console.error(e.message); process.exit(1); });
 
 All scripts must comply with **Script Quality Standards** (see above). Key points:
 
-- **No fixed delays** — use element-based waits only
-- **Verification code required** — output explicit pass/fail
-- **Semantic selectors** — `aria-label`, `role`, text (no CSS classes)
-- **Browser connection** — accept `--cdp-port`, connect via CDP
-- **Navigate to target** — don't assume browser is on the right page
+- ❌ **No fixed delays** — use element-based waits only
+- ✅ **Verification code required** — output explicit pass/fail
+- ✅ **Semantic selectors** — `aria-label`, `role`, text (no CSS classes)
+- ✅ **Browser connection** — accept `--cdp-port`, connect via CDP
+- ✅ **Navigate to target** — don't assume browser is on the right page
 
 See **Script Quality Standards** section for complete requirements and examples.
