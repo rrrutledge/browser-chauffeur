@@ -278,14 +278,6 @@ When a script fails, **you are the debugger**. Do not show the user an error and
 
 **Rule:** Never tell the user "the script failed." Always read the diagnostic screenshot, diagnose, fix, and retry at least once before involving the user.
 
-### CAPTCHAs, login pages, and other human-required blockers
-
-CAPTCHAs (Cloudflare, reCAPTCHA, hCaptcha, Arkose Labs, Zillow "Press & Hold"), login pages, and MFA prompts all require human action. They **cannot be solved programmatically**. Do NOT waste time retrying or switching browsers for CAPTCHAs — escalate to the user immediately via `AskUserQuestion` (see **User Intervention** section).
-
-**Detection:** The script will fail naturally (expected elements missing behind the challenge). You'll read the diagnostic screenshot and see the blocker. Scripts may also include inline detection that logs keywords like `CAPTCHA DETECTED` or `VALIDATION_FAILED` — if you're monitoring the output, react to these immediately.
-
-**After the user resolves it:** Re-run the script. The browser session should now be past the blocker. Leave the browser open — the user needs the same session.
-
 ### When running scripts from other skills
 
 If another skill runs a Mode B script and it fails, that skill should follow this same recovery loop. The script saves diagnostic screenshots specifically so that whatever is running it — whether browser-chauffeur or another skill — can read the screenshot with the Read tool, see what went wrong, and fix it autonomously. The screenshots are not for the user; they are for you.
@@ -305,11 +297,10 @@ Read the full output and categorize:
 - AND no error patterns present
 - → Script succeeded, proceed to reporting
 
-**Human action required (escalate immediately — do NOT enter recovery loop):**
+**Human action required (see **User Intervention** section):**
 - Diagnostic screenshot shows a CAPTCHA, login page, or MFA prompt
-- Script output may contain `timeout` or `not found` errors because expected elements are hidden behind the challenge
-- Script output contains keywords like `CAPTCHA DETECTED` or `VALIDATION_FAILED`
-- → Use `AskUserQuestion` immediately (see **User Intervention** section). Do NOT retry autonomously.
+- Script output contains `CAPTCHA DETECTED`, `VALIDATION_FAILED`, or similar
+- → Use `AskUserQuestion` immediately. Do NOT retry autonomously.
 
 **Explicit failure:**
 - Contains: `Verification FAILED`, `VERIFY FAIL:`
