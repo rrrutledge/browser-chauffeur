@@ -113,7 +113,7 @@ validate().catch(e => { console.error(e.message); process.exit(1); });
 ```
 
 - If validation succeeds → record the CDP port. This is the port you will pass to scripts via `--cdp-port`.
-- If validation fails (login page) → ask the user to sign in manually in the browser window, then re-validate.
+- If validation fails (login page) → use `AskUserQuestion` to prompt the user to sign in (see **User Intervention** section), then re-validate.
 
 **The CDP port you validate here is what you pass to scripts.** Scripts do not perform browser detection or SSO validation — that is your job during Phase 0.
 
@@ -185,7 +185,7 @@ For each step in the desired flow:
    
    **Why:** DOM queries alone can miss visual menus. The screenshot shows you exactly what the user would see, including menu items, their text, and layout. This prevents blindly clicking buttons and querying for items that may not be rendered yet or may be in unexpected locations.
 
-3. **Verify** — re-read page state immediately after. Confirm the expected change happened: new element appeared, field value set, URL changed, success message shown. If the page state after verification is unexpected (CAPTCHA, error page, or an unrecognized screen), treat it as a blocker and apply Phase 4 recovery before proceeding.
+3. **Verify** — re-read page state immediately after. Confirm the expected change happened: new element appeared, field value set, URL changed, success message shown. If the page state after verification is unexpected (CAPTCHA, login page, error page, or an unrecognized screen), treat it as a blocker — if it requires human action (CAPTCHA, login), follow the **User Intervention** section; otherwise apply Phase 4 recovery.
 
 4. **If blocked** — re-snapshot/re-read immediately to diagnose. Common blockers:
    - Modal or overlay in front of the target → dismiss it first, then retry
@@ -210,6 +210,49 @@ For each step in the desired flow:
 
 ---
 
+## User Intervention — Proper Alerting (MANDATORY)
+
+Sometimes the browser hits a blocker that only a human can resolve. These all fall into one category: **the user needs to go do something in the browser window.** Whether it's a CAPTCHA, a login page, an MFA prompt, or a cookie consent wall that can't be auto-dismissed — the response is the same.
+
+**NEVER just log to the terminal and hope the user sees it.** The user may not be watching terminal output, especially during long-running batch scripts. You MUST use `AskUserQuestion` to create a visible, blocking prompt.
+
+### What triggers user intervention
+
+- **CAPTCHAs / human verification** — Cloudflare "Verify you are human", Zillow "Press & Hold", reCAPTCHA, hCaptcha, Arkose Labs. Cannot be solved programmatically. Do NOT retry or switch browsers — escalate immediately.
+- **Login pages** — SSO didn't carry over, or the session expired mid-run. You may try the other browser first (Edge/Chrome fallback), but if that also shows a login page, escalate immediately.
+- **MFA prompts** — requires the user's phone/authenticator.
+- **Unresolvable consent/terms walls** — cookie banners or terms pages that can't be auto-dismissed by the overlay dismissal pattern.
+
+### Required `AskUserQuestion` pattern
+
+```
+AskUserQuestion with options:
+- "Done, I solved it" — user completed the action
+- "Can't find the browser" — user needs help locating the window
+```
+
+Include in the question text: what site triggered the blocker, what kind of challenge it is (CAPTCHA, login, MFA), and that they need to switch to the browser window.
+
+### If user can't find the browser
+
+Attempt to bring the window to the foreground, then re-prompt with `AskUserQuestion`.
+
+### Monitoring long-running scripts
+
+When running a batch script that may encounter these blockers mid-run:
+
+1. Set up a **Monitor** on the script's output watching for intervention keywords (`CAPTCHA DETECTED`, `VALIDATION_FAILED`, `login page`, `Sign in`, etc.)
+2. When the Monitor fires, **immediately use `AskUserQuestion`** — don't wait for the script to finish
+3. After the user confirms resolution, verify the script continued past the blocker
+
+### After the user resolves the blocker
+
+- Leave the browser open — the user needs the same session
+- Re-run or continue the script — the browser session should now be past the blocker
+- If the same blocker reappears, escalate again with `AskUserQuestion` — don't silently retry
+
+---
+
 ## Phase 4: Script Failure Recovery
 
 When a script fails, **you are the debugger**. Do not show the user an error and ask what to do. Diagnose it yourself, fix it, and re-run.
@@ -219,8 +262,8 @@ When a script fails, **you are the debugger**. Do not show the user an error and
 1. **Read the diagnostic screenshot** — scripts save screenshots to `.tmp/diag-*.png` on failure. Use the Read tool to view the image. This tells you what the browser was actually showing: an overlay, a login page, a CAPTCHA, a changed UI, or something else entirely.
 
 2. **Diagnose the cause** from what you see:
+   - **CAPTCHA, login page, or MFA prompt** → requires human action. Follow the **User Intervention** section — use `AskUserQuestion` immediately. For login pages, you may also try the other browser (Edge/Chrome fallback) first, but if that also shows a login page, escalate to the user via `AskUserQuestion`.
    - **Overlay or modal blocking the UI** → add dismissal logic to the script (see overlay dismissal pattern), re-run
-   - **Login page** → the browser didn't have SSO credentials. Close it, try the other browser (Edge/Chrome fallback), re-run
    - **UI changed** (different label, restructured DOM, new element) → inspect the current page state to find the new selector, update the script, re-run
    - **New required step** (e.g., a consent prompt, a "What's new" tour) → add handling for it, re-run
    - **The page loaded but the expected element isn't there** → take a fresh screenshot, read it, check if the app changed its layout or the element is in a different frame
@@ -231,7 +274,7 @@ When a script fails, **you are the debugger**. Do not show the user an error and
 
 5. **Repeat if needed** — a fix may reveal the next failure. Keep going through the loop until the script completes or you've exhausted all browser options.
 
-6. **Escalate only as a last resort** — if you've tried both browsers, dismissed all visible overlays, read multiple screenshots, and the blocker requires user input (new credentials, MFA prompt, policy change), then explain what you found and what you need. Show the screenshot in your explanation.
+6. **Escalate only as a last resort** — if you've tried both browsers, dismissed all visible overlays, read multiple screenshots, and the blocker requires user input (new credentials, MFA prompt, policy change), use `AskUserQuestion` to explain what you found and what you need (see **User Intervention** section).
 
 **Rule:** Never tell the user "the script failed." Always read the diagnostic screenshot, diagnose, fix, and retry at least once before involving the user.
 
@@ -253,6 +296,11 @@ Read the full output and categorize:
 - Contains: `Verification passed`, `✅`, `All checks passed`
 - AND no error patterns present
 - → Script succeeded, proceed to reporting
+
+**Human action required (see **User Intervention** section):**
+- Diagnostic screenshot shows a CAPTCHA, login page, or MFA prompt
+- Script output contains `CAPTCHA DETECTED`, `VALIDATION_FAILED`, or similar
+- → Use `AskUserQuestion` immediately. Do NOT retry autonomously.
 
 **Explicit failure:**
 - Contains: `Verification FAILED`, `VERIFY FAIL:`
