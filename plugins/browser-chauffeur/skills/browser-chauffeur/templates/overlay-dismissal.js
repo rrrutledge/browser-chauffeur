@@ -19,9 +19,9 @@ async function dismissOverlays(page) {
   }
 }
 
-// Short poll helper used inside dismissOverlays. Acceptable per Script Quality
-// Standards as a poll interval (≤300-500ms) inside an active loop that exits
-// as soon as a condition is met.
+// Short delay between dismissals so overlay animations finish before we look
+// for the next one. Bounded (≤500ms) and only used in this small loop, so it
+// doesn't fall under the "no fixed delays" ban for general script logic.
 async function poll(ms) {
   return new Promise(r => setTimeout(r, ms));
 }

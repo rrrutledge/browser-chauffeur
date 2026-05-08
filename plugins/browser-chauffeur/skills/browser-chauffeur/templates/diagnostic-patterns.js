@@ -3,8 +3,6 @@
 // inventories, timing comparisons) so you can diagnose the root cause from
 // what the page actually shows, not from the error text.
 
-const { chromium } = require('playwright');
-
 // Pattern 1: Element visibility test
 async function checkVisibility(page, selector) {
   const element = page.locator(selector);

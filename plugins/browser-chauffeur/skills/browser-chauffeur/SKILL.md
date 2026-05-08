@@ -1,6 +1,6 @@
 ---
 name: browser-chauffeur
-description: REQUIRED for ALL browser automation — both creating NEW scripts AND running existing ones. When user asks to create/write/build a browser automation script, invoke this skill BEFORE writing any code. When running scripts, this skill handles browser detection, CDP setup, and autonomous error recovery (screenshot → diagnose → fix → retry). Never create or run browser automation outside this skill.
+description: REQUIRED for ALL browser automation — both creating NEW scripts AND running existing ones. When user asks to create/write/build a browser automation script, invoke this skill BEFORE writing any code. When running scripts, this skill handles browser launch, CDP setup, and autonomous error recovery (screenshot → diagnose → fix → retry). Never create or run browser automation outside this skill.
 allowed-tools: Bash, Write, Edit, Read
 ---
 
@@ -8,24 +8,13 @@ allowed-tools: Bash, Write, Edit, Read
 
 You are operating the browser on the user's behalf. You are the chauffeur — you drive, they direct. Your job is to reach the destination reliably, adapt when the route changes, and never give up without trying an alternate route first.
 
-## Two Modes of Operation
+## How it works
 
-**Mode A — MCP Playwright tools** (`browser_navigate`, `browser_snapshot`, `browser_screenshot`, etc.): Use for public websites or apps that don't require corporate SSO. These open a fresh Chromium window with no existing login session.
-
-**Mode B — Node.js CDP script** via Bash: Use for corporate SSO apps (Teams, SharePoint, Outlook, internal tools). Write a `scripts/<task>.js` file using the `playwright` npm package connected to Chrome or Edge via CDP, then run it with `node scripts/<task>.js`.
-
-**Choose Mode B when:**
-- The target app uses Azure AD / Entra ID / corporate SSO
-- A fresh browser would land on a login page that requires MFA or corporate credentials
-- The user is already logged in to Chrome or Edge
+Every task uses the same flow: launch a fresh Edge or Chrome with CDP enabled, validate that the target page loads, write or run a Node.js script that connects via `playwright.chromium.connectOverCDP(...)`, watch the output, and recover autonomously if anything fails. The fresh-browser approach inherits the user's logged-in sessions from their Windows profile (Edge/Chrome cookies transfer to the temp profile), so apps requiring login — corporate SSO or otherwise — authenticate without manual sign-in.
 
 ## Prerequisite Check
 
-This skill requires the **playwright MCP plugin** for Mode A. If `browser_snapshot` or related tools are unavailable, tell the user:
-
-"The browser-chauffeur skill requires the playwright MCP plugin. Please install it with: `/plugin marketplace add playwright`"
-
-For Mode B, verify `node` and the `playwright` npm package are available:
+Verify `node` and the `playwright` npm package are available:
 ```bash
 node --version && node -e "require('playwright'); console.log('ok')"
 ```
@@ -34,58 +23,51 @@ node --version && node -e "require('playwright'); console.log('ok')"
 
 ## Phase 0: Browser Launch (do this before Phase 1)
 
-**Always launch a fresh browser instance** — never reuse an active browser. This prevents interfering with the user's browsing while still having SSO credentials (Windows profile transfers cookies).
+**Always launch a fresh browser instance** — never reuse an active browser. This prevents interfering with the user's browsing while still inheriting the credentials in their Windows profile.
 
 **Step 1 — Find an available CDP port**
 
 ```bash
-for port in 9222 9223 9224 9225; do
-  nc -z localhost $port 2>/dev/null || { echo "Port $port available"; break; }
-done
+python plugins/browser-chauffeur/skills/browser-chauffeur/templates/find-port.py
 ```
 
-If all ports busy, use 9226.
+Adjust the path to wherever your skill is mounted. Default range is 9222–9226; prints the first free port.
 
-**Step 2 — Detect installed browsers**
+**Step 2 — Launch the browser**
 
 ```bash
-powershell -NoProfile -Command "Get-Process msedge,chrome -ErrorAction SilentlyContinue | Select-Object -Unique Name | Format-Table -AutoSize"
+python plugins/browser-chauffeur/skills/browser-chauffeur/templates/launch-browser.py --port <port> --url <target-url>
 ```
 
-Note **all** installed browsers: `msedge` → Edge available, `chrome` → Chrome available. If neither, check if executables exist (see Step 3).
+This auto-detects Edge first (better Windows SSO integration), falls back to Chrome, generates a unique temp profile, disables the Edge Teams/Chat sidebar that hijacks meeting URLs into a popup, and prints the launched browser's PID. **Save the PID** — you'll need it in Phase 3 to close only the browser you launched, without killing the user's personal browser instances.
 
-**Step 3 — Launch fresh browser with unique temp profile**
-
-See `templates/launch-browser.sh` for the full launch script (Edge-first with Chrome fallback, unique profile dir, Edge sidebar disabled, PID capture). Key constraints:
-
-- Use a **unique profile directory** for each session to avoid conflicts. Use `-PassThru` to capture the browser PID for safe cleanup later.
-- **Windows path format:** The `--user-data-dir` argument requires Windows-style backslash paths (e.g., `C:\\Users\\...`). Forward-slash Unix paths from Git Bash silently fail, causing CDP to not bind.
-- **Edge sidebar hijack:** Edge with Microsoft 365 accounts has a built-in Teams/Chat sidebar that intercepts Teams URLs into a popup widget instead of a full-page tab. Always disable it with `--disable-features` flags and pass the target URL as a positional argument to open it as a full tab.
-
-Wait 3-5s for browser startup, then verify: `curl -s http://localhost:$PORT/json/version`
-
-**Save the PID** — you will need it in Phase 3 to close only the browser you launched, without killing the user's personal browser instances.
-
-**Why fresh browser works:** Windows profile transfers SSO cookies to the temp profile, so corporate apps authenticate automatically without manual login.
-
-**Overlay dismissal:** A fresh browser profile will often show first-run overlays (cookie consent banners, "What's new" modals) that block the real UI. Dismiss these before waiting for app-specific elements. See **Overlay Dismissal** below.
+Wait 3–5s for the browser to start, then verify CDP is responding:
+```bash
+curl -s http://localhost:<port>/json/version
+```
 
 **Known quirk — Edge sync dialog:** The "We are now syncing your browsing data" dialog on fresh Edge profiles is rendered in Edge's browser chrome layer, outside the page DOM. Playwright cannot see or dismiss it. It does **not** block script execution — scripts can interact with page elements behind it. Do not waste time trying to close it.
 
-**Step 4 — Validate SSO session (for corporate apps)**
+**First-run overlays:** A fresh profile may also show in-page overlays (cookie consent banners, "What's new" modals). These DO block element waits — dismiss them via the pattern in **Common Patterns → Overlay Dismissal** below.
 
-Once CDP is available, verify the browser can actually reach the target app — not just that it launched. See `templates/validate-sso.js` for a script that navigates to the target URL and checks whether the app loaded or a login page appeared.
+**Step 3 — Validate the target loads**
 
-- If validation succeeds → record the CDP port. This is the port you will pass to scripts via `--cdp-port`.
-- If validation fails (login page) → use `AskUserQuestion` to prompt the user to sign in (see **User Intervention** section), then re-validate.
+Verify the browser can actually reach the target app, not just that the browser launched. This catches expired sessions, login walls, and consent gates before any real automation runs.
 
-**The CDP port you validate here is what you pass to scripts.** Scripts do not perform browser detection or SSO validation — that is your job during Phase 0.
+```bash
+node plugins/browser-chauffeur/skills/browser-chauffeur/templates/validate-target.js --cdp-port=<port> --url=<target-url>
+```
+
+- `VALIDATION_OK` → record the CDP port; this is what you'll pass to scripts via `--cdp-port`.
+- `VALIDATION_FAILED: landed on login page` → the user needs to sign in. Use `AskUserQuestion` to prompt them (see **User Intervention** section), then re-validate.
+
+**The CDP port you validate here is what you pass to scripts.** Scripts do not perform browser detection or target validation — that is your job during Phase 0.
 
 ---
 
 ## Phase 0.5: Running Existing Scripts
 
-**The script is the directions. This skill is the chauffeur.** Never run a Mode B script directly and walk away — always have this skill loaded so the recovery loop is active.
+**The script is the directions. This skill is the chauffeur.** Never run a browser automation script directly and walk away — always have this skill loaded so the recovery loop is active.
 
 When another skill needs to run a browser automation script, it should invoke browser-chauffeur first. The pattern:
 
@@ -110,10 +92,9 @@ This ensures the AI is always watching the road, not just handing off directions
 Before touching anything:
 
 1. Navigate to the target page or state
-2. **Mode A:** Run `browser_snapshot` to read the accessibility tree — this gives you element refs you can act on
-3. **Mode B:** Use `page.evaluate(() => document.body.innerText)` or enumerate `page.frames()` to read page state
-4. If the snapshot doesn't clarify structure (complex visual layout), take a screenshot with `browser_screenshot` (Mode A) or `page.screenshot()` (Mode B) and read the image with the Read tool
-5. Identify the first action needed
+2. Read page state with `page.evaluate(() => document.body.innerText)`, or enumerate `page.frames()` if the body is unexpectedly short (see **Iframe detection** below)
+3. If the text content doesn't clarify structure (complex visual layout), take a screenshot with `page.screenshot()` and read the image with the Read tool
+4. Identify the first action needed
 
 **Never act before orienting.** You cannot guess selectors on a page you haven't inspected.
 
@@ -122,7 +103,6 @@ Before touching anything:
 Many enterprise apps (Teams, SharePoint) render content in iframes. If `document.body.innerText` returns almost nothing (< 200 chars) on a page that should have content:
 
 ```javascript
-// In a Mode B script:
 const frames = page.frames();
 console.log('Frames:', frames.map(f => f.url()));
 for (const f of frames) {
@@ -139,7 +119,7 @@ Find the frame with the real content and target all locators at that frame objec
 
 For each step in the desired flow:
 
-1. **Interact** — Mode A: use refs from the most recent snapshot (`browser_click`, `browser_type`, etc.). Mode B: use Playwright locators (`page.getByRole(...)`, `frame.locator('[aria-label="..."]')`)
+1. **Interact** — use Playwright locators (`page.getByRole(...)`, `frame.locator('[aria-label="..."]')`)
 
 2. **Screenshot after dropdown/menu clicks** — **CRITICAL:** After clicking any button that should reveal a dropdown menu, context menu, or modal dialog:
    - Wait briefly (500ms-1s) for the UI to appear
@@ -151,10 +131,10 @@ For each step in the desired flow:
 
 3. **Verify** — re-read page state immediately after. Confirm the expected change happened: new element appeared, field value set, URL changed, success message shown. If the page state after verification is unexpected (CAPTCHA, login page, error page, or an unrecognized screen), treat it as a blocker — if it requires human action (CAPTCHA, login), follow the **User Intervention** section; otherwise apply Phase 4 recovery.
 
-4. **If blocked** — re-snapshot/re-read immediately to diagnose. Common blockers:
+4. **If blocked** — re-read page state immediately to diagnose. Common blockers:
    - Modal or overlay in front of the target → dismiss it first (see **Overlay Dismissal**), then retry
    - Element not yet rendered → wait with `locator.waitFor()` or `page.waitForSelector()`
-   - Stale ref (element re-rendered since last snapshot) → re-snapshot and get fresh ref
+   - Stale locator (element re-rendered since last query) → re-query for a fresh handle
 
 5. **If layout-dependent** — take a screenshot and read it with the Read tool to see visual context
 
@@ -164,8 +144,8 @@ For each step in the desired flow:
 
 ## Phase 3: Wrap Up
 
-1. Take a final snapshot or read confirming the full flow succeeded
-2. **Close the browser.** Mode A: call `browser_close`. Mode B: kill only the browser PID you saved in Phase 0 Step 3 with `powershell -NoProfile -Command "Stop-Process -Id <PID> -Force"`. **Never** kill all browser processes (e.g., `Get-Process msedge | Stop-Process`) — that destroys the user's personal browser sessions.
+1. Take a final read confirming the full flow succeeded
+2. **Close the browser.** Kill only the browser PID you saved in Phase 0 Step 2 with `powershell -NoProfile -Command "Stop-Process -Id <PID> -Force"`. **Never** kill all browser processes (e.g., `Get-Process msedge | Stop-Process`) — that destroys the user's personal browser sessions.
 3. **Clean up temp profile** (optional): The browser will auto-clean on exit, but you can manually remove `.tmp/cdp-profile-*` directories to free disk space.
 4. Report what was accomplished to the user. Base your report on what you read from the final page state — do not summarize from memory or inference. If specific values were requested (a title, a field value, a count), quote them directly from the page content.
 5. If the user asks for a reusable script, write it using `templates/script-template.js`.
@@ -183,7 +163,7 @@ Sometimes the browser hits a blocker that only a human can resolve. These all fa
 ### What triggers user intervention
 
 - **CAPTCHAs / human verification** — Cloudflare "Verify you are human", Zillow "Press & Hold", reCAPTCHA, hCaptcha, Arkose Labs. Cannot be solved programmatically. Do NOT retry or switch browsers — escalate immediately.
-- **Login pages** — SSO didn't carry over, or the session expired mid-run. You may try the other browser first (Edge/Chrome fallback), but if that also shows a login page, escalate immediately.
+- **Login pages** — the user isn't signed in, or the session expired mid-run. You may try the other browser first (Edge/Chrome fallback), but if that also shows a login page, escalate immediately.
 - **MFA prompts** — requires the user's phone/authenticator.
 - **Unresolvable consent/terms walls** — cookie banners or terms pages that can't be auto-dismissed by the overlay dismissal pattern.
 
@@ -219,7 +199,7 @@ When running a batch script that may encounter these blockers mid-run:
 
 ## Phase 4: Failure Recovery (ALWAYS run after a script exits)
 
-When a Mode B script completes — **regardless of exit code** — analyze the output and recover autonomously. **Exit code 0 ≠ success.** Many scripts complete with errors in their output. Trust verification output and visual evidence, not exit codes. **Don't ask permission to debug — that's your job as the chauffeur.**
+When a script completes — **regardless of exit code** — analyze the output and recover autonomously. **Exit code 0 ≠ success.** Many scripts complete with errors in their output. Trust verification output and visual evidence, not exit codes. **Don't ask permission to debug — that's your job as the chauffeur.**
 
 ### Step 1: Parse output for success/failure signals
 
@@ -275,19 +255,19 @@ Summary shows non-zero error counts
 
 ### When running scripts from other skills
 
-If another skill runs a Mode B script and it fails, that skill should follow this same recovery loop. The script saves diagnostic screenshots specifically so that whatever is running it — whether browser-chauffeur or another skill — can read the screenshot with the Read tool, see what went wrong, and fix it autonomously. The screenshots are not for the user; they are for you.
+If another skill runs a script and it fails, that skill should follow this same recovery loop. The script saves diagnostic screenshots specifically so that whatever is running it — whether browser-chauffeur or another skill — can read the screenshot with the Read tool, see what went wrong, and fix it autonomously. The screenshots are not for the user; they are for you.
 
 ---
 
-## Phase 5: Script Validation (when creating Mode B scripts)
+## Phase 5: Script Validation (when creating scripts)
 
-**CRITICAL:** When you write a new browser automation script, **immediately validate it before running** or reporting completion. Scan `scripts/<task>.js` for violations of **Script Quality Standards** (below): fixed delays (`waitForTimeout`, `setTimeout`), missing verification code, CSS class selectors, or missing browser connection logic. If you find any, edit the script to fix them, explain what was wrong and what you fixed, then re-scan to confirm clean. **Do not ask permission** — violations are always wrong.
+**CRITICAL:** When you write a new browser automation script, **immediately validate it before running** or reporting completion. Scan `scripts/<task>.js` for violations of `script-quality-standards.md`: fixed delays (`waitForTimeout`, `setTimeout`), missing verification code, CSS class selectors, or missing browser connection logic. If you find any, edit the script to fix them, explain what was wrong and what you fixed, then re-scan to confirm clean. **Do not ask permission** — violations are always wrong.
 
 ---
 
 ## Common Patterns
 
-**Overlay Dismissal** — A fresh browser profile will show first-run overlays — Edge sync prompts ("We are now syncing your browsing data"), cookie consent banners, "What's new" modals. These block the real UI and cause element waits to time out. See `templates/overlay-dismissal.js` for the `dismissOverlays(page)` helper. Call it immediately after navigating to the target app, **before** waiting for app-specific elements. Include it in every Mode B script.
+**Overlay Dismissal** — A fresh browser profile will show first-run overlays — Edge sync prompts ("We are now syncing your browsing data"), cookie consent banners, "What's new" modals. These block the real UI and cause element waits to time out. See `templates/overlay-dismissal.js` for the `dismissOverlays(page)` helper. Call it immediately after navigating to the target app, **before** waiting for app-specific elements. Include it in every script.
 
 **Screenshot on Failure** — Scripts save screenshots to `.tmp/diag-*.png` on failure so the recovery loop can read them. See `templates/screenshot-on-failure.js` for the `screenshotOnFailure(context, label)` helper. Use it in catch blocks when the app fails to load, and in any browser fallback loop so each failed attempt produces a screenshot for debugging.
 
@@ -305,76 +285,18 @@ If another skill runs a Mode B script and it fails, that skill should follow thi
 
 **Verification:** Always re-read page state after save/submit actions. A form can silently fail to save. Trust nothing without checking.
 
-**Variant UIs:** The same application can render completely different DOM on different tenants or account types. When a selector fails in a new context, re-snapshot there and find the equivalent element — never assume one tenant's refs work on another.
+**Variant UIs:** The same application can render completely different DOM on different tenants or account types. When a selector fails in a new context, re-read there and find the equivalent element — never assume one tenant's selectors work on another.
 
-**Overlay detection:** When a click doesn't land, snapshot first to check for modal overlays or portal elements blocking the target. Dismiss them before retrying.
+**Overlay detection:** When a click doesn't land, check for modal overlays or portal elements blocking the target before retrying. Dismiss them first.
 
-**Two-pass element reveal:** Some UIs hide form inputs behind clickable summary rows. If expected inputs aren't in the snapshot, click the summary row, re-snapshot, then find the revealed inputs.
+**Two-pass element reveal:** Some UIs hide form inputs behind clickable summary rows. If expected inputs aren't visible, click the summary row, re-read, then find the revealed inputs.
 
 **Hard verification after mutating actions:** After any create, update, or delete action, navigate away from the page and back (or close and reopen it) to confirm the change persisted server-side. DOM changes alone (element disappearing, success toast appearing) do NOT prove the server processed the action — the UI may have updated optimistically while the API call silently failed or never fired. Never report a mutating action as successful until you've seen the result survive a fresh page load.
 
-**Snapshot vs Screenshot:**
-- Snapshot/innerText is primary — gives actionable content and element structure
-- Screenshot is the fallback — use when spatial/visual layout matters (diagnosing why a click doesn't land, reading a visual overlay)
+**InnerText vs Screenshot:** `innerText` / accessibility queries are primary — they give actionable content and element structure. Screenshots are the fallback — use them when spatial/visual layout matters (diagnosing why a click doesn't land, reading a visual overlay).
 
 ---
 
 ## Script Quality Standards
 
-**All browser automation scripts must comply with these requirements.** Reference this section when writing AND when validating scripts (see Phase 5). See `templates/script-template.js` for a complete reference script that satisfies all of these.
-
-### ❌ BANNED: Fixed Delays
-
-**Never use:**
-```javascript
-await page.waitForTimeout(1000);
-await new Promise(r => setTimeout(r, 1000));
-```
-
-**Why:** Wastes time when ready sooner, fails when page is slow. You don't know what you're waiting for.
-
-**Always use element/condition-based waits:**
-```javascript
-await locator.waitFor({ state: 'visible', timeout: 5000 });
-await page.waitForLoadState('networkidle');
-await page.waitForFunction(() => document.readyState === 'complete');
-```
-
-**Exception:** Short poll loops (≤300ms interval) with a deadline when no waitable locator exists.
-
-### ✅ REQUIRED: Verification Code
-
-**Every script must output explicit success/failure:**
-```javascript
-// ❌ WRONG - no verification
-console.log('Done.');
-
-// ✅ CORRECT - explicit verification
-if (failCount === 0) {
-  console.log('Verification passed ✅');
-} else {
-  console.error(`Verification FAILED - ${failCount} errors`);
-}
-```
-
-This enables Phase 4 autonomous recovery.
-
-### ✅ REQUIRED: Semantic Selectors
-
-Use `aria-label`, `role`, visible text — **never CSS class selectors** (they change across deployments).
-
-### ✅ REQUIRED: Browser Connection
-
-Scripts receive `--cdp-port=<port>` from Claude. Connect with `chromium.connectOverCDP('http://localhost:<port>')` — no browser detection logic in scripts. They do **not** contain browser detection, fallback, or SSO validation — that is handled by Claude interactively during Phase 0 before any script runs.
-
-### ✅ REQUIRED: Navigation
-
-Scripts must navigate to their target URL themselves — don't assume the browser is already there. Since Phase 0 already validated the SSO session, navigating again is just a reload and keeps the script self-contained.
-
-### Additional Requirements
-
-- `console.log` after each major step for progress tracking
-- Check `page.frames()` when `body.innerText` is unexpectedly short
-- Use `page.route()` for request interception (not `frame.route()` — it doesn't exist)
-- Include `dismissOverlays(page)` after navigation (see **Overlay Dismissal**)
-- Save a diagnostic screenshot in catch blocks (see **Screenshot on Failure**)
+All scripts must comply with `script-quality-standards.md` — banned patterns (fixed delays), required patterns (verification, semantic selectors, CDP connection, navigation), and additional requirements (progress logging, frame fallback, overlay dismissal, screenshot-on-failure). See `templates/script-template.js` for a complete reference script that satisfies all of these.

@@ -1,11 +1,17 @@
-// Full Mode B script template. Scripts receive a validated CDP port from
-// browser-chauffeur Phase 0 via --cdp-port. They do NOT contain browser
-// detection, fallback, or SSO validation — that is handled by Claude
+// Browser automation script template. Scripts receive a validated CDP port
+// from browser-chauffeur Phase 0 via --cdp-port. They do NOT contain browser
+// detection, fallback, or target-load validation — that is handled by Claude
 // interactively during Phase 0 before any script runs.
 //
 // Scripts should still navigate to their target URL (not assume the page is
-// pre-loaded). Since Phase 0 already validated the SSO session, navigating
-// again is just a reload and keeps the script self-contained.
+// pre-loaded). Since Phase 0 already validated that the target loads,
+// navigating again is just a reload and keeps the script self-contained.
+//
+// SELF-CONTAINED ON PURPOSE: poll, dismissOverlays, and screenshotOnFailure
+// are inlined below even though they also live in overlay-dismissal.js and
+// screenshot-on-failure.js. A script copy-pasted from this template should
+// run as a single file without depending on sibling files in templates/.
+// If you change one of those helpers, update the standalone file too.
 
 const { chromium } = require('playwright');
 const fs = require('fs');
@@ -17,7 +23,7 @@ async function connectBrowser() {
   return chromium.connectOverCDP(`http://localhost:${cdpPort}`);
 }
 
-// --- helpers (also available standalone in overlay-dismissal.js / screenshot-on-failure.js) ---
+// --- inlined helpers (mirrors overlay-dismissal.js / screenshot-on-failure.js) ---
 async function poll(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 async function dismissOverlays(page) {
