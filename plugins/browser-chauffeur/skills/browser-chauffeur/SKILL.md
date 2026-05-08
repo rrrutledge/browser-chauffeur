@@ -272,7 +272,7 @@ If another skill runs a script and it fails, that skill should follow this same 
 
 **Screenshot on Failure** — Scripts save screenshots to `.tmp/diag-*.png` on failure so the recovery loop can read them. See `templates/screenshot-on-failure.js` for the `screenshotOnFailure(context, label)` helper. Use it in catch blocks when the app fails to load, and in any browser fallback loop so each failed attempt produces a screenshot for debugging.
 
-**Common Anti-Patterns** — See `anti-patterns.md` for detailed examples covering: text-based filter ambiguity, `page.evaluate` clicks not triggering React/Fluent UI synthetic events, diagnosing click failures from screenshots not error text, phantom `display:none` dialogs left in the DOM, and role-vs-tag selector gaps (semantic HTML buttons that aren't `[role="button"]`).
+**Common Anti-Patterns** — Most of these failure modes are now prevented by positive rules in **Key Rules** below (Selectors, Strict mode, Selector fallback, Actions vs reads, Visibility-not-presence). `anti-patterns.md` is the symptom-recognition reference for when a failure has already occurred — covers: text-based filter ambiguity, `page.evaluate` clicks not triggering React/Fluent UI synthetic events, diagnosing click failures from screenshots not error text, phantom `display:none` dialogs left in the DOM, and role-vs-tag selector gaps (semantic HTML buttons that aren't `[role="button"]`).
 
 ---
 
@@ -282,13 +282,19 @@ If another skill runs a script and it fails, that skill should follow this same 
 
 **Strict mode:** A locator matching multiple elements throws. Prefer `getByRole('button', { name: '...' })` over bare `aria-label` when both a wrapper `div` and the `button` itself share the same label. Use `.first()` only when you've confirmed the elements are genuinely equivalent.
 
+**Selector fallback:** If `getByRole` or `[role="..."]` returns nothing for a visible element, broaden to the underlying HTML tag (`li`, `a`, `span`). Older or semantic UIs use real elements as action targets without a `role` attribute, and role-based selectors skip them entirely. To discover the true tag, enumerate by *direct* text content (not `innerText`, which inherits children's text).
+
 **Waits:** Never use fixed delays — this includes both Playwright's `waitForTimeout` and raw `new Promise(r => setTimeout(r, N))`. Use `locator.waitFor()`, `page.waitForURL()`, `page.waitForLoadState()`, or `page.waitForFunction()` instead. Fixed delays make scripts slower when the page is fast and still flaky when it's slow. The only acceptable `setTimeout` is a short poll interval (≤300 ms) inside an active loop that exits as soon as a condition is met.
+
+**Actions vs reads:** Use Playwright's locator API (`locator.click()`, `locator.fill()`, `locator.dispatchEvent('click')`) for any action that should trigger a server call or framework event. Reserve `page.evaluate` for *reading* DOM state. A native `element.click()` inside `evaluate` bypasses framework synthetic event handlers (React, Fluent UI) — the UI may update visually while no API call fires, and the change vanishes on refresh.
 
 **Verification:** Always re-read page state after save/submit actions. A form can silently fail to save. Trust nothing without checking.
 
 **Variant UIs:** The same application can render completely different DOM on different tenants or account types. When a selector fails in a new context, re-read there and find the equivalent element — never assume one tenant's selectors work on another.
 
 **Overlay detection:** When a click doesn't land, check for modal overlays or portal elements blocking the target before retrying. Dismiss them first.
+
+**Visibility, not presence:** When checking whether an element is *shown* (dialogs, menus, backdrops, tooltips), filter by computed visibility (`display`, `visibility`, `offsetParent`), not by `querySelector(...) !== null`. Many frameworks (Google products, Fluent UI, Material) keep dialog DOM mounted and toggle `display: none` to hide closed steps — bare presence checks return true for elements the user can't see, and recovery loops will spin trying to "close" something that's already closed.
 
 **Two-pass element reveal:** Some UIs hide form inputs behind clickable summary rows. If expected inputs aren't visible, click the summary row, re-read, then find the revealed inputs.
 
