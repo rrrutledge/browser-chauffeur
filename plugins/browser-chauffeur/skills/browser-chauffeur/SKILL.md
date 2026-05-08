@@ -52,39 +52,15 @@ If all ports busy, use 9226.
 powershell -NoProfile -Command "Get-Process msedge,chrome -ErrorAction SilentlyContinue | Select-Object -Unique Name | Format-Table -AutoSize"
 ```
 
-Note **all** installed browsers:
-- `msedge` → Edge is available
-- `chrome` → Chrome is available
-- neither → check if executables exist (see Step 3)
+Note **all** installed browsers: `msedge` → Edge available, `chrome` → Chrome available. If neither, check if executables exist (see Step 3).
 
 **Step 3 — Launch fresh browser with unique temp profile**
 
-Use a **unique profile directory** for each session to avoid conflicts. Use `-PassThru` to capture the browser PID for safe cleanup later.
+See `templates/launch-browser.sh` for the full launch script (Edge-first with Chrome fallback, unique profile dir, Edge sidebar disabled, PID capture). Key constraints:
 
-**Windows path format:** The `--user-data-dir` argument requires Windows-style backslash paths (e.g., `C:\\Users\\...`). Forward-slash Unix paths from Git Bash silently fail, causing CDP to not bind.
-
-**Edge sidebar hijack:** Edge with Microsoft 365 accounts has a built-in Teams/Chat sidebar that intercepts Teams URLs into a popup widget instead of a full-page tab. Always disable it with `--disable-features` flags and pass the target URL as a positional argument to open it as a full tab.
-
-```bash
-# Generate unique profile path (Windows-style backslashes required)
-TIMESTAMP=$(date +%s)
-PROFILE_DIR="C:\\path\\to\\project\\.tmp\\cdp-profile-$TIMESTAMP"
-
-# Try Edge first (usually has better Windows SSO integration)
-if [ -f "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe" ]; then
-  BROWSER_PID=$(powershell -NoProfile -Command "\$proc = Start-Process 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe' -ArgumentList '--remote-debugging-port=$PORT','--user-data-dir=$PROFILE_DIR','--no-first-run','--no-default-browser-check','--disable-features=msEdgeSidebarV2,msEdgeSidebar,msEdgeChatAndNotification,msTeamsLeftChrome,EdgeSidebar,msEdgeSidebarPwaIntegration','--start-maximized','$TARGET_URL' -PassThru; \$proc.Id")
-  echo "Launched Edge on port $PORT (PID $BROWSER_PID)"
-  
-# Fallback to Chrome
-elif [ -f "C:/Program Files/Google/Chrome/Application/chrome.exe" ]; then
-  BROWSER_PID=$(powershell -NoProfile -Command "\$proc = Start-Process 'C:\Program Files\Google\Chrome\Application\chrome.exe' -ArgumentList '--remote-debugging-port=$PORT','--user-data-dir=$PROFILE_DIR','--no-first-run','--no-default-browser-check','--start-maximized','$TARGET_URL' -PassThru; \$proc.Id")
-  echo "Launched Chrome on port $PORT (PID $BROWSER_PID)"
-  
-else
-  echo "No supported browser found - use Mode A (MCP tools)"
-  exit 1
-fi
-```
+- Use a **unique profile directory** for each session to avoid conflicts. Use `-PassThru` to capture the browser PID for safe cleanup later.
+- **Windows path format:** The `--user-data-dir` argument requires Windows-style backslash paths (e.g., `C:\\Users\\...`). Forward-slash Unix paths from Git Bash silently fail, causing CDP to not bind.
+- **Edge sidebar hijack:** Edge with Microsoft 365 accounts has a built-in Teams/Chat sidebar that intercepts Teams URLs into a popup widget instead of a full-page tab. Always disable it with `--disable-features` flags and pass the target URL as a positional argument to open it as a full tab.
 
 Wait 3-5s for browser startup, then verify: `curl -s http://localhost:$PORT/json/version`
 
@@ -92,33 +68,13 @@ Wait 3-5s for browser startup, then verify: `curl -s http://localhost:$PORT/json
 
 **Why fresh browser works:** Windows profile transfers SSO cookies to the temp profile, so corporate apps authenticate automatically without manual login.
 
-**Overlay dismissal:** A fresh browser profile will often show first-run overlays (cookie consent banners, "What's new" modals) that block the real UI. Dismiss these before waiting for app-specific elements. See the overlay dismissal pattern in the Script Output section.
+**Overlay dismissal:** A fresh browser profile will often show first-run overlays (cookie consent banners, "What's new" modals) that block the real UI. Dismiss these before waiting for app-specific elements. See **Overlay Dismissal** below.
 
 **Known quirk — Edge sync dialog:** The "We are now syncing your browsing data" dialog on fresh Edge profiles is rendered in Edge's browser chrome layer, outside the page DOM. Playwright cannot see or dismiss it. It does **not** block script execution — scripts can interact with page elements behind it. Do not waste time trying to close it.
 
 **Step 4 — Validate SSO session (for corporate apps)**
 
-Once CDP is available, verify the browser can actually reach the target app — not just that it launched. Write and run a short validation script that navigates to the target URL and checks whether the app loaded or a login page appeared:
-
-```javascript
-const { chromium } = require('playwright');
-async function validate() {
-  const browser = await chromium.connectOverCDP('http://localhost:<port>');
-  const context = browser.contexts()[0] || await browser.newContext();
-  const page = await context.newPage();
-  await page.goto('<target-url>', { waitUntil: 'domcontentloaded', timeout: 30000 });
-  const text = await page.evaluate(() => document.body.innerText);
-  // Check for login page indicators
-  if (text.includes('Sign in') || text.includes('Enter your password') || text.length < 100) {
-    console.log('VALIDATION_FAILED: landed on login page');
-  } else {
-    console.log('VALIDATION_OK');
-  }
-  await page.close();
-  await browser.close();
-}
-validate().catch(e => { console.error(e.message); process.exit(1); });
-```
+Once CDP is available, verify the browser can actually reach the target app — not just that it launched. See `templates/validate-sso.js` for a script that navigates to the target URL and checks whether the app loaded or a login page appeared.
 
 - If validation succeeds → record the CDP port. This is the port you will pass to scripts via `--cdp-port`.
 - If validation fails (login page) → use `AskUserQuestion` to prompt the user to sign in (see **User Intervention** section), then re-validate.
@@ -127,7 +83,7 @@ validate().catch(e => { console.error(e.message); process.exit(1); });
 
 ---
 
-## Running Existing Scripts (Phase 0.5)
+## Phase 0.5: Running Existing Scripts
 
 **The script is the directions. This skill is the chauffeur.** Never run a Mode B script directly and walk away — always have this skill loaded so the recovery loop is active.
 
@@ -136,12 +92,12 @@ When another skill needs to run a browser automation script, it should invoke br
 1. **Invoke this skill** before running the script
 2. **Complete Phase 0** to get a validated CDP port
 3. **Run the script** via Bash: `node scripts/<task>.js --cdp-port=<port>`
-4. **ALWAYS do Phase 4.5 analysis** — parse the output for errors regardless of exit code
-5. **If errors detected** — autonomously enter Phase 4.5 recovery loop (diagnose, fix, re-run)
+4. **ALWAYS do Phase 4 analysis** — parse the output for errors regardless of exit code
+5. **If errors detected** — autonomously enter the Phase 4 recovery loop (diagnose, fix, re-run)
 6. **If 100% success** — report results, then **close the browser** (close pages you opened; the browser exits when no pages remain)
 7. **If recovery exhausted** — show diagnostics and ask for help
 
-**Critical:** Exit code 0 ≠ success. Many scripts complete with errors in their output. Phase 4.5 analysis is MANDATORY after every script run, not optional.
+**Critical:** Exit code 0 ≠ success. Many scripts complete with errors in their output. Phase 4 analysis is MANDATORY after every script run, not optional.
 
 **Other skills should reference this skill minimally.** For example, a skill that extracts data from a web app should say: "Invoke the browser-chauffeur skill to run `node scripts/<task-name>.js`" — nothing more. Browser-chauffeur handles all error detection, recovery, and reporting automatically.
 
@@ -190,16 +146,16 @@ For each step in the desired flow:
    - Take a screenshot with `page.screenshot({ path: '.tmp/diag-after-click.png' })`
    - Read the screenshot with the Read tool to SEE what menu items are actually visible
    - Query the DOM for menu items AFTER you've visually confirmed the menu is open
-   
+
    **Why:** DOM queries alone can miss visual menus. The screenshot shows you exactly what the user would see, including menu items, their text, and layout. This prevents blindly clicking buttons and querying for items that may not be rendered yet or may be in unexpected locations.
 
 3. **Verify** — re-read page state immediately after. Confirm the expected change happened: new element appeared, field value set, URL changed, success message shown. If the page state after verification is unexpected (CAPTCHA, login page, error page, or an unrecognized screen), treat it as a blocker — if it requires human action (CAPTCHA, login), follow the **User Intervention** section; otherwise apply Phase 4 recovery.
 
 4. **If blocked** — re-snapshot/re-read immediately to diagnose. Common blockers:
-   - Modal or overlay in front of the target → dismiss it first, then retry
+   - Modal or overlay in front of the target → dismiss it first (see **Overlay Dismissal**), then retry
    - Element not yet rendered → wait with `locator.waitFor()` or `page.waitForSelector()`
    - Stale ref (element re-rendered since last snapshot) → re-snapshot and get fresh ref
-   
+
 5. **If layout-dependent** — take a screenshot and read it with the Read tool to see visual context
 
 6. Move to the next step **only after** the current step is confirmed
@@ -212,7 +168,7 @@ For each step in the desired flow:
 2. **Close the browser.** Mode A: call `browser_close`. Mode B: kill only the browser PID you saved in Phase 0 Step 3 with `powershell -NoProfile -Command "Stop-Process -Id <PID> -Force"`. **Never** kill all browser processes (e.g., `Get-Process msedge | Stop-Process`) — that destroys the user's personal browser sessions.
 3. **Clean up temp profile** (optional): The browser will auto-clean on exit, but you can manually remove `.tmp/cdp-profile-*` directories to free disk space.
 4. Report what was accomplished to the user. Base your report on what you read from the final page state — do not summarize from memory or inference. If specific values were requested (a title, a field value, a count), quote them directly from the page content.
-5. If the user asks for a reusable script, write it using the Script Output template below.
+5. If the user asks for a reusable script, write it using `templates/script-template.js`.
 
 **Exception:** If the task ended in a failure that requires user intervention (Phase 4 escalation), leave the browser open so the user can see and interact with the current state.
 
@@ -261,135 +217,50 @@ When running a batch script that may encounter these blockers mid-run:
 
 ---
 
-## Phase 4: Script Failure Recovery
+## Phase 4: Failure Recovery (ALWAYS run after a script exits)
 
-When a script fails, **you are the debugger**. Do not show the user an error and ask what to do. Diagnose it yourself, fix it, and re-run.
+When a Mode B script completes — **regardless of exit code** — analyze the output and recover autonomously. **Exit code 0 ≠ success.** Many scripts complete with errors in their output. Trust verification output and visual evidence, not exit codes. **Don't ask permission to debug — that's your job as the chauffeur.**
 
-### The recovery loop
-
-1. **Read the diagnostic screenshot** — scripts save screenshots to `.tmp/diag-*.png` on failure. Use the Read tool to view the image. This tells you what the browser was actually showing: an overlay, a login page, a CAPTCHA, a changed UI, or something else entirely.
-
-2. **Diagnose the cause** from what you see:
-   - **CAPTCHA, login page, or MFA prompt** → requires human action. Follow the **User Intervention** section — use `AskUserQuestion` immediately. For login pages, you may also try the other browser (Edge/Chrome fallback) first, but if that also shows a login page, escalate to the user via `AskUserQuestion`.
-   - **Overlay or modal blocking the UI** → add dismissal logic to the script (see overlay dismissal pattern), re-run
-   - **UI changed** (different label, restructured DOM, new element) → inspect the current page state to find the new selector, update the script, re-run
-   - **New required step** (e.g., a consent prompt, a "What's new" tour) → add handling for it, re-run
-   - **The page loaded but the expected element isn't there** → take a fresh screenshot, read it, check if the app changed its layout or the element is in a different frame
-
-3. **Fix the script** — edit the failing section based on what you diagnosed. Don't guess — base every fix on what you actually saw in the screenshot or page state.
-
-4. **Re-run the script** — execute it again and verify it passes the point that previously failed.
-
-5. **Repeat if needed** — a fix may reveal the next failure. Keep going through the loop until the script completes or you've exhausted all browser options.
-
-6. **Escalate only as a last resort** — if you've tried both browsers, dismissed all visible overlays, read multiple screenshots, and the blocker requires user input (new credentials, MFA prompt, policy change), use `AskUserQuestion` to explain what you found and what you need (see **User Intervention** section).
-
-**Rule:** Never tell the user "the script failed." Always read the diagnostic screenshot, diagnose, fix, and retry at least once before involving the user.
-
-### When running scripts from other skills
-
-If another skill runs a Mode B script and it fails, that skill should follow this same recovery loop. The script saves diagnostic screenshots specifically so that whatever is running it — whether browser-chauffeur or another skill — can read the screenshot with the Read tool, see what went wrong, and fix it autonomously. The screenshots are not for the user; they are for you.
-
----
-
-## Phase 4.5: Script Completion Analysis (ALWAYS do this after script exits)
-
-When a Mode B script completes (regardless of exit code), **ALWAYS analyze the output**:
-
-### Step 1: Parse Output for Success/Failure Signals
+### Step 1: Parse output for success/failure signals
 
 Read the full output and categorize:
 
-**Explicit success:**
-- Contains: `Verification passed`, `✅`, `All checks passed`
-- AND no error patterns present
-- → Script succeeded, proceed to reporting
+- **Explicit success** — `Verification passed`, `✅`, `All checks passed` AND no error patterns → proceed to reporting.
+- **Human action required** (see **User Intervention**) — diagnostic screenshot shows a CAPTCHA, login page, or MFA prompt; or output contains `CAPTCHA DETECTED`, `VALIDATION_FAILED`, or similar → use `AskUserQuestion` immediately. Do NOT retry autonomously.
+- **Explicit failure** — `Verification FAILED`, `VERIFY FAIL:`; error counts (`5 errors`, `3 collision(s)`, `12 errors remain`); error keywords (`Error:`, `still present`, `not found`, `timeout`, `could not`); or items reported as "still present" or "not moved/deleted" → trigger autonomous recovery (Step 2).
+- **Ambiguous (missing verification)** — no "Verification passed" or "Verification FAILED" in output, but has completion indicators (`Done`, `Summary:`, task-specific output) → likely an older script without verification. If output looks clean (no errors/exceptions), treat as success. If output contains exceptions or is suspiciously short (< 50 chars), investigate.
+- **Crashed/incomplete** — exception stack trace in output, output ends mid-step (no completion message), or very short output with no summary → trigger autonomous recovery (Step 2).
 
-**Human action required (see **User Intervention** section):**
-- Diagnostic screenshot shows a CAPTCHA, login page, or MFA prompt
-- Script output contains `CAPTCHA DETECTED`, `VALIDATION_FAILED`, or similar
-- → Use `AskUserQuestion` immediately. Do NOT retry autonomously.
+### Step 2: Autonomous recovery loop
 
-**Explicit failure:**
-- Contains: `Verification FAILED`, `VERIFY FAIL:`
-- Error counts: `5 errors`, `3 collision(s)`, `12 errors remain`
-- Error keywords: `Error:`, `still present`, `not found`, `timeout`, `could not`
-- Items reported as "still present" or "not moved/deleted"
-- → Trigger autonomous recovery (Step 2)
+When errors are detected, **you are the debugger**. Do not show the user an error and ask what to do. Diagnose, fix, and re-run. Don't ask user permission — enter the loop.
 
-**Ambiguous (missing verification):**
-- No "Verification passed" or "Verification FAILED" in output
-- BUT has completion indicators: `Done`, `Summary:`, task-specific output
-- → Likely an older script without verification. If output looks clean (no errors/exceptions), treat as success. If output contains exceptions or is suspiciously short (< 50 chars), investigate.
+1. **Read the diagnostic screenshot** — scripts save screenshots to `.tmp/diag-*.png` on failure. Use the Read tool to view the image. This tells you what the browser was actually showing: an overlay, a login page, a CAPTCHA, a changed UI, or something else entirely. Take additional screenshots of the failure page if needed.
 
-**Crashed/incomplete:**
-- Exception stack trace in output
-- Output ends mid-step (no completion message)
-- Very short output with no summary
-- → Trigger autonomous recovery (Step 2)
+2. **Diagnose the cause** from what you see:
+   - **CAPTCHA, login page, or MFA prompt** → requires human action. Follow **User Intervention** — use `AskUserQuestion` immediately. For login pages, you may also try the other browser (Edge/Chrome fallback) first, but if that also shows a login page, escalate.
+   - **Overlay or modal blocking the UI** → add dismissal logic to the script (see **Overlay Dismissal**), re-run.
+   - **UI changed** (different label, restructured DOM, new element) → inspect the current page state to find the new selector, update the script, re-run.
+   - **New required step** (e.g., a consent prompt, a "What's new" tour) → add handling for it, re-run.
+   - **Selector timing issues** (element not yet visible), **elements scrolled out of view**, or **the expected element is in a different frame** → take a fresh screenshot, read it, find the correct selector or frame.
 
-### Step 2: Autonomous Recovery Decision
+3. **Use diagnostic patterns** from `templates/diagnostic-patterns.js` to inspect failing selectors — element visibility test, button enumeration, timing comparisons.
 
-**IF errors detected** → Enter autonomous recovery loop (do NOT ask user):
+4. **Fix the script** — edit the failing section based on what you diagnosed. Don't guess — base every fix on what you actually saw in the screenshot or page state.
 
-1. **Take screenshots** of the browser state on the failure page
-2. **Create diagnostic scripts** to inspect failing selectors (see examples below)
-3. **Read screenshots** with the Read tool to see actual UI vs. expected
-4. **Identify root cause** from visual evidence:
-   - Selector timing issues (element not yet visible)
-   - Overlays/modals blocking interaction
-   - UI structure changed from expectations
-   - Elements scrolled out of view
-5. **Fix the script** based on findings
-6. **Re-run** the full script
-7. **Repeat** until verification passes OR you've exhausted options (3+ iterations with different approaches)
+5. **Re-run the script** — execute it again and verify it passes the point that previously failed.
+
+6. **Repeat** through the loop until verification passes OR you've exhausted options (3+ iterations with different approaches, or you've tried both browsers and dismissed all visible overlays). Then escalate via `AskUserQuestion` (see **User Intervention**) explaining what you found and what you need.
 
 ### Step 3: Reporting
 
 **Only report to user when:**
-- ✅ **100% success achieved** → Report: "Fixed N issues: [brief summary]. Verification now passing."
-- ❌ **Exhausted all recovery options** → Show diagnostics, explain what you tried, what you found, ask for help
+- ✅ **100% success achieved** → "Fixed N issues: [brief summary]. Verification now passing."
+- ❌ **Exhausted all recovery options** → Show diagnostics, explain what you tried, what you found, ask for help.
 
-**Critical Rule:** "Script ran to completion" ≠ "task succeeded"
-- Trust verification output, not exit codes
-- Trust visual evidence from screenshots, not assumptions
-- Don't ask permission to debug - that's your job as the chauffeur
+**Rule:** Never tell the user "the script failed." Always read the diagnostic screenshot, diagnose, fix, and retry at least once before involving the user.
 
-### Diagnostic Script Examples
-
-**Pattern 1: Element visibility test**
-```javascript
-const element = page.locator('selector');
-const isVisible = await element.isVisible({ timeout: 3000 }).catch(() => false);
-console.log('Element visible:', isVisible);
-await page.screenshot({ path: '.tmp/diag-element.png' });
-```
-
-**Pattern 2: Button enumeration**
-```javascript
-const buttons = await page.evaluate(() => {
-  return Array.from(document.querySelectorAll('button')).map(btn => ({
-    text: btn.textContent?.trim(),
-    ariaLabel: btn.getAttribute('aria-label'),
-    visible: btn.offsetParent !== null
-  })).filter(b => b.visible && (b.text || b.ariaLabel));
-});
-console.log('Buttons:', JSON.stringify(buttons, null, 2));
-```
-
-**Pattern 3: Timing test**
-```javascript
-console.log('Immediately after click:');
-await page.screenshot({ path: '.tmp/diag-1-immediate.png' });
-
-await page.waitForLoadState('networkidle', { timeout: 3000 }).catch(() => {});
-console.log('After networkidle:');
-await page.screenshot({ path: '.tmp/diag-2-after-wait.png' });
-```
-
-### Common Error Patterns
-
-Watch for these patterns in output that signal "autonomous recovery needed":
+### Common error patterns (signal "autonomous recovery needed")
 
 ```
 Error: Could not X
@@ -402,143 +273,25 @@ X moved, Y errors
 Summary shows non-zero error counts
 ```
 
+### When running scripts from other skills
+
+If another skill runs a Mode B script and it fails, that skill should follow this same recovery loop. The script saves diagnostic screenshots specifically so that whatever is running it — whether browser-chauffeur or another skill — can read the screenshot with the Read tool, see what went wrong, and fix it autonomously. The screenshots are not for the user; they are for you.
+
 ---
 
-## Common Anti-Patterns (Real Failures)
+## Phase 5: Script Validation (when creating Mode B scripts)
 
-### Anti-Pattern 1: Text-Based Filters Match Multiple Elements
+**CRITICAL:** When you write a new browser automation script, **immediately validate it before running** or reporting completion. Scan `scripts/<task>.js` for violations of **Script Quality Standards** (below): fixed delays (`waitForTimeout`, `setTimeout`), missing verification code, CSS class selectors, or missing browser connection logic. If you find any, edit the script to fix them, explain what was wrong and what you fixed, then re-scan to confirm clean. **Do not ask permission** — violations are always wrong.
 
-**Problem:**
-```javascript
-// ❌ Can match both parent <div> and child <button>
-const btn = page.locator('button').filter({ hasText: /^Power-ups$/i });
-await btn.click(); // Error: "locator resolved to 2 elements"
-```
+---
 
-**Why it fails:** If a parent div contains the text "Power-ups" and so does the child button, the filter matches BOTH elements. Playwright strict mode requires exactly one match.
+## Common Patterns
 
-**Solution - Use semantic selectors instead:**
-```javascript
-// ✅ Much more reliable
-const btn = page.getByRole('button', { name: /Power-ups/i });
-await btn.click();
-```
+**Overlay Dismissal** — A fresh browser profile will show first-run overlays — Edge sync prompts ("We are now syncing your browsing data"), cookie consent banners, "What's new" modals. These block the real UI and cause element waits to time out. See `templates/overlay-dismissal.js` for the `dismissOverlays(page)` helper. Call it immediately after navigating to the target app, **before** waiting for app-specific elements. Include it in every Mode B script.
 
-Prefer `getByRole`, `getByLabel`, `aria-label` over text filters.
+**Screenshot on Failure** — Scripts save screenshots to `.tmp/diag-*.png` on failure so the recovery loop can read them. See `templates/screenshot-on-failure.js` for the `screenshotOnFailure(context, label)` helper. Use it in catch blocks when the app fails to load, and in any browser fallback loop so each failed attempt produces a screenshot for debugging.
 
-### Anti-Pattern 2: page.evaluate Clicks Don't Trigger Framework Events
-
-**Problem:**
-```javascript
-// ❌ Fires a native DOM click but does NOT trigger React/Fluent UI synthetic event handlers
-await page.evaluate(() => {
-  document.querySelector('button.confirm').click();
-});
-```
-
-**Why it fails:** React, Angular, and Fluent UI use synthetic event systems that listen for events dispatched through the browser's event pipeline. A raw `element.click()` in evaluate fires a native DOM click that bypasses these frameworks. The UI may update visually (element disappears, dialog closes), but the framework never processes the action — so **no API call goes to the server**. The change vanishes on page refresh.
-
-**Solution — Use Playwright's event dispatch:**
-```javascript
-// ✅ For unstable elements (menus that re-render and detach during click):
-await locator.dispatchEvent('click');
-
-// ✅ For elements that fail stability checks but are actually clickable:
-await locator.click({ force: true });
-
-// ✅ For stable elements (always prefer this):
-await locator.click();
-```
-
-Use `page.evaluate` for **reading** DOM state (querying elements, checking visibility, extracting text). Never use it for **clicking** elements that trigger server-side actions.
-
-### Anti-Pattern 3: Don't Diagnose Click Failures from Error Messages
-
-**Problem:** When a click times out or fails with "intercepts pointer events", don't try to guess what's wrong from the error message.
-
-**Solution - Look at the screenshot:**
-```javascript
-try {
-  await element.click({ timeout: 5000 });
-} catch (e) {
-  // Take screenshot immediately
-  await page.screenshot({ path: '.tmp/click-failed.png' });
-  console.log('Click failed - see .tmp/click-failed.png');
-  throw e;
-}
-```
-
-Then **use the Read tool to view the screenshot**. You'll SEE what's actually blocking:
-- Modal overlay in front of element
-- Element scrolled out of view
-- Wrong element selected
-- Element not yet rendered
-
-Diagnose visually, not from error text. Then fix based on what you SEE (dismiss overlay, scroll element into view, use better selector, add wait, etc.).
-
-This applies to *silent* failures too — a click that executed without throwing but produced no navigation, no dialog, and no DOM change. The cause is usually an invisible overlay your click landed on instead of the target. **Before generating new diagnostic code, Read any screenshot you already took during the failed step.** Saving the file is not enough; opening it with the Read tool is the only way you'll see what the user sees.
-
-### Anti-Pattern 4: Phantom Dialogs Left in the DOM with display:none
-
-**Problem:**
-```javascript
-// ❌ Returns true even when dialogs are hidden
-const stillOpen = await page.evaluate(() =>
-  document.querySelector('[role="dialog"]') !== null
-);
-```
-
-**Why it fails:** Many frameworks (Google products, Microsoft Fluent UI, Material) keep all dialog DOM nodes mounted and toggle `display: none` to hide inactive steps in a wizard. After a multi-step flow completes, you can find half a dozen hidden `[role="dialog"]` elements still in the DOM with stale text like "Choose a column to title your markers". Naive presence checks treat them as "still open" and the recovery loop spins.
-
-**Solution — Filter by computed visibility:**
-```javascript
-const visibleDialogs = await page.evaluate(() => {
-  return Array.from(document.querySelectorAll('[role="dialog"]')).filter(d => {
-    const cs = getComputedStyle(d);
-    return cs.display !== 'none' && cs.visibility !== 'hidden';
-  }).map(d => d.innerText.slice(0, 200));
-});
-```
-
-Apply the same `display`/`visibility` filter when looking for any element — backdrops, tooltips, menus often get the same treatment. Combine with `el.offsetParent !== null` for layout-aware visibility.
-
-### Anti-Pattern 5: Role-Based Selectors Miss Semantic HTML Buttons
-
-**Problem:**
-```javascript
-// ❌ Element is visible on the page, but selector finds nothing
-const shareBtn = page.locator('[role="button"]').filter({ hasText: /^Share$/ });
-await shareBtn.click(); // Times out — no match
-```
-
-**Why it fails:** Not every clickable element is wrapped in `[role="button"]`. Older or more semantic UIs use real HTML elements as their action targets — a toolbar may be `<ul><li>Share</li></ul>`, a link may be a real `<a>` with no role, a footer action may be a plain `<span>` with a click handler. `getByRole('button')` and `[role="button"]` selectors skip them entirely.
-
-**Solution — When role queries fail on something you can see in the screenshot, broaden to the underlying HTML tag:**
-```javascript
-// Try the actual HTML element with text
-await page.locator('li').filter({ hasText: /^Share$/ }).first().click();
-// Or anchor tags acting as buttons
-await page.locator('a', { hasText: /^Share$/ }).click();
-```
-
-Real example: the Share button on the Google My Maps editor is a plain `<li>` inside a horizontal action `<ul>`. `getByRole('button', { name: 'Share' })` returns nothing; `page.locator('li').filter({ hasText: /^Share$/ })` finds it on the first try.
-
-**Diagnostic when you hit this:** enumerate elements by their *direct* text content, not innerText (which inherits children's text):
-```javascript
-const cands = await page.evaluate(() => {
-  const out = [];
-  document.querySelectorAll('*').forEach(el => {
-    const direct = Array.from(el.childNodes)
-      .filter(n => n.nodeType === Node.TEXT_NODE)
-      .map(n => n.textContent.trim()).join('').trim();
-    if (direct === 'Share' && el.offsetParent !== null) {
-      out.push({ tag: el.tagName, role: el.getAttribute('role') });
-    }
-  });
-  return out;
-});
-```
-This tells you the true tag — often surprising (`LI/-`, `A/-`, `SPAN/-`).
+**Common Anti-Patterns** — See `anti-patterns.md` for detailed examples covering: text-based filter ambiguity, `page.evaluate` clicks not triggering React/Fluent UI synthetic events, diagnosing click failures from screenshots not error text, phantom `display:none` dialogs left in the DOM, and role-vs-tag selector gaps (semantic HTML buttons that aren't `[role="button"]`).
 
 ---
 
@@ -568,7 +321,7 @@ This tells you the true tag — often surprising (`LI/-`, `A/-`, `SPAN/-`).
 
 ## Script Quality Standards
 
-**All browser automation scripts must comply with these requirements.** Reference this section when writing AND when validating scripts.
+**All browser automation scripts must comply with these requirements.** Reference this section when writing AND when validating scripts (see Phase 5). See `templates/script-template.js` for a complete reference script that satisfies all of these.
 
 ### ❌ BANNED: Fixed Delays
 
@@ -604,7 +357,7 @@ if (failCount === 0) {
 }
 ```
 
-This enables Phase 4.5 autonomous recovery.
+This enables Phase 4 autonomous recovery.
 
 ### ✅ REQUIRED: Semantic Selectors
 
@@ -612,168 +365,16 @@ Use `aria-label`, `role`, visible text — **never CSS class selectors** (they c
 
 ### ✅ REQUIRED: Browser Connection
 
-Scripts receive `--cdp-port=<port>` from Claude. Connect with `chromium.connectOverCDP('http://localhost:<port>')` — no browser detection logic in scripts.
+Scripts receive `--cdp-port=<port>` from Claude. Connect with `chromium.connectOverCDP('http://localhost:<port>')` — no browser detection logic in scripts. They do **not** contain browser detection, fallback, or SSO validation — that is handled by Claude interactively during Phase 0 before any script runs.
 
 ### ✅ REQUIRED: Navigation
 
-Scripts must navigate to their target URL themselves — don't assume the browser is already there.
+Scripts must navigate to their target URL themselves — don't assume the browser is already there. Since Phase 0 already validated the SSO session, navigating again is just a reload and keeps the script self-contained.
 
 ### Additional Requirements
 
 - `console.log` after each major step for progress tracking
 - Check `page.frames()` when `body.innerText` is unexpectedly short
 - Use `page.route()` for request interception (not `frame.route()` — it doesn't exist)
-
----
-
-## Phase 0.5: Script Validation (when creating Mode B scripts)
-
-**CRITICAL:** When you write a new browser automation script, **immediately validate it before running** or reporting completion.
-
-### Step 1: Scan for Violations
-
-After writing script to `scripts/<task>.js`, scan for violations of **Script Quality Standards** (above):
-- Fixed delays (`waitForTimeout`, `setTimeout`)
-- Missing verification code
-- CSS class selectors
-- Missing browser connection logic
-
-### Step 2: Auto-Fix if Violations Found
-
-If you detect violations:
-1. **Edit the script** to fix them
-2. **Explain what was wrong** and what you fixed
-3. **Re-scan** to confirm clean
-
-**Do not ask permission** - violations are always wrong.
-
----
-
-## Script Output
-
-Scripts receive a validated CDP port from Phase 0 via `--cdp-port`. They do **not** contain browser detection, fallback, or SSO validation logic — that is handled by Claude interactively during Phase 0 before any script runs.
-
-### Connecting to the browser
-
-Every script should parse `--cdp-port` and connect directly:
-
-```javascript
-const { chromium } = require('playwright');
-
-const cdpPort = process.argv.find(a => a.startsWith('--cdp-port='))?.split('=')[1] || '9222';
-
-async function run() {
-  const browser = await chromium.connectOverCDP(`http://localhost:${cdpPort}`);
-  const context = browser.contexts()[0] || await browser.newContext();
-  const page = await context.newPage();
-
-  try {
-    // Script navigates to its target URL and performs the task.
-    // The browser is already validated for SSO — navigation will succeed.
-    console.log('Done.');
-  } finally {
-    await page.close();
-    await browser.close();
-  }
-}
-
-run().catch(e => { console.error('Error:', e.message); process.exit(1); });
-```
-
-Scripts should still navigate to their target URL (not assume the page is pre-loaded). Since Phase 0 already validated the SSO session, navigating again is just a reload and keeps the script self-contained.
-
-### Overlay dismissal (include in every Mode B script)
-
-A fresh browser profile will show first-run overlays — Edge sync prompts ("We are now syncing your browsing data"), cookie consent banners, "What's new" modals. These block the real UI and cause element waits to time out. Dismiss them before waiting for app-specific elements:
-
-```javascript
-async function dismissOverlays(page) {
-  const overlayButtons = [
-    page.getByRole('button', { name: 'Got it' }),
-    page.getByRole('button', { name: 'Dismiss' }),
-    page.getByRole('button', { name: 'Close' }),
-    page.getByRole('button', { name: /Not now/i }),
-  ];
-  for (const btn of overlayButtons) {
-    if (await btn.count()) {
-      console.log('  Dismissing overlay...');
-      await btn.first().click();
-      await poll(500);
-    }
-  }
-}
-```
-
-Call `dismissOverlays(page)` immediately after navigating to the target app, **before** waiting for app-specific elements like navigation buttons.
-
-### Screenshot-on-failure (include in every Mode B script)
-
-When a connection or page load fails, save a diagnostic screenshot before moving on. This helps diagnose whether the failure was a login page, an overlay, a CAPTCHA, or something else:
-
-```javascript
-async function screenshotOnFailure(context, label) {
-  const diagPage = context.pages()[0];
-  if (!diagPage) return;
-  fs.mkdirSync('.tmp', { recursive: true });
-  const screenshotPath = `.tmp/diag-${label}-${Date.now()}.png`;
-  await diagPage.screenshot({ path: screenshotPath }).catch(() => {});
-  console.log(`  Diagnostic screenshot: ${screenshotPath}`);
-}
-```
-
-Use this in catch blocks when the app fails to load, and in the browser fallback loop so each failed attempt produces a screenshot for debugging.
-
-### Full script template
-
-```javascript
-// --- browser connection module (see above) ---
-
-async function run() {
-  const browser = await connectBrowser();
-  const context = browser.contexts()[0] ?? await browser.newContext();
-  const page = context.pages()[0] ?? await context.newPage();
-
-  const results = { succeeded: [], failed: [] };
-
-  try {
-    // --- steps go here ---
-    // Use semantic selectors: getByRole, getByLabel, locator('[aria-label="..."]')
-    // Use element-based waits: locator.waitFor(), page.waitForURL(), page.waitForLoadState()
-    // Check page.frames() if content appears empty — it may be in an iframe
-    // Track results as you go (push to succeeded/failed arrays)
-
-    // --- VERIFICATION (required) ---
-    // Re-check the goal: did the task actually complete?
-    // Example: navigate back to source, confirm items moved/deleted
-    // Example: validate extracted data has required fields
-    
-    const failCount = results.failed.length;
-    const successCount = results.succeeded.length;
-    
-    console.log(`Summary: ${successCount} succeeded, ${failCount} failed`);
-    
-    if (failCount === 0) {
-      console.log('Verification passed ✅');
-    } else {
-      console.error(`Verification FAILED - ${failCount} errors remain`);
-      results.failed.forEach(item => console.error('  -', item));
-    }
-  } finally {
-    await browser.close();
-  }
-}
-
-run().catch(e => { console.error(e.message); process.exit(1); });
-```
-
-### Rules for scripts
-
-All scripts must comply with **Script Quality Standards** (see above). Key points:
-
-- ❌ **No fixed delays** — use element-based waits only
-- ✅ **Verification code required** — output explicit pass/fail
-- ✅ **Semantic selectors** — `aria-label`, `role`, text (no CSS classes)
-- ✅ **Browser connection** — accept `--cdp-port`, connect via CDP
-- ✅ **Navigate to target** — don't assume browser is on the right page
-
-See **Script Quality Standards** section for complete requirements and examples.
+- Include `dismissOverlays(page)` after navigation (see **Overlay Dismissal**)
+- Save a diagnostic screenshot in catch blocks (see **Screenshot on Failure**)
