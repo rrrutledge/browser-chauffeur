@@ -135,3 +135,67 @@ const cands = await page.evaluate(() => {
 });
 ```
 This tells you the true tag — often surprising (`LI/-`, `A/-`, `SPAN/-`).
+
+## Anti-Pattern 6: OS Coordinates Don't Reach Cross-Origin Iframe Content
+
+**Problem:**
+```javascript
+// ❌ Click lands visually on the button but nothing happens
+await page.mouse.click(480, 325);
+```
+
+**Why it fails:** With Chrome's site isolation, a cross-origin iframe is out-of-process. An OS-level mouse event dispatched to the parent page's viewport coordinates hits the parent's `<iframe>` element — the synthetic click event does not propagate through to the framework's event handlers inside the iframe. The button appears to receive the click (the cursor lands on it) but the React/LMS event system never fires.
+
+**Solution — evaluate a DOM `.click()` directly in the iframe's execution context via CDP:**
+```javascript
+// ✅ Invokes the framework event handler synchronously
+await session.send('Runtime.evaluate', {
+  contextId: ctxId,
+  expression: `document.getElementById(${JSON.stringify(buttonId)}).click()`,
+});
+```
+
+See `templates/cdp-session.js` for the full session setup pattern. Once you have a `CDPSession` attached directly to the iframe target, `Runtime.evaluate` with an explicit `contextId` is 100% reliable across all SCORM players and LMS wrappers tested.
+
+**Signal you've hit this:** `page.mouse.click(x, y)` or `locator.click()` on an iframe's content executes without error but produces no visible navigation, no DOM change, and no network request.
+
+## Anti-Pattern 7: Tab Key Is Unreliable Across Cross-Origin Iframe Boundaries
+
+**Problem:**
+```javascript
+// ❌ Tab+Enter to "advance" in an iframe can activate the wrong element
+await page.keyboard.press('Tab');
+await page.keyboard.press('Enter');
+```
+
+**Why it fails:** When focus is inside a cross-origin iframe, pressing `Tab` on the parent moves focus to the next focusable element in the **parent** frame's tab order — sidebar links, navigation items, or toolbar buttons — not to the next element inside the iframe. Pressing `Enter` then activates whatever the parent gave focus to, which can silently navigate away from the current page or toggle an unrelated UI control.
+
+**Real incident:** Repeated Tab+Enter attempts to reach a "Continue" button in a SCORM player resulted in the page navigating back to the course launch screen, requiring the entire session to restart.
+
+**Solution:** Never use keyboard navigation for cross-origin iframe content. Use direct DOM `.click()` via `Runtime.evaluate` (see **Anti-Pattern 6**).
+
+## Anti-Pattern 8: Empty Button IDs Break getElementById in Popups
+
+**Problem:**
+```javascript
+// ❌ Silently fails when the button has id=""
+await evalIn(session, ctxId, `document.getElementById('').click()`);
+// Returns null — no click, no error
+```
+
+**Why it fails:** `document.getElementById('')` returns `null` per spec. Many SCORM authoring tools (Articulate, iSpring, Lectora) generate stable `id` attributes for primary content buttons but leave popup/dialog buttons with `id=""`. A dismiss button in an "Invalid Answer" modal, a confirmation OK, or a timeout notice may all have empty IDs. The click silently no-ops and the driver enters an infinite retry loop.
+
+**Solution — fall back to text or aria-label matching:**
+```javascript
+// ✅ Find by visible text content
+await evalIn(session, ctxId, `
+  ([...document.querySelectorAll('button')]
+    .find(b => /^(OK|Got it|Close|Dismiss)$/i.test(b.textContent.trim()))
+    || { click() {} })
+  .click()
+`);
+
+// ✅ Or use Runtime.callFunctionOn with an element reference if you already have it
+```
+
+**Rule:** Never assume `acc-` prefixed or otherwise stable IDs in popup/dialog content. Always have a text-based fallback selector for dismiss buttons.

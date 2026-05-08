@@ -113,6 +113,47 @@ for (const f of frames) {
 
 Find the frame with the real content and target all locators at that frame object instead of the page. Note: `frame.route()` does not exist — routing only works on the page object.
 
+### Out-of-process iframes (cross-origin, site isolation)
+
+When `frameLocator(...).locator(...)` times out at 30s on a page with nested iframes — common in SCORM players, Workday Learning, SuccessFactors, and other LMS wrappers — the iframe is probably **out-of-process**. Chrome's site isolation runs each cross-origin iframe as a separate OS process with its own CDP target. Playwright's `connectOverCDP` connects only to the page target; the iframe's target is independent.
+
+**How to detect:** `page.frames()` shows the iframe with an empty URL, or `page.accessibility.snapshot()` returns only the parent frame's tree without the iframe's content.
+
+**How to attach directly:**
+
+```javascript
+const { CDPSession, httpJson, evalIn } = require('./templates/cdp-session');
+
+// 1. List all CDP targets — look for type=iframe
+const targets = await httpJson(`http://localhost:${cdpPort}/json`);
+const iframeTarget = targets.find(t => t.type === 'iframe' && t.url.includes('target-domain.com'));
+
+// 2. Open a direct WebSocket to the iframe's debugger URL
+const session = new CDPSession(iframeTarget.webSocketDebuggerUrl);
+await session.ready;
+
+// 3. Collect execution contexts (one per same-origin nested frame inside the iframe)
+const ctxs = [];
+session.on(m => { if (m.method === 'Runtime.executionContextCreated') ctxs.push(m.params.context); });
+await session.send('Runtime.enable');
+await new Promise(r => setTimeout(r, 1500)); // let existing contexts arrive
+
+// 4. Find the context you want (filter by origin) and evaluate in it
+const ctxId = ctxs.find(c => c.origin.includes('target-domain.com'))?.id;
+const title  = await evalIn(session, ctxId, 'document.title');
+```
+
+`playwright-core/lib/utilsBundle` exports the `ws` package, so no extra `npm install` is needed.
+
+**How to click in the iframe — always use `Runtime.evaluate`, never OS coordinates:**
+
+```javascript
+// ✅ Invokes the React/framework click handler synchronously
+await evalIn(session, ctxId, `document.getElementById(${JSON.stringify(buttonId)}).click()`);
+```
+
+See **Anti-Patterns → OS Coordinates Don't Reach Cross-Origin Iframe Content** and **Tab Key Is Unreliable Across Cross-Origin Iframe Boundaries** for the failure modes this replaces.
+
 ---
 
 ## Phase 2: Step-by-Step Execution
@@ -139,6 +180,41 @@ For each step in the desired flow:
 5. **If layout-dependent** — take a screenshot and read it with the Read tool to see visual context
 
 6. Move to the next step **only after** the current step is confirmed
+
+### Lazy-loaded content (scroll-and-stabilize)
+
+Some SPAs (Articulate Rise, OpenSesame, content platforms) load page sections as the user scrolls. A "Continue" button may be absent or disabled when you first arrive — it only appears after the full lesson content has rendered. Clicking before all content loads will silently fail or navigate to the wrong place.
+
+**Pattern:** scroll in viewport-sized steps and wait for page height to stabilize before acting:
+
+```javascript
+async function scrollAndStabilize(frame) {
+  let prevHeight = 0, stableCount = 0;
+  for (let pass = 0; pass < 30; pass++) {
+    const info = await frame.evaluate(() => ({
+      h: document.documentElement.scrollHeight,
+      vh: window.innerHeight,
+      sy: window.scrollY,
+    }));
+    await frame.evaluate(y => window.scrollTo(0, y), info.sy + Math.max(info.vh * 0.6, 300));
+    await new Promise(r => setTimeout(r, 600)); // short poll — exit as soon as stable
+    const after = await frame.evaluate(() => ({
+      h: document.documentElement.scrollHeight,
+      sy: window.scrollY,
+      vh: window.innerHeight,
+    }));
+    const atBottom = after.sy + after.vh + 30 >= after.h;
+    if (after.h === prevHeight && atBottom) {
+      if (++stableCount >= 2) break; // two consecutive stable reads at bottom — done
+    } else {
+      stableCount = 0;
+    }
+    prevHeight = after.h;
+  }
+}
+```
+
+Call this before looking for the advance button. The 600 ms poll per step is acceptable here because it exits as soon as the condition is met — it is not a fixed delay.
 
 ---
 
@@ -301,6 +377,10 @@ If another skill runs a script and it fails, that skill should follow this same 
 **Hard verification after mutating actions:** After any create, update, or delete action, navigate away from the page and back (or close and reopen it) to confirm the change persisted server-side. DOM changes alone (element disappearing, success toast appearing) do NOT prove the server processed the action — the UI may have updated optimistically while the API call silently failed or never fired. Never report a mutating action as successful until you've seen the result survive a fresh page load.
 
 **InnerText vs Screenshot:** `innerText` / accessibility queries are primary — they give actionable content and element structure. Screenshots are the fallback — use them when spatial/visual layout matters (diagnosing why a click doesn't land, reading a visual overlay).
+
+**DOM state for progress detection:** Never use pixel-diff or screenshot comparison to detect SPA progression. Pixel values change for irrelevant reasons (background animation, playback progress bar, animated UI elements). Find a DOM-readable indicator — page counter (`Screen X of Y`), URL fragment, breadcrumb, lesson number — and compare its value before and after a click. If the indicator doesn't change, the click had no effect.
+
+**Media gating:** If a course or media player shows no advance button but audio/video is playing (`!audio.paused && !audio.ended && audio.duration > 1`), treat the absence as "narration in progress," not stuck. Wait for the media's remaining duration plus a buffer before resetting the stuck counter. Only declare genuinely stuck when both conditions are true: no advance button AND no active media. Never time out the iteration loop while media is alive.
 
 ---
 
