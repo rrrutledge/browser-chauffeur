@@ -148,12 +148,20 @@ await page.mouse.click(480, 325);
 
 **Solution — evaluate a DOM `.click()` directly in the iframe's execution context via CDP:**
 ```javascript
-// ✅ Invokes the framework event handler synchronously
+// ✅ By known ID (if non-empty)
 await session.send('Runtime.evaluate', {
   contextId: ctxId,
   expression: `document.getElementById(${JSON.stringify(buttonId)}).click()`,
 });
+
+// ✅ By visible text (preferred for popups/dialogs — many SCORM tools leave id="" on these)
+await session.send('Runtime.evaluate', {
+  contextId: ctxId,
+  expression: `([...document.querySelectorAll('button')].find(b => /^Continue$/i.test(b.textContent.trim()))).click()`,
+});
 ```
+
+**Caution:** Popup/dialog buttons in SCORM authoring tools (Articulate, iSpring, Lectora) often have `id=""` — `getElementById('')` returns `null` per spec and silently no-ops. Always prefer text or aria-label matching for dismiss/confirm buttons.
 
 See `templates/cdp-session.js` for the full session setup pattern. Once you have a `CDPSession` attached directly to the iframe target, `Runtime.evaluate` with an explicit `contextId` is 100% reliable across all SCORM players and LMS wrappers tested.
 
@@ -173,9 +181,3 @@ await page.keyboard.press('Enter');
 **Real incident:** Repeated Tab+Enter attempts to reach a "Continue" button in a SCORM player resulted in the page navigating back to the course launch screen, requiring the entire session to restart.
 
 **Solution:** Never use keyboard navigation for cross-origin iframe content. Use direct DOM `.click()` via `Runtime.evaluate` (see **Anti-Pattern 6**).
-
-## Anti-Pattern 8: Empty Button IDs Break getElementById in Popups
-
-**Problem:** `document.getElementById('')` returns `null` per spec. Many SCORM authoring tools (Articulate, iSpring, Lectora) leave popup/dialog buttons with `id=""` — dismiss buttons in "Invalid Answer" modals, confirmation OKs, timeout notices. The click silently no-ops.
-
-**Solution:** Don't use `getElementById` for popup buttons. Use text or aria-label matching instead — see **Key Rules → Selectors** and **Selector fallback** in SKILL.md for the standard approach.
