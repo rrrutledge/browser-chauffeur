@@ -2,6 +2,12 @@
 // and from any browser fallback loop so each failed attempt produces a
 // screenshot for debugging. The screenshots help diagnose whether the failure
 // was a login page, an overlay, a CAPTCHA, or something else.
+//
+// MIRRORED IN templates/script-template.js — this same helper is inlined
+// there so a copy-pasted script runs as a single file. If you change
+// `screenshotOnFailure` here, update the inline copy in script-template.js
+// too. See the SELF-CONTAINED ON PURPOSE block at the top of
+// script-template.js for the full rationale.
 
 const fs = require('fs');
 

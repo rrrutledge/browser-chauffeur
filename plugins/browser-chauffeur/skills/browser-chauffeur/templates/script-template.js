@@ -7,11 +7,26 @@
 // pre-loaded). Since Phase 0 already validated that the target loads,
 // navigating again is just a reload and keeps the script self-contained.
 //
-// SELF-CONTAINED ON PURPOSE: poll, dismissOverlays, and screenshotOnFailure
-// are inlined below even though they also live in overlay-dismissal.js and
-// screenshot-on-failure.js. A script copy-pasted from this template should
-// run as a single file without depending on sibling files in templates/.
-// If you change one of those helpers, update the standalone file too.
+// =====================================================================
+// SELF-CONTAINED ON PURPOSE — DO NOT replace these helpers with require()
+// =====================================================================
+// poll, dismissOverlays, and screenshotOnFailure are inlined below.
+// They also live as standalone files:
+//   - templates/overlay-dismissal.js   (poll + dismissOverlays)
+//   - templates/screenshot-on-failure.js (screenshotOnFailure)
+//
+// Why duplicated: a script copy-pasted from this template lands at
+// scripts/<task>.js, where `require('./overlay-dismissal')` would not
+// resolve. Keeping the helpers inline means the template is a real
+// starting point — the model can paste it and run it without rewriting
+// the imports.
+//
+// HOW TO UPDATE: if you change any of these helpers, edit BOTH places:
+//   1. The inline copy in this file
+//   2. The matching standalone file in templates/
+// The standalone files have a reciprocal "MIRRORED HERE" header pointing
+// back at this file so future maintainers don't miss the second copy.
+// =====================================================================
 
 const { chromium } = require('playwright');
 const fs = require('fs');

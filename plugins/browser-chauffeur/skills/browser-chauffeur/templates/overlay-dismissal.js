@@ -2,6 +2,12 @@
 // waiting for app-specific elements. A fresh browser profile will show
 // first-run overlays (Edge sync prompts, cookie banners, "What's new"
 // modals) that block the real UI and cause element waits to time out.
+//
+// MIRRORED IN templates/script-template.js — these same helpers are
+// inlined there so a copy-pasted script runs as a single file. If you
+// change `dismissOverlays` or `poll` here, update the inline copy in
+// script-template.js too. See the SELF-CONTAINED ON PURPOSE block at
+// the top of script-template.js for the full rationale.
 
 async function dismissOverlays(page) {
   const overlayButtons = [
