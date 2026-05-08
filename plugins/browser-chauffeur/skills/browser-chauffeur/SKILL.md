@@ -148,8 +148,15 @@ const title  = await evalIn(session, ctxId, 'document.title');
 **How to click in the iframe — always use `Runtime.evaluate`, never OS coordinates:**
 
 ```javascript
-// ✅ Invokes the React/framework click handler synchronously
+// ✅ By known ID (if non-empty — see Anti-Pattern 8)
 await evalIn(session, ctxId, `document.getElementById(${JSON.stringify(buttonId)}).click()`);
+
+// ✅ By visible text (preferred for popups/dialogs where IDs may be empty)
+await evalIn(session, ctxId, `
+  ([...document.querySelectorAll('button')]
+    .find(b => /^Continue$/i.test(b.textContent.trim())))
+  .click()
+`);
 ```
 
 See **Anti-Patterns → OS Coordinates Don't Reach Cross-Origin Iframe Content** and **Tab Key Is Unreliable Across Cross-Origin Iframe Boundaries** for the failure modes this replaces.
@@ -183,38 +190,7 @@ For each step in the desired flow:
 
 ### Lazy-loaded content (scroll-and-stabilize)
 
-Some SPAs (Articulate Rise, OpenSesame, content platforms) load page sections as the user scrolls. A "Continue" button may be absent or disabled when you first arrive — it only appears after the full lesson content has rendered. Clicking before all content loads will silently fail or navigate to the wrong place.
-
-**Pattern:** scroll in viewport-sized steps and wait for page height to stabilize before acting:
-
-```javascript
-async function scrollAndStabilize(frame) {
-  let prevHeight = 0, stableCount = 0;
-  for (let pass = 0; pass < 30; pass++) {
-    const info = await frame.evaluate(() => ({
-      h: document.documentElement.scrollHeight,
-      vh: window.innerHeight,
-      sy: window.scrollY,
-    }));
-    await frame.evaluate(y => window.scrollTo(0, y), info.sy + Math.max(info.vh * 0.6, 300));
-    await new Promise(r => setTimeout(r, 600)); // short poll — exit as soon as stable
-    const after = await frame.evaluate(() => ({
-      h: document.documentElement.scrollHeight,
-      sy: window.scrollY,
-      vh: window.innerHeight,
-    }));
-    const atBottom = after.sy + after.vh + 30 >= after.h;
-    if (after.h === prevHeight && atBottom) {
-      if (++stableCount >= 2) break; // two consecutive stable reads at bottom — done
-    } else {
-      stableCount = 0;
-    }
-    prevHeight = after.h;
-  }
-}
-```
-
-Call this before looking for the advance button. The 600 ms poll per step is acceptable here because it exits as soon as the condition is met — it is not a fixed delay.
+Some SPAs (Articulate Rise, OpenSesame, content platforms) load page sections as the user scrolls. A "Continue" button may be absent or disabled until the full lesson content has rendered. Call the `scrollAndStabilize(frame)` helper from `templates/scroll-stabilize.js` before looking for the advance button.
 
 ---
 
@@ -299,6 +275,7 @@ When errors are detected, **you are the debugger**. Do not show the user an erro
    - **UI changed** (different label, restructured DOM, new element) → inspect the current page state to find the new selector, update the script, re-run.
    - **New required step** (e.g., a consent prompt, a "What's new" tour) → add handling for it, re-run.
    - **Selector timing issues** (element not yet visible), **elements scrolled out of view**, or **the expected element is in a different frame** → take a fresh screenshot, read it, find the correct selector or frame.
+   - **Media still playing** — if the script's stuck-detection fired but the page has active audio/video (`!audio.paused && !audio.ended && audio.duration > 1`), the page isn't stuck — narration is in progress. Wait for the media's remaining duration plus a buffer before re-evaluating. Only declare genuinely stuck when both conditions are true: no advance button AND no active media.
    - **None of the above looks right** → the failure may be a known anti-pattern. **Read `anti-patterns.md`** and check whether your symptoms match: a locator returning multiple matches in strict mode, a `page.evaluate` click that updates the UI but doesn't persist server-side, a click that "succeeds" but produces no DOM change, a `[role="dialog"]` presence check that returns true after the dialog closed, or a `getByRole('button')` returning nothing for a visibly-clickable element. Each entry has a tested fix.
 
 3. **Use diagnostic patterns** from `templates/diagnostic-patterns.js` to inspect failing selectors — element visibility test, button enumeration, timing comparisons.
@@ -379,8 +356,6 @@ If another skill runs a script and it fails, that skill should follow this same 
 **InnerText vs Screenshot:** `innerText` / accessibility queries are primary — they give actionable content and element structure. Screenshots are the fallback — use them when spatial/visual layout matters (diagnosing why a click doesn't land, reading a visual overlay).
 
 **DOM state for progress detection:** Never use pixel-diff or screenshot comparison to detect SPA progression. Pixel values change for irrelevant reasons (background animation, playback progress bar, animated UI elements). Find a DOM-readable indicator — page counter (`Screen X of Y`), URL fragment, breadcrumb, lesson number — and compare its value before and after a click. If the indicator doesn't change, the click had no effect.
-
-**Media gating:** If a course or media player shows no advance button but audio/video is playing (`!audio.paused && !audio.ended && audio.duration > 1`), treat the absence as "narration in progress," not stuck. Wait for the media's remaining duration plus a buffer before resetting the stuck counter. Only declare genuinely stuck when both conditions are true: no advance button AND no active media. Never time out the iteration loop while media is alive.
 
 ---
 

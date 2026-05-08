@@ -176,26 +176,6 @@ await page.keyboard.press('Enter');
 
 ## Anti-Pattern 8: Empty Button IDs Break getElementById in Popups
 
-**Problem:**
-```javascript
-// ❌ Silently fails when the button has id=""
-await evalIn(session, ctxId, `document.getElementById('').click()`);
-// Returns null — no click, no error
-```
+**Problem:** `document.getElementById('')` returns `null` per spec. Many SCORM authoring tools (Articulate, iSpring, Lectora) leave popup/dialog buttons with `id=""` — dismiss buttons in "Invalid Answer" modals, confirmation OKs, timeout notices. The click silently no-ops.
 
-**Why it fails:** `document.getElementById('')` returns `null` per spec. Many SCORM authoring tools (Articulate, iSpring, Lectora) generate stable `id` attributes for primary content buttons but leave popup/dialog buttons with `id=""`. A dismiss button in an "Invalid Answer" modal, a confirmation OK, or a timeout notice may all have empty IDs. The click silently no-ops and the driver enters an infinite retry loop.
-
-**Solution — fall back to text or aria-label matching:**
-```javascript
-// ✅ Find by visible text content
-await evalIn(session, ctxId, `
-  ([...document.querySelectorAll('button')]
-    .find(b => /^(OK|Got it|Close|Dismiss)$/i.test(b.textContent.trim()))
-    || { click() {} })
-  .click()
-`);
-
-// ✅ Or use Runtime.callFunctionOn with an element reference if you already have it
-```
-
-**Rule:** Never assume `acc-` prefixed or otherwise stable IDs in popup/dialog content. Always have a text-based fallback selector for dismiss buttons.
+**Solution:** Don't use `getElementById` for popup buttons. Use text or aria-label matching instead — see **Key Rules → Selectors** and **Selector fallback** in SKILL.md for the standard approach.
