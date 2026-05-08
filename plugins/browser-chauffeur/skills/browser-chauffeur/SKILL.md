@@ -236,7 +236,7 @@ When errors are detected, **you are the debugger**. Do not show the user an erro
 
 **Only report to user when:**
 - ✅ **100% success achieved** → "Fixed N issues: [brief summary]. Verification now passing."
-- ❌ **Exhausted all recovery options** → Show diagnostics, explain what you tried, what you found, ask for help.
+- ❌ **Exhausted all recovery options** → **Leave the browser open at the failure state** (Phase 3 Exception covers this) and tell the user to look at the browser window — the visible page often makes the issue obvious at a glance, faster than any diagnostic summary. Then show your diagnostics, explain what you tried and what you found, and ask for help.
 
 **Rule:** Never tell the user "the script failed." Always read the diagnostic screenshot, diagnose, fix, and retry at least once before involving the user.
 
