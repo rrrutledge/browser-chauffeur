@@ -21,7 +21,12 @@ if (!targetUrl) {
 
 async function validate() {
   const browser = await chromium.connectOverCDP(`http://localhost:${cdpPort}`);
-  const context = browser.contexts()[0] || await browser.newContext();
+  // Prefer contexts that already have a real http page — Edge sometimes launches
+  // a welcome popup window as a separate context and it may sort before the main window.
+  const contexts = browser.contexts();
+  const context = contexts.length > 1
+    ? (contexts.find(ctx => ctx.pages().some(p => p.url().startsWith('http'))) ?? contexts[0])
+    : (contexts[0] ?? await browser.newContext());
   const page = await context.newPage();
   try {
     await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });

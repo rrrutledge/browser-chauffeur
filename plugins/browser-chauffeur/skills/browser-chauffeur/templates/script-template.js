@@ -68,8 +68,15 @@ async function screenshotOnFailure(context, label) {
 
 async function run() {
   const browser = await connectBrowser();
-  const context = browser.contexts()[0] ?? await browser.newContext();
-  const page = context.pages()[0] ?? await context.newPage();
+  // Prefer contexts with a real http page — Edge may launch a welcome popup window
+  // as a separate context that sorts before the main maximized window.
+  const contexts = browser.contexts();
+  const context = contexts.length > 1
+    ? (contexts.find(ctx => ctx.pages().some(p => p.url().startsWith('http'))) ?? contexts[0])
+    : (contexts[0] ?? await browser.newContext());
+  const page = context.pages().find(p => p.url().startsWith('http'))
+    ?? context.pages()[0]
+    ?? await context.newPage();
 
   const results = { succeeded: [], failed: [] };
 

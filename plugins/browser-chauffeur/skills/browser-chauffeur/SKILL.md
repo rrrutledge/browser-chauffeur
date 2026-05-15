@@ -39,7 +39,7 @@ Adjust the path to wherever your skill is mounted. Default range is 9222–9226;
 python plugins/browser-chauffeur/skills/browser-chauffeur/templates/launch-browser.py --port <port> --url <target-url>
 ```
 
-This auto-detects Edge first (better Windows SSO integration), falls back to Chrome, generates a unique temp profile, disables the Edge Teams/Chat sidebar that hijacks meeting URLs into a popup, and prints the launched browser's PID. **Save the PID** — you'll need it in Phase 3 to close only the browser you launched, without killing the user's personal browser instances.
+This auto-detects Edge first (better Windows SSO integration), falls back to Chrome, generates a unique temp profile, disables the Edge Teams/Chat sidebar that hijacks meeting URLs into a popup, and prints the launched browser's PID and profile directory. **Save both the PID and PROFILE_DIR** — you'll need the PID in Phase 3 to close only the browser you launched, and the PROFILE_DIR to delete the temp profile after the browser exits.
 
 Wait 3–5s for the browser to start, then verify CDP is responding:
 ```bash
@@ -47,6 +47,8 @@ curl -s http://localhost:<port>/json/version
 ```
 
 **Known quirk — Edge sync dialog:** The "We are now syncing your browsing data" dialog on fresh Edge profiles is rendered in Edge's browser chrome layer, outside the page DOM. Playwright cannot see or dismiss it. It does **not** block script execution — scripts can interact with page elements behind it. Do not waste time trying to close it.
+
+**Known quirk — Edge welcome popup window:** Edge occasionally spawns a small "welcome" or "first-run" popup as a separate browser window on fresh profiles. This appears as a separate CDP context and may sort before the main maximized window in `browser.contexts()`. The templates handle this by selecting the context that already has a real `http`/`https` page, falling back to `contexts()[0]`. If navigation unexpectedly loads in a tiny box, the wrong context was selected — inspect `browser.contexts()` and add logging to identify which context has the main window.
 
 **First-run overlays:** A fresh profile may also show in-page overlays (cookie consent banners, "What's new" modals). These DO block element waits — dismiss them via the pattern in **Common Patterns → Overlay Dismissal** below.
 
@@ -198,7 +200,7 @@ Some SPAs (Articulate Rise, OpenSesame, content platforms) load page sections as
 
 1. Take a final read confirming the full flow succeeded
 2. **Close the browser.** Kill only the browser PID you saved in Phase 0 Step 2 with `powershell -NoProfile -Command "Stop-Process -Id <PID> -Force"`. **Never** kill all browser processes (e.g., `Get-Process msedge | Stop-Process`) — that destroys the user's personal browser sessions.
-3. **Clean up temp profile** (optional): The browser will auto-clean on exit, but you can manually remove `.tmp/cdp-profile-*` directories to free disk space.
+3. **Delete the temp profile.** Chromium does NOT auto-clean its user data directory on exit — profiles accumulate and fill the disk. After killing the browser, delete the PROFILE_DIR you saved in Phase 0: `rm -rf "<PROFILE_DIR>"`. This is **mandatory**, not optional.
 4. Report what was accomplished to the user. Base your report on what you read from the final page state — do not summarize from memory or inference. If specific values were requested (a title, a field value, a count), quote them directly from the page content.
 5. If the user asks for a reusable script, write it using `templates/script-template.js`.
 

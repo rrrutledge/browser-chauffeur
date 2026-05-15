@@ -34,7 +34,8 @@ CHROME_PATH = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 
 EDGE_DISABLE_FEATURES = (
     "msEdgeSidebarV2,msEdgeSidebar,msEdgeChatAndNotification,"
-    "msTeamsLeftChrome,EdgeSidebar,msEdgeSidebarPwaIntegration"
+    "msTeamsLeftChrome,EdgeSidebar,msEdgeSidebarPwaIntegration,"
+    "msEdgeSyncPromoRollout,msEdgeWelcomePageEnabled"
 )
 
 
@@ -61,6 +62,7 @@ def main() -> int:
         f"--user-data-dir={profile_dir}",
         "--no-first-run",
         "--no-default-browser-check",
+        "--suppress-message-center-popups",
         "--start-maximized",
         args.url,
     ]
@@ -78,6 +80,7 @@ def main() -> int:
     proc = subprocess.Popen(cmd)
     print(f"Launched {browser_name} on port {args.port} (PID {proc.pid})")
     print(f"PID={proc.pid}")
+    print(f"PROFILE_DIR={profile_dir}")
     return 0
 
 
