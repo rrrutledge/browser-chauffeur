@@ -21,6 +21,27 @@ await page.waitForFunction(() => document.readyState === 'complete');
 
 **Exception:** Short poll loops (≤300ms interval) with a deadline when no waitable locator exists.
 
+## ❌ BANNED: Retry Loops in Scripts
+
+**Never add retry logic inside a script:**
+```javascript
+// ❌ WRONG - script retrying its own failures
+for (let attempt = 1; attempt <= 3; attempt++) {
+  const result = await doAction(page, item);
+  if (result.success) break;
+  console.log(`Retry ${attempt}/3...`);
+}
+```
+
+**Why:** Retries paper over the real problem. If the script does the right thing — waits for the correct DOM signals before acting — it works the first time, just like a human using the UI. When a wait times out, the script should fail clearly, and browser-chauffeur's recovery loop diagnoses the failure (via screenshots), fixes the script, and re-runs it. Scripts are the directions; the chauffeur handles road closures.
+
+**Instead, wait for the right signal:**
+```javascript
+// ✅ CORRECT - wait for the element that proves readiness
+await deleteBtn.waitFor({ state: 'visible', timeout: 5000 });
+await deleteBtn.click();
+```
+
 ## ✅ REQUIRED: Verification Code
 
 **Every script must output explicit success/failure:**
