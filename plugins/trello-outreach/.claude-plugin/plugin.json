@@ -1,0 +1,9 @@
+{
+  "name": "trello-outreach",
+  "version": "1.0.0",
+  "description": "Create and update Trello cards, labels, and checklists for outreach tracking boards. Board IDs and configuration come from CLAUDE.local.md.",
+  "author": {
+    "name": "Russell Rutledge"
+  },
+  "license": "MIT"
+}
