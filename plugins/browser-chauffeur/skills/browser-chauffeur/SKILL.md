@@ -10,7 +10,7 @@ You are operating the browser on the user's behalf. You are the chauffeur — yo
 
 ## How it works
 
-Every task uses the same flow: launch a fresh Edge or Chrome with CDP enabled, validate that the target page loads, write or run a Node.js script that connects via `playwright.chromium.connectOverCDP(...)`, watch the output, and recover autonomously if anything fails. The fresh-browser approach inherits the user's logged-in sessions from their Windows profile (Edge/Chrome cookies transfer to the temp profile), so apps requiring login — corporate SSO or otherwise — authenticate without manual sign-in.
+Every task uses the same flow: ensure a persistent Edge or Chrome browser is running with CDP enabled, validate that the target page loads, write or run a Node.js script that connects via `playwright.chromium.connectOverCDP(...)`, watch the output, and recover autonomously if anything fails. The persistent browser keeps its profile across tasks, so logins and sessions survive — the user signs in once, and all subsequent tasks reuse those sessions.
 
 ## Prerequisite Check
 
@@ -23,36 +23,30 @@ node --version && node -e "require('playwright'); console.log('ok')"
 
 ## Phase 0: Browser Launch (do this before Phase 1)
 
-**Always launch a fresh browser instance** — never reuse an active browser. This prevents interfering with the user's browsing while still inheriting the credentials in their Windows profile.
+**Reuse the persistent browser if one is already running.** A single dedicated browser stays open across tasks — each task gets its own tab, and logins survive between tasks. This is separate from the user's personal browser so their tabs are never disturbed.
 
-**Step 1 — Find an available CDP port**
-
-```bash
-python plugins/browser-chauffeur/skills/browser-chauffeur/templates/find-port.py
-```
-
-Adjust the path to wherever your skill is mounted. Default range is 9222–9226; prints the first free port.
-
-**Step 2 — Launch the browser**
+**Step 1 — Ensure the persistent browser is running**
 
 ```bash
-python plugins/browser-chauffeur/skills/browser-chauffeur/templates/launch-browser.py --port <port> --url <target-url>
+python plugins/browser-chauffeur/skills/browser-chauffeur/templates/launch-browser.py
 ```
 
-This auto-detects Edge first (better Windows SSO integration), falls back to Chrome, generates a unique temp profile, disables the Edge Teams/Chat sidebar that hijacks meeting URLs into a popup, and prints the launched browser's PID and profile directory. **Save both the PID and PROFILE_DIR** — you'll need the PID in Phase 3 to close only the browser you launched, and the PROFILE_DIR to delete the temp profile after the browser exits.
+Adjust the path to wherever your skill is mounted. This auto-detects Edge first (better Windows SSO integration), falls back to Chrome, and manages port selection and profile automatically. If a persistent browser is already running, it prints the existing connection info and exits immediately. If not, it launches a new one with a persistent profile at `~/.claude/browser-chauffeur/profile/`. The state is stored globally at `~/.claude/browser-chauffeur/state.json` so all Claude instances can discover and reuse the same browser.
 
-Wait 3–5s for the browser to start, then verify CDP is responding:
+**Save the PORT from the output** — you'll pass it to scripts via `--cdp-port`. The PID and PROFILE_DIR are printed for diagnostics but you don't need to track them — the browser stays running and the profile persists.
+
+If the script reports "Reusing existing browser," CDP is already responding — skip the wait. If it launched a fresh browser, wait 3–5s then verify:
 ```bash
 curl -s http://localhost:<port>/json/version
 ```
 
-**Known quirk — Edge sync dialog:** The "We are now syncing your browsing data" dialog on fresh Edge profiles is rendered in Edge's browser chrome layer, outside the page DOM. Playwright cannot see or dismiss it. It does **not** block script execution — scripts can interact with page elements behind it. Do not waste time trying to close it.
+**Known quirk — Edge sync dialog:** The "We are now syncing your browsing data" dialog on first launch is rendered in Edge's browser chrome layer, outside the page DOM. Playwright cannot see or dismiss it. It does **not** block script execution — scripts can interact with page elements behind it. Do not waste time trying to close it. This only appears once since the profile persists.
 
-**Known quirk — Edge welcome popup window:** Edge occasionally spawns a small "welcome" or "first-run" popup as a separate browser window on fresh profiles. This appears as a separate CDP context and may sort before the main maximized window in `browser.contexts()`. The templates handle this by selecting the context that already has a real `http`/`https` page, falling back to `contexts()[0]`. If navigation unexpectedly loads in a tiny box, the wrong context was selected — inspect `browser.contexts()` and add logging to identify which context has the main window.
+**Known quirk — Edge welcome popup window:** On the very first launch, Edge may spawn a small "welcome" popup as a separate browser window. This appears as a separate CDP context and may sort before the main maximized window in `browser.contexts()`. The templates handle this by selecting the context that already has a real `http`/`https` page, falling back to `contexts()[0]`. This only happens once per profile.
 
-**First-run overlays:** A fresh profile may also show in-page overlays (cookie consent banners, "What's new" modals). These DO block element waits — dismiss them via the pattern in **Common Patterns → Overlay Dismissal** below.
+**First-run overlays:** On the first launch, the profile may show in-page overlays (cookie consent banners, "What's new" modals). These DO block element waits — dismiss them via the pattern in **Common Patterns → Overlay Dismissal** below. Since the profile persists, dismissed overlays stay dismissed.
 
-**Step 3 — Validate the target loads**
+**Step 2 — Validate the target loads**
 
 Verify the browser can actually reach the target app, not just that the browser launched. This catches expired sessions, login walls, and consent gates before any real automation runs.
 
@@ -61,7 +55,7 @@ node plugins/browser-chauffeur/skills/browser-chauffeur/templates/validate-targe
 ```
 
 - `VALIDATION_OK` → record the CDP port; this is what you'll pass to scripts via `--cdp-port`.
-- `VALIDATION_FAILED: landed on login page` → the user needs to sign in. Use `AskUserQuestion` to prompt them (see **User Intervention** section), then re-validate.
+- `VALIDATION_FAILED: landed on login page` → the user needs to sign in. Use `AskUserQuestion` to prompt them (see **User Intervention** section), then re-validate. Once they sign in, the session persists for all future tasks.
 
 **The CDP port you validate here is what you pass to scripts.** Scripts do not perform browser detection or target validation — that is your job during Phase 0.
 
@@ -78,7 +72,7 @@ When another skill needs to run a browser automation script, it should invoke br
 3. **Run the script** via Bash: `node scripts/<task>.js --cdp-port=<port>`
 4. **ALWAYS do Phase 4 analysis** — parse the output for errors regardless of exit code
 5. **If errors detected** — autonomously enter the Phase 4 recovery loop (diagnose, fix, re-run)
-6. **If 100% success** — report results, then **close the browser** (close pages you opened; the browser exits when no pages remain)
+6. **If 100% success** — report results. Scripts automatically close their own tab in the `finally` block; the persistent browser stays running for future tasks.
 7. **If recovery exhausted** — show diagnostics and ask for help
 
 **Critical:** Exit code 0 ≠ success. Many scripts complete with errors in their output. Phase 4 analysis is MANDATORY after every script run, not optional.
@@ -199,12 +193,40 @@ Some SPAs (Articulate Rise, OpenSesame, content platforms) load page sections as
 ## Phase 3: Wrap Up
 
 1. Take a final read confirming the full flow succeeded
-2. **Close the browser.** Kill only the browser PID you saved in Phase 0 Step 2 with `powershell -NoProfile -Command "Stop-Process -Id <PID> -Force"`. **Never** kill all browser processes (e.g., `Get-Process msedge | Stop-Process`) — that destroys the user's personal browser sessions.
-3. **Delete the temp profile.** Chromium does NOT auto-clean its user data directory on exit — profiles accumulate and fill the disk. After killing the browser, delete the PROFILE_DIR you saved in Phase 0: `rm -rf "<PROFILE_DIR>"`. This is **mandatory**, not optional.
+2. **Leave the browser running.** The persistent browser stays open for future tasks — this is how logins survive across tasks. Scripts automatically close their own tab in the `finally` block, so no manual cleanup is needed. **NEVER** kill all browser processes (e.g., `taskkill //IM msedge.exe`, `Get-Process msedge | Stop-Process`, `pkill msedge`) — that destroys both the persistent chauffeur browser and the user's personal browser sessions.
+3. **Do NOT delete the profile.** The persistent profile at `~/.claude/browser-chauffeur/profile/` stores the user's logins and sessions. Deleting it would force them to re-authenticate on every task. If you need to reset the browser (clear all logins and start fresh), see the profile cleanup utilities below.
 4. Report what was accomplished to the user. Base your report on what you read from the final page state — do not summarize from memory or inference. If specific values were requested (a title, a field value, a count), quote them directly from the page content.
 5. If the user asks for a reusable script, write it using `templates/script-template.js`.
 
 **Exception:** If the task ended in a failure that requires user intervention (Phase 4 escalation), leave the browser open so the user can see and interact with the current state.
+
+---
+
+## Profile Management
+
+The persistent profile at `~/.claude/browser-chauffeur/profile/` stores all logins, cookies, and browser state. Over time, this can grow large (1GB+). Use the cleanup utility when needed:
+
+```bash
+# Check profile size
+python plugins/browser-chauffeur/skills/browser-chauffeur/templates/cleanup-browser.py --size
+
+# Clean up old temporary profiles from .tmp/ (from before persistent mode)
+python plugins/browser-chauffeur/skills/browser-chauffeur/templates/cleanup-browser.py --clean-old
+
+# Reset the persistent browser (kill it and delete the profile) — forces fresh login on next use
+python plugins/browser-chauffeur/skills/browser-chauffeur/templates/cleanup-browser.py --reset
+
+# All of the above
+python plugins/browser-chauffeur/skills/browser-chauffeur/templates/cleanup-browser.py --all
+```
+
+**When to reset:**
+- Profile has grown over 2GB and browser startup is slow
+- Browser is in a bad state (crashes, won't connect, corrupted data)
+- Need to test a flow from a fresh login state
+- Switching between different accounts/environments
+
+After reset, the next task will launch a fresh browser and the user will need to log in again.
 
 ---
 

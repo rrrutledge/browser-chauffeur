@@ -1,0 +1,9 @@
+{
+  "name": "revealjs",
+  "version": "1.0.0",
+  "description": "Create polished, professional reveal.js presentations with themes, multi-column layouts, code highlighting, charts, animations, and speaker notes. Generates HTML + CSS with no build step required.",
+  "author": {
+    "name": "Russell Rutledge"
+  },
+  "license": "MIT"
+}

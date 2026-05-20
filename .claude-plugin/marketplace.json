@@ -9,6 +9,21 @@
       "name": "browser-chauffeur",
       "source": "./plugins/browser-chauffeur",
       "description": "Guides Claude through performing tasks on any website using an iterative inspect-interact-verify methodology. Claude operates the browser on your behalf — you give directions, Claude drives. Requires playwright-cli MCP plugin."
+    },
+    {
+      "name": "revealjs",
+      "source": "./plugins/revealjs",
+      "description": "Create polished, professional reveal.js presentations with themes, multi-column layouts, code highlighting, charts, animations, and speaker notes. Generates HTML + CSS with no build step required."
+    },
+    {
+      "name": "trello-outreach",
+      "source": "./plugins/trello-outreach",
+      "description": "Create and update Trello cards, labels, and checklists for outreach tracking boards. Board IDs and configuration come from CLAUDE.local.md."
+    },
+    {
+      "name": "marketing-confluence-page",
+      "source": "./plugins/marketing-confluence-page",
+      "description": "Create marketing-style Confluence pages with alternating two-column sections (text + image), a hero intro, and a full-width CTA. Used for feature announcements, onboarding guides, and platform documentation."
     }
   ]
 }

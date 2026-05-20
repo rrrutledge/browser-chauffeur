@@ -28,16 +28,41 @@ async function validate() {
     ? (contexts.find(ctx => ctx.pages().some(p => p.url().startsWith('http'))) ?? contexts[0])
     : (contexts[0] ?? await browser.newContext());
   const page = await context.newPage();
+  let needsLogin = false;
   try {
     await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    // Wait for network to settle so SPAs can render (with fallback timeout)
+    await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
     const text = await page.evaluate(() => document.body.innerText);
-    if (text.includes('Sign in') || text.includes('Enter your password') || text.length < 100) {
+
+    // Improved login detection: look for strong signals, not just "Sign in" which
+    // could appear in navigation or user menus on authenticated pages
+    const hasPasswordField = text.includes('Enter your password') || text.includes('Password');
+    const hasSignInButton = /Sign in|Log in|Login/i.test(text);
+    const tooShort = text.length < 100;
+    const lacksNavigation = !text.includes('Home') && !text.includes('Dashboard') && !text.includes('Catalog');
+
+    // Consider it a login page if: very short content, OR (password field present AND lacks navigation)
+    if (tooShort || (hasPasswordField && lacksNavigation)) {
+      needsLogin = true;
       console.log('VALIDATION_FAILED: landed on login page');
+      console.log('LOGIN_PAGE_URL:', page.url());
+      console.log(`Detection reason: tooShort=${tooShort}, hasPassword=${hasPasswordField}, lacksNav=${lacksNavigation}`);
+      console.log('Leaving page open for user login. Re-run this script after logging in.');
     } else {
       console.log('VALIDATION_OK');
     }
   } finally {
-    await page.close().catch(() => {});
+    // If login is needed, leave the page open so user can complete it.
+    // Otherwise, clean up the validation tab.
+    if (!needsLogin) {
+      const allPages = context.pages();
+      if (allPages.length > 1) {
+        await page.close().catch(() => {});
+      } else {
+        await page.goto('about:blank').catch(() => {});
+      }
+    }
     await browser.close().catch(() => {});
   }
 }
