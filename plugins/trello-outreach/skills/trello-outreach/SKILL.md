@@ -32,49 +32,12 @@ instructions: |-
 
   ### update-trello-from-transcript.py
 
-  Batch-update cards based on meeting transcript follow-ups.
+  Batch-update cards based on meeting transcript follow-ups. See the script's
+  docstring for the full config JSON format.
 
   ```bash
   python <path-to-skill>/scripts/update-trello-from-transcript.py config.json
   ```
-
-  Config format:
-  ```json
-  {
-    "board_id": "board-id-here",
-    "abandoned_list_name": "Abandoned",
-    "updates": [
-      {
-        "search": ["keyword1", "keyword2"],
-        "search_type": "name",
-        "action": "due_date",
-        "days_offset": 1,
-        "desc": "Description"
-      },
-      {
-        "search": ["Secrets Migration"],
-        "search_type": "label",
-        "action": "due_date",
-        "days_offset": 1,
-        "desc": "All cards with Secrets Migration label"
-      },
-      {
-        "search": ["keyword"],
-        "search_type": "name",
-        "action": "abandon",
-        "desc": "Description"
-      }
-    ]
-  }
-  ```
-
-  Search types:
-  - `"name"` (default): Search card names and descriptions for keywords
-  - `"label"`: Find cards with a label matching the search term (case-insensitive, partial match OK)
-
-  Actions:
-  - `due_date`: Set card due date (requires days_offset)
-  - `abandon`: Move card to the abandoned list
 
   ---
 
