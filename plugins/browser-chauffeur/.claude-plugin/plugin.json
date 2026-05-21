@@ -1,7 +1,7 @@
 {
   "name": "browser-chauffeur",
   "version": "1.3.0",
-  "description": "Guides Claude through performing tasks on any website using an iterative inspect-interact-verify methodology. Claude operates the browser on your behalf — you give directions, Claude drives. Requires playwright-cli MCP plugin.",
+  "description": "Navigate and interact with ANY website - admin panels, dashboards, web apps, etc. Handles authentication, login session persistence, and autonomous error recovery. Use for checking websites, looking up information, verifying access, or creating automation scripts. Claude drives, you direct.",
   "author": {
     "name": "Russell Rutledge"
   },

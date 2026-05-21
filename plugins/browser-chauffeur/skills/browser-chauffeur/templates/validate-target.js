@@ -31,26 +31,62 @@ async function validate() {
   let needsLogin = false;
   try {
     await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    // Wait for network to settle so SPAs can render (with fallback timeout)
-    await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+
+    // Wait for network idle, then verify page has stabilized by comparing screenshots
+    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+
+    // Take screenshots and compare until page stops changing (SPA fully rendered)
+    let previousScreenshot = null;
+    let stabilized = false;
+    const maxAttempts = 5;
+
+    for (let attempt = 0; attempt < maxAttempts && !stabilized; attempt++) {
+      const currentScreenshot = await page.screenshot();
+
+      if (previousScreenshot) {
+        // Compare screenshots - if identical, page has stabilized
+        stabilized = Buffer.compare(currentScreenshot, previousScreenshot) === 0;
+        if (!stabilized && attempt < maxAttempts - 1) {
+          // Page still changing - wait briefly and check again
+          await new Promise(r => setTimeout(r, 1000));
+        }
+      }
+
+      previousScreenshot = currentScreenshot;
+    }
+
     const text = await page.evaluate(() => document.body.innerText);
 
-    // Improved login detection: look for strong signals, not just "Sign in" which
-    // could appear in navigation or user menus on authenticated pages
+    // Conservative login detection: require MULTIPLE strong signals
+    // to reduce false positives where authenticated pages are misidentified
     const hasPasswordField = text.includes('Enter your password') || text.includes('Password');
     const hasSignInButton = /Sign in|Log in|Login/i.test(text);
     const tooShort = text.length < 100;
     const lacksNavigation = !text.includes('Home') && !text.includes('Dashboard') && !text.includes('Catalog');
+    const hasAuthenticatedIndicators = text.includes('Sign out') || text.includes('Log out') || text.includes('Profile') || text.includes('Settings');
 
-    // Consider it a login page if: very short content, OR (password field present AND lacks navigation)
-    if (tooShort || (hasPasswordField && lacksNavigation)) {
+    // Only flag as login page if: (password field + sign-in button + lacks navigation) OR extremely short content
+    // Do NOT flag if authenticated indicators are present (user menu, logout button, etc.)
+    const likelyLoginPage = (hasPasswordField && hasSignInButton && lacksNavigation && !hasAuthenticatedIndicators) ||
+                            (tooShort && !hasAuthenticatedIndicators);
+
+    if (likelyLoginPage) {
+      // Take screenshot for visual verification before prompting user
+      const screenshotPath = '.tmp/login-detection.png';
+      await page.screenshot({ path: screenshotPath, fullPage: false });
+
       needsLogin = true;
-      console.log('VALIDATION_FAILED: landed on login page');
+      console.log('VALIDATION_FAILED: potential login page detected');
       console.log('LOGIN_PAGE_URL:', page.url());
-      console.log(`Detection reason: tooShort=${tooShort}, hasPassword=${hasPasswordField}, lacksNav=${lacksNavigation}`);
-      console.log('Leaving page open for user login. Re-run this script after logging in.');
+      console.log(`SCREENSHOT: ${screenshotPath}`);
+      console.log(`Detection: tooShort=${tooShort}, password=${hasPasswordField}, signIn=${hasSignInButton}, lacksNav=${lacksNavigation}, hasAuth=${hasAuthenticatedIndicators}`);
+      console.log('');
+      console.log('IMPORTANT: Check the screenshot to confirm this is actually a login page.');
+      console.log('If the screenshot shows you are already logged in, this is a false positive.');
+      console.log('Leaving page open. Re-run this script after confirming login state.');
     } else {
       console.log('VALIDATION_OK');
+      console.log(`Page loaded successfully. Content length: ${text.length} chars`);
     }
   } finally {
     // If login is needed, leave the page open so user can complete it.

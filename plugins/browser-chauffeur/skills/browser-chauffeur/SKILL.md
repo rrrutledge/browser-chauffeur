@@ -1,6 +1,23 @@
 ---
 name: browser-chauffeur
-description: REQUIRED for ALL browser automation — both creating NEW scripts AND running existing ones. When user asks to create/write/build a browser automation script, invoke this skill BEFORE writing any code. When running scripts, this skill handles browser launch, CDP setup, and autonomous error recovery (screenshot → diagnose → fix → retry). Never create or run browser automation outside this skill.
+description: |-
+  REQUIRED for ALL website navigation and interaction. Invoke this skill ANY TIME you need to use a website - whether the user explicitly asked or you determined a website would help accomplish the task.
+  
+  Use browser-chauffeur when:
+  - Navigating to, checking, or accessing ANY website (admin panels, dashboards, web apps, docs sites, etc.)
+  - Looking up information on a website
+  - Verifying something on a website (user access, settings, configurations, status, etc.)
+  - Logging into a website or checking authentication status
+  - Creating or running browser automation scripts
+  - You determine that visiting a website would help answer the user's question or complete their task
+  
+  This skill handles persistent browser launch, login session reuse across tasks, CDP setup, and autonomous error recovery. Never use MCP playwright tools or navigate websites directly - always invoke browser-chauffeur first.
+  
+  Examples that REQUIRE this skill:
+  - User asks: "Check if Jim has access to the dev environment in Okta admin"
+  - User asks: "What's the latest version number?" → You determine checking the docs site would answer this
+  - User asks: "Is the API key configured correctly?" → Navigate to settings page to verify
+  - User asks: "Create a script to automate form submission"
 allowed-tools: Bash, Write, Edit, Read
 ---
 
@@ -55,9 +72,11 @@ node plugins/browser-chauffeur/skills/browser-chauffeur/templates/validate-targe
 ```
 
 - `VALIDATION_OK` → record the CDP port; this is what you'll pass to scripts via `--cdp-port`.
-- `VALIDATION_FAILED: landed on login page` → the user needs to sign in. Use `AskUserQuestion` to prompt them (see **User Intervention** section), then re-validate. Once they sign in, the session persists for all future tasks.
+- `VALIDATION_FAILED: potential login page detected` → the script detected possible login indicators and saved a screenshot to `.tmp/login-detection.png`. **IMPORTANT:** Read the screenshot with the Read tool to visually verify if it's actually a login page. If the screenshot shows the user is already logged in (you see navigation, user menus, content), this is a false positive — proceed with `VALIDATION_OK`. If it's truly a login page, use `AskUserQuestion` to prompt the user to sign in, then re-validate. Once they sign in, the session persists for all future tasks.
 
 **The CDP port you validate here is what you pass to scripts.** Scripts do not perform browser detection or target validation — that is your job during Phase 0.
+
+**Why screenshot verification:** Text-based login detection can produce false positives when pages are slow to load or have minimal initial content. Always verify the screenshot before prompting the user to log in unnecessarily.
 
 ---
 

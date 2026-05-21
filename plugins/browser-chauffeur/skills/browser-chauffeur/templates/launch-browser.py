@@ -4,16 +4,20 @@ Default (persistent) mode:
     python launch-browser.py
     python launch-browser.py --url https://example.com
 
-  Checks .tmp/browser-chauffeur.json for an already-running browser.
-  If alive (PID exists + CDP port responds), prints the existing info
-  and exits. Otherwise launches a fresh browser with a persistent
-  profile at .tmp/cdp-profile-chauffeur/ so logins survive across tasks.
+  Checks ~/.claude/browser-chauffeur/state.json for an already-running browser.
+  If alive (CDP port responds), prints the existing info and exits. Otherwise
+  launches a fresh browser with a persistent profile at
+  ~/.claude/browser-chauffeur/profile/ so logins survive across tasks.
 
-Fresh mode (one-off, old behavior):
+  The persistent browser stays running across Claude instances. DO NOT kill it
+  manually - this preserves your logged-in sessions for future tasks.
+
+Fresh mode (one-off, temporary browser):
     python launch-browser.py --fresh --port 9222 --url https://example.com
 
   Always launches a new browser with a unique timestamped profile.
-  Caller is responsible for killing the PID and cleaning the profile.
+  For --fresh mode only: caller is responsible for killing the PID and
+  cleaning the profile when done.
 
 Notes baked in (so callers don't have to remember them):
 - Windows --user-data-dir requires backslash paths. Forward-slash Unix paths
