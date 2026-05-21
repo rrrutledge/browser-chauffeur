@@ -55,9 +55,11 @@ node plugins/browser-chauffeur/skills/browser-chauffeur/templates/validate-targe
 ```
 
 - `VALIDATION_OK` → record the CDP port; this is what you'll pass to scripts via `--cdp-port`.
-- `VALIDATION_FAILED: landed on login page` → the user needs to sign in. Use `AskUserQuestion` to prompt them (see **User Intervention** section), then re-validate. Once they sign in, the session persists for all future tasks.
+- `VALIDATION_FAILED: potential login page detected` → the script detected possible login indicators and saved a screenshot to `.tmp/login-detection.png`. **IMPORTANT:** Read the screenshot with the Read tool to visually verify if it's actually a login page. If the screenshot shows the user is already logged in (you see navigation, user menus, content), this is a false positive — proceed with `VALIDATION_OK`. If it's truly a login page, use `AskUserQuestion` to prompt the user to sign in, then re-validate. Once they sign in, the session persists for all future tasks.
 
 **The CDP port you validate here is what you pass to scripts.** Scripts do not perform browser detection or target validation — that is your job during Phase 0.
+
+**Why screenshot verification:** Text-based login detection can produce false positives when pages are slow to load or have minimal initial content. Always verify the screenshot before prompting the user to log in unnecessarily.
 
 ---
 
