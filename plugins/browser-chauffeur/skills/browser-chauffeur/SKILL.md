@@ -106,10 +106,32 @@ This ensures the AI is always watching the road, not just handing off directions
 
 Before touching anything:
 
-1. Navigate to the target page or state
-2. Read page state with `page.evaluate(() => document.body.innerText)`, or enumerate `page.frames()` if the body is unexpectedly short (see **Iframe detection** below)
-3. If the text content doesn't clarify structure (complex visual layout), take a screenshot with `page.screenshot()` and read the image with the Read tool
-4. Identify the first action needed
+1. **Check the multi-tab environment** — list all open tabs to understand what's already running:
+   ```javascript
+   const pages = context.pages();
+   console.log('Current tabs:');
+   pages.forEach((p, i) => console.log(`  Tab ${i}: ${p.url()}`));
+   ```
+   
+2. **Get and save your tab reference** — target the specific tab you need by URL pattern, never by position:
+   ```javascript
+   // Find existing tab by URL
+   let myTab = pages.find(p => p.url().includes('example.com/my-section'));
+   
+   // Or create a new tab for complete isolation
+   if (!myTab) {
+     myTab = await context.newPage();
+     await myTab.goto('https://example.com/my-section');
+   }
+   
+   // Save this reference - it stays valid even if other tabs open/close
+   ```
+   **Why:** Tab positions shift as tabs are created/closed. Other Claude sessions may be working in parallel. Targeting by index is unreliable. Save the page object reference and reuse it throughout the script.
+
+3. Navigate to the target page or state (if not already there)
+4. Read page state with `myTab.evaluate(() => document.body.innerText)`, or enumerate `myTab.frames()` if the body is unexpectedly short (see **Iframe detection** below)
+5. If the text content doesn't clarify structure (complex visual layout), take a screenshot with `myTab.screenshot()` and read the image with the Read tool
+6. Identify the first action needed
 
 **Never act before orienting.** You cannot guess selectors on a page you haven't inspected.
 
@@ -182,11 +204,11 @@ See **Anti-Patterns → OS Coordinates Don't Reach Cross-Origin Iframe Content**
 
 For each step in the desired flow:
 
-1. **Interact** — use Playwright locators (`page.getByRole(...)`, `frame.locator('[aria-label="..."]')`)
+1. **Interact** — use the saved tab reference from Phase 1 with Playwright locators (`myTab.getByRole(...)`, `frame.locator('[aria-label="..."]')`). The page object stays valid even if other tabs open/close. If the tab itself was closed, Playwright will throw an error automatically.
 
 2. **Screenshot after dropdown/menu clicks** — **CRITICAL:** After clicking any button that should reveal a dropdown menu, context menu, or modal dialog:
    - Wait briefly (500ms-1s) for the UI to appear
-   - Take a screenshot with `page.screenshot({ path: '.tmp/diag-after-click.png' })`
+   - Take a screenshot with `myTab.screenshot({ path: '.tmp/diag-after-click.png' })`
    - Read the screenshot with the Read tool to SEE what menu items are actually visible
    - Query the DOM for menu items AFTER you've visually confirmed the menu is open
 
@@ -196,7 +218,7 @@ For each step in the desired flow:
 
 4. **If blocked** — re-read page state immediately to diagnose. Common blockers:
    - Modal or overlay in front of the target → dismiss it first (see **Overlay Dismissal**), then retry
-   - Element not yet rendered → wait with `locator.waitFor()` or `page.waitForSelector()`
+   - Element not yet rendered → wait with `locator.waitFor()` or `myTab.waitForSelector()`
    - Stale locator (element re-rendered since last query) → re-query for a fresh handle
 
 5. **If layout-dependent** — take a screenshot and read it with the Read tool to see visual context
@@ -212,12 +234,36 @@ Some SPAs (Articulate Rise, OpenSesame, content platforms) load page sections as
 ## Phase 3: Wrap Up
 
 1. Take a final read confirming the full flow succeeded
-2. **Leave the browser running.** The persistent browser stays open for future tasks — this is how logins survive across tasks. Scripts automatically close their own tab in the `finally` block, so no manual cleanup is needed. **NEVER** kill all browser processes (e.g., `taskkill //IM msedge.exe`, `Get-Process msedge | Stop-Process`, `pkill msedge`) — that destroys both the persistent chauffeur browser and the user's personal browser sessions.
-3. **Do NOT delete the profile.** The persistent profile at `~/.claude/browser-chauffeur/profile/` stores the user's logins and sessions. Deleting it would force them to re-authenticate on every task. If you need to reset the browser (clear all logins and start fresh), see the profile cleanup utilities below.
-4. Report what was accomplished to the user. Base your report on what you read from the final page state — do not summarize from memory or inference. If specific values were requested (a title, a field value, a count), quote them directly from the page content.
-5. If the user asks for a reusable script, write it using `templates/script-template.js`.
 
-**Exception:** If the task ended in a failure that requires user intervention (Phase 4 escalation), leave the browser open so the user can see and interact with the current state.
+2. **Tab cleanup** — only close tabs you created:
+   ```javascript
+   try {
+     // Your automation work
+   } finally {
+     // Only close if you created this tab with context.newPage()
+     if (createdByMe) {
+       await myTab.close();
+     }
+     // Otherwise leave it open - don't close tabs you found
+   }
+   ```
+   **Why:** Other Claude sessions may be using other tabs. The user may need to review the results. Only close tabs you explicitly created for this specific task.
+   
+   **When to leave tabs open:**
+   - User needs to log in (can't automate)
+   - User needs to review/approve something
+   - User asked you to "open" something for them
+   - Tab was already open when you started (you found it, didn't create it)
+
+3. **Leave the browser running.** The persistent browser stays open for future tasks — this is how logins survive across tasks. **NEVER** kill all browser processes (e.g., `taskkill //IM msedge.exe`, `Get-Process msedge | Stop-Process`, `pkill msedge`) — that destroys both the persistent chauffeur browser and the user's personal browser sessions.
+
+4. **Do NOT delete the profile.** The persistent profile at `~/.claude/browser-chauffeur/profile/` stores the user's logins and sessions. Deleting it would force them to re-authenticate on every task. If you need to reset the browser (clear all logins and start fresh), see the profile cleanup utilities below.
+
+5. Report what was accomplished to the user. Base your report on what you read from the final page state — do not summarize from memory or inference. If specific values were requested (a title, a field value, a count), quote them directly from the page content.
+
+6. If the user asks for a reusable script, write it using `templates/script-template.js`.
+
+**Exception:** If the task ended in a failure that requires user intervention (Phase 4 escalation), leave the browser AND tab open so the user can see and interact with the current state.
 
 ---
 
