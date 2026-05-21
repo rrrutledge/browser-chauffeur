@@ -1,20 +1,23 @@
 ---
 name: browser-chauffeur
 description: |-
-  REQUIRED for ALL website navigation and interaction tasks. Invoke this skill whenever the user asks you to:
-  - Navigate to, check, or access ANY website (admin panels, dashboards, web apps, etc.)
-  - Look up information on a website
-  - Verify something on a website (user access, settings, configurations, etc.)
-  - Log into a website or check authentication status
-  - Create or run browser automation scripts
+  REQUIRED for ALL website navigation and interaction. Invoke this skill ANY TIME you need to use a website - whether the user explicitly asked or you determined a website would help accomplish the task.
+  
+  Use browser-chauffeur when:
+  - Navigating to, checking, or accessing ANY website (admin panels, dashboards, web apps, docs sites, etc.)
+  - Looking up information on a website
+  - Verifying something on a website (user access, settings, configurations, status, etc.)
+  - Logging into a website or checking authentication status
+  - Creating or running browser automation scripts
+  - You determine that visiting a website would help answer the user's question or complete their task
   
   This skill handles persistent browser launch, login session reuse across tasks, CDP setup, and autonomous error recovery. Never use MCP playwright tools or navigate websites directly - always invoke browser-chauffeur first.
   
   Examples that REQUIRE this skill:
-  - "Check if Jim has access to the dev environment in Okta admin"
-  - "Navigate to the settings page and verify the API key"
-  - "Look up the latest release notes on the docs site"
-  - "Create a script to automate form submission"
+  - User asks: "Check if Jim has access to the dev environment in Okta admin"
+  - User asks: "What's the latest version number?" → You determine checking the docs site would answer this
+  - User asks: "Is the API key configured correctly?" → Navigate to settings page to verify
+  - User asks: "Create a script to automate form submission"
 allowed-tools: Bash, Write, Edit, Read
 ---
 
