@@ -1,6 +1,20 @@
 ---
 name: browser-chauffeur
-description: REQUIRED for ALL browser automation — both creating NEW scripts AND running existing ones. When user asks to create/write/build a browser automation script, invoke this skill BEFORE writing any code. When running scripts, this skill handles browser launch, CDP setup, and autonomous error recovery (screenshot → diagnose → fix → retry). Never create or run browser automation outside this skill.
+description: |-
+  REQUIRED for ALL website navigation and interaction tasks. Invoke this skill whenever the user asks you to:
+  - Navigate to, check, or access ANY website (admin panels, dashboards, web apps, etc.)
+  - Look up information on a website
+  - Verify something on a website (user access, settings, configurations, etc.)
+  - Log into a website or check authentication status
+  - Create or run browser automation scripts
+  
+  This skill handles persistent browser launch, login session reuse across tasks, CDP setup, and autonomous error recovery. Never use MCP playwright tools or navigate websites directly - always invoke browser-chauffeur first.
+  
+  Examples that REQUIRE this skill:
+  - "Check if Jim has access to the dev environment in Okta admin"
+  - "Navigate to the settings page and verify the API key"
+  - "Look up the latest release notes on the docs site"
+  - "Create a script to automate form submission"
 allowed-tools: Bash, Write, Edit, Read
 ---
 
