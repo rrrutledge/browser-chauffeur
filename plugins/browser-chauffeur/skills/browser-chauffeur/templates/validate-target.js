@@ -32,11 +32,28 @@ async function validate() {
   try {
     await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
-    // Wait longer for SPAs to fully render - many false positives happen because
-    // the page is still loading when we check
+    // Wait for network idle, then verify page has stabilized by comparing screenshots
     await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
-    // Extra 2s buffer for any post-network-idle rendering
-    await page.waitForTimeout(2000);
+
+    // Take screenshots and compare until page stops changing (SPA fully rendered)
+    let previousScreenshot = null;
+    let stabilized = false;
+    const maxAttempts = 5;
+
+    for (let attempt = 0; attempt < maxAttempts && !stabilized; attempt++) {
+      const currentScreenshot = await page.screenshot();
+
+      if (previousScreenshot) {
+        // Compare screenshots - if identical, page has stabilized
+        stabilized = Buffer.compare(currentScreenshot, previousScreenshot) === 0;
+        if (!stabilized && attempt < maxAttempts - 1) {
+          // Page still changing - wait briefly and check again
+          await new Promise(r => setTimeout(r, 1000));
+        }
+      }
+
+      previousScreenshot = currentScreenshot;
+    }
 
     const text = await page.evaluate(() => document.body.innerText);
 
