@@ -3,33 +3,17 @@
 // detection, fallback, or target-load validation — that is handled by Claude
 // interactively during Phase 0 before any script runs.
 //
-// Scripts should still navigate to their target URL (not assume the page is
-// pre-loaded). Since Phase 0 already validated that the target loads,
-// navigating again is just a reload and keeps the script self-contained.
-//
-// =====================================================================
-// SELF-CONTAINED ON PURPOSE — DO NOT replace these helpers with require()
-// =====================================================================
-// poll, dismissOverlays, and screenshotOnFailure are inlined below.
-// They also live as standalone files:
-//   - templates/overlay-dismissal.js   (poll + dismissOverlays)
-//   - templates/screenshot-on-failure.js (screenshotOnFailure)
-//
-// Why duplicated: a script copy-pasted from this template lands at
-// scripts/<task>.js, where `require('./overlay-dismissal')` would not
-// resolve. Keeping the helpers inline means the template is a real
-// starting point — the model can paste it and run it without rewriting
-// the imports.
-//
-// HOW TO UPDATE: if you change any of these helpers, edit BOTH places:
-//   1. The inline copy in this file
-//   2. The matching standalone file in templates/
-// The standalone files have a reciprocal "MIRRORED HERE" header pointing
-// back at this file so future maintainers don't miss the second copy.
-// =====================================================================
+// Each script opens its own tab (newPage), works in it, and closes it when
+// done. The browser is persistent — it stays running across tasks so logins
+// survive. The finally block guards against closing the last tab (which would
+// exit the browser and lose all sessions).
 
 const { chromium } = require('playwright');
 const fs = require('fs');
+
+// Import shared helpers from browser-chauffeur templates
+// This ensures scripts automatically get improvements when helpers are updated
+const { dismissOverlays } = require('browser-chauffeur-helpers');
 
 // --- browser connection ---
 const cdpPort = process.argv.find(a => a.startsWith('--cdp-port='))?.split('=')[1] || '9222';
@@ -38,25 +22,7 @@ async function connectBrowser() {
   return chromium.connectOverCDP(`http://localhost:${cdpPort}`);
 }
 
-// --- inlined helpers (mirrors overlay-dismissal.js / screenshot-on-failure.js) ---
-async function poll(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-async function dismissOverlays(page) {
-  const overlayButtons = [
-    page.getByRole('button', { name: 'Got it' }),
-    page.getByRole('button', { name: 'Dismiss' }),
-    page.getByRole('button', { name: 'Close' }),
-    page.getByRole('button', { name: /Not now/i }),
-  ];
-  for (const btn of overlayButtons) {
-    if (await btn.count()) {
-      console.log('  Dismissing overlay...');
-      await btn.first().click();
-      await poll(500);
-    }
-  }
-}
-
+// --- screenshotOnFailure helper ---
 async function screenshotOnFailure(context, label) {
   const diagPage = context.pages()[0];
   if (!diagPage) return;
@@ -68,15 +34,11 @@ async function screenshotOnFailure(context, label) {
 
 async function run() {
   const browser = await connectBrowser();
-  // Prefer contexts with a real http page — Edge may launch a welcome popup window
-  // as a separate context that sorts before the main maximized window.
   const contexts = browser.contexts();
   const context = contexts.length > 1
     ? (contexts.find(ctx => ctx.pages().some(p => p.url().startsWith('http'))) ?? contexts[0])
     : (contexts[0] ?? await browser.newContext());
-  const page = context.pages().find(p => p.url().startsWith('http'))
-    ?? context.pages()[0]
-    ?? await context.newPage();
+  const page = await context.newPage();
 
   const results = { succeeded: [], failed: [] };
 
@@ -114,7 +76,13 @@ async function run() {
     await screenshotOnFailure(context, 'run-failed');
     throw e;
   } finally {
-    await browser.close();
+    const allPages = context.pages();
+    if (allPages.length > 1) {
+      await page.close().catch(() => {});
+    } else {
+      await page.goto('about:blank').catch(() => {});
+    }
+    await browser.close().catch(() => {});
   }
 }
 

@@ -10,6 +10,7 @@
 // the user to sign in (see User Intervention section in SKILL.md), then re-validate.
 
 const { chromium } = require('playwright');
+const { isLoginPage } = require('../../../helpers');
 
 const cdpPort = process.argv.find(a => a.startsWith('--cdp-port='))?.split('=')[1] || '9222';
 const targetUrl = process.argv.find(a => a.startsWith('--url='))?.split('=')[1];
@@ -55,38 +56,27 @@ async function validate() {
       previousScreenshot = currentScreenshot;
     }
 
-    const text = await page.evaluate(() => document.body.innerText);
+    // Use shared login detection helper
+    const loginCheck = await isLoginPage(page);
 
-    // Conservative login detection: require MULTIPLE strong signals
-    // to reduce false positives where authenticated pages are misidentified
-    const hasPasswordField = text.includes('Enter your password') || text.includes('Password');
-    const hasSignInButton = /Sign in|Log in|Login/i.test(text);
-    const tooShort = text.length < 100;
-    const lacksNavigation = !text.includes('Home') && !text.includes('Dashboard') && !text.includes('Catalog');
-    const hasAuthenticatedIndicators = text.includes('Sign out') || text.includes('Log out') || text.includes('Profile') || text.includes('Settings');
-
-    // Only flag as login page if: (password field + sign-in button + lacks navigation) OR extremely short content
-    // Do NOT flag if authenticated indicators are present (user menu, logout button, etc.)
-    const likelyLoginPage = (hasPasswordField && hasSignInButton && lacksNavigation && !hasAuthenticatedIndicators) ||
-                            (tooShort && !hasAuthenticatedIndicators);
-
-    if (likelyLoginPage) {
+    if (loginCheck.isLogin) {
       // Take screenshot for visual verification before prompting user
       const screenshotPath = '.tmp/login-detection.png';
       await page.screenshot({ path: screenshotPath, fullPage: false });
 
       needsLogin = true;
       console.log('VALIDATION_FAILED: potential login page detected');
-      console.log('LOGIN_PAGE_URL:', page.url());
+      console.log('LOGIN_PAGE_URL:', loginCheck.url);
       console.log(`SCREENSHOT: ${screenshotPath}`);
-      console.log(`Detection: tooShort=${tooShort}, password=${hasPasswordField}, signIn=${hasSignInButton}, lacksNav=${lacksNavigation}, hasAuth=${hasAuthenticatedIndicators}`);
+      const s = loginCheck.signals;
+      console.log(`Detection: tooShort=${s.tooShort}, password=${s.hasPasswordField}, signIn=${s.hasSignInButton}, lacksNav=${s.lacksNavigation}, hasAuth=${s.hasAuthenticatedIndicators}`);
       console.log('');
       console.log('IMPORTANT: Check the screenshot to confirm this is actually a login page.');
       console.log('If the screenshot shows you are already logged in, this is a false positive.');
       console.log('Leaving page open. Re-run this script after confirming login state.');
     } else {
       console.log('VALIDATION_OK');
-      console.log(`Page loaded successfully. Content length: ${text.length} chars`);
+      console.log(`Page loaded successfully. Content length: ${loginCheck.signals.textLength} chars`);
     }
   } finally {
     // If login is needed, leave the page open so user can complete it.

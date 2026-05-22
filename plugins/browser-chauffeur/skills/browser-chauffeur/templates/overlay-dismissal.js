@@ -3,11 +3,13 @@
 // first-run overlays (Edge sync prompts, cookie banners, "What's new"
 // modals) that block the real UI and cause element waits to time out.
 //
-// MIRRORED IN templates/script-template.js — these same helpers are
-// inlined there so a copy-pasted script runs as a single file. If you
-// change `dismissOverlays` or `poll` here, update the inline copy in
-// script-template.js too. See the SELF-CONTAINED ON PURPOSE block at
-// the top of script-template.js for the full rationale.
+// RECOMMENDED USAGE: Import this module instead of copying:
+//
+//   const { dismissOverlays } = require('browser-chauffeur-helpers');
+//
+// This ensures all scripts automatically get improvements when this module
+// is updated. The old pattern of copying/inlining helpers meant improvements
+// never propagated to existing scripts.
 
 async function dismissOverlays(page) {
   const overlayButtons = [
@@ -20,16 +22,11 @@ async function dismissOverlays(page) {
     if (await btn.count()) {
       console.log('  Dismissing overlay...');
       await btn.first().click();
-      await poll(500);
+      // Wait for the button to actually disappear (state-based wait)
+      // instead of a fixed delay - follows Browser Chauffeur best practices
+      await btn.first().waitFor({ state: 'hidden', timeout: 2000 }).catch(() => {});
     }
   }
 }
 
-// Short delay between dismissals so overlay animations finish before we look
-// for the next one. Bounded (≤500ms) and only used in this small loop, so it
-// doesn't fall under the "no fixed delays" ban for general script logic.
-async function poll(ms) {
-  return new Promise(r => setTimeout(r, ms));
-}
-
-module.exports = { dismissOverlays, poll };
+module.exports = { dismissOverlays };
