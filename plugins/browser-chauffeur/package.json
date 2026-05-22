@@ -1,0 +1,9 @@
+{
+  "name": "browser-chauffeur-helpers",
+  "version": "1.0.0",
+  "description": "Shared utilities for browser automation scripts",
+  "main": "helpers.js",
+  "keywords": ["browser-automation", "playwright", "helpers"],
+  "author": "Russell Rutledge",
+  "license": "MIT"
+}

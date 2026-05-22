@@ -3,11 +3,12 @@
 // screenshot for debugging. The screenshots help diagnose whether the failure
 // was a login page, an overlay, a CAPTCHA, or something else.
 //
-// MIRRORED IN templates/script-template.js — this same helper is inlined
-// there so a copy-pasted script runs as a single file. If you change
-// `screenshotOnFailure` here, update the inline copy in script-template.js
-// too. See the SELF-CONTAINED ON PURPOSE block at the top of
-// script-template.js for the full rationale.
+// RECOMMENDED USAGE: Import this module instead of copying:
+//
+//   const { screenshotOnFailure } = require('browser-chauffeur-helpers');
+//
+// This ensures all scripts automatically get improvements when this module
+// is updated.
 
 const fs = require('fs');
 
