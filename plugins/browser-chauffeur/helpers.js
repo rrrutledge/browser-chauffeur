@@ -9,10 +9,11 @@
 
 const { dismissOverlays } = require('./skills/browser-chauffeur/templates/overlay-dismissal');
 const { screenshotOnFailure } = require('./skills/browser-chauffeur/templates/screenshot-on-failure');
-const { isLoginPage } = require('./skills/browser-chauffeur/templates/login-detection');
+const { isLoginPage, waitForLoadedOrLogin } = require('./skills/browser-chauffeur/templates/login-detection');
 
 module.exports = {
   dismissOverlays,
   screenshotOnFailure,
   isLoginPage,
+  waitForLoadedOrLogin,
 };
