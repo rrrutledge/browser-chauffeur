@@ -167,7 +167,77 @@ See `templates/cdp-session.js` for the full session setup pattern. Once you have
 
 **Signal you've hit this:** `page.mouse.click(x, y)` or `locator.click()` on an iframe's content executes without error but produces no visible navigation, no DOM change, and no network request.
 
-## Anti-Pattern 7: Tab Key Is Unreliable Across Cross-Origin Iframe Boundaries
+## Anti-Pattern 7: Exact Text Match Misses Fluent UI Buttons With Icon Glyphs
+
+**Problem:**
+```javascript
+// ❌ All of these consistently time out on Outlook, Teams, SharePoint, OneDrive:
+await page.getByRole('button', { name: 'Save', exact: true });
+await page.locator('button').filter({ hasText: /^Save$/ });
+const btn = await page.evaluate(() =>
+  [...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Save')
+);
+```
+
+**Why it fails:** Fluent UI renders icon buttons as:
+```html
+<button><span class="fui-Button__icon"><i class="fui-Icon-font" aria-hidden="true">…</i></span>Save</button>
+```
+The `<i>` tag uses a private-use Unicode font glyph. That character IS part of `textContent` even though it's invisible — so `trim()` doesn't remove it and exact-match patterns never satisfy. JSON serialization may strip the glyph, which hides the real prefix and makes debugging misleading.
+
+This applies to Outlook web, Teams web, SharePoint, OneDrive, and any other Microsoft 365 surface built on Fluent UI.
+
+**Solution — Filter on the icon-wrapped button shape, not exact text:**
+```javascript
+// ✅ Matches the Fluent UI button structure regardless of the glyph prefix
+const saveBtn = page.locator('button:has(span.fui-Button__icon)').filter({ hasText: 'Save' }).first();
+await saveBtn.click();
+```
+
+`filter({ hasText: '...' })` does a substring match on `textContent`, so the invisible glyph prefix doesn't matter. `:has(span.fui-Button__icon)` scopes the search to Fluent UI buttons specifically, avoiding spurious matches.
+
+---
+
+## Anti-Pattern 8: Confirmation Dialogs Without `role="dialog"`
+
+**Problem:**
+```javascript
+// ❌ Returns empty — the "Are you sure?" confirmation is on screen, but has no role attribute
+const dialogs = await page.evaluate(() =>
+  Array.from(document.querySelectorAll('[role="dialog"], [role="alertdialog"]'))
+    .filter(d => getComputedStyle(d).display !== 'none')
+    .map(d => d.innerText.slice(0, 100))
+);
+// dialogs === [] — handler skips the confirmation step, action never fires server-side
+```
+
+**Why it fails:** Not every confirmation dialog follows ARIA conventions. Some apps (including parts of Outlook web) render a centered `<div>` with a message and buttons but no `role` attribute on the container. Standard role-based detection misses it completely. The primary action never fires, and subsequent verification keeps showing the item as still present — which looks like the delete/move itself failed, not the confirmation step.
+
+**Signal you've hit this:** A click on a primary action produces no navigation, no network request, and no DOM change. The item appears unchanged after verification. Before assuming the click itself failed, **check for an undetected confirmation modal** — look at a screenshot first.
+
+**Solution — Broader modal detector by geometry when role attributes are absent:**
+```javascript
+const modalCandidates = await page.evaluate(() => {
+  return Array.from(document.querySelectorAll('div')).filter(el => {
+    const r = el.getBoundingClientRect();
+    if (r.width < 100 || r.height < 100) return false;
+    const centerish = r.left > 200 && r.right < window.innerWidth - 200
+                   && r.top > 100 && r.bottom < window.innerHeight - 100;
+    if (!centerish) return false;
+    const buttons = el.querySelectorAll('button');
+    return buttons.length >= 1 && buttons.length <= 5;
+  }).map(el => ({
+    text: el.innerText.slice(0, 200),
+    buttons: [...el.querySelectorAll('button')].map(b => b.textContent.trim()),
+  }));
+});
+```
+
+Filter the results by expected button text (e.g., `'OK'`, `'Delete'`, `'Confirm'`) to avoid false positives from unrelated centered widgets. Once found, click the button via Playwright's locator API — not `element.click()` inside evaluate (see Anti-Pattern 2).
+
+---
+
+## Anti-Pattern 9: Tab Key Is Unreliable Across Cross-Origin Iframe Boundaries
 
 **Problem:**
 ```javascript

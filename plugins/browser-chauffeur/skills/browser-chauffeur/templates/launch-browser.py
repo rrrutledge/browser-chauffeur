@@ -157,7 +157,7 @@ def run_persistent(url: str) -> int:
     time.sleep(3)  # Give browser time to start
 
     if not is_cdp_alive(port):
-        print(f"\n⚠️  ERROR: CDP port {port} did not bind!", file=sys.stderr)
+        print(f"\n[!] ERROR: CDP port {port} did not bind!", file=sys.stderr)
         print("This usually happens when Edge process sharing prevents --remote-debugging-port.", file=sys.stderr)
         print("\nTroubleshooting:", file=sys.stderr)
         print("1. Close ALL Edge windows (personal browser too)", file=sys.stderr)
@@ -169,7 +169,7 @@ def run_persistent(url: str) -> int:
 
     save_state(pid, port, PERSISTENT_PROFILE)
 
-    print(f"✓ {browser_name} on port {port} (PID {pid})")
+    print(f"[OK] {browser_name} on port {port} (PID {pid})")
     print(f"PID={pid}")
     print(f"PORT={port}")
     print(f"PROFILE_DIR={PERSISTENT_PROFILE}")

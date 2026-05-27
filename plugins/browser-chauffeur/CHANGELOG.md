@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.5.0] - 2026-05-27
+
+### Fixed
+- `launch-browser.py` no longer crashes on Windows (cp1252 consoles) when printing success/error status. Replaced `✓` and `⚠️` with ASCII equivalents `[OK]` and `[!]`. The browser launched fine — only the success print crashed, leaving callers without PORT/PID output.
+
+### Added
+- `cleanupStaleState(page)` helper in `templates/cleanup-stale-state.js` — call at the top of any multi-step batch script to clear leftover dialogs from a previous aborted run. Detects visible `[role="dialog"]`, `[role="alertdialog"]`, and `[role="menu"]` elements, clicks safe-close buttons in priority order (`Cancel` → `Discard` → `OK` → `Close`), falls back to Escape, loops until clear. Exported from `browser-chauffeur-helpers`.
+- `verifyAfterMutation(page, predicate, opts)` helper in `templates/verify-after-mutation.js` — safe post-mutation verification for SPAs with virtualized grids. Waits for networkidle, yields two animation frames so the render pass flushes, then retries the predicate up to N times before declaring failure. Exported from `browser-chauffeur-helpers`.
+- Anti-Pattern 7 in `anti-patterns.md`: **Fluent UI icon-button exact-match failures** — `getByRole('button', { name: 'Save', exact: true })` and `/^Save$/` regex filters consistently miss Fluent UI buttons because a private-use Unicode font glyph is prepended to `textContent`. Fix: use `page.locator('button:has(span.fui-Button__icon)').filter({ hasText: 'Save' }).first()`. Applies to Outlook web, Teams web, SharePoint, OneDrive.
+- Anti-Pattern 8 in `anti-patterns.md`: **Confirmation dialogs without `role` attribute** — some apps render centered `<div>` dialogs with no `role`, causing `[role="dialog"]` detection to return nothing and the confirmation step to be skipped silently. Fix: geometry-based modal detector (`getBoundingClientRect` centering check + button count). Signal: primary action click produces no navigation or network request.
+- SKILL.md Common Patterns now documents `cleanupStaleState` and `verifyAfterMutation` with usage guidance.
+
 ## [1.4.0] - 2026-05-27
 
 ### Fixed

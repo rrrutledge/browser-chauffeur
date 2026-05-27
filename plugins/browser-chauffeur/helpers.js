@@ -10,10 +10,14 @@
 const { dismissOverlays } = require('./skills/browser-chauffeur/templates/overlay-dismissal');
 const { screenshotOnFailure } = require('./skills/browser-chauffeur/templates/screenshot-on-failure');
 const { isLoginPage, waitForLoadedOrLogin } = require('./skills/browser-chauffeur/templates/login-detection');
+const { cleanupStaleState } = require('./skills/browser-chauffeur/templates/cleanup-stale-state');
+const { verifyAfterMutation } = require('./skills/browser-chauffeur/templates/verify-after-mutation');
 
 module.exports = {
   dismissOverlays,
   screenshotOnFailure,
   isLoginPage,
   waitForLoadedOrLogin,
+  cleanupStaleState,
+  verifyAfterMutation,
 };
