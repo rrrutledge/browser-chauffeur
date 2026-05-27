@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.4.0] - 2026-05-27
+
+### Fixed
+- `validate-target.js` no longer false-positives on logged-in SPAs that hydrate incrementally (Outlook, Teams, large React apps). Login detection now polls for up to 8s when body text is short but no password field is present, waiting for the app shell to render before declaring failure.
+
+### Added
+- `--target-anchor=<css-selector>` flag on `validate-target.js` to short-circuit polling as soon as a known app-shell element renders (e.g. `--target-anchor='[data-app-section="CalendarModuleSurface"]'` for Outlook calendar).
+- `waitForLoadedOrLogin(page, options)` helper exported from `browser-chauffeur-helpers` for any script that needs the same polling behavior. Single-shot `isLoginPage` is unchanged.
+
 ## [1.3.0] - 2026-05-19
 
 ### Fixed

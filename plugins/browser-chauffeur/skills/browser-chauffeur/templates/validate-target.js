@@ -3,17 +3,23 @@
 // launched. Catches expired sessions, login walls, and consent gates before
 // any real automation runs.
 //
-// Usage: node validate-target.js --cdp-port=9222 --url=https://example.com
+// Usage: node validate-target.js --cdp-port=9222 --url=https://example.com [--target-anchor=<selector>]
 //
 // On VALIDATION_OK, record the CDP port and pass it to subsequent scripts via
 // --cdp-port. On VALIDATION_FAILED (login page), use AskUserQuestion to prompt
 // the user to sign in (see User Intervention section in SKILL.md), then re-validate.
+//
+// --target-anchor: optional CSS selector for a known app-shell element on the
+// target site (e.g. '[data-app-section="CalendarModuleSurface"]' for Outlook).
+// When provided, the validator short-circuits the login-detection polling as
+// soon as the anchor becomes visible — useful for SPAs that hydrate slowly.
 
 const { chromium } = require('playwright');
-const { isLoginPage } = require('../../../helpers');
+const { waitForLoadedOrLogin } = require('../../../helpers');
 
 const cdpPort = process.argv.find(a => a.startsWith('--cdp-port='))?.split('=')[1] || '9222';
 const targetUrl = process.argv.find(a => a.startsWith('--url='))?.split('=')[1];
+const targetAnchor = process.argv.find(a => a.startsWith('--target-anchor='))?.split('=')[1] || null;
 
 if (!targetUrl) {
   console.error('Usage: node validate-target.js --cdp-port=<port> --url=<url>');
@@ -56,8 +62,10 @@ async function validate() {
       previousScreenshot = currentScreenshot;
     }
 
-    // Use shared login detection helper
-    const loginCheck = await isLoginPage(page);
+    // Use shared login detection helper with polling — SPAs (Outlook, Teams, etc.)
+    // hydrate incrementally and a single check right after navigation false-positives
+    // when body text is genuinely short at the moment of measurement.
+    const loginCheck = await waitForLoadedOrLogin(page, { anchorSelector: targetAnchor });
 
     if (loginCheck.isLogin) {
       // Take screenshot for visual verification before prompting user
@@ -70,13 +78,16 @@ async function validate() {
       console.log(`SCREENSHOT: ${screenshotPath}`);
       const s = loginCheck.signals;
       console.log(`Detection: tooShort=${s.tooShort}, password=${s.hasPasswordField}, signIn=${s.hasSignInButton}, lacksNav=${s.lacksNavigation}, hasAuth=${s.hasAuthenticatedIndicators}`);
+      console.log(`Waited ${loginCheck.waitedMs}ms for app shell to load before declaring failure.`);
       console.log('');
       console.log('IMPORTANT: Check the screenshot to confirm this is actually a login page.');
       console.log('If the screenshot shows you are already logged in, this is a false positive.');
+      console.log('If the target is a slow-hydrating SPA, re-run with --target-anchor=<css-selector>');
+      console.log('pointing at a known app-shell element to short-circuit detection.');
       console.log('Leaving page open. Re-run this script after confirming login state.');
     } else {
       console.log('VALIDATION_OK');
-      console.log(`Page loaded successfully. Content length: ${loginCheck.signals.textLength} chars`);
+      console.log(`Page loaded successfully. Content length: ${loginCheck.signals.textLength} chars (waited ${loginCheck.waitedMs}ms)`);
     }
   } finally {
     // If login is needed, leave the page open so user can complete it.

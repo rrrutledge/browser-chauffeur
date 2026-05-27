@@ -62,4 +62,60 @@ async function isLoginPage(page) {
   };
 }
 
-module.exports = { isLoginPage };
+/**
+ * Polling wrapper around isLoginPage for SPAs that hydrate incrementally.
+ *
+ * Single-shot isLoginPage runs immediately after page load and can false-positive
+ * on logged-in SPAs (Outlook, Teams, large React apps) whose body text is genuinely
+ * short at the moment of measurement. This helper retries the check until either:
+ *   - login signals clear (text crosses threshold, auth indicators appear), OR
+ *   - the optional anchorSelector renders (definitive "app shell is up"), OR
+ *   - the maxWaitMs window expires.
+ *
+ * Short-circuits in two cases without polling:
+ *   - First check already says not-login → returns immediately.
+ *   - First check finds an actual <input type="password">/"Enter your password" →
+ *     it's a real login form, no point waiting.
+ *
+ * @param {Page} page - Playwright page object
+ * @param {object} [options]
+ * @param {number} [options.maxWaitMs=8000] - Total polling budget in ms
+ * @param {number} [options.pollMs=1000] - Delay between polls in ms
+ * @param {string|null} [options.anchorSelector=null] - Optional CSS selector for a
+ *   known app-shell element. If it becomes visible, treat the page as loaded.
+ * @returns {Promise<{isLogin: boolean, signals: object, url: string, waitedMs: number}>}
+ *
+ * @example
+ *   const result = await waitForLoadedOrLogin(page, {
+ *     anchorSelector: '[data-app-section="CalendarModuleSurface"]'
+ *   });
+ *   if (result.isLogin) { ... }
+ */
+async function waitForLoadedOrLogin(page, { maxWaitMs = 8000, pollMs = 1000, anchorSelector = null } = {}) {
+  const start = Date.now();
+  let result = await isLoginPage(page);
+
+  if (!result.isLogin) return { ...result, waitedMs: 0 };
+  if (result.signals.hasPasswordField) return { ...result, waitedMs: 0 };
+
+  const deadline = start + maxWaitMs;
+  while (Date.now() < deadline) {
+    await new Promise(r => setTimeout(r, pollMs));
+
+    if (anchorSelector) {
+      const hasAnchor = await page.locator(anchorSelector).first().isVisible().catch(() => false);
+      if (hasAnchor) {
+        result = await isLoginPage(page);
+        return { ...result, waitedMs: Date.now() - start };
+      }
+    }
+
+    result = await isLoginPage(page);
+    if (!result.isLogin) return { ...result, waitedMs: Date.now() - start };
+    if (result.signals.hasPasswordField) return { ...result, waitedMs: Date.now() - start };
+  }
+
+  return { ...result, waitedMs: Date.now() - start };
+}
+
+module.exports = { isLoginPage, waitForLoadedOrLogin };
