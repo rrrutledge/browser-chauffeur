@@ -62,6 +62,25 @@ instructions: |-
 
   ---
 
+  ## Verifying mutations (read-after-write)
+
+  Trello's bulk `GET /boards/{id}/cards` endpoint can return STALE `idLabels` (and other card fields) for some time after a mutation — observed in practice as recently-added labels not appearing in bulk reads even when correctly applied. The per-card endpoint `GET /cards/{id}` is authoritative and returns fresh data immediately.
+
+  After any mutation (label add/remove, comment, card move, etc.), verify with a per-card GET — never re-fetch bulk board cards to check whether a mutation took effect:
+
+  ```python
+  trello_request('POST', f"/cards/{card_id}/idLabels", session, body={'value': label_id})
+  for attempt in range(3):
+      time.sleep(0.5)
+      check = trello_request('GET', f"/cards/{card_id}", session, params={'fields': 'idLabels'})
+      if label_id in check.get('idLabels', []):
+          break
+  ```
+
+  This pattern also doubles as a free retry — Trello mutations occasionally fail silently (no exception raised) and a re-POST resolves it.
+
+  ---
+
   ## Label colors
 
   `green`, `yellow`, `orange`, `red`, `purple`, `blue`, `sky`, `lime`, `pink`, `black`
