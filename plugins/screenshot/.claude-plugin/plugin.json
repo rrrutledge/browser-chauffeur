@@ -1,0 +1,9 @@
+{
+  "name": "screenshot",
+  "version": "1.0.0",
+  "description": "Auto-loads the most recent Windows screenshot when user references a screenshot without providing a file path",
+  "author": "Russell Rutledge",
+  "skills": [
+    "skills/screenshot"
+  ]
+}
