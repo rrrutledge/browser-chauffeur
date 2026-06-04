@@ -1,0 +1,9 @@
+{
+  "name": "teams-message",
+  "version": "1.0.0",
+  "description": "Draft Teams messages via browser automation (instruction-driven, never sends)",
+  "author": "Russell Rutledge",
+  "skills": [
+    "skills/teams-message"
+  ]
+}
