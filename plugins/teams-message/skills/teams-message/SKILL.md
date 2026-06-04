@@ -1,11 +1,11 @@
 ---
 name: teams-message
-description: Draft a Teams message to a person via browser automation. Creates a draft in the correct 1:1 chat but NEVER sends. Use browser-chauffeur to execute the steps in this spec.
+description: Draft a Teams message via browser automation. Creates a draft in the correct chat but NEVER sends. Use browser-chauffeur to execute the steps in this spec.
 ---
 
 # Teams Message Drafting
 
-Draft a personalized message into a Microsoft Teams 1:1 chat. The message is typed into the compose box but **NEVER sent** — it's left as a draft for review.
+Draft a personalized message into a Microsoft Teams chat. The message is typed into the compose box but **NEVER sent** — it's left as a draft for review.
 
 ## How to execute this command
 
@@ -24,7 +24,7 @@ You need:
 
 ## Output
 
-A draft message in the recipient's 1:1 chat on Teams, visible in the compose box with a "Draft" badge. The message is NOT sent.
+A draft message in the recipient's chat on Teams, visible in the compose box with a "Draft" badge. The message is NOT sent.
 
 ## Invariants (ALWAYS true — load-bearing, survives UI changes)
 
@@ -45,7 +45,7 @@ Declare success only by reading the composer back: expected key phrases present 
 Enter sends the message. Soft breaks are **Shift+Enter**. (Enter inside the Ctrl+K link dialog is fine — that's the dialog, not the composer.)
 
 ### 5. Name tolerance
-Dev Portal name (`Matthew`) may differ from the Teams display name (`Matt`). Match on **last name + first-name prefix** (4+ chars), not exact first name.
+A person's formal name (`Matthew`) may differ from their Teams display name (`Matt`). Match on **last name + first-name prefix** (4+ chars), not exact first name.
 
 ### 6. Pick the loaded Teams tab
 Browser-chauffeur can spawn multiple Teams tabs, including blank/loading ones. The script should select the Teams page with the **largest `document.body.innerText` length** (loaded app ≈ 9000+ chars), not just the first match.
@@ -143,7 +143,7 @@ When browser-chauffeur detects an error:
 ## Teams UI quirks (observed 2026-06)
 
 - **Search delay:** Person results don't appear instantly — poll with ~500ms sleep, timeout at 15s.
-- **Name mismatch:** Dev Portal "Matthew" vs Teams "Matt" — match last name + first-name prefix.
+- **Name mismatch:** Formal name ("Matthew") may differ from Teams display ("Matt") — match last name + first-name prefix.
 - **Multi-tab:** Teams tabs can be blank/loading (BODYLEN ~0–100) — pick the one with largest body text.
 - **Drafts persist** per conversation (Teams shows a "Draft" badge) but only within the live browser session — send before signing out.
 

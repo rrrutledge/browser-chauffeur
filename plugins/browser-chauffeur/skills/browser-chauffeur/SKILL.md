@@ -261,13 +261,13 @@ Some SPAs (Articulate Rise, OpenSesame, content platforms) load page sections as
 
 5. Report what was accomplished to the user. Base your report on what you read from the final page state — do not summarize from memory or inference. If specific values were requested (a title, a field value, a count), quote them directly from the page content.
 
-6. **For recurring browser automation needs, create an instruction-driven spec (like `calendar-carryforward`) instead of a monolithic script.** Write a SKILL.md file that documents:
+6. **For recurring browser automation needs, create an instruction-driven spec instead of a monolithic script.** Write a SKILL.md file that documents:
    - Business rules (what to do)
    - Invariants (load-bearing truths that survive UI changes)
    - Selectors (last-known-good hints that may drift)
    - Safety rails
    
-   Then browser-chauffeur creates ad-hoc scripts in `.tmp/` as needed during execution, adapting when selectors drift. This pattern is more resilient than a single brittle script that tries to anticipate every UI quirk in advance. See `calendar-carryforward` and `teams-message` skills as examples.
+   Then browser-chauffeur creates ad-hoc scripts in `.tmp/` as needed during execution, adapting when selectors drift. This pattern is more resilient than a single brittle script that tries to anticipate every UI quirk in advance. See the `teams-message` skill as an example of this pattern.
 
 **Exception:** If the task ended in a failure that requires user intervention (Phase 4 escalation), leave the browser AND tab open so the user can see and interact with the current state.
 
