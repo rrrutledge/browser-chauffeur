@@ -24,6 +24,21 @@
       "name": "marketing-confluence-page",
       "source": "./plugins/marketing-confluence-page",
       "description": "Create marketing-style Confluence pages with alternating two-column sections (text + image), a hero intro, and a full-width CTA. Used for feature announcements, onboarding guides, and platform documentation."
+    },
+    {
+      "name": "teams-message",
+      "source": "./plugins/teams-message",
+      "description": "Draft Teams messages via browser automation (instruction-driven, never sends)."
+    },
+    {
+      "name": "document-authoring",
+      "source": "./plugins/document-authoring",
+      "description": "Russell's personal style conventions for authoring or editing documents and messages with links or formatted prose."
+    },
+    {
+      "name": "screenshot",
+      "source": "./plugins/screenshot",
+      "description": "Auto-loads the most recent Windows screenshot when user references a screenshot without providing a file path."
     }
   ]
 }
