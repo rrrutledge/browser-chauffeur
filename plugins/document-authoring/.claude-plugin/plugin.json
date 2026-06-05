@@ -2,8 +2,7 @@
   "name": "document-authoring",
   "version": "1.0.0",
   "description": "Russell's personal style conventions for authoring or editing documents and messages with links or formatted prose",
-  "author": "Russell Rutledge",
-  "skills": [
-    "skills/document-authoring"
-  ]
+  "author": {
+    "name": "Russell Rutledge"
+  }
 }
