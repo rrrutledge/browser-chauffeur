@@ -129,6 +129,33 @@ def get_board_cards(board_id, session):
     return trello_request('GET', f'/boards/{board_id}/cards', session)
 
 
+def find_card_by_name(board_id, name, session):
+    """Return the first card on the board whose name matches exactly, else None.
+
+    Template cards (isTemplate=true) are included in this listing, so this also
+    finds template/source cards by name.
+    """
+    for card in get_board_cards(board_id, session):
+        if card['name'] == name:
+            return card
+    return None
+
+
+def create_card_from_template(list_id, template_card_id, name, session, keep='checklists'):
+    """Create a card copying content from a template/source card.
+
+    Uses Trello's idCardSource + keepFromSource. `keep` is 'all', 'none', or a
+    comma-separated list e.g. 'checklists,labels,attachments,due'. Defaults to
+    copying checklists only.
+    """
+    return trello_request('POST', '/cards', session, body={
+        'idList': list_id,
+        'name': name,
+        'idCardSource': template_card_id,
+        'keepFromSource': keep,
+    })
+
+
 def get_board_labels(board_id, session):
     return trello_request('GET', f'/boards/{board_id}/labels', session)
 

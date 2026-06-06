@@ -24,6 +24,7 @@ instructions: |-
       get_board_lists, get_board_cards, get_board_labels,
       create_card, update_card, delete_card,
       create_label, add_label_to_card, get_or_create_list,
+      find_card_by_name, create_card_from_template,
   )
   ```
 
@@ -49,6 +50,35 @@ instructions: |-
   checklist = trello_request('POST', '/checklists', session, body={'idCard': card_id, 'name': 'Actions'})
   trello_request('POST', f'/checklists/{checklist["id"]}/checkItems', session, body={'name': 'Contact identified', 'pos': 'bottom'})
   ```
+
+  ---
+
+  ## Card templates
+
+  Some boards keep **template cards** — real cards flagged `isTemplate: true` that
+  hold a reusable description and set of checklists. The template *definition lives
+  on the board itself*, not in code: to change the process, edit the template card
+  in Trello. This skill only knows how to *apply* a template.
+
+  Which boards have templates, the template card names, and when to apply each one
+  are board-specific — read CLAUDE.local.md.
+
+  To create a new card from a template, copying its checklists:
+
+  ```python
+  tpl = find_card_by_name(board_id, 'TEMPLATE: Sponsorship Renewal', session)
+  card = create_card_from_template(list_id, tpl['id'], 'Acme Sponsorship Renewal 2027', session)
+  # keep defaults to 'checklists'; pass keep='checklists,labels,attachments' for more
+  ```
+
+  Template cards are returned by `get_board_cards` like any other card (flagged
+  `isTemplate`), so filter them out when iterating real cards:
+  `[c for c in get_board_cards(...) if not c.get('isTemplate')]`.
+
+  **API-first, browser fallback:** the official REST API (`idCardSource` +
+  `keepFromSource`) copies checklists reliably — no browser needed. If Trello ever
+  changes and the API path fails, fall back to browser-chauffeur to copy the
+  template card in the UI.
 
   ---
 
