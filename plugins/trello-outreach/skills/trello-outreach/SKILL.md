@@ -75,11 +75,6 @@ instructions: |-
   `isTemplate`), so filter them out when iterating real cards:
   `[c for c in get_board_cards(...) if not c.get('isTemplate')]`.
 
-  **API-first, browser fallback:** the official REST API (`idCardSource` +
-  `keepFromSource`) copies checklists reliably — no browser needed. If Trello ever
-  changes and the API path fails, fall back to browser-chauffeur to copy the
-  template card in the UI.
-
   ---
 
   ## Verification output
