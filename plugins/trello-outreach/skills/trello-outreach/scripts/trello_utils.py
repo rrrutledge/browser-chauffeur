@@ -85,6 +85,15 @@ def get_board_lists(board_id, session):
     return trello_request('GET', f'/boards/{board_id}/lists', session)
 
 
+def resolve_board_id(board_id, session):
+    """Return the full 24-char board id. Most read endpoints accept the short
+    link (e.g. 'hpvdRw3G'), but some writes (POST /lists) reject it with
+    400 'invalid value for idBoard'. Call this before such writes."""
+    if len(board_id) == 24:
+        return board_id
+    return trello_request('GET', f'/boards/{board_id}', session, params={'fields': 'id'})['id']
+
+
 def get_or_create_list(board_id, list_name, session):
     lists = get_board_lists(board_id, session)
     for lst in lists:
@@ -92,7 +101,7 @@ def get_or_create_list(board_id, list_name, session):
             return lst['id']
     result = trello_request('POST', '/lists', session, body={
         'name': list_name,
-        'idBoard': board_id,
+        'idBoard': resolve_board_id(board_id, session),
     })
     return result['id']
 
