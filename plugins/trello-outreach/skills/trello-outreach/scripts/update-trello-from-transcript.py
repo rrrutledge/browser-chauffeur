@@ -39,7 +39,7 @@ Fields:
 - updates: Array of update actions (required)
 
 Search types:
-- name (default): Search card names and descriptions for keywords
+- name (default): Search card names, descriptions, and label names for keywords
 - label: Find all cards with a label matching the search term (case-insensitive)
 
 Actions:
@@ -61,10 +61,12 @@ from trello_utils import (
     update_card
 )
 
-def search_card_by_name(cards, search_terms):
-    """Find card matching any of the search terms in name/description."""
+def search_card_by_name(cards, search_terms, labels=None):
+    """Find card matching any of the search terms in name, description, or label names."""
+    label_map = {l['id']: l.get('name', '').lower() for l in (labels or [])}
     for card in cards:
-        card_text = (card['name'] + ' ' + card.get('desc', '')).lower()
+        card_label_names = ' '.join(label_map.get(lid, '') for lid in card.get('idLabels', []))
+        card_text = (card['name'] + ' ' + card.get('desc', '') + ' ' + card_label_names).lower()
         if any(term.lower() in card_text for term in search_terms):
             return card
     return None
@@ -159,7 +161,7 @@ def main():
         if search_type == 'label':
             target_cards = search_cards_by_label(cards, labels, update['search'])
         else:  # 'name' or default
-            single_card = search_card_by_name(cards, update['search'])
+            single_card = search_card_by_name(cards, update['search'], labels)
             target_cards = [single_card] if single_card else []
 
         if not target_cards:
