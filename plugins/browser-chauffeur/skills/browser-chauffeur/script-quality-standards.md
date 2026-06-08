@@ -65,7 +65,7 @@ Use `aria-label`, `role`, visible text — **never CSS class selectors** (they c
 
 ## ✅ REQUIRED: Browser Connection
 
-Scripts receive `--cdp-port=<port>` from Claude. Connect with `chromium.connectOverCDP('http://localhost:<port>')` — no browser detection logic in scripts. They do **not** contain browser detection, fallback, or login validation — that is handled by Claude interactively during Phase 0 before any script runs.
+Scripts receive `--cdp-port=<port>` from Claude. Connect with the hardened `connectBrowser()` helper from `script-template.js`, which wraps `chromium.connectOverCDP('http://localhost:<port>')` in a 30s `Promise.race` timeout — **never call `connectOverCDP` bare**, or the script can hang forever when the persistent profile is overloaded or has a wedged renderer (see SKILL.md "Resilient Connection"). No browser detection logic in scripts. They do **not** contain browser detection, login validation, or the Edge/Chrome fallback — that is handled by Claude interactively during Phase 0 before any script runs.
 
 ## ✅ REQUIRED: Navigation
 
@@ -78,3 +78,4 @@ Scripts must navigate to their target URL themselves — don't assume the browse
 - Use `page.route()` for request interception (not `frame.route()` — it doesn't exist)
 - Include `dismissOverlays(page)` after navigation (see Common Patterns in SKILL.md)
 - Save a diagnostic screenshot in catch blocks (see Common Patterns in SKILL.md)
+- Create tabs with `openTab(context, url)` and close them with `closeTab(page)` in `finally` (not bare `context.newPage()`/`page.close()`) — these bundle tab registration so a crash can't leak an un-reclaimable tab (see Resilient Connection in SKILL.md). The `script-template.js` reference already does this.

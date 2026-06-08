@@ -8,18 +8,45 @@
 // survive. The finally block guards against closing the last tab (which would
 // exit the browser and lose all sessions).
 
-const { chromium } = require('playwright');
+const { chromium } = (() => {
+  try { return require('playwright-core'); }
+  catch { return require(require('path').join(require('os').homedir(), '.claude', 'browser-chauffeur', 'node_modules', 'playwright-core')); }
+})();
 const fs = require('fs');
 
-// Import shared helpers from browser-chauffeur templates
-// This ensures scripts automatically get improvements when helpers are updated
-const { dismissOverlays } = require('browser-chauffeur-helpers');
+const { dismissOverlays, openTab, closeTab } = (() => {
+  try { return require('browser-chauffeur-helpers'); }
+  catch { return require(require('path').join(require('os').homedir(), '.claude', 'browser-chauffeur', 'node_modules', 'browser-chauffeur-helpers')); }
+})();
 
 // --- browser connection ---
 const cdpPort = process.argv.find(a => a.startsWith('--cdp-port='))?.split('=')[1] || '9222';
 
+// connectOverCDP auto-attaches to EVERY open target to build its page tree. On a
+// persistent profile that has accumulated many tabs — or has a single wedged
+// renderer — that enumeration can hang indefinitely (Playwright's own `timeout`
+// option only bounds the socket connect, not post-connect target enumeration).
+// Race it against a hard timeout so a wedged browser fails fast with an
+// actionable error instead of hanging forever.
+const CONNECT_TIMEOUT_MS = 30000;
+
 async function connectBrowser() {
-  return chromium.connectOverCDP(`http://localhost:${cdpPort}`);
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(
+        `connectOverCDP did not complete within ${CONNECT_TIMEOUT_MS}ms on port ${cdpPort}. ` +
+        `The persistent profile likely has too many open tabs or a wedged renderer. ` +
+        `Reset the profile with cleanup-browser.py --reset (then re-launch and log in again), or retry.`
+      )),
+      CONNECT_TIMEOUT_MS,
+    );
+  });
+  try {
+    return await Promise.race([chromium.connectOverCDP(`http://localhost:${cdpPort}`), timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // --- screenshotOnFailure helper ---
@@ -38,7 +65,9 @@ async function run() {
   const context = contexts.length > 1
     ? (contexts.find(ctx => ctx.pages().some(p => p.url().startsWith('http'))) ?? contexts[0])
     : (contexts[0] ?? await browser.newContext());
-  const page = await context.newPage();
+  // openTab creates the tab AND registers it in one step, so a later launch can
+  // reclaim it if this script crashes before closeTab runs (see tab-registry.js).
+  const page = await openTab(context);
 
   const results = { succeeded: [], failed: [] };
 
@@ -76,12 +105,10 @@ async function run() {
     await screenshotOnFailure(context, 'run-failed');
     throw e;
   } finally {
-    const allPages = context.pages();
-    if (allPages.length > 1) {
-      await page.close().catch(() => {});
-    } else {
-      await page.goto('about:blank').catch(() => {});
-    }
+    // closeTab closes (or parks, if it's the last tab) AND unregisters in one
+    // step. Reaching finally means this tab is not an orphan; only tabs whose
+    // script crashed before this point stay registered for the sweep to reclaim.
+    await closeTab(page);
     await browser.close().catch(() => {});
   }
 }

@@ -1,5 +1,54 @@
 # Changelog
 
+## [1.8.0] - 2026-06-08
+
+Makes `connectOverCDP` reliable on the persistent profile by addressing the root cause — tab accumulation — instead of only the symptom.
+
+### Added
+- **Orphan-tab sweep.** `launch-browser.py` now reclaims tabs left behind by chauffeur scripts that crashed before cleanup. New `templates/tab-registry.js` records each created tab's CDP `targetId` and the creating process's PID in `~/.claude/browser-chauffeur/created-tabs.json`. On every reuse, the launcher closes a tracked tab **only when its creating process is gone** (a genuine orphan), via the raw CDP HTTP `/json/close` endpoint (which never auto-attaches, so it can't hang). It never touches an active session's tab, never touches tabs the user opened (those are never registered), and never closes the browser's last page. This keeps the open-target count low so `connectOverCDP` stays fast and reliable.
+- **`openTab(context, url)` / `closeTab(page)` helpers** (exported from `browser-chauffeur-helpers`) bundle tab creation with registration and tab close with unregistration, so a script can't open a tab without making it reclaimable or close one without cleaning up the registry. `registerTab`/`unregisterTab` remain available as lower-level primitives. `closeTab` also parks on `about:blank` instead of closing when it's the browser's last tab, so it never exits the persistent browser.
+- `script-template.js` uses `openTab`/`closeTab` (self-cleanup on every run; the sweep is the backstop for crashes).
+
+### Fixed
+- `connectOverCDP` no longer hangs indefinitely when the persistent profile is overloaded or has a wedged renderer. Playwright auto-attaches to every open target to build its page tree, and one stuck renderer blocks the whole handshake past any timeout (Playwright's own `{ timeout }` bounds only the socket connect, not target enumeration). `connectBrowser()` in `script-template.js` now races the connect against a 30s hard `Promise.race` timeout as a backstop, so it fails fast with an actionable error instead of hanging forever.
+- Removed dangerous recovery guidance. The previous draft told the AI to run `cleanup-browser.py --reset` on a connect timeout — which kills the shared browser for **every** concurrent session and wipes all logins. Recovery is now non-destructive: re-run the launcher (sweeps orphans), retry once, then escalate to the user; never auto-reset the shared browser to fix one's own connect.
+
+### Changed
+- SKILL.md — Phase 0 documents the automatic sweep; new "Resilient Connection" section explains the root-cause + backstop design; Phase 3 tab-cleanup and the Phase 4 recovery branch updated for the registry and non-destructive recovery.
+- `script-quality-standards.md` — scripts must use the hardened `connectBrowser()` wrapper and register/unregister tabs they create.
+
+## [1.7.1] - 2026-06-04
+
+### Changed
+- SKILL.md Phase 3 Step 6: replaced "write a reusable script using `script-template.js`" with guidance to create an instruction-driven spec (SKILL.md with business rules, invariants, selectors, safety rails) for recurring automation needs. Browser-chauffeur creates ad-hoc scripts in `.tmp/` that adapt when selectors drift, rather than a single brittle monolith. See the `teams-message` skill as an example.
+
+## [1.7.0] - 2026-05-29
+
+### Fixed
+- Scripts no longer fail with `Cannot find module 'playwright'` on machines where playwright is not installed in the current project. `playwright-core` (the lightweight API-only package) is now auto-installed to `~/.claude/browser-chauffeur/` on first use via the new `setup.js` script, and all templates fall back to that location when the package is not found in the local `node_modules`.
+- Switched from `playwright` (full package including bundled browser binaries) to `playwright-core` (API only). Browser-chauffeur connects to an existing Edge/Chrome via CDP — it never launches browsers through Playwright — so the full package was unnecessary.
+
+### Added
+- `templates/setup.js` — new one-time setup script. Installs `playwright-core` to `~/.claude/browser-chauffeur/` if not already accessible, and creates a `browser-chauffeur-helpers` shim in the same location. The SKILL.md prerequisite check now runs this script instead of a bare `require` check.
+
+### Changed
+- SKILL.md prerequisite check replaced with `node setup.js` — self-healing, no manual `npm install` needed.
+- README prerequisite section corrected: removed the incorrect "Requires the playwright MCP plugin" instruction. `playwright-core` is handled automatically.
+- HELPERS.md setup section rewritten: removed the hardcoded `npm link` and WellSky-specific path instructions; describes the auto-install mechanism instead.
+
+## [1.6.0] - 2026-05-28
+
+### Changed
+- **BREAKING:** `validate-target.js` renamed to `snapshot-target.js`. The script no longer decides whether the user is logged in — it navigates, waits for URL/network/DOM stability, saves a screenshot, and prints `SCREENSHOT: <path>` + `FINAL_URL: <url>`. The caller (Claude) reads the screenshot with the Read tool and decides. Replaces the previous `VALIDATION_OK` / `VALIDATION_FAILED: potential login page detected` verdict. Output marker changed from `VALIDATION_READY` to `SNAPSHOT_READY`.
+- SKILL.md Phase 0 Step 2 rewritten: always read the screenshot — no false-positive recovery branch needed because there is only one decision point (the LLM looking at the screenshot).
+- Added `--target-anchor` short-circuit using `locator.waitFor({ state: 'visible' })` for slow-hydrating SPAs.
+- Added `waitForUrlStable` inside `snapshot-target.js` (no consecutive URL changes for 2.5s, max 15s). Handles transient SSO pages (Okta "Verifying your identity") that would otherwise be screenshotted mid-redirect.
+
+### Removed
+- **BREAKING:** `templates/login-detection.js` deleted entirely. The `isLoginPage(page)` and `waitForLoadedOrLogin(page, options)` helpers no longer export from `browser-chauffeur-helpers`.
+  - **Why:** text/DOM heuristics produced both false positives (slow-hydrating SPAs flagged as login pages) and false negatives. Two real-world misses: Trello's "Sign up to see this board" wall has no password field and >100 chars so the detector said "not login"; Okta's "Verifying your identity" SSO transit page has 190 chars (above the too-short threshold) and no password field so the detector also said "not login." Both required user intervention but slipped through as `VALIDATION_OK`.
+  - **Migration:** screenshot the page and let the LLM inspect it. For start-of-flow: use `snapshot-target.js` — output is a screenshot path + final URL, and the chauffeur decides. For mid-flow session-expiry checks: `await page.screenshot({ path })` + `console.log` the path; the recovery loop reads it.
+
 ## [1.5.0] - 2026-05-27
 
 ### Fixed
@@ -7,7 +56,7 @@
 
 ### Added
 - `cleanupStaleState(page)` helper in `templates/cleanup-stale-state.js` — call at the top of any multi-step batch script to clear leftover dialogs from a previous aborted run. Detects visible `[role="dialog"]`, `[role="alertdialog"]`, and `[role="menu"]` elements, clicks safe-close buttons in priority order (`Cancel` → `Discard` → `OK` → `Close`), falls back to Escape, loops until clear. Exported from `browser-chauffeur-helpers`.
-- `verifyAfterMutation(page, predicate, opts)` helper in `templates/verify-after-mutation.js` — safe post-mutation verification for SPAs with virtualized grids. Waits for networkidle, yields two animation frames so the render pass flushes, then retries the predicate up to N times before declaring failure. Exported from `browser-chauffeur-helpers`.
+- `verifyAfterMutation(page, predicate, opts)` helper in `templates/verify-after-mutation.js` — safe post-mutation verification for SPAs with virtualized grids. Waits a settle period then retries the predicate up to N times before declaring failure. Prevents false negatives from checking DOM before the SPA's render pass flushes. Exported from `browser-chauffeur-helpers`.
 - Anti-Pattern 7 in `anti-patterns.md`: **Fluent UI icon-button exact-match failures** — `getByRole('button', { name: 'Save', exact: true })` and `/^Save$/` regex filters consistently miss Fluent UI buttons because a private-use Unicode font glyph is prepended to `textContent`. Fix: use `page.locator('button:has(span.fui-Button__icon)').filter({ hasText: 'Save' }).first()`. Applies to Outlook web, Teams web, SharePoint, OneDrive.
 - Anti-Pattern 8 in `anti-patterns.md`: **Confirmation dialogs without `role` attribute** — some apps render centered `<div>` dialogs with no `role`, causing `[role="dialog"]` detection to return nothing and the confirmation step to be skipped silently. Fix: geometry-based modal detector (`getBoundingClientRect` centering check + button count). Signal: primary action click produces no navigation or network request.
 - SKILL.md Common Patterns now documents `cleanupStaleState` and `verifyAfterMutation` with usage guidance.

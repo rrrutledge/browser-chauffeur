@@ -22,8 +22,17 @@
  * The ws package is bundled with playwright-core — no extra npm install needed.
  */
 
-const { ws: WebSocket } = require('playwright-core/lib/utilsBundle');
 const http = require('http');
+const os = require('os');
+const path = require('path');
+
+let WebSocket;
+try {
+  ({ ws: WebSocket } = require('playwright-core/lib/utilsBundle'));
+} catch {
+  const pwPath = path.join(os.homedir(), '.claude', 'browser-chauffeur', 'node_modules', 'playwright-core');
+  ({ ws: WebSocket } = require(path.join(pwPath, 'lib', 'utilsBundle')));
+}
 
 function httpJson(url) {
   return new Promise((resolve, reject) => {

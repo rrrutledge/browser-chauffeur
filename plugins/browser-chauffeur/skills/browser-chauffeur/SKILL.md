@@ -11,7 +11,7 @@ description: |-
   - Creating or running browser automation scripts
   - You determine that visiting a website would help answer the user's question or complete their task
   
-  This skill handles persistent browser launch, login session reuse across tasks, CDP setup, and autonomous error recovery. Never use MCP playwright tools or navigate websites directly - always invoke browser-chauffeur first.
+  This skill handles persistent browser launch, login session reuse across tasks, CDP setup, and autonomous error recovery. Always invoke browser-chauffeur first — never navigate websites directly without it.
   
   Examples that REQUIRE this skill:
   - User asks: "Check if Jim has access to the dev environment in Okta admin"
@@ -29,12 +29,23 @@ You are operating the browser on the user's behalf. You are the chauffeur — yo
 
 Every task uses the same flow: ensure a persistent Edge or Chrome browser is running with CDP enabled, validate that the target page loads, write or run a Node.js script that connects via `playwright.chromium.connectOverCDP(...)`, watch the output, and recover autonomously if anything fails. The persistent browser keeps its profile across tasks, so logins and sessions survive — the user signs in once, and all subsequent tasks reuse those sessions.
 
+## Two usage modes
+
+**One-off or exploratory tasks** — Browser-chauffeur executes the task directly. It generates an ad-hoc script in `.tmp/`, runs it, watches for errors, and recovers autonomously. The script is disposable — it lives in `.tmp/` and is not committed anywhere.
+
+**Recurring automation** — Create an instruction-driven spec: a SKILL.md file that documents the business rules, invariants, selectors (as last-known-good hints), and safety rails. Each time the skill is invoked, browser-chauffeur generates a fresh ad-hoc script in `.tmp/` from those instructions. This is more resilient than a committed script because selectors that drift get fixed in the spec, not by patching a brittle committed file. See `teams-message` as an example. **Do not commit browser automation scripts** — commit the spec (SKILL.md), not the generated scripts.
+
 ## Prerequisite Check
 
-Verify `node` and the `playwright` npm package are available:
+Verify Node.js is available and run the setup script to ensure `playwright-core` and the helpers shim are installed:
+
 ```bash
-node --version && node -e "require('playwright'); console.log('ok')"
+node --version && node plugins/browser-chauffeur/skills/browser-chauffeur/templates/setup.js
 ```
+
+The setup script installs `playwright-core` to `~/.claude/browser-chauffeur/` if it is not already accessible, and writes a `browser-chauffeur-helpers` shim there so all scripts can find their dependencies via a fallback path — no manual `npm install` or `npm link` required. If the user already has `playwright-core` in their project `node_modules`, setup detects that and skips the install.
+
+Adjust `plugins/browser-chauffeur/...` to the actual path where the skill is mounted if needed.
 
 ---
 
@@ -50,6 +61,8 @@ python plugins/browser-chauffeur/skills/browser-chauffeur/templates/launch-brows
 
 Adjust the path to wherever your skill is mounted. This auto-detects Edge first (better Windows SSO integration), falls back to Chrome, and manages port selection and profile automatically. If a persistent browser is already running, it prints the existing connection info and exits immediately. If not, it launches a new one with a persistent profile at `~/.claude/browser-chauffeur/profile/`. The state is stored globally at `~/.claude/browser-chauffeur/state.json` so all Claude instances can discover and reuse the same browser.
 
+**Automatic orphan-tab sweep.** When reusing an existing browser, this script first reclaims any tabs left behind by chauffeur scripts that crashed before cleaning up (it closes a tracked tab only when the process that created it is gone — never an active session's tab, never a tab the user opened). This keeps the open-target count low so `connectOverCDP` stays fast and reliable (see **Resilient Connection**). It is automatic and safe — you don't invoke it directly.
+
 **Save the PORT from the output** — you'll pass it to scripts via `--cdp-port`. The PID and PROFILE_DIR are printed for diagnostics but you don't need to track them — the browser stays running and the profile persists.
 
 If the script reports "Reusing existing browser," CDP is already responding — skip the wait. If it launched a fresh browser, wait 3–5s then verify:
@@ -63,28 +76,47 @@ curl -s http://localhost:<port>/json/version
 
 **First-run overlays:** On the first launch, the profile may show in-page overlays (cookie consent banners, "What's new" modals). These DO block element waits — dismiss them via the pattern in **Common Patterns → Overlay Dismissal** below. Since the profile persists, dismissed overlays stay dismissed.
 
-**Step 2 — Validate the target loads**
+**Step 2 — Snapshot the target**
 
-Verify the browser can actually reach the target app, not just that the browser launched. This catches expired sessions, login walls, and consent gates before any real automation runs.
+Confirm the browser can actually reach the target app, not an expired-session login wall or SSO challenge.
 
 ```bash
-node plugins/browser-chauffeur/skills/browser-chauffeur/templates/validate-target.js --cdp-port=<port> --url=<target-url>
+node plugins/browser-chauffeur/skills/browser-chauffeur/templates/snapshot-target.js --cdp-port=<port> --url=<target-url>
 ```
 
-- `VALIDATION_OK` → record the CDP port; this is what you'll pass to scripts via `--cdp-port`.
-- `VALIDATION_FAILED: potential login page detected` → the script detected possible login indicators and saved a screenshot to `.tmp/login-detection.png`. **IMPORTANT:** Read the screenshot with the Read tool to visually verify if it's actually a login page. If the screenshot shows the user is already logged in (you see navigation, user menus, content), this is a false positive — proceed with `VALIDATION_OK`. If it's truly a login page, use `AskUserQuestion` to prompt the user to sign in, then re-validate. Once they sign in, the session persists for all future tasks.
+The script navigates, waits for URL stability (handles transient SSO redirects like Okta's "Verifying your identity" page), waits for network idle and DOM stability, then saves a screenshot. It outputs:
 
-**The CDP port you validate here is what you pass to scripts.** Scripts do not perform browser detection or target validation — that is your job during Phase 0.
+```
+SNAPSHOT_READY
+SCREENSHOT: .tmp/snapshot-target-<timestamp>.png
+FINAL_URL: <where the browser actually landed>
+```
 
-**Why screenshot verification:** Text-based login detection can produce false positives when pages are slow to load or have minimal initial content. Always verify the screenshot before prompting the user to log in unnecessarily.
+**The script makes no decision — you do.** Always:
+
+1. **Read the screenshot** with the Read tool.
+2. **Decide visually**:
+   - **Logged in** — app shell visible, real content, no login form or sign-up wall → record the CDP port and proceed with the next script.
+   - **Not logged in** — a login form is visible, a wall like "Sign up to see this board" / "Sign in to access X", or the `FINAL_URL` is on an auth provider (e.g. `*.okta.com`, `login.microsoftonline.com`, `accounts.google.com`, `id.atlassian.com`) → use `AskUserQuestion` immediately to prompt the user to sign in. The page is left open. Re-run `snapshot-target.js` once they confirm. Once they sign in, the persistent profile preserves the session for all future tasks.
+   - **Ambiguous** (loading spinner, blank page) — re-run `snapshot-target.js` once more; if still ambiguous, prompt the user via `AskUserQuestion` to confirm.
+
+**Never try to detect login state from script output** (text matching, DOM selectors, URL heuristics). Always inspect the screenshot with the Read tool. See HELPERS.md → Login detection for why.
+
+**For slow-hydrating SPAs** where the screenshot-stability loop times out before the app is ready, re-run with `--target-anchor=<css-selector>` pointing at a known app-shell element. Example:
+
+```bash
+--target-anchor='[data-app-section="CalendarModuleSurface"]'   # Outlook calendar
+```
+
+**The CDP port you pass to `snapshot-target.js` is the same one you pass to every subsequent script.** Scripts don't repeat browser detection or login checks — that's your job during Phase 0.
 
 ---
 
-## Phase 0.5: Running Existing Scripts
+## Phase 0.5: Running Scripts From Other Skills
 
-**The script is the directions. This skill is the chauffeur.** Never run a browser automation script directly and walk away — always have this skill loaded so the recovery loop is active.
+**Never run a browser automation script directly and walk away — always have this skill loaded so the recovery loop is active.** When another skill provides a pre-written script (from its own `scripts/` directory), invoke browser-chauffeur first to get a validated CDP port, then run the script through it. Browser-chauffeur handles error detection, recovery, and re-runs — the other skill's script provides the directions, this skill handles execution.
 
-When another skill needs to run a browser automation script, it should invoke browser-chauffeur first. The pattern:
+The pattern:
 
 1. **Invoke this skill** before running the script
 2. **Complete Phase 0** to get a validated CDP port
@@ -102,6 +134,20 @@ This ensures the AI is always watching the road, not just handing off directions
 
 ---
 
+## Resilient Connection
+
+`chromium.connectOverCDP(...)` auto-attaches to **every** open CDP target to build its context/page tree. On the persistent profile — which accumulates tabs across sessions — a large target set, or a **single wedged renderer**, can make that handshake hang **indefinitely**. Playwright's own `{ timeout }` option does not help: it bounds only the socket connect, not the post-connect target enumeration.
+
+Two layers keep this reliable:
+
+1. **Root cause — keep the tab count low.** The main source of accumulation is tabs orphaned when a script crashes before its cleanup runs. Scripts register each tab they create (`registerTab` from `browser-chauffeur-helpers`) and unregister it on clean close; `launch-browser.py` sweeps the genuine orphans (creating process gone) on every reuse. So a healthy profile stays small and `connectOverCDP` stays fast — this is what makes it reliable, not just recoverable.
+
+2. **Backstop — fail fast, never hang.** `connectBrowser()` in `script-template.js` races `connectOverCDP` against a 30s hard timeout (`Promise.race`), so if the profile is still wedged the script gets an actionable error instead of hanging forever. Every ad-hoc script you generate must use this hardened `connectBrowser()` — never call `chromium.connectOverCDP(...)` bare.
+
+**If the connect times out anyway:** re-run `launch-browser.py` (it sweeps orphans), then retry the script once. If it still times out, the overload is from tabs the sweep won't touch — an active session's tabs or the user's own. **Do not reset the shared browser to fix your own connect** — `cleanup-browser.py --reset` kills the browser for every concurrent session and wipes all logins. Instead, surface the situation to the user via `AskUserQuestion` and let them decide whether to close tabs or reset.
+
+---
+
 ## Phase 1: Orient
 
 Before touching anything:
@@ -115,18 +161,20 @@ Before touching anything:
    
 2. **Get and save your tab reference** — target the specific tab you need by URL pattern, never by position:
    ```javascript
+   const { openTab } = require('browser-chauffeur-helpers');
+
    // Find existing tab by URL
    let myTab = pages.find(p => p.url().includes('example.com/my-section'));
-   
-   // Or create a new tab for complete isolation
+
+   // Or create a new tab for complete isolation — openTab creates AND registers
+   // it in one step (so the orphan sweep can reclaim it if this script crashes).
    if (!myTab) {
-     myTab = await context.newPage();
-     await myTab.goto('https://example.com/my-section');
+     myTab = await openTab(context, 'https://example.com/my-section');
    }
-   
+
    // Save this reference - it stays valid even if other tabs open/close
    ```
-   **Why:** Tab positions shift as tabs are created/closed. Other Claude sessions may be working in parallel. Targeting by index is unreliable. Save the page object reference and reuse it throughout the script.
+   **Why:** Tab positions shift as tabs are created/closed. Other Claude sessions may be working in parallel. Targeting by index is unreliable. Save the page object reference and reuse it throughout the script. **Always create tabs with `openTab(context, url)`, not `context.newPage()`** — `openTab` bundles registration so a created tab can never become an un-reclaimable orphan (see **Resilient Connection**). Tabs you *found* (didn't create) are not yours — don't register or close them.
 
 3. Navigate to the target page or state (if not already there)
 4. Read page state with `myTab.evaluate(() => document.body.innerText)`, or enumerate `myTab.frames()` if the body is unexpectedly short (see **Iframe detection** below)
@@ -235,19 +283,18 @@ Some SPAs (Articulate Rise, OpenSesame, content platforms) load page sections as
 
 1. Take a final read confirming the full flow succeeded
 
-2. **Tab cleanup** — only close tabs you created:
+2. **Tab cleanup** — close only tabs you created, using the paired `openTab`/`closeTab` helpers:
    ```javascript
+   const { openTab, closeTab } = require('browser-chauffeur-helpers');
+   const myTab = await openTab(context, 'https://example.com');  // create + register
    try {
      // Your automation work
    } finally {
-     // Only close if you created this tab with context.newPage()
-     if (createdByMe) {
-       await myTab.close();
-     }
-     // Otherwise leave it open - don't close tabs you found
+     await closeTab(myTab);   // close (or park, if last tab) + unregister
    }
+   // Tabs you FOUND (didn't create) are never passed to closeTab — leave them open.
    ```
-   **Why:** Other Claude sessions may be using other tabs. The user may need to review the results. Only close tabs you explicitly created for this specific task.
+   **Why:** Other Claude sessions may be using other tabs. The user may need to review the results. Only close tabs you explicitly created for this specific task. `openTab`/`closeTab` bundle registration so it can't be forgotten: if this script crashes before `finally`, the next `launch-browser.py` reclaims the orphaned tab (it closes a tracked tab only when its creating process is gone) — see **Resilient Connection**. `closeTab` also parks on `about:blank` instead of closing when it's the last tab, so it never exits the persistent browser. The `script-template.js` reference already wires this in.
    
    **When to leave tabs open:**
    - User needs to log in (can't automate)
@@ -261,13 +308,7 @@ Some SPAs (Articulate Rise, OpenSesame, content platforms) load page sections as
 
 5. Report what was accomplished to the user. Base your report on what you read from the final page state — do not summarize from memory or inference. If specific values were requested (a title, a field value, a count), quote them directly from the page content.
 
-6. **For recurring browser automation needs, create an instruction-driven spec instead of a monolithic script.** Write a SKILL.md file that documents:
-   - Business rules (what to do)
-   - Invariants (load-bearing truths that survive UI changes)
-   - Selectors (last-known-good hints that may drift)
-   - Safety rails
-   
-   Then browser-chauffeur creates ad-hoc scripts in `.tmp/` as needed during execution, adapting when selectors drift. This pattern is more resilient than a single brittle script that tries to anticipate every UI quirk in advance. See the `teams-message` skill as an example of this pattern.
+6. **For recurring automation, don't commit the script.** See **Two usage modes** above — create a SKILL.md spec instead. Ad-hoc scripts go in `.tmp/` and are regenerated each run.
 
 **Exception:** If the task ended in a failure that requires user intervention (Phase 4 escalation), leave the browser AND tab open so the user can see and interact with the current state.
 
@@ -332,7 +373,7 @@ Attempt to bring the window to the foreground, then re-prompt with `AskUserQuest
 
 When running a batch script that may encounter these blockers mid-run:
 
-1. Set up a **Monitor** on the script's output watching for intervention keywords (`CAPTCHA DETECTED`, `VALIDATION_FAILED`, `login page`, `Sign in`, etc.)
+1. Set up a **Monitor** on the script's output watching for intervention keywords (`CAPTCHA DETECTED`, `login page`, `Sign in`, etc.)
 2. When the Monitor fires, **immediately use `AskUserQuestion`** — don't wait for the script to finish
 3. After the user confirms resolution, verify the script continued past the blocker
 
@@ -353,7 +394,7 @@ When a script completes — **regardless of exit code** — analyze the output a
 Read the full output and categorize:
 
 - **Explicit success** — `Verification passed`, `✅`, `All checks passed` AND no error patterns → proceed to reporting.
-- **Human action required** (see **User Intervention**) — diagnostic screenshot shows a CAPTCHA, login page, or MFA prompt; or output contains `CAPTCHA DETECTED`, `VALIDATION_FAILED`, or similar → use `AskUserQuestion` immediately. Do NOT retry autonomously.
+- **Human action required** (see **User Intervention**) — diagnostic screenshot shows a CAPTCHA, login page, or MFA prompt; or output contains `CAPTCHA DETECTED` or similar → use `AskUserQuestion` immediately. Do NOT retry autonomously.
 - **Explicit failure** — `Verification FAILED`, `VERIFY FAIL:`; error counts (`5 errors`, `3 collision(s)`, `12 errors remain`); error keywords (`Error:`, `still present`, `not found`, `timeout`, `could not`); or items reported as "still present" or "not moved/deleted" → trigger autonomous recovery (Step 2).
 - **Ambiguous (missing verification)** — no "Verification passed" or "Verification FAILED" in output, but has completion indicators (`Done`, `Summary:`, task-specific output) → likely an older script without verification. If output looks clean (no errors/exceptions), treat as success. If output contains exceptions or is suspiciously short (< 50 chars), investigate.
 - **Crashed/incomplete** — exception stack trace in output, output ends mid-step (no completion message), or very short output with no summary → trigger autonomous recovery (Step 2).
@@ -370,6 +411,7 @@ When errors are detected, **you are the debugger**. Do not show the user an erro
    - **UI changed** (different label, restructured DOM, new element) → inspect the current page state to find the new selector, update the script, re-run.
    - **New required step** (e.g., a consent prompt, a "What's new" tour) → add handling for it, re-run.
    - **Selector timing issues** (element not yet visible), **elements scrolled out of view**, or **the expected element is in a different frame** → take a fresh screenshot, read it, find the correct selector or frame.
+   - **connectOverCDP timeout** — output contains `connectOverCDP did not complete within ...ms` → the persistent profile is overloaded or has a wedged renderer (see **Resilient Connection** above). Re-run `launch-browser.py` to sweep orphaned tabs, then retry the script once. If it still times out, the overload is from tabs the sweep won't touch (an active session's or the user's) — escalate via `AskUserQuestion`. Do NOT auto-reset the shared browser; that kills every concurrent session and wipes all logins.
    - **Media still playing** — if the script's stuck-detection fired but the page has active audio/video (`!audio.paused && !audio.ended && audio.duration > 1`), the page isn't stuck — narration is in progress. Wait for the media's remaining duration plus a buffer before re-evaluating. Only declare genuinely stuck when both conditions are true: no advance button AND no active media.
    - **None of the above looks right** → the failure may be a known anti-pattern. **Read `anti-patterns.md`** and check whether your symptoms match: a locator returning multiple matches in strict mode, a `page.evaluate` click that updates the UI but doesn't persist server-side, a click that "succeeds" but produces no DOM change, a `[role="dialog"]` presence check that returns true after the dialog closed, or a `getByRole('button')` returning nothing for a visibly-clickable element. Each entry has a tested fix.
 
@@ -408,9 +450,9 @@ If another skill runs a script and it fails, that skill should follow this same 
 
 ---
 
-## Phase 5: Script Validation (when creating scripts)
+## Phase 5: Script Validation (before running any ad-hoc script)
 
-**CRITICAL:** When you write a new browser automation script, **immediately validate it before running** or reporting completion. Scan `scripts/<task>.js` for violations of `script-quality-standards.md`: fixed delays (`waitForTimeout`, `setTimeout`), missing verification code, CSS class selectors, or missing browser connection logic. If you find any, edit the script to fix them, explain what was wrong and what you fixed, then re-scan to confirm clean. **Do not ask permission** — violations are always wrong.
+**CRITICAL:** When you write a new ad-hoc browser automation script (in `.tmp/`), **immediately validate it before running** or reporting completion. Scan it for violations of `script-quality-standards.md`: fixed delays (`waitForTimeout`, `setTimeout`), missing verification code, CSS class selectors, or missing browser connection logic. If you find any, edit the script to fix them, explain what was wrong and what you fixed, then re-scan to confirm clean. **Do not ask permission** — violations are always wrong.
 
 ---
 
@@ -418,7 +460,7 @@ If another skill runs a script and it fails, that skill should follow this same 
 
 **Stale State Cleanup** — Before the main loop in any multi-step batch script, call `cleanupStaleState(page)` from `browser-chauffeur-helpers`. If a previous run aborted mid-flow (e.g., a Save click timed out), the editor may still be open with dirty changes. The next run then hits a "Discard changes?" dialog that intercepts pointer events and silently blocks all subsequent clicks. This helper detects visible `[role="dialog"]`, `[role="alertdialog"]`, and `[role="menu"]` elements, clicks safe-close buttons in priority order (`Cancel` → `Discard` → `OK` → `Close`), falls back to Escape, and loops until no popup remains.
 
-**Post-Mutation Verification** — After any create, update, or delete action on a SPA, do not verify immediately. `networkidle` fires when the network quiets, but virtualized grids (Outlook calendar, Teams, SharePoint lists) re-render asynchronously after the server response. Use `verifyAfterMutation(page, predicate, { settleMs, retries })` from `browser-chauffeur-helpers` instead. It waits for networkidle, yields two animation frames so the render pass flushes, then runs the predicate — retrying up to `retries` times (default 3) before declaring failure. Return `true` from the predicate when the expected post-mutation state is confirmed.
+**Post-Mutation Verification** — After any create, update, or delete action on a SPA, do not verify immediately. `networkidle` fires when the network quiets, but virtualized grids (Outlook calendar, Teams, SharePoint lists) re-render asynchronously after the server response. Use `verifyAfterMutation(page, predicate, { settleMs, retries })` from `browser-chauffeur-helpers` instead. It waits `settleMs` (default 1.5s), runs the predicate, and retries up to `retries` times (default 3) before declaring failure. Return `true` from the predicate when the expected post-mutation state is confirmed.
 
 **Overlay Dismissal** — A fresh browser profile will show first-run overlays — Edge sync prompts ("We are now syncing your browsing data"), cookie consent banners, "What's new" modals. These block the real UI and cause element waits to time out. See `templates/overlay-dismissal.js` for the `dismissOverlays(page)` helper. Call it immediately after navigating to the target app, **before** waiting for app-specific elements. Include it in every script.
 
