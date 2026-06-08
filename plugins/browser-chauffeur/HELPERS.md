@@ -4,30 +4,25 @@ Shared utilities for browser automation scripts.
 
 ## Setup
 
-To use the helpers in your scripts, you need to link the module so `require('browser-chauffeur-helpers')` resolves correctly:
-
-### One-time setup (per project):
+No manual setup needed. Run the browser-chauffeur setup script once (SKILL.md calls this automatically as part of the prerequisite check):
 
 ```bash
-cd your-project
-npm link ~/Dev/mediwareinc/wellsky-claude-code-plugins/plugins/browser-chauffeur
+node plugins/browser-chauffeur/skills/browser-chauffeur/templates/setup.js
 ```
 
-This creates a symlink in your project's node_modules so the import works.
-
-### Alternative: Use full path
-
-If you don't want to use npm link, import with the full path:
-
-```javascript
-const { dismissOverlays } = require(process.env.HOME + '/Dev/mediwareinc/wellsky-claude-code-plugins/plugins/browser-chauffeur/helpers');
-```
+This installs `playwright-core` and writes a `browser-chauffeur-helpers` shim to `~/.claude/browser-chauffeur/node_modules/`. Scripts fall back to that location automatically when the package isn't installed in the current project.
 
 ## Usage
 
 ```javascript
-const { chromium } = require('playwright');
-const { dismissOverlays, screenshotOnFailure } = require('browser-chauffeur-helpers');
+const { chromium } = (() => {
+  try { return require('playwright-core'); }
+  catch { return require(require('path').join(require('os').homedir(), '.claude', 'browser-chauffeur', 'node_modules', 'playwright-core')); }
+})();
+const { dismissOverlays, screenshotOnFailure } = (() => {
+  try { return require('browser-chauffeur-helpers'); }
+  catch { return require(require('path').join(require('os').homedir(), '.claude', 'browser-chauffeur', 'node_modules', 'browser-chauffeur-helpers')); }
+})();
 
 async function run() {
   const browser = await chromium.connectOverCDP('http://localhost:9222');
@@ -69,24 +64,22 @@ Takes a diagnostic screenshot when automation fails. Useful in catch blocks.
 - **Returns**: Promise<void>
 - **Saves to**: `.tmp/diag-{label}-{timestamp}.png`
 
-### `isLoginPage(page)`
+### Login detection
 
-Detects if the current page is likely a login page. Uses conservative logic requiring multiple signals to avoid false positives.
+**Do not try to detect login state with scripts. Detect it with the LLM via screenshot inspection.**
 
-- **Parameters**: `page` - Playwright page object
-- **Returns**: Promise<{isLogin: boolean, signals: object, url: string}>
-  - `isLogin` - true if the page appears to be a login page
-  - `signals` - object with detection signals (hasPasswordField, hasSignInButton, tooShort, lacksNavigation, hasAuthenticatedIndicators, textLength)
-  - `url` - current page URL
-- **Best Practice**: Check mid-execution if session expired, or validate before starting automation
-- **Example**:
-  ```javascript
-  const result = await isLoginPage(page);
-  if (result.isLogin) {
-    console.log('Session expired, re-auth needed');
-    // Prompt user or handle re-authentication
-  }
-  ```
+Text and DOM heuristics cannot reliably distinguish login walls, SSO transit pages, MFA challenges, and slow-hydrating SPAs across the variety of providers and UIs you'll encounter. A screenshot read by the LLM gets it right with zero pattern maintenance.
+
+**Start-of-flow:** use `snapshot-target.js` — it navigates, waits for URL/network/DOM to settle, and saves a screenshot. The chauffeur reads it and decides.
+
+**Mid-flow (e.g. suspect the session expired):** screenshot the page and print the path. The recovery loop reads it.
+
+```javascript
+const path = `.tmp/session-check-${Date.now()}.png`;
+await page.screenshot({ path });
+console.log(`SCREENSHOT: ${path}`);
+console.log(`FINAL_URL: ${page.url()}`);
+```
 
 ## Why Import Instead of Copy?
 

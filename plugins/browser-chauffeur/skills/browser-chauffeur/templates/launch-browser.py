@@ -53,6 +53,7 @@ EDGE_DISABLE_FEATURES = (
 CHAUFFEUR_DIR = Path.home() / ".claude" / "browser-chauffeur"
 STATE_FILE = str(CHAUFFEUR_DIR / "state.json")
 PERSISTENT_PROFILE = str(CHAUFFEUR_DIR / "profile")
+TAB_REGISTRY = CHAUFFEUR_DIR / "created-tabs.json"
 
 
 def is_port_available(port: int) -> bool:
@@ -87,6 +88,70 @@ def is_cdp_alive(port: int) -> bool:
         return "Browser" in data
     except (URLError, OSError, json.JSONDecodeError, KeyError):
         return False
+
+
+def sweep_orphan_tabs(port: int) -> None:
+    """Close tabs left behind by chauffeur scripts that crashed before cleanup.
+
+    A tab is closed ONLY when the process that created it (recorded by the Node
+    tab-registry) is no longer running — i.e. a genuine orphan. Active sessions'
+    tabs (creating process alive) and user/other tabs (never registered) are
+    never touched. Uses the raw CDP HTTP endpoints (/json, /json/close), which
+    never auto-attach to targets and so never hang the way connectOverCDP can.
+
+    Best-effort: any error here is swallowed so it can't block a launch.
+    """
+    try:
+        with open(TAB_REGISTRY) as f:
+            entries = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return
+    if not entries:
+        return
+
+    try:
+        resp = urlopen(f"http://localhost:{port}/json", timeout=5)
+        targets = json.loads(resp.read())
+    except (URLError, OSError, json.JSONDecodeError):
+        return
+
+    live_pages = {t["id"] for t in targets if t.get("type") == "page" and "id" in t}
+    live_page_count = len(live_pages)
+
+    kept: list[dict] = []
+    closed = 0
+    for e in entries:
+        tid = e.get("targetId")
+        node_pid = e.get("nodePid")
+        # Already gone — prune from the registry, nothing to close.
+        if tid not in live_pages:
+            continue
+        # Creating process still alive — an active session owns this tab. Keep.
+        if node_pid and is_pid_running(node_pid):
+            kept.append(e)
+            continue
+        # Orphan, but never close the browser's last page (that would exit it).
+        if live_page_count <= 1:
+            kept.append(e)
+            continue
+        try:
+            urlopen(f"http://localhost:{port}/json/close/{tid}", timeout=5).read()
+            closed += 1
+            live_page_count -= 1
+        except (URLError, OSError):
+            kept.append(e)
+
+    try:
+        TAB_REGISTRY.parent.mkdir(parents=True, exist_ok=True)
+        tmp = TAB_REGISTRY.with_name(TAB_REGISTRY.name + f".{os.getpid()}.tmp")
+        with open(tmp, "w") as f:
+            json.dump(kept, f)
+        os.replace(tmp, TAB_REGISTRY)
+    except OSError:
+        pass
+
+    if closed:
+        print(f"Swept {closed} orphaned chauffeur tab(s).")
 
 
 def load_state() -> dict | None:
@@ -136,6 +201,9 @@ def run_persistent(url: str) -> int:
         pid, port, profile_dir = state["pid"], state["port"], state["profile_dir"]
         # Edge process sharing can change PIDs - if CDP responds, browser is alive
         if is_cdp_alive(port):
+            # Reclaim tabs orphaned by crashed runs before handing the browser
+            # back — keeps the target count low so connectOverCDP stays healthy.
+            sweep_orphan_tabs(port)
             print(f"Reusing existing browser on port {port} (original PID {pid})")
             print(f"PID={pid}")
             print(f"PORT={port}")

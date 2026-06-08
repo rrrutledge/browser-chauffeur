@@ -11,14 +11,11 @@ Claude becomes your personal browser chauffeur: you give directions, Claude driv
 - **Zero selector guesswork** — Claude inspects the live page before every action, uses semantic selectors (roles, labels, text) instead of brittle CSS classes, and verifies each step succeeded before moving on.
 - **Scripts that get better over time** — once a flow works, save it as a reusable script. When the UI changes, browser-chauffeur's recovery loop patches the script automatically.
 
-## Prerequisite
+## Prerequisites
 
-Requires the **playwright MCP plugin**:
-
-```
-/plugin marketplace add playwright
-/plugin install playwright@playwright-cli
-```
+- **Node.js** — for running browser automation scripts
+- **Edge or Chrome** — any Chromium-based browser already on your machine
+- **playwright-core** — installed automatically on first use; no manual setup needed
 
 ## Install
 
