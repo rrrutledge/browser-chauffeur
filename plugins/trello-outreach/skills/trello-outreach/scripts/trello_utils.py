@@ -166,7 +166,7 @@ def create_card_from_template(list_id, template_card_id, name, session, keep='ch
 
 
 def get_board_labels(board_id, session):
-    return trello_request('GET', f'/boards/{board_id}/labels', session)
+    return trello_request('GET', f'/boards/{board_id}/labels', session, params={'limit': '1000'})
 
 
 def create_label(board_id, name, color, session):
