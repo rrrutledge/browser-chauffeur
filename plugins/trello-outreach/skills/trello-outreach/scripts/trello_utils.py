@@ -85,6 +85,15 @@ def get_board_lists(board_id, session):
     return trello_request('GET', f'/boards/{board_id}/lists', session)
 
 
+def resolve_board_id(board_id, session):
+    """Return the full 24-char board id. Most read endpoints accept the short
+    link (e.g. 'hpvdRw3G'), but some writes (POST /lists) reject it with
+    400 'invalid value for idBoard'. Call this before such writes."""
+    if len(board_id) == 24:
+        return board_id
+    return trello_request('GET', f'/boards/{board_id}', session, params={'fields': 'id'})['id']
+
+
 def get_or_create_list(board_id, list_name, session):
     lists = get_board_lists(board_id, session)
     for lst in lists:
@@ -92,7 +101,7 @@ def get_or_create_list(board_id, list_name, session):
             return lst['id']
     result = trello_request('POST', '/lists', session, body={
         'name': list_name,
-        'idBoard': board_id,
+        'idBoard': resolve_board_id(board_id, session),
     })
     return result['id']
 
@@ -127,6 +136,33 @@ def delete_card(card_id, session):
 
 def get_board_cards(board_id, session):
     return trello_request('GET', f'/boards/{board_id}/cards', session)
+
+
+def find_card_by_name(board_id, name, session):
+    """Return the first card on the board whose name matches exactly, else None.
+
+    Template cards (isTemplate=true) are included in this listing, so this also
+    finds template/source cards by name.
+    """
+    for card in get_board_cards(board_id, session):
+        if card['name'] == name:
+            return card
+    return None
+
+
+def create_card_from_template(list_id, template_card_id, name, session, keep='checklists'):
+    """Create a card copying content from a template/source card.
+
+    Uses Trello's idCardSource + keepFromSource. `keep` is 'all', 'none', or a
+    comma-separated list e.g. 'checklists,labels,attachments,due'. Defaults to
+    copying checklists only.
+    """
+    return trello_request('POST', '/cards', session, body={
+        'idList': list_id,
+        'name': name,
+        'idCardSource': template_card_id,
+        'keepFromSource': keep,
+    })
 
 
 def get_board_labels(board_id, session):
