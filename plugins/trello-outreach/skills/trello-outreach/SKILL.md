@@ -75,6 +75,11 @@ instructions: |-
   `isTemplate`), so filter them out when iterating real cards:
   `[c for c in get_board_cards(...) if not c.get('isTemplate')]`.
 
+  A template card still renders as a normal (badged) card in whatever list it
+  lives in — it is **not** hidden from the board. To keep templates out of an
+  active funnel, park them in a dedicated list (e.g. a "Templates" list). The
+  list they sit in doesn't matter to `find_card_by_name` — it matches by name.
+
   ---
 
   ## Verification output
