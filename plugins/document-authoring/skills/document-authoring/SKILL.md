@@ -37,6 +37,10 @@ Apply this when composing prose in Russell's name — Teams messages, email, out
 - "If the app won't run on your laptop first then it won't run in the cloud."
 - "If you have the repo checked out locally you can then push it back again at that point and all your work will be there."
 
+**Answer the question first.** When replying to a direct question, lead with the answer — then add context. Don't bury it behind a preamble or a generic thanks.
+- Asked "has the GH Pages setup been added to SkyStage?", he opened: "Hi Jonah! Not yet, but I've opened a ticket to track it: …" — the "Not yet, but" comes before anything else.
+- Invite the reader's judgment on what you point them to rather than just asking them to act: "Take a look and see if what's described there looks good," then a soft forward-look ("We'll probably be able to get to it before long.").
+
 **Default to "you" and "we".** Center the reader ("you/your"), use "we're" for the team or product, and "I" for a personal action: "We're rolling out a new process…", "On our side I'm opening a Jira…".
 
 **Signature touches** (use sparingly, where they fit — don't force them):
@@ -45,3 +49,12 @@ Apply this when composing prose in Russell's name — Teams messages, email, out
 - "Haha" for levity. Contractions always (we're, isn't, won't, I'll).
 
 **Avoid:** emoji (he doesn't use them — warmth comes from "!" and "Haha"), corporate filler and hedging, long compound sentences, and commands where a "Would you be willing to…?" would do.
+
+## Voice learning loop (keep the Voice & Tone section current)
+
+The Voice & Tone section above stays accurate by learning from every edit Russell makes. Whenever you draft a message for him and he edits it before sending, learn from the difference:
+
+1. After Russell indicates he sent it (e.g. "I adjusted and sent it", "sent", or "learn from that"), read the **actually-sent** version from the source — for Teams, via browser-chauffeur reading the chat — and diff it against your draft.
+2. Pull out durable, repeatable voice patterns from the edits: phrasings he added, filler he removed, structure he reordered. Ignore one-off content fixes (a corrected fact, name, link, or timeline) that won't generalize.
+3. Fold each durable pattern into **Voice & Tone**: sharpen an existing bullet if it's a better version of one, or add a new bullet with a real quoted example from the sent message. State it positively. Don't accumulate near-duplicates.
+4. Tell Russell in one line what you learned and changed, so he can confirm or correct.
