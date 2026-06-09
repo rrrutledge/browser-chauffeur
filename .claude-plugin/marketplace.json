@@ -39,6 +39,11 @@
       "name": "screenshot",
       "source": "./plugins/screenshot",
       "description": "Auto-loads the most recent Windows screenshot when user references a screenshot without providing a file path."
+    },
+    {
+      "name": "ms-graph",
+      "source": "./plugins/ms-graph",
+      "description": "Read/write a personal Microsoft account's Outlook mail and calendar via the Microsoft Graph API (official @azure/msal-node + @microsoft/microsoft-graph-client). List/create calendar events, search/read mail, draft replies, or send yourself a note — no browser after a one-time sign-in."
     }
   ]
 }
