@@ -1,23 +1,30 @@
 ---
 name: browser-chauffeur
 description: |-
-  REQUIRED for ALL website navigation and interaction. Invoke this skill ANY TIME you need to use a website - whether the user explicitly asked or you determined a website would help accomplish the task.
+  ⚠️ CRITICAL: NEVER use Playwright MCP tools directly (mcp__playwright__*). ALWAYS invoke this skill instead.
+  
+  This skill is REQUIRED for ALL browser automation — screenshots, form filling, navigation, data extraction, verification, etc. Playwright MCP requires re-authentication every time and lacks the error recovery, quality patterns, and session persistence that this skill provides.
   
   Use browser-chauffeur when:
+  - Taking screenshots of websites
   - Navigating to, checking, or accessing ANY website (admin panels, dashboards, web apps, docs sites, etc.)
   - Looking up information on a website
   - Verifying something on a website (user access, settings, configurations, status, etc.)
   - Logging into a website or checking authentication status
   - Creating or running browser automation scripts
+  - Filling forms, clicking buttons, or any website interaction
   - You determine that visiting a website would help answer the user's question or complete their task
   
-  This skill handles persistent browser launch, login session reuse across tasks, CDP setup, and autonomous error recovery. Always invoke browser-chauffeur first — never navigate websites directly without it.
+  This skill handles persistent browser launch, login session reuse across tasks, CDP setup, autonomous error recovery, diagnostic screenshots, and script quality enforcement. The persistent browser preserves logins — users authenticate once, and all future tasks reuse that session.
   
   Examples that REQUIRE this skill:
+  - User asks: "Take a screenshot of the admin page"
   - User asks: "Check if Jim has access to the dev environment in Okta admin"
   - User asks: "What's the latest version number?" → You determine checking the docs site would answer this
   - User asks: "Is the API key configured correctly?" → Navigate to settings page to verify
   - User asks: "Create a script to automate form submission"
+  
+  DO NOT use Playwright MCP (mcp__playwright__browser_navigate, browser_snapshot, etc.) — always invoke this skill instead.
 allowed-tools: Bash, Write, Edit, Read
 ---
 
