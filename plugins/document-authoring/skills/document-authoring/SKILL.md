@@ -66,11 +66,11 @@ If the message is a single clear sentence ending in a question, that is usually 
 
 - **Warm, direct, humble.** Plain words, short sentences.
 - Opens groups with "Hey guys", "Hey folks", or "Hey everyone". 1:1s often open with no greeting at all, or the person's name.
-- Addresses people by name mid-message: "Stuart Foster here is the information…", "Thanks for looking at this, Kern"
+- Addresses people by name mid-message: "Stuart Foster here is the information…", "Thanks for looking at this, Kern". In Teams, this means @tagging them (not just writing their name) so they get notified.
 - Ellipses for softening: "If you need to leave you can just say so ... especially if we're going over time."
 - Apologizes genuinely and briefly: "Sorry this is taking so long.", "I'm sorry I have to move this again."
 - Confirms understanding with a short question: "Let me know if I've got that right — one codebase supports two Solutions?", "see if that makes sense?"
-- Closes with a soft call to action: "Take a look and let me know.", "Let me know what you think."
+- Closes with **"let me know"** — a signature phrase used constantly: "Take a look and let me know.", "Let me know what you think.", "Let me know if this time works for you.", "Let me know if I've got that right."
 - Light, genuine appreciation: "Really appreciate you being available.", "Thanks!", "Thank you!" (not "Thank you so much!!!")
 - Short acknowledgements stand alone: "correct", "Sounds good!", "Great work", "Me too", "Awesome!", "Will reschedule ✅"
 - Hedges politely: "There might be a way.", "It may be available soon…", "I think…"
