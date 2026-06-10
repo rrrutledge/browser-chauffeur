@@ -41,7 +41,7 @@ Use for: Confluence specs, how-to guides, PRDs, PR descriptions, Word docs, publ
 
 Use for: Teams 1:1 chats, Teams channel posts, Slack messages, email replies.
 
-This profile was distilled from ~160 of Russell's own sent Teams messages. The goal is that the message reads like Russell wrote it. Concrete patterns and real samples beat adjectives — imitate the samples.
+The goal is that the message reads like Russell wrote it. Concrete patterns and real samples beat adjectives — imitate the samples.
 
 ### Brevity (overrides everything else)
 
@@ -66,7 +66,7 @@ If the message is a single clear sentence ending in a question, that is usually 
 
 - **Warm, direct, humble.** Plain words, short sentences.
 - Opens groups with "Hey guys", "Hey folks", or "Hey everyone". 1:1s often open with no greeting at all, or the person's name.
-- Addresses people by name mid-message: "Stuart Foster here is the information…", "Thanks for looking at this, Kern". In Teams, this means @tagging them (not just writing their name) so they get notified.
+- Addresses people by name mid-message: "Stuart Foster here is the information…", "Thanks for looking at this, Kern". In chat platforms (Teams, Slack, etc.), this means @tagging them using the platform's mention mechanism — not just writing their name as plain text — so they get notified.
 - Ellipses for softening: "If you need to leave you can just say so ... especially if we're going over time."
 - Apologizes genuinely and briefly: "Sorry this is taking so long.", "I'm sorry I have to move this again."
 - Confirms understanding with a short question: "Let me know if I've got that right — one codebase supports two Solutions?", "see if that makes sense?"
