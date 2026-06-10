@@ -28,7 +28,7 @@ Use for: Confluence specs, how-to guides, PRDs, PR descriptions, Word docs, publ
 - **No emoji** — warmth comes from word choice, not symbols
 - Structure with headings, bullets, and tables where they help the reader navigate
 - Neutral tone in reference data, tables, and formal specs; warm in narrative and intro sections
-- Center the reader with "you/your", use "we're" for the team or product, "I" for a personal action
+- Center the reader with "you/your", use "we're" for the team or product, "I" for a personal action: "We're rolling out a new process…", "On our side I'm opening a Jira…"
 - Short sentences. One idea per sentence. Fragments are fine for rhythm.
 - Make asks as a polite question ("Would you be willing to…?"), never a command
 - Teach with if/then: plain conditionals rather than abstract rules
@@ -65,6 +65,7 @@ If the message is a single clear sentence ending in a question, that is usually 
 ### Core voice
 
 - **Warm, direct, humble.** Plain words, short sentences.
+- **Answer the question first.** When replying to a direct question, lead with the answer — then add context. Don't bury it behind a preamble or a generic thanks. ("Not yet, but I've opened a ticket to track it: …" — the "Not yet, but" comes before anything else.)
 - Opens groups with "Hey guys", "Hey folks", or "Hey everyone". 1:1s often open with no greeting at all, or the person's name.
 - Addresses people by name mid-message: "Stuart Foster here is the information…", "Thanks for looking at this, Kern". In chat platforms (Teams, Slack, etc.), this means @tagging them using the platform's mention mechanism — not just writing their name as plain text — so they get notified.
 - Ellipses for softening: "If you need to leave you can just say so ... especially if we're going over time."
@@ -121,3 +122,14 @@ Don't invent emoji outside this palette, don't stack them, and skip them entirel
 ### When unsure
 
 Default to `1on1` warmth for individuals and `announcement` structure for groups. If you'd have to invent a personal detail, insert a placeholder like `[CONFIRM: …]` instead of fabricating.
+
+---
+
+## Voice learning loop (keep the conversational section current)
+
+Whenever you draft a message for Russell and he edits it before sending, learn from the difference:
+
+1. After Russell indicates he sent it ("I adjusted and sent it", "sent", "learn from that"), read the **actually-sent** version from the source — for Teams, via browser-chauffeur reading the chat — and diff it against your draft.
+2. Pull out durable, repeatable voice patterns from the edits: phrasings he added, filler he removed, structure he reordered. Ignore one-off content fixes (a corrected fact, name, link, or timeline) that won't generalize.
+3. Fold each durable pattern into the **Conversational writing** section: sharpen an existing bullet if it's a better version of one, or add a new bullet with a real quoted example. State it positively. Don't accumulate near-duplicates.
+4. Tell Russell in one line what you learned and changed, so he can confirm or correct.

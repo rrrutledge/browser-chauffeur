@@ -1,0 +1,88 @@
+// Read / draft / send personal Outlook mail via Microsoft Graph.
+//
+// Search:        node mail.js --search="Griffiths" [--top=10]
+// Show one:      node mail.js --show=<messageId>
+// Draft a reply: node mail.js --reply --message-id=<id> --body-file=reply.html
+//                (creates a DRAFT reply-all in the thread; never sends)
+// Send to self:  node mail.js --send-self --subject="..." --body-file=note.txt
+//                (sends a plain-text mail to your own inbox; handy for phone copy-paste)
+
+const fs = require('fs');
+const { getGraphClient } = require('./graph-client');
+
+const args = Object.fromEntries(
+  process.argv.slice(2).map(a => {
+    const m = a.match(/^--([^=]+)(?:=(.*))?$/);
+    return m ? [m[1], m[2] ?? true] : [a, true];
+  })
+);
+
+const addr = (r) => r?.emailAddress ? `${r.emailAddress.name || ''} <${r.emailAddress.address}>` : '?';
+const strip = (html) => (html || '')
+  .replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ')
+  .replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+
+async function search(client) {
+  const data = await client.api('/me/messages')
+    .search(`"${args.search}"`)
+    .top(parseInt(args.top || '10', 10))
+    .select('id,conversationId,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview')
+    .get();
+  const msgs = data.value || [];
+  if (!msgs.length) { console.log('No messages found.'); return; }
+  for (const m of msgs) {
+    console.log(`\n--- ${m.receivedDateTime?.slice(0, 16)}  |  ${m.subject}`);
+    console.log(`    from: ${addr(m.from)}`);
+    console.log(`    to:   ${(m.toRecipients || []).map(addr).join(', ')}`);
+    if ((m.ccRecipients || []).length) console.log(`    cc:   ${m.ccRecipients.map(addr).join(', ')}`);
+    console.log(`    id:   ${m.id}`);
+    console.log(`    > ${(m.bodyPreview || '').replace(/\s+/g, ' ').slice(0, 200)}`);
+  }
+}
+
+async function show(client) {
+  const m = await client.api(`/me/messages/${args.show}`)
+    .select('subject,from,toRecipients,ccRecipients,receivedDateTime,body').get();
+  console.log(`Subject: ${m.subject}`);
+  console.log(`From: ${addr(m.from)}`);
+  console.log(`To: ${(m.toRecipients || []).map(addr).join(', ')}`);
+  if ((m.ccRecipients || []).length) console.log(`Cc: ${m.ccRecipients.map(addr).join(', ')}`);
+  console.log('\n' + strip(m.body?.content));
+}
+
+async function reply(client) {
+  if (!args['message-id'] || !args['body-file']) {
+    throw new Error('--reply requires --message-id and --body-file');
+  }
+  const html = fs.readFileSync(args['body-file'], 'utf8');
+  const draft = await client.api(`/me/messages/${args['message-id']}/createReplyAll`).post({});
+  await client.api(`/me/messages/${draft.id}`).patch({ body: { contentType: 'html', content: html } });
+  console.log(`Draft reply created in thread (id ${draft.id.slice(0, 20)}...). Review in Outlook Drafts.`);
+}
+
+async function sendSelf(client) {
+  if (!args.subject || !args['body-file']) {
+    throw new Error('--send-self requires --subject and --body-file');
+  }
+  const me = await client.api('/me').select('mail,userPrincipalName').get();
+  const me_addr = me.mail || me.userPrincipalName;
+  const content = fs.readFileSync(args['body-file'], 'utf8');
+  await client.api('/me/sendMail').post({
+    message: {
+      subject: args.subject,
+      body: { contentType: 'text', content },
+      toRecipients: [{ emailAddress: { address: me_addr } }],
+    },
+    saveToSentItems: true,
+  });
+  console.log(`Sent to self (${me_addr}): "${args.subject}"`);
+}
+
+(async () => {
+  const client = await getGraphClient();
+  if (args.search) return search(client);
+  if (args.show) return show(client);
+  if (args.reply) return reply(client);
+  if (args['send-self']) return sendSelf(client);
+  throw new Error('Specify --search, --show, --reply, or --send-self');
+})().catch(e => { console.error('Error:', e.message); process.exit(1); });
