@@ -26,9 +26,9 @@
       "description": "Create marketing-style Confluence pages with alternating two-column sections (text + image), a hero intro, and a full-width CTA. Used for feature announcements, onboarding guides, and platform documentation."
     },
     {
-      "name": "teams-message",
-      "source": "./plugins/teams-message",
-      "description": "Draft Teams messages via browser automation (instruction-driven, never sends)."
+      "name": "message-draft",
+      "source": "./plugins/message-draft",
+      "description": "Draft a message in the active web composer — Teams chat or Outlook-web email reply — via browser automation. Stages a draft in the correct conversation and NEVER sends. Supersedes teams-message."
     },
     {
       "name": "document-authoring",
