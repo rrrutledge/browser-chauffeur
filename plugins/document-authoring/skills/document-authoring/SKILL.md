@@ -38,7 +38,11 @@ Use for: Confluence specs, how-to guides, PRDs, PR descriptions, Word docs, publ
 
 ### Draft first, then send
 
-Any message that leaves Russell's hands — a Jira/Request Center comment, an email, a Teams post — gets shown to him as a **draft for approval before it's posted**. Present the proposed text, let him adjust, and send only once he says to. This is the same draft-then-send discipline the conversational tools already follow (Teams drafts are never auto-sent).
+Any message that leaves Russell's hands — a Jira/Request Center comment, an email, a Teams post — is drafted for his approval before it's sent. He sends it himself.
+
+**Draft it in the app where it will be sent.** The ideal is to put the text into the real UI — the Request Center comment box, the Teams compose box, the email reply — via `browser-chauffeur`, so Russell sees exactly how it will look in context, edits it inline if he wants, and clicks the app's own Send button. Drafting in-place (never auto-sending) is the preferred approach whenever the UI can be opened.
+
+If the target UI genuinely can't be driven, fall back to showing the proposed text in chat for approval, then send only once he says to. This mirrors the discipline the conversational tools already follow (Teams drafts are typed into the compose box, never auto-sent).
 
 ---
 
