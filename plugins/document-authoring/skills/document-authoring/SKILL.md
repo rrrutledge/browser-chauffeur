@@ -145,6 +145,10 @@ This runs after **any** drafted message — formal or conversational, any channe
    - **Information fix** — a corrected fact, name, link, date, number, or scope detail. One-off; it does **not** change this guidance.
    - **Voice change** — phrasing he swapped, filler he cut, structure he reordered, length or altitude he adjusted. Durable; this is what we learn from.
 3. For each voice change, fold it into the matching section — **Formal writing** if the message was formal, **Conversational writing** if it was a chat/email reply. Sharpen an existing bullet if it's a better version of one, or add a new bullet with a real quoted example. State it positively. Don't accumulate near-duplicates.
-4. Tell Russell in one line what you learned and changed — or, if every edit was an information fix, say there were no voice changes.
+4. **Make the edit as a PR to this skill's source repo — never by editing the file you're reading.** This skill ships from a separate GitHub repo (`rrrutledge/rrrutledge-claude-code-plugins`); the copy that's loaded at runtime is an installed/cached snapshot (e.g. under `~/.claude/plugins/...`), and editing that snapshot in place is silently thrown away on the next plugin update. To make a change stick:
+   - Locate the working clone (`~/Dev/rrrutledge/rrrutledge-claude-code-plugins`; clone it from the origin if it's not there) — do **not** edit under `~/.claude/plugins/`.
+   - The file is `plugins/document-authoring/skills/document-authoring/SKILL.md`.
+   - Create a branch, make the edit there, commit, push, and open a PR. Don't push straight to `main`.
+5. Tell Russell in one line what you learned and changed, with the PR link — or, if every edit was an information fix, say there were no voice changes (no PR needed).
 
 The goal is convergence: over time his edits should become information-only. A send where the only differences were information fixes is the **success signal** that the voice guidance is dialed in — not a missed chance to add a rule.
