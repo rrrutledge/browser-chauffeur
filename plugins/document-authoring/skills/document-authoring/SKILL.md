@@ -33,7 +33,18 @@ Use for: Confluence specs, how-to guides, PRDs, PR descriptions, Word docs, publ
 - Make asks as a polite question ("Would you be willing to…?"), never a command
 - Teach with if/then: plain conditionals rather than abstract rules
 - Contractions always (we're, isn't, won't, I'll)
+- **Summarize — give the gist, hold the detail.** Even formal replies (Jira/Request Center comments, email) stay short: lead with the point and the few facts that matter, and let the reader ask if they want the full technical breakdown. Resist listing every permission, every alternative, every implementation note. Real edit: a Request Center reply that spelled out each Graph scope, every alternative, and the credential-storage mechanism should have been a few summarized sentences (approach chosen + why it beats the alternative we use today).
 - Avoid: corporate filler ("leverage", "streamline", "as per"), long compound sentences, effusive sign-offs
+
+### Draft first, then send
+
+Any message that leaves Russell's hands — a Jira/Request Center comment, an email, a Teams post — is drafted for his approval before it's sent. He sends it himself.
+
+**Draft it in the app where it will be sent.** The ideal is to put the text into the real UI — the Request Center comment box, the Teams compose box, the email reply — via `browser-chauffeur`, so Russell sees exactly how it will look in context, edits it inline if he wants, and clicks the app's own Send button. Drafting in-place (never auto-sending) is the preferred approach whenever the UI can be opened.
+
+If the target UI genuinely can't be driven, fall back to showing the proposed text in chat for approval, then send only once he says to. This mirrors the discipline the conversational tools already follow (Teams drafts are typed into the compose box, never auto-sent).
+
+After he sends, run the **Voice learning loop** below — diff what he actually sent against your draft and update this guidance if the voice changed.
 
 ---
 
@@ -137,11 +148,19 @@ Default to `1on1` warmth for individuals and `announcement` structure for groups
 
 ---
 
-## Voice learning loop (keep the conversational section current)
+## Voice learning loop (keep this guidance current)
 
-Whenever you draft a message for Russell and he edits it before sending, learn from the difference:
+This runs after **any** drafted message — formal or conversational, any channel (Request Center, email, Teams). Whenever Russell edits a draft before sending, learn from the difference:
 
-1. After Russell indicates he sent it ("I adjusted and sent it", "sent", "learn from that"), read the **actually-sent** version from the source — for Teams, via browser-chauffeur reading the chat — and diff it against your draft.
-2. Pull out durable, repeatable voice patterns from the edits: phrasings he added, filler he removed, structure he reordered. Ignore one-off content fixes (a corrected fact, name, link, or timeline) that won't generalize.
-3. Fold each durable pattern into the **Conversational writing** section: sharpen an existing bullet if it's a better version of one, or add a new bullet with a real quoted example. State it positively. Don't accumulate near-duplicates.
-4. Tell Russell in one line what you learned and changed, so he can confirm or correct.
+1. After he sends (he edited it in the app UI and clicked send, or said "sent" / "learn from that"), read the **actually-sent** version from the source — Request Center via the API/comment, Teams via browser-chauffeur reading the chat, email from the sent item — and diff it against your draft.
+2. Classify every difference into exactly one bucket:
+   - **Information fix** — a corrected fact, name, link, date, number, or scope detail. One-off; it does **not** change this guidance.
+   - **Voice change** — phrasing he swapped, filler he cut, structure he reordered, length or altitude he adjusted. Durable; this is what we learn from.
+3. For each voice change, fold it into the matching section — **Formal writing** if the message was formal, **Conversational writing** if it was a chat/email reply. Sharpen an existing bullet if it's a better version of one, or add a new bullet with a real quoted example. State it positively. Don't accumulate near-duplicates.
+4. **Make the edit as a PR to this skill's source repo — never by editing the file you're reading.** This skill ships from a separate GitHub repo (`rrrutledge/rrrutledge-claude-code-plugins`); the copy that's loaded at runtime is an installed/cached snapshot (e.g. under `~/.claude/plugins/...`), and editing that snapshot in place is silently thrown away on the next plugin update. To make a change stick:
+   - Locate the working clone (`~/Dev/rrrutledge/rrrutledge-claude-code-plugins`; clone it from the origin if it's not there) — do **not** edit under `~/.claude/plugins/`.
+   - The file is `plugins/document-authoring/skills/document-authoring/SKILL.md`.
+   - Create a branch, make the edit there, commit, push, and open a PR. Don't push straight to `main`.
+5. Tell Russell in one line what you learned and changed, with the PR link — or, if every edit was an information fix, say there were no voice changes (no PR needed).
+
+The goal is convergence: over time his edits should become information-only. A send where the only differences were information fixes is the **success signal** that the voice guidance is dialed in — not a missed chance to add a rule.
