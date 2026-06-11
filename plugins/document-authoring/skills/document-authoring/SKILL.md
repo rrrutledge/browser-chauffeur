@@ -33,7 +33,12 @@ Use for: Confluence specs, how-to guides, PRDs, PR descriptions, Word docs, publ
 - Make asks as a polite question ("Would you be willing to…?"), never a command
 - Teach with if/then: plain conditionals rather than abstract rules
 - Contractions always (we're, isn't, won't, I'll)
+- **Summarize — give the gist, hold the detail.** Even formal replies (Jira/Request Center comments, email) stay short: lead with the point and the few facts that matter, and let the reader ask if they want the full technical breakdown. Resist listing every permission, every alternative, every implementation note. Real edit: a Request Center reply that spelled out each Graph scope, every alternative, and the credential-storage mechanism should have been a few summarized sentences (approach chosen + why it beats the alternative we use today).
 - Avoid: corporate filler ("leverage", "streamline", "as per"), long compound sentences, effusive sign-offs
+
+### Draft first, then send
+
+Any message that leaves Russell's hands — a Jira/Request Center comment, an email, a Teams post — gets shown to him as a **draft for approval before it's posted**. Present the proposed text, let him adjust, and send only once he says to. This is the same draft-then-send discipline the conversational tools already follow (Teams drafts are never auto-sent).
 
 ---
 
