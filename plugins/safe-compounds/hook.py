@@ -20,7 +20,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from safe_compounds import paths  # noqa: E402
+from safe_compounds import config, paths  # noqa: E402
 from safe_compounds.approve import is_segment_trusted  # noqa: E402
 from safe_compounds.enforce import enforce_bash  # noqa: E402
 from safe_compounds.log import log_debug  # noqa: E402
@@ -93,6 +93,7 @@ def main():
     except Exception:
         defer()
 
+    config.reset()
     paths.reset_pending_worktree_paths()
     paths.reset_allowed_edit_dirs()
 

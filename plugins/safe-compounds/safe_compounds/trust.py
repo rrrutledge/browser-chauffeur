@@ -73,5 +73,7 @@ def get_trusted():
         except Exception:
             base = set()
         return base | {ASSIGNMENT_ONLY}
-    return (SHELL_BUILTINS | SAFE_COMMANDS
+    from . import config
+    configured = set(config.get_config().get('trusted_commands', []))
+    return (SHELL_BUILTINS | SAFE_COMMANDS | configured
             | load_trusted_from_settings() | learned_commands() | {ASSIGNMENT_ONLY})

@@ -6,12 +6,9 @@ unrecognized verbs fall through to a manual prompt.
 """
 import re
 
+from . import config
 from .log import log_debug
 
-MCP_BLANKET_APPROVE_SERVERS = (
-    'plugin_product-management_atlassian',
-    'plugin_architect_atlassian',
-)
 MCP_READONLY_VERBS = (
     'get', 'list', 'search', 'fetch', 'read', 'view', 'describe', 'query',
     'lookup', 'find', 'show', 'check', 'browse', 'preview', 'inspect',
@@ -35,8 +32,8 @@ def classify_mcp_tool(tool_name):
     server = parts[1] if len(parts) > 1 else ''
     operation = parts[-1] if len(parts) > 2 else ''
 
-    if server in MCP_BLANKET_APPROVE_SERVERS:
-        log_debug(f"MCP {tool_name}: server blanket-approved")
+    if server in config.get_config().get('mcp_blanket_servers', []):
+        log_debug(f"MCP {tool_name}: server blanket-approved (configured)")
         return True
 
     name = operation.lower()

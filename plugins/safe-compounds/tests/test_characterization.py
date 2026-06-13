@@ -1,9 +1,9 @@
-"""Characterization test: the refactored hook must reproduce, for every corpus
-case, the canonical decision the legacy hook produced (committed in golden.json).
+"""Characterization test: run the hook exactly as the harness does — a fresh
+`python hook.py` subprocess fed the tool payload on stdin — and assert it
+produces the decision the corpus specifies.
 
-The hook is invoked exactly as the Claude Code harness invokes it — a fresh
-`python hook.py` subprocess fed the tool payload on stdin — with AI disabled
-and the trusted set pinned to the committed fixture, so results are hermetic.
+Hermetic: AI disabled, trusted set pinned to fixtures/trusted_commands.json,
+config from fixtures/config.json, learned store redirected to a temp file.
 """
 import json
 import os
@@ -20,15 +20,13 @@ PLUGIN_DIR = os.path.dirname(TESTS_DIR)
 HOOK = os.path.join(PLUGIN_DIR, "hook.py")
 FIX = os.path.join(TESTS_DIR, "fixtures")
 
-with open(os.path.join(FIX, "golden.json"), encoding="utf-8") as f:
-    GOLDEN = json.load(f)
-
 
 def run_hook(payload, cwd_path, learned_path):
     env = dict(os.environ)
     env["CLAUDE_CWD"] = cwd_path
     env["SAFE_COMPOUNDS_DISABLE_AI"] = "1"
     env["SAFE_COMPOUNDS_TRUSTED_JSON"] = os.path.join(FIX, "trusted_commands.json")
+    env["SAFE_COMPOUNDS_CONFIG_JSON"] = os.path.join(FIX, "config.json")
     env["SAFE_COMPOUNDS_LEARNED_JSON"] = learned_path
     proc = subprocess.run(
         [sys.executable, HOOK],
@@ -39,14 +37,13 @@ def run_hook(payload, cwd_path, learned_path):
 
 
 @pytest.mark.parametrize("case", CASES, ids=[c["id"] for c in CASES])
-def test_matches_golden(case, tmp_path):
+def test_decision(case, tmp_path):
     cwd_path, payload = setup_case(str(tmp_path), case)
     learned = os.path.join(str(tmp_path), "learned.json")
     decision = run_hook(payload, cwd_path, learned)
-    assert decision == GOLDEN[case["id"]], (
-        f"{case['id']}: got {decision}, golden {GOLDEN[case['id']]}"
-    )
+    assert decision == case["expect"], f"{case['id']}: got {decision}, expected {case['expect']}"
 
 
-def test_golden_covers_corpus():
-    assert set(GOLDEN) == {c["id"] for c in CASES}
+def test_case_ids_unique():
+    ids = [c["id"] for c in CASES]
+    assert len(ids) == len(set(ids))

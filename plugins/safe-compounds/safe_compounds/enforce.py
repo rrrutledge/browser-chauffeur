@@ -1,6 +1,10 @@
-"""CLAUDE.md style enforcement: detect patterns that should be blocked with a
-corrective message (heredocs, redirections, inline scripts, PowerShell cmdlets,
-complex bash that belongs in a Python script, etc.).
+"""Enforcement = "rewrite into a form I can validate".
+
+A block here does not mean "this is forbidden". It means the command is in a
+form whose safety the hook cannot statically determine (heredocs, redirection,
+inline scripts, env-var expansion, loops/conditionals/substitutions, ...), so it
+asks for an equivalent form that *can* be validated — typically a `.tmp/` Python
+script or the Write tool, both of which the hook can read and check.
 
 enforce_bash(command) returns a block-reason string, or None to let the command
 proceed to approval. Individual detectors are exposed for unit testing.
@@ -333,8 +337,8 @@ def enforce_bash(command):
 
     inline_flag, inline_alternative = detect_inline_script(command)
     if inline_flag:
-        return (f'BLOCKED: Inline script flag "{inline_flag}" used in Bash command. Per CLAUDE.md rules, '
-                f'inline scripts are not allowed. {inline_alternative}')
+        return (f'BLOCKED: Inline script flag "{inline_flag}" can\'t be validated inline. '
+                f'{inline_alternative}')
 
     if detect_output_redirection(command):
         return ('BLOCKED: Output redirection (> or >>) detected. Per CLAUDE.md rules, never use output '
@@ -364,8 +368,8 @@ def enforce_bash(command):
 
     is_complex, reason = detect_complex_bash(command)
     if is_complex:
-        return (f'BLOCKED: Command contains {reason}. Per CLAUDE.md rules, complex logic must be written as a '
-                'Python script to .tmp/ instead. Please rewrite as a Python script and run it with: '
+        return (f'BLOCKED: Command contains {reason}, whose safety cannot be statically validated. Rewrite the '
+                'logic as a Python script in .tmp/ (which the hook can read and check) and run it with: '
                 'python .tmp/script_name.py')
 
     return None

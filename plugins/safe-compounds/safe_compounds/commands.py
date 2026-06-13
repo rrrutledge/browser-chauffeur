@@ -5,7 +5,7 @@ start/wt/cmd launchers, and CWD-scoped file operations (cp/mv/touch/ln/chmod).
 import os
 import re
 
-from . import ai
+from . import ai, config
 from .learned import add_learned_command, add_learned_subcommand, learned_subcommands
 from .log import log_debug
 from .paths import (
@@ -20,14 +20,26 @@ CURL_WRITE_FLAGS = {
     '--data-urlencode', '-F', '--form', '--form-string', '-T', '--upload-file', '--json',
 }
 CURL_LOCALHOST_PATTERNS = re.compile(r'https?://(localhost|127\.0\.0\.1)(:[0-9]+)?(/|$|\s)')
-CURL_WELLSKY_PATTERNS = re.compile(
-    r'https?://[^\s]*\.(atlassian\.net|wellskycorp\.sharepoint\.com|wellsky\.io|wellsky\.com)[/"\'\s]'
-)
+
+
+def _matches_configured_domain(segment):
+    """True if the URL host contains a domain the consumer marked trusted."""
+    domains = config.get_config().get('curl_domains', [])
+    for domain in domains:
+        if re.search(rf'https?://[^\s/]*{re.escape(domain)}', segment):
+            return True
+    return False
 
 
 def is_curl_safe(segment):
-    """Approve curl to localhost or WellSky domains (any method), or any GET."""
-    if CURL_LOCALHOST_PATTERNS.search(segment) or CURL_WELLSKY_PATTERNS.search(segment):
+    """Approve curl to localhost or a configured-trusted domain (any method);
+    otherwise allow only read-only (no write flag) requests.
+
+    Rationale: a GET is read-only, and configured corporate domains are treated
+    as trusted for reversible work. Writes to arbitrary public URLs are not
+    auto-approved.
+    """
+    if CURL_LOCALHOST_PATTERNS.search(segment) or _matches_configured_domain(segment):
         return True
     return not any(token in CURL_WRITE_FLAGS for token in segment.split())
 
@@ -47,21 +59,36 @@ def is_sed_command_safe(seg):
 
 
 # ----------------------------------------------------------------- git --------
+# Allowlist, not denylist: a git command is approved only if its subcommand is
+# known read-only or known reversible (the change can be undone — revert a
+# commit, delete a branch/tag, reset --soft, etc.). Anything not listed falls
+# through to a prompt. Dual-use subcommands (push/branch/reset/...) are approved
+# unless they carry a destructive flag.
 GIT_GLOBAL_OPTS_WITH_ARG = {'-C', '-c', '--git-dir', '--work-tree', '--namespace', '--super-prefix'}
-GIT_DANGEROUS_SUBCOMMANDS = {
-    'push': {'--force', '-f', '--force-with-lease'},
-    'reset': {'--hard'},
-    'clean': {'-f', '-fd', '-fdx', '-fx'},
-    'branch': {'-D'},
-    'tag': {'-d', '--delete'},
+
+GIT_SAFE_SUBCOMMANDS = {
+    # read-only
+    'status', 'log', 'diff', 'show', 'remote', 'describe', 'rev-parse', 'rev-list',
+    'ls-files', 'ls-remote', 'shortlog', 'blame', 'reflog', 'cat-file', 'for-each-ref',
+    'symbolic-ref', 'name-rev', 'grep', 'count-objects', 'merge-base', 'cherry',
+    'whatchanged', 'show-ref', 'show-branch',
+    # reversible writes (the effect can be undone)
+    'add', 'commit', 'stash', 'fetch', 'pull', 'merge', 'revert', 'cherry-pick',
+    'worktree', 'config', 'init', 'clone',
+}
+
+# Dual-use subcommands: approved unless one of these destructive flags is present.
+GIT_CONDITIONAL_SUBCOMMANDS = {
+    'push':   {'--force', '-f', '--force-with-lease', '--delete'},
+    'branch': {'-D', '-d', '--delete', '--force'},
+    'tag':    {'-d', '--delete'},
+    'reset':  {'--hard'},
+    'switch': {'--discard-changes', '-f', '--force'},
 }
 
 
-def is_git_command_safe(segment):
-    """False if the git command uses a destructive flag for its subcommand."""
-    tokens = shell_tokenize(segment)
-    if not tokens or tokens[0] != 'git':
-        return True
+def _git_subcommand(tokens):
+    """Return (subcommand, args) skipping git's global options, or (None, [])."""
     i = 1
     while i < len(tokens):
         if tokens[i] in GIT_GLOBAL_OPTS_WITH_ARG:
@@ -70,17 +97,28 @@ def is_git_command_safe(segment):
         if tokens[i].startswith('-'):
             i += 1
             continue
-        break
-    if i >= len(tokens):
+        return tokens[i], tokens[i + 1:]
+    return None, []
+
+
+def is_git_command_safe(segment):
+    """True only if the git command is a known read-only or reversible operation
+    (allowlist). Unknown subcommands and destructive flags fall through."""
+    tokens = shell_tokenize(segment)
+    if not tokens or tokens[0] != 'git':
         return True
-    subcommand = tokens[i]
-    args = tokens[i + 1:]
-    dangerous = GIT_DANGEROUS_SUBCOMMANDS.get(subcommand)
-    if dangerous and any(a in dangerous for a in args):
-        return False
-    if subcommand in ('checkout', 'restore') and '.' in args:
-        return False
-    return True
+    subcommand, args = _git_subcommand(tokens)
+    if subcommand is None:
+        return True
+    if subcommand in GIT_SAFE_SUBCOMMANDS:
+        return True
+    if subcommand in GIT_CONDITIONAL_SUBCOMMANDS:
+        return not any(a in GIT_CONDITIONAL_SUBCOMMANDS[subcommand] for a in args)
+    if subcommand == 'checkout':
+        return not ('.' in args or '--' in args or '-f' in args or '--force' in args)
+    if subcommand == 'clean':
+        return any(a in ('-n', '--dry-run') for a in args)
+    return False
 
 
 # ------------------------------------------------------------------ gh --------

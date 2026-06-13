@@ -224,16 +224,20 @@ def read_script_file(filename):
         return None
 
 
+# Generic, organization-agnostic directories whose scripts are trusted: the
+# temp dir and Claude's own authored content. Consumers add their own plugin
+# directories via the "trusted_script_dirs" config key.
 TRUSTED_SCRIPT_DIRS = [
     '.tmp/', '/.tmp/', '\\.tmp\\',
-    'wellsky-claude-code-plugins/', '/wellsky-claude-code-plugins/',
-    'rrrutledge-claude-code-plugins/', '/rrrutledge-claude-code-plugins/',
     '.claude/plugins/',
     '.claude/skills/', '.claude/commands/',
 ]
 
 
 def is_in_trusted_script_dir(filename):
-    """True if the script lives in a known-safe directory (plugins, .tmp)."""
+    """True if the script lives in a known-safe directory (.tmp, .claude, or a
+    consumer-configured directory)."""
+    from . import config
     normalized = filename.replace('\\', '/')
-    return any(d.replace('\\', '/') in normalized for d in TRUSTED_SCRIPT_DIRS)
+    dirs = TRUSTED_SCRIPT_DIRS + list(config.get_config().get('trusted_script_dirs', []))
+    return any(d.replace('\\', '/') in normalized for d in dirs)
