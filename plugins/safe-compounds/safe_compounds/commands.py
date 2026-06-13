@@ -261,8 +261,11 @@ def is_gh_command_safe(seg):
     if group in ('search', 'status', 'browse'):
         return True
     if group == 'auth':
+        # `gh auth status` is safe; `gh auth token` prints a live credential to
+        # stdout (it would land in the transcript/logs), so it falls through to
+        # a prompt rather than being auto-approved.
         subs = get_subcommands(seg, skip=2)
-        return bool(subs) and subs[0] in ('status', 'token')
+        return bool(subs) and subs[0] == 'status'
     if group == 'api':
         return _gh_api_safe(tokens)
     if group in GH_ALLOWED_SUBCOMMANDS:

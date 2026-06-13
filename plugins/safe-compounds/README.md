@@ -94,11 +94,11 @@ recognize, it records it in `~/.claude/safe-compounds-learned.json` so future
 runs approve it instantly without re-asking. The store is machine-local; the
 running hook only ever reads its own source, never rewrites it.
 
-To share those learnings, run **`/safe-compounds:sync-learned`** (or
-`python plugins/safe-compounds/tools/sync_learned.py`) when you're done. It folds
-each learned entry into the matching allowlist in the source (`SAFE_COMMANDS` in
-`trust.py`, the `*_SAFE_SUBCOMMANDS` sets in `commands.py`), opens a PR via `gh`,
-and clears the synced entries locally. This never happens automatically — the
+To share those learnings, run **`/safe-compounds:sync-learned`** when you're
+done. It reads the local store, adds each entry to the matching allowlist in the
+source (`SAFE_COMMANDS` in `trust.py`, the `*_SAFE_SUBCOMMANDS` sets in
+`commands.py`), opens a PR, and clears the synced entries locally. It's a plain
+prompt-driven command — no script. This never happens automatically; the
 per-command hook stays fast and only writes to the local store.
 
 ## Architecture
@@ -120,7 +120,6 @@ safe_compounds/
   mcp.py                 MCP tool classification
   writes.py              Write/Edit handling
 commands/sync-learned.md slash command to promote learnings into a PR
-tools/sync_learned.py    the promotion script
 ```
 
 Subcommand-shaped tools (git, gh, the package managers) share one

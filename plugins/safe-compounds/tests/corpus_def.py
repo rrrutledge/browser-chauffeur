@@ -45,6 +45,8 @@ CASES = [
     {"id": "gh_api_post_reversible", "tool": "Bash", "command": "gh api -X POST repos/o/r/issues -f title=x", "expect": "ALLOW"},
     {"id": "gh_api_delete_irreversible", "tool": "Bash", "command": "gh api -X DELETE repos/o/r", "expect": "PROMPT"},
     {"id": "gh_unknown_group", "tool": "Bash", "command": "gh secret list", "expect": "PROMPT"},
+    {"id": "gh_auth_status", "tool": "Bash", "command": "gh auth status", "expect": "ALLOW"},
+    {"id": "gh_auth_token_prompts", "tool": "Bash", "command": "gh auth token", "expect": "PROMPT"},
 
     # --- curl (localhost + configured domain + GET) -------------------------
     {"id": "curl_localhost", "tool": "Bash", "command": "curl http://localhost:3000/health", "expect": "ALLOW"},
