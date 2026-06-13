@@ -58,12 +58,94 @@ def is_sed_command_safe(seg):
     return True
 
 
+# ============================================================ subcommand tools
+# git, gh, and the package managers all share one shape: skip leading flags,
+# find the subcommand, check it against an allowlist, and (for most) fall back
+# to an AI judgment that is then remembered. They are expressed declaratively in
+# SUBCOMMAND_SPECS and evaluated by check_subcommand_tool(). Tools whose logic
+# doesn't fit (curl, sed, start, wt, .cmd files, cp/mv/...) stay bespoke below.
+#
+# A spec is a dict with:
+#   safe          - set of always-allowed subcommands
+#   category      - learned-store key (None disables AI fallback + learning)
+#   conditional   - {subcommand: {destructive flags}} -> allow unless a flag is present
+#   specials      - {subcommand: callable(args) -> bool} for one-off rules
+#   cache_clean   - allow "<tool> cache clean"
+#   flag_style    - 'simple' or 'yarn' (yarn's long flags consume a value)
+#   global_opts   - flags that take a value before the subcommand (git -C <dir>)
+#   allow_empty   - decision when there is no subcommand (git alone is harmless)
+# A spec may instead be a callable(seg) -> bool for a fully bespoke tool (gh).
+
+
+def _subcommand_prompt(command, subcommand, full_segment):
+    return (
+        f'Is "{command} {subcommand}" a safe, legitimate software development operation?\n\n'
+        f'Full command:\n```\n{full_segment}\n```\n\n'
+        'Respond with ONLY "SAFE" or "DANGEROUS".\n\n'
+        'SAFE: Common build, test, install, format, lint, publish, deploy, or dev workflow operations.\n'
+        'DANGEROUS: Operations that could cause irreversible system harm, data exfiltration, or security compromise.\n\n'
+        'Response (SAFE or DANGEROUS):'
+    )
+
+
+def _ai_learn(command, label, seg, category, store_value=None):
+    """Ask the AI about an unknown subcommand; remember it on approval."""
+    if ai.call_ai(_subcommand_prompt(command, label, seg)) is True:
+        add_learned_subcommand(category, store_value if store_value is not None else label)
+        return True
+    return False
+
+
+def _extract_subcommand(tokens, global_opts, flag_style):
+    """Return (subcommand, trailing tokens) after skipping leading flags."""
+    i = 1
+    while i < len(tokens):
+        t = tokens[i]
+        if t in global_opts:
+            i += 2
+            continue
+        if flag_style == 'yarn' and t.startswith('--') and '=' not in t:
+            i += 2
+            continue
+        if t.startswith('-'):
+            i += 1
+            continue
+        return t, tokens[i + 1:]
+    return None, []
+
+
+def _check_subcommand_tool(seg, spec):
+    """Generic evaluator for a subcommand-shaped tool (see SUBCOMMAND_SPECS)."""
+    tokens = shell_tokenize(seg)
+    sub, args = _extract_subcommand(tokens, spec.get('global_opts', set()), spec.get('flag_style', 'simple'))
+    if sub is None:
+        return spec.get('allow_empty', False)
+
+    category = spec.get('category')
+    allowed = spec['safe'] | (learned_subcommands(category) if category else set())
+    if sub in allowed:
+        return True
+
+    conditional = spec.get('conditional', {})
+    if sub in conditional:
+        return not any(a in conditional[sub] for a in args)
+
+    specials = spec.get('specials', {})
+    if sub in specials:
+        return specials[sub](args)
+
+    if spec.get('cache_clean') and sub == 'cache':
+        first = next((a for a in args if not a.startswith('-')), None)
+        return first == 'clean'
+
+    if category:
+        return _ai_learn(spec['command'], sub, seg, category)
+    return False
+
+
 # ----------------------------------------------------------------- git --------
-# Allowlist, not denylist: a git command is approved only if its subcommand is
-# known read-only or known reversible (the change can be undone — revert a
-# commit, delete a branch/tag, reset --soft, etc.). Anything not listed falls
-# through to a prompt. Dual-use subcommands (push/branch/reset/...) are approved
-# unless they carry a destructive flag.
+# Allowlist, not denylist: approve only known read-only or reversible
+# subcommands; dual-use ones are approved unless a destructive flag is present.
 GIT_GLOBAL_OPTS_WITH_ARG = {'-C', '-c', '--git-dir', '--work-tree', '--namespace', '--super-prefix'}
 
 GIT_SAFE_SUBCOMMANDS = {
@@ -77,7 +159,6 @@ GIT_SAFE_SUBCOMMANDS = {
     'worktree', 'config', 'init', 'clone',
 }
 
-# Dual-use subcommands: approved unless one of these destructive flags is present.
 GIT_CONDITIONAL_SUBCOMMANDS = {
     'push':   {'--force', '-f', '--force-with-lease', '--delete'},
     'branch': {'-D', '-d', '--delete', '--force'},
@@ -87,38 +168,38 @@ GIT_CONDITIONAL_SUBCOMMANDS = {
 }
 
 
-def _git_subcommand(tokens):
-    """Return (subcommand, args) skipping git's global options, or (None, [])."""
-    i = 1
-    while i < len(tokens):
-        if tokens[i] in GIT_GLOBAL_OPTS_WITH_ARG:
-            i += 2
-            continue
-        if tokens[i].startswith('-'):
-            i += 1
-            continue
-        return tokens[i], tokens[i + 1:]
-    return None, []
+def _git_checkout_ok(args):
+    return not ('.' in args or '--' in args or '-f' in args or '--force' in args)
 
 
-def is_git_command_safe(segment):
-    """True only if the git command is a known read-only or reversible operation
-    (allowlist). Unknown subcommands and destructive flags fall through."""
-    tokens = shell_tokenize(segment)
-    if not tokens or tokens[0] != 'git':
-        return True
-    subcommand, args = _git_subcommand(tokens)
-    if subcommand is None:
-        return True
-    if subcommand in GIT_SAFE_SUBCOMMANDS:
-        return True
-    if subcommand in GIT_CONDITIONAL_SUBCOMMANDS:
-        return not any(a in GIT_CONDITIONAL_SUBCOMMANDS[subcommand] for a in args)
-    if subcommand == 'checkout':
-        return not ('.' in args or '--' in args or '-f' in args or '--force' in args)
-    if subcommand == 'clean':
-        return any(a in ('-n', '--dry-run') for a in args)
-    return False
+def _git_clean_ok(args):
+    return any(a in ('-n', '--dry-run') for a in args)
+
+
+GIT_SPEC = {
+    'command': 'git',
+    'safe': GIT_SAFE_SUBCOMMANDS,
+    'conditional': GIT_CONDITIONAL_SUBCOMMANDS,
+    'specials': {'checkout': _git_checkout_ok, 'clean': _git_clean_ok},
+    'global_opts': GIT_GLOBAL_OPTS_WITH_ARG,
+    'allow_empty': True,
+    'category': None,  # no AI fallback: unknown git subcommands prompt
+}
+
+
+# ------------------------------------------------------ package managers ------
+NPM_SAFE_SUBCOMMANDS = {'audit', 'ci', 'dedupe', 'install', 'list', 'ls', 'outdated', 'prune', 'root', 'run', 'test', 'update'}
+YARN_SAFE_SUBCOMMANDS = {
+    'add', 'audit', 'backstage-cli', 'bin', 'build:all', 'build:backend',
+    'build:frontend', 'check', 'dedupe', 'dev', 'dlx', 'exec', 'explain',
+    'husky', 'info', 'install', 'link', 'lint:all', 'lint:fix', 'list',
+    'node', 'outdated', 'pack', 'prettier', 'prettier:check', 'prettier:fix',
+    'remove', 'run', 'start', 'start-backend', 'test', 'test:all', 'tsc',
+    'unlink', 'upgrade', 'why', 'workspace', 'workspaces',
+}
+PIP_SAFE_SUBCOMMANDS = {'2>&1', 'check', 'freeze', 'install', 'list', 'show', 'uninstall'}
+PNPM_SAFE_SUBCOMMANDS = {'install', 'add', 'update', 'remove', 'list', 'outdated', 'prune'}
+BUN_SAFE_SUBCOMMANDS = {'install', 'add', 'update', 'remove', 'test'}
 
 
 # ------------------------------------------------------------------ gh --------
@@ -142,7 +223,6 @@ GH_REVERSIBLE_API_PATTERNS = [
     re.compile(r'/?repos/[^/]+/[^/]+/git/refs(?:/|$)'),
     re.compile(r'/?repos/[^/]+/[^/]+/projects(?:/|$)'),
 ]
-# Base AI-approved 'group:action' pairs; the learned store adds more over time.
 GH_AI_APPROVED_PAIRS_BASE = {
     '--version:*', 'issue:2>&1', 'label:*', 'org:*', 'pr:merge',
     'project:*', 'repo:clone', 'repo:create', 'repo:edit', 'repo:list',
@@ -153,7 +233,27 @@ def _gh_approved_pairs():
     return GH_AI_APPROVED_PAIRS_BASE | learned_subcommands('GH_AI_APPROVED_PAIRS')
 
 
+def _gh_api_safe(tokens):
+    """gh api: read methods are fine; write methods only to reversible endpoints."""
+    api_url = ''
+    method = 'GET'
+    i = 2
+    while i < len(tokens):
+        if tokens[i] in ('--method', '-X') and i + 1 < len(tokens):
+            method = tokens[i + 1].upper()
+            i += 2
+            continue
+        if not tokens[i].startswith('-') and not api_url:
+            api_url = tokens[i]
+        i += 1
+    if method in GH_WRITE_METHODS:
+        return any(p.search(api_url) for p in GH_REVERSIBLE_API_PATTERNS)
+    return True
+
+
 def is_gh_command_safe(seg):
+    """gh is two-level (group action) plus the special `api`/`auth` groups, so it
+    has its own handler — but it shares the AI-learn fallback of the engine."""
     tokens = shell_tokenize(seg)
     if len(tokens) < 2:
         return True
@@ -164,25 +264,7 @@ def is_gh_command_safe(seg):
         subs = get_subcommands(seg, skip=2)
         return bool(subs) and subs[0] in ('status', 'token')
     if group == 'api':
-        api_url = ''
-        method = 'GET'
-        i = 2
-        while i < len(tokens):
-            if tokens[i] in ('--method', '-X') and i + 1 < len(tokens):
-                method = tokens[i + 1].upper()
-                i += 2
-                continue
-            if not tokens[i].startswith('-') and not api_url:
-                api_url = tokens[i]
-            i += 1
-        if method in GH_WRITE_METHODS:
-            for pattern in GH_REVERSIBLE_API_PATTERNS:
-                if pattern.search(api_url):
-                    log_debug(f"gh api {method} approved: reversible endpoint {api_url}")
-                    return True
-            log_debug(f"gh api {method} denied: non-reversible endpoint {api_url}")
-            return False
-        return True
+        return _gh_api_safe(tokens)
     if group in GH_ALLOWED_SUBCOMMANDS:
         subs = get_subcommands(seg, skip=2)
         action = subs[0] if subs else ''
@@ -191,82 +273,46 @@ def is_gh_command_safe(seg):
         pair = f'{group}:{action}'
         if pair in _gh_approved_pairs():
             return True
-        result = ai.call_ai(_subcommand_prompt('gh', f'{group} {action}', seg))
-        if result is True:
-            add_learned_subcommand('GH_AI_APPROVED_PAIRS', pair)
-        return result is True
+        return _ai_learn('gh', f'{group} {action}', seg, 'GH_AI_APPROVED_PAIRS', store_value=pair)
     pair = f'{group}:*'
     if pair in _gh_approved_pairs():
         return True
-    result = ai.call_ai(_subcommand_prompt('gh', group, seg))
-    if result is True:
-        add_learned_subcommand('GH_AI_APPROVED_PAIRS', pair)
-    return result is True
+    return _ai_learn('gh', group, seg, 'GH_AI_APPROVED_PAIRS', store_value=pair)
 
 
-# ------------------------------------------------------ package managers ------
-def _subcommand_prompt(command, subcommand, full_segment):
-    return (
-        f'Is "{command} {subcommand}" a safe, legitimate software development operation?\n\n'
-        f'Full command:\n```\n{full_segment}\n```\n\n'
-        'Respond with ONLY "SAFE" or "DANGEROUS".\n\n'
-        'SAFE: Common build, test, install, format, lint, publish, deploy, or dev workflow operations.\n'
-        'DANGEROUS: Operations that could cause irreversible system harm, data exfiltration, or security compromise.\n\n'
-        'Response (SAFE or DANGEROUS):'
-    )
-
-
-NPM_SAFE_SUBCOMMANDS = {'audit', 'ci', 'dedupe', 'install', 'list', 'ls', 'outdated', 'prune', 'root', 'run', 'test', 'update'}
-YARN_SAFE_SUBCOMMANDS = {
-    'add', 'audit', 'backstage-cli', 'bin', 'build:all', 'build:backend',
-    'build:frontend', 'check', 'dedupe', 'dev', 'dlx', 'exec', 'explain',
-    'husky', 'info', 'install', 'link', 'lint:all', 'lint:fix', 'list',
-    'node', 'outdated', 'pack', 'prettier', 'prettier:check', 'prettier:fix',
-    'remove', 'run', 'start', 'start-backend', 'test', 'test:all', 'tsc',
-    'unlink', 'upgrade', 'why', 'workspace', 'workspaces',
-}
-PIP_SAFE_SUBCOMMANDS = {'2>&1', 'check', 'freeze', 'install', 'list', 'show', 'uninstall'}
-PNPM_SAFE_SUBCOMMANDS = {'install', 'add', 'update', 'remove', 'list', 'outdated', 'prune'}
-BUN_SAFE_SUBCOMMANDS = {'install', 'add', 'update', 'remove', 'test'}
-
-PKG_MANAGERS = {
-    'npm':  {'safe': NPM_SAFE_SUBCOMMANDS,  'category': 'NPM_SAFE_SUBCOMMANDS',  'cache_clean': True,  'yarn_flags': False},
-    'yarn': {'safe': YARN_SAFE_SUBCOMMANDS, 'category': 'YARN_SAFE_SUBCOMMANDS', 'cache_clean': True,  'yarn_flags': True},
-    'pip':  {'safe': PIP_SAFE_SUBCOMMANDS,  'category': 'PIP_SAFE_SUBCOMMANDS',  'cache_clean': False, 'yarn_flags': False},
-    'pnpm': {'safe': PNPM_SAFE_SUBCOMMANDS, 'category': 'PNPM_SAFE_SUBCOMMANDS', 'cache_clean': False, 'yarn_flags': False},
-    'bun':  {'safe': BUN_SAFE_SUBCOMMANDS,  'category': 'BUN_SAFE_SUBCOMMANDS',  'cache_clean': False, 'yarn_flags': False},
+# ----------------------------------------------------- the spec table ---------
+SUBCOMMAND_SPECS = {
+    'git':  GIT_SPEC,
+    'npm':  {'command': 'npm',  'safe': NPM_SAFE_SUBCOMMANDS,  'category': 'NPM_SAFE_SUBCOMMANDS',  'cache_clean': True},
+    'yarn': {'command': 'yarn', 'safe': YARN_SAFE_SUBCOMMANDS, 'category': 'YARN_SAFE_SUBCOMMANDS', 'cache_clean': True, 'flag_style': 'yarn'},
+    'pip':  {'command': 'pip',  'safe': PIP_SAFE_SUBCOMMANDS,  'category': 'PIP_SAFE_SUBCOMMANDS'},
+    'pnpm': {'command': 'pnpm', 'safe': PNPM_SAFE_SUBCOMMANDS, 'category': 'PNPM_SAFE_SUBCOMMANDS'},
+    'bun':  {'command': 'bun',  'safe': BUN_SAFE_SUBCOMMANDS,  'category': 'BUN_SAFE_SUBCOMMANDS'},
+    'gh':   is_gh_command_safe,
 }
 
+SUBCOMMAND_TOOLS = set(SUBCOMMAND_SPECS)
 
-def _yarn_subcommands(seg):
-    tokens = shell_tokenize(seg)
-    subs = []
-    i = 1
-    while i < len(tokens):
-        t = tokens[i]
-        if t.startswith('--') and '=' not in t:
-            i += 2
-        elif t.startswith('-'):
-            i += 1
-        else:
-            subs.append(t)
-            i += 1
-    return subs
+
+def check_subcommand_tool(command, seg):
+    """Evaluate a subcommand-shaped tool via its spec (or bespoke handler)."""
+    spec = SUBCOMMAND_SPECS[command]
+    if callable(spec):
+        return spec(seg)
+    return _check_subcommand_tool(seg, spec)
+
+
+def is_git_command_safe(segment):
+    """Back-compat wrapper used by unit tests."""
+    tokens = shell_tokenize(segment)
+    if not tokens or tokens[0] != 'git':
+        return True
+    return _check_subcommand_tool(segment, GIT_SPEC)
 
 
 def is_pkg_manager_safe(seg, manager):
-    cfg = PKG_MANAGERS[manager]
-    subs = _yarn_subcommands(seg) if cfg['yarn_flags'] else get_subcommands(seg)
-    if not subs:
-        return False
-    if subs[0] in (cfg['safe'] | learned_subcommands(cfg['category'])):
-        return True
-    if cfg['cache_clean'] and subs[0] == 'cache':
-        return len(subs) > 1 and subs[1] == 'clean'
-    result = ai.call_ai(_subcommand_prompt(manager, subs[0], seg))
-    if result is True:
-        add_learned_subcommand(cfg['category'], subs[0])
-    return result is True
+    """Back-compat wrapper."""
+    return _check_subcommand_tool(seg, SUBCOMMAND_SPECS[manager])
 
 
 # --------------------------------------------------------------- start --------

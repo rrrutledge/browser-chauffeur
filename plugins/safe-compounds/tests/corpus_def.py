@@ -39,7 +39,12 @@ CASES = [
 
     # --- gh -----------------------------------------------------------------
     {"id": "gh_pr_list", "tool": "Bash", "command": "gh pr list", "expect": "ALLOW"},
+    {"id": "gh_issue_view", "tool": "Bash", "command": "gh issue view 5", "expect": "ALLOW"},
+    {"id": "gh_pr_merge_pair", "tool": "Bash", "command": "gh pr merge 5", "expect": "ALLOW"},
     {"id": "gh_api_get", "tool": "Bash", "command": "gh api repos/foo/bar", "expect": "ALLOW"},
+    {"id": "gh_api_post_reversible", "tool": "Bash", "command": "gh api -X POST repos/o/r/issues -f title=x", "expect": "ALLOW"},
+    {"id": "gh_api_delete_irreversible", "tool": "Bash", "command": "gh api -X DELETE repos/o/r", "expect": "PROMPT"},
+    {"id": "gh_unknown_group", "tool": "Bash", "command": "gh secret list", "expect": "PROMPT"},
 
     # --- curl (localhost + configured domain + GET) -------------------------
     {"id": "curl_localhost", "tool": "Bash", "command": "curl http://localhost:3000/health", "expect": "ALLOW"},

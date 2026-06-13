@@ -45,9 +45,8 @@ def is_segment_trusted(seg, trusted):
         return check_python_segment(seg, word)
     if word == 'sed':
         return commands.is_sed_command_safe(seg)
-    if word == 'git':
-        if not commands.is_git_command_safe(seg):
-            return False
+    if word in commands.SUBCOMMAND_TOOLS:
+        return commands.check_subcommand_tool(word, seg)
     if word in commands.CWD_FILE_COMMAND_CONFIG:
         return commands.check_cwd_file_command(seg, word)
     if word == 'start':
@@ -60,10 +59,6 @@ def is_segment_trusted(seg, trusted):
         tokens = shell_tokenize(seg)
         filepath = tokens[0] if tokens else seg.strip()
         return commands.is_cmd_file_safe(filepath, trusted)
-    if word == 'gh':
-        return commands.is_gh_command_safe(seg)
-    if word in commands.PKG_MANAGERS:
-        return commands.is_pkg_manager_safe(seg, word)
 
     if check_shell_keyword(word, seg, trusted):
         return True

@@ -94,10 +94,12 @@ recognize, it records it in `~/.claude/safe-compounds-learned.json` so future
 runs approve it instantly without re-asking. The store is machine-local; the
 running hook only ever reads its own source, never rewrites it.
 
-To share a learned approval across machines, add it to the appropriate list in
-the source (`SAFE_COMMANDS` in `trust.py`, or the relevant `*_SAFE_SUBCOMMANDS`
-set in `commands.py`) and open a PR — then it's a built-in default for everyone,
-not just one machine.
+To share those learnings, run **`/safe-compounds:sync-learned`** (or
+`python plugins/safe-compounds/tools/sync_learned.py`) when you're done. It folds
+each learned entry into the matching allowlist in the source (`SAFE_COMMANDS` in
+`trust.py`, the `*_SAFE_SUBCOMMANDS` sets in `commands.py`), opens a PR via `gh`,
+and clears the synced entries locally. This never happens automatically — the
+per-command hook stays fast and only writes to the local store.
 
 ## Architecture
 
@@ -111,12 +113,22 @@ safe_compounds/
   ai.py                  single Claude Haiku request impl (fallback classifier)
   learned.py             machine-local store of AI-approved commands
   scripts.py             node/python script safety analysis (deny-by-default)
-  commands.py            git/gh/curl/sed/start/wt/cmd + package managers + file ops
+  commands.py            subcommand engine (git/gh/npm/yarn/pip/pnpm/bun via a
+                         spec table) + bespoke checkers (curl/sed/start/wt/cmd/file ops)
   enforce.py             the BLOCK rules ("rewrite into a validatable form")
   approve.py             per-segment trust decision
   mcp.py                 MCP tool classification
   writes.py              Write/Edit handling
+commands/sync-learned.md slash command to promote learnings into a PR
+tools/sync_learned.py    the promotion script
 ```
+
+Subcommand-shaped tools (git, gh, the package managers) share one
+`check_subcommand_tool` engine driven by `SUBCOMMAND_SPECS` in `commands.py` —
+adding a new such tool is a table entry, not new code. Tools whose safety isn't
+subcommand-shaped (curl URLs, `sed -i`, `start` extensions, `wt` program
+resolution, `.cmd` parsing, CWD-scoped file ops) stay as small purpose-built
+checkers.
 
 One orchestrator (not two separate hook processes) preserves the block-then-
 approve ordering, which the Write/Edit path depends on (a temp-named file
