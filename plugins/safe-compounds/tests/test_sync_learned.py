@@ -42,3 +42,19 @@ def test_safe_commands_grouped_stays_valid():
     ns = {}
     exec(new_text, ns)
     assert ns["SAFE_COMMANDS"] == {"awk", "cat", "curl", "ant"}
+
+
+def test_share_exclusions(tmp_path, monkeypatch):
+    cfg = tmp_path / "config.json"
+    cfg.write_text(
+        '{"trusted_commands": ["mycli"], "learned_sync_exclude": ["acme-deploy"]}',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("SAFE_COMPOUNDS_CONFIG_JSON", str(cfg))
+    excl = sync_learned.share_exclusions()
+    assert "mycli" in excl and "acme-deploy" in excl
+
+
+def test_share_exclusions_empty_when_no_config(tmp_path, monkeypatch):
+    monkeypatch.setenv("SAFE_COMPOUNDS_CONFIG_JSON", str(tmp_path / "missing.json"))
+    assert sync_learned.share_exclusions() == set()

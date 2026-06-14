@@ -31,7 +31,7 @@ TARGETS = {
     "PIP_SAFE_SUBCOMMANDS": ("plugins/safe-compounds/safe_compounds/commands.py", "PIP_SAFE_SUBCOMMANDS"),
     "PNPM_SAFE_SUBCOMMANDS": ("plugins/safe-compounds/safe_compounds/commands.py", "PNPM_SAFE_SUBCOMMANDS"),
     "BUN_SAFE_SUBCOMMANDS": ("plugins/safe-compounds/safe_compounds/commands.py", "BUN_SAFE_SUBCOMMANDS"),
-    "GH_AI_APPROVED_PAIRS": ("plugins/safe-compounds/safe_compounds/commands.py", "GH_AI_APPROVED_PAIRS_BASE"),
+    "GH_AI_SAFE_PAIRS": ("plugins/safe-compounds/safe_compounds/commands.py", "GH_AI_SAFE_PAIRS_BASE"),
 }
 
 
@@ -48,6 +48,22 @@ def load_learned():
             return json.load(f)
     except Exception:
         return {}
+
+
+def share_exclusions():
+    """Names that must never be promoted to the public PR: the consumer's
+    private/company `trusted_commands` plus an explicit `learned_sync_exclude`.
+    Company-specific trust belongs in config, which is never shared."""
+    path = os.environ.get(
+        "SAFE_COMPOUNDS_CONFIG_JSON",
+        os.path.expanduser("~/.claude/safe-compounds-config.json"),
+    )
+    try:
+        with open(path, encoding="utf-8") as f:
+            cfg = json.load(f)
+    except Exception:
+        cfg = {}
+    return set(cfg.get("trusted_commands", [])) | set(cfg.get("learned_sync_exclude", []))
 
 
 # --------------------------------------------------------------- formatting ---
@@ -107,12 +123,17 @@ def gh_ok(*args):
 # ---------------------------------------------------------------------- main --
 def main():
     learned = load_learned()
+    exclude = share_exclusions()
     plan = {}  # learned-key -> [values]
     if learned.get("commands"):
-        plan["commands"] = list(learned["commands"])
+        vals = [v for v in learned["commands"] if v not in exclude]
+        if vals:
+            plan["commands"] = vals
     for key, vals in (learned.get("subcommands") or {}).items():
-        if vals and key in TARGETS:
-            plan[key] = list(vals)
+        if key in TARGETS:
+            vals = [v for v in vals if v not in exclude]
+            if vals:
+                plan[key] = vals
     if not plan:
         return
 

@@ -203,7 +203,7 @@ BUN_SAFE_SUBCOMMANDS = {'install', 'add', 'update', 'remove', 'test'}
 
 
 # ------------------------------------------------------------------ gh --------
-GH_ALLOWED_SUBCOMMANDS = {
+GH_SAFE_SUBCOMMANDS = {
     'pr':       {'view', 'list', 'diff', 'checks', 'create', 'edit', 'close', 'reopen', 'ready', 'comment', 'review'},
     'issue':    {'view', 'list', 'create', 'edit', 'close', 'reopen', 'comment'},
     'repo':     {'view'},
@@ -223,14 +223,14 @@ GH_REVERSIBLE_API_PATTERNS = [
     re.compile(r'/?repos/[^/]+/[^/]+/git/refs(?:/|$)'),
     re.compile(r'/?repos/[^/]+/[^/]+/projects(?:/|$)'),
 ]
-GH_AI_APPROVED_PAIRS_BASE = {
+GH_AI_SAFE_PAIRS_BASE = {
     '--version:*', 'issue:2>&1', 'label:*', 'org:*', 'pr:merge',
     'project:*', 'repo:clone', 'repo:create', 'repo:edit', 'repo:list',
 }
 
 
-def _gh_approved_pairs():
-    return GH_AI_APPROVED_PAIRS_BASE | learned_subcommands('GH_AI_APPROVED_PAIRS')
+def _gh_safe_pairs():
+    return GH_AI_SAFE_PAIRS_BASE | learned_subcommands('GH_AI_SAFE_PAIRS')
 
 
 def _gh_api_safe(tokens):
@@ -268,19 +268,19 @@ def is_gh_command_safe(seg):
         return bool(subs) and subs[0] == 'status'
     if group == 'api':
         return _gh_api_safe(tokens)
-    if group in GH_ALLOWED_SUBCOMMANDS:
+    if group in GH_SAFE_SUBCOMMANDS:
         subs = get_subcommands(seg, skip=2)
         action = subs[0] if subs else ''
-        if action in GH_ALLOWED_SUBCOMMANDS[group]:
+        if action in GH_SAFE_SUBCOMMANDS[group]:
             return True
         pair = f'{group}:{action}'
-        if pair in _gh_approved_pairs():
+        if pair in _gh_safe_pairs():
             return True
-        return _ai_learn('gh', f'{group} {action}', seg, 'GH_AI_APPROVED_PAIRS', store_value=pair)
+        return _ai_learn('gh', f'{group} {action}', seg, 'GH_AI_SAFE_PAIRS', store_value=pair)
     pair = f'{group}:*'
-    if pair in _gh_approved_pairs():
+    if pair in _gh_safe_pairs():
         return True
-    return _ai_learn('gh', group, seg, 'GH_AI_APPROVED_PAIRS', store_value=pair)
+    return _ai_learn('gh', group, seg, 'GH_AI_SAFE_PAIRS', store_value=pair)
 
 
 # ----------------------------------------------------- the spec table ---------

@@ -1,7 +1,7 @@
-"""Classify MCP tool calls (mcp__<server>__<operation>) as auto-approvable.
+"""Classify MCP tool calls (mcp__<server>__<operation>) as auto-allowable.
 
-Whole servers can be blanket-approved; otherwise the operation's leading verb
-decides: read-only and reversible-write verbs approve, destructive or
+Whole servers can be blanket-allowed; otherwise the operation's leading verb
+decides: read-only and reversible-write verbs allow, destructive or
 unrecognized verbs fall through to a manual prompt.
 """
 import re
@@ -27,7 +27,7 @@ MCP_DESTRUCTIVE_VERBS = (
 
 
 def classify_mcp_tool(tool_name):
-    """Return True to auto-approve an MCP tool call, False to prompt."""
+    """Return True to auto-allow an MCP tool call, False to prompt."""
     parts = tool_name.split('__')
     server = parts[1] if len(parts) > 1 else ''
     operation = parts[-1] if len(parts) > 2 else ''

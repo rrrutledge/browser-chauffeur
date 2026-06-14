@@ -1,4 +1,4 @@
-"""Machine-local store of AI-approved commands and subcommands.
+"""Machine-local store of commands the AI judged safe.
 
 Replaces the previous design where the hook rewrote its own source file. That
 caused OneDrive sync-conflict copies and could not survive a plugin update
@@ -8,7 +8,7 @@ plain JSON file outside the plugin, one per machine, never synced.
 Schema:
     {
       "commands":    ["webpack", ...],          # top-level CLI tools
-      "subcommands": {"NPM_SAFE_SUBCOMMANDS": ["foo"], "GH_AI_APPROVED_PAIRS": ["pr:merge"]}
+      "subcommands": {"NPM_SAFE_SUBCOMMANDS": ["foo"], "GH_AI_SAFE_PAIRS": ["pr:merge"]}
     }
 """
 import json

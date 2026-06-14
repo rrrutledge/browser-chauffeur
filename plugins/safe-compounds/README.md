@@ -25,6 +25,18 @@ isn't forbidden; it just falls through to a manual prompt so you decide. The
 hook is deliberately **deny-by-default**: it approves from an allowlist of
 known-safe forms rather than trying to enumerate everything dangerous.
 
+## Vocabulary
+
+- **trusted** — a bare command *name* on the allowlist that may run with any
+  arguments (`ls`, `grep`, `git`). Source: `SAFE_COMMANDS` + config + your
+  settings.json + learned.
+- **safe** — a checker's verdict that a specific command, segment, or subcommand
+  may be auto-allowed (`is_*_safe`, the `*_SAFE_*` sets).
+- **allow / block / prompt** — the three decisions the hook emits.
+
+("allowed" appears only for filesystem dirs your settings.json grants Edit/Write
+on — a separate idea.)
+
 ## Three decisions
 
 For each tool call the hook produces one of:
@@ -106,6 +118,10 @@ time. Run **`/safe-compounds:sync-learned`** to trigger the same thing on demand
 The per-command hook itself never does any of this — it only appends to the
 local store, so it stays fast.
 
+Company-specific trust is never shared: the sync skips anything in your
+`trusted_commands` config (that's your private allowlist) and anything you list
+in `learned_sync_exclude`. Put internal tool names in config, not the shared PR.
+
 ## Architecture
 
 ```
@@ -150,8 +166,9 @@ python -m pytest plugins/safe-compounds
 hook must produce (`expect`). `test_characterization.py` runs the hook as a
 subprocess (exactly how the harness invokes it) over the corpus and asserts each
 decision; `test_units.py` covers the parsing/classification helpers. Everything
-is hermetic — AI disabled, trusted set pinned to a fixture, config from a
-fixture, temp working dirs — so CI is deterministic.
+is hermetic — AI disabled, the trusted set pinned (generated from `trust.py` at
+test time, so it can't drift), config from a fixture, temp working dirs — so CI
+is deterministic.
 
 ## Requirements
 
