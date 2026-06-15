@@ -11,16 +11,20 @@ Example ~/.claude/safe-compounds-config.json:
       "curl_domains": ["atlassian.net", "mycorp.sharepoint.com"],
       "mcp_blanket_servers": ["plugin_product-management_atlassian"],
       "trusted_script_dirs": ["my-plugins/"],
-      "learned_sync_exclude": ["acme-deploy"]
+      "learned_sync_exclude": ["my-internal-cli"]
     }
+
+Every value here is a command *name* or path/domain string — a name-level
+allowlist, not a safety verdict. (The hook decides "safe" per command at
+runtime; this file just feeds the lists those decisions draw on.)
 
 All keys are optional; defaults are empty, which means "trust nothing extra"
 (curl is then limited to localhost and read-only GETs, no MCP server is
 blanket-allowed, etc.).
 
 `trusted_commands` is your private/company trust — it is never promoted to the
-shared PR. `learned_sync_exclude` lets you blocklist additional names that the
-AI might learn but should never be shared publicly (e.g. internal tool names).
+shared PR. `learned_sync_exclude` blocklists additional command names that the
+AI might learn but should never be shared publicly (e.g. an internal tool name).
 """
 import json
 import os
