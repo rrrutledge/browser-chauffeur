@@ -7,7 +7,9 @@ description: Russell's personal style conventions for authoring or editing any d
 
 Apply these whenever authoring or editing a document or message in Russell's name.
 
-## Links (universal — every format, no exceptions)
+**Everything here applies to every medium by default** — Teams, Slack, email, Jira/Request Center comments, Confluence, Word, PRs. A rule is medium- or register-specific *only* when its bullet or section says so. The **Formal writing** and **Conversational writing** sections below describe **register** (how warm, how structured), not which rules are in scope — their guidance applies wherever you're writing in that register, across all channels.
+
+## Links
 
 Always embed links as hyperlinks on descriptive text within the sentence flow — never paste bare `https://…` URLs in prose.
 
@@ -21,9 +23,7 @@ Applies to every medium:
 
 ---
 
-## Asks (universal — every format, no exceptions)
-
-Applies to **all** communication types alike — Teams chats, channel posts, Slack, email, Jira/Request Center comments. The same principle holds in chat and email:
+## Asks
 
 **One concrete question or request per message.** Land on the single thing you actually need and ask for that. Don't present a menu of options for the reader to react to, and don't stack a numbered list of questions.
 
@@ -74,7 +74,7 @@ Messages are **short**. Default to the fewest sentences that carry the point. Be
 
 If the message is a single clear sentence ending in a question, that is usually the whole message. Resist padding it.
 
-This includes asks: a chat message that needs something lands on **one concrete question or request**, not a menu of options — see **Asks (universal)** above.
+This includes asks: a chat message that needs something lands on **one concrete question or request**, not a menu of options — see **Asks** above.
 
 ### Never do these (AI-tells that break the voice)
 
@@ -142,7 +142,7 @@ Don't invent emoji outside this palette, don't stack them, and skip them entirel
 **`outreach` — offering a resource or asking someone to adopt something:**
 - Lead with the person's name, then hand them the thing plainly with the link anchored to its title
 - Frame as helpful, low-pressure; invite a look
-- Land on a single concrete question or request — see **Asks (universal)** above. Real edit: a draft offering two solution options plus a 3-part question list was cut to one question ("who could help facilitate these sessions?") and one ask ("Can you share your feedback and help us with finding a facilitator?").
+- Land on a single concrete question or request — see **Asks** above. Real edit: a draft offering two solution options plus a 3-part question list was cut to one question ("who could help facilitate these sessions?") and one ask ("Can you share your feedback and help us with finding a facilitator?").
 - Use the collective **"we"** for a committee/team ask ("we wanted your read", "our biggest question was"), not "I".
 - Plain framing over clever phrasing — drop quoted catchphrases. Real edit: an "extend that same '*available at a sensible local time*' experience" was plained down, and "asking teammates to join everything at odd hours" became the more considerate "asking teammates to join solely in their evening".
 - *Samples:*
