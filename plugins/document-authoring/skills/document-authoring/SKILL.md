@@ -148,6 +148,13 @@ Don't invent emoji outside this palette, don't stack them, and skip them entirel
   - "I made these feature specs based on our conversation yesterday. Take a look and see if they capture your scenarios?"
   - "Hi Abhi, You've been instrumental in running SkyStudio-India, so we wanted your read on something the planning committee is weighing. … Our biggest question was who could help facilitate these sessions? … Can you share your feedback on this idea and help us with your thoughts on finding a facilitator? Thanks, Russ"
 
+**`meeting-invite` — calendar invite body:**
+- **Not an email.** No greeting ("Hi everyone"), no closing ("Thanks, Russell"), no intro paragraph, no conclusion. Attendees don't read invite bodies like messages — they scan them for the "why" in seconds.
+- Two sentences of context max — why this topic is on the table now. Compress ruthlessly; skip anything the attendees already know.
+- End with **`Let's discuss:`** followed by the bare URL. That's the whole body.
+- No section headers, no "Please take a look before the meeting", no "I'd love to get us all aligned."
+- *Example (verbatim from a sent invite):* "This topic has come up a couple of times recently. Stuart and I worked through it and put together a document to capture our thinking. Let's discuss: https://wellsky.atlassian.net/wiki/…"
+
 **`announcement` — broad post to a group or channel:**
 - Open with "Hey folks/everyone/guys"
 - State what you did or want, then a tight bulleted list of specifics if needed, then a low-pressure call for feedback
