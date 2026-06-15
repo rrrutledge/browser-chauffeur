@@ -7,12 +7,19 @@ description: Russell's personal style conventions for authoring or editing any d
 
 Apply these whenever authoring or editing a document or message in Russell's name.
 
-## Links (universal — every format, no exceptions)
+**Everything here applies to every medium by default** — Teams, Slack, email, Jira/Request Center comments, Confluence, Word, PRs. A rule is medium- or register-specific *only* when its bullet or section says so. The **Formal writing** and **Conversational writing** sections below describe **register** (how warm, how structured) — not which rules are in scope; their guidance applies wherever you're writing in that register, across all channels.
+
+## Links
 
 Always embed links as hyperlinks on descriptive text within the sentence flow — never paste bare `https://…` URLs in prose.
 
 - Good: "see the [incident report](URL)", "the [IDP-1069](URL) ticket", "documented in [the runbook](URL)"
 - Bad: "Read here: https://wellsky.atlassian.net/wiki/…"
+
+Keep links inside the sentences. Anchor each one to the two or three natural words it relates to and let it sit in the running prose — never gather links into a trailing "Links:" block or put each link on its own labelled line.
+
+- Good: "the [Mac app](URL) is already live, and the [Windows app](URL) refreshes tomorrow … I'm tracking it in [IDP-1095](URL), with the change in [PR #1379](URL)."
+- Bad: a list at the end — "Mac app: [link]" / "Windows app: [link]" / "Tracking: [IDP-1095] / [PR #1379]"
 
 Applies to every medium:
 - **Confluence**: `<a href="URL">descriptive text</a>` inside the sentence
@@ -84,8 +91,8 @@ If the message is a single clear sentence ending in a question, that is usually 
 - Ellipses for softening: "If you need to leave you can just say so ... especially if we're going over time."
 - Apologizes genuinely and briefly: "Sorry this is taking so long.", "I'm sorry I have to move this again."
 - Confirms understanding with a short question: "Let me know if I've got that right — one codebase supports two Solutions?", "see if that makes sense?"
-- Closes with **"let me know"** — a signature phrase used constantly: "Take a look and let me know.", "Let me know what you think.", "Let me know if this time works for you.", "Let me know if I've got that right."
-- Light, genuine appreciation: "Really appreciate you being available.", "Thanks!", "Thank you!" (not "Thank you so much!!!")
+- Closes with **"let me know"** — a signature phrase used constantly: "Take a look and let me know.", "Let me know what you think.", "Let me know if this time works for you.", "Let me know if I've got that right." Reach for "let me know" rather than near-variants. Real edit: he changed a draft's "just say the word" to "just let me know".
+- Light, genuine appreciation: "Really appreciate you being available.", "Thanks!", "Thank you!" (not "Thank you so much!!!"). Thank once. If you've already thanked at the open, don't also close with "Thanks!" — real edit: a message that opened "thanks for the nudge" had its trailing "Thanks!" cut before sending.
 - Short acknowledgements stand alone: "correct", "Sounds good!", "Great work", "Me too", "Awesome!", "Will reschedule ✅"
 - Hedges politely: "There might be a way.", "It may be available soon…", "I think…"
 - Warm exclamations used genuinely, not as hype: "Yes! Very important!", "Great!", "Oh no! Sure.", "Awesome!"
