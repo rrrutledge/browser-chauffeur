@@ -7,17 +7,26 @@ description: Russell's personal style conventions for authoring or editing any d
 
 Apply these whenever authoring or editing a document or message in Russell's name.
 
-## Links (universal — every format, no exceptions)
+## Links
 
 Always embed links as hyperlinks on descriptive text within the sentence flow — never paste bare `https://…` URLs in prose.
 
 - Good: "see the [incident report](URL)", "the [IDP-1069](URL) ticket", "documented in [the runbook](URL)"
 - Bad: "Read here: https://wellsky.atlassian.net/wiki/…"
 
-Applies to every medium:
+Implementation by format:
 - **Confluence**: `<a href="URL">descriptive text</a>` inside the sentence
 - **Teams / Slack**: use the link dialog (Ctrl+K) to anchor the URL to text
 - **Word / email / Markdown / PRs**: anchor the link to natural words
+
+---
+
+## Asks
+
+**One concrete question or request per message.** Land on the single thing you actually need and ask for that. Don't present a menu of options for the reader to react to, and don't stack a numbered list of questions.
+
+- **Name the concrete need, not the options.** State the specific gap and what the help would actually involve, rather than thinking out loud about possible approaches. Real edit: a draft offering "two directions we're considering: live sessions or recorded reruns…" plus a 3-part numbered question list was cut to one question ("who could help facilitate these sessions?") and one ask ("Can you share your feedback and help us with finding a facilitator?").
+- If you genuinely have options to resolve, pick the one you'd recommend and ask about that — let the reader counter if they disagree, rather than handing them the whole menu.
 
 ---
 
@@ -77,6 +86,7 @@ If the message is a single clear sentence ending in a question, that is usually 
 
 ### Core voice
 
+- **Sign off as "Russ" — never "Russell".** In any personal or professional communication (email, Teams, Slack, comments), the sign-off is always `Russ`. "Russell" is only correct in third-party references to him (e.g., a formal document header), never in a sign-off.
 - **Warm, direct, humble.** Plain words, short sentences.
 - **Answer the question first.** When replying to a direct question, lead with the answer — then add context. Don't bury it behind a preamble or a generic thanks. ("Not yet, but I've opened a ticket to track it: …" — the "Not yet, but" comes before anything else.)
 - Opens groups with "Hey guys", "Hey folks", or "Hey everyone". 1:1s often open with no greeting at all, or the person's name.
@@ -129,10 +139,14 @@ Don't invent emoji outside this palette, don't stack them, and skip them entirel
 **`outreach` — offering a resource or asking someone to adopt something:**
 - Lead with the person's name, then hand them the thing plainly with the link anchored to its title
 - Frame as helpful, low-pressure; invite a look
+- Land on a single concrete question or request — see **Asks** above. Real edit: a draft offering two solution options plus a 3-part question list was cut to one question ("who could help facilitate these sessions?") and one ask ("Can you share your feedback and help us with finding a facilitator?").
+- Use the collective **"we"** for a committee/team ask ("we wanted your read", "our biggest question was"), not "I".
+- Plain framing over clever phrasing — drop quoted catchphrases. Real edit: an "extend that same '*available at a sensible local time*' experience" was plained down, and "asking teammates to join everything at odd hours" became the more considerate "asking teammates to join solely in their evening".
 - *Samples:*
   - "Stuart Foster — here is the information on the SkyStage API. You can use it for Solutions and Business Units: [API documentation](URL)."
   - "Here is the [Create GitHub Repository](URL) functionality that you can check out."
   - "I made these feature specs based on our conversation yesterday. Take a look and see if they capture your scenarios?"
+  - "Hi Abhi, You've been instrumental in running SkyStudio-India, so we wanted your read on something the planning committee is weighing. … Our biggest question was who could help facilitate these sessions? … Can you share your feedback on this idea and help us with your thoughts on finding a facilitator? Thanks, Russ"
 
 **`announcement` — broad post to a group or channel:**
 - Open with "Hey folks/everyone/guys"
