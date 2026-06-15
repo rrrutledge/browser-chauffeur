@@ -21,6 +21,17 @@ Applies to every medium:
 
 ---
 
+## Asks (universal — every format, no exceptions)
+
+Applies to **all** communication types alike — Teams chats, channel posts, Slack, email, Jira/Request Center comments. The same principle holds in chat and email:
+
+**One concrete question or request per message.** Land on the single thing you actually need and ask for that. Don't present a menu of options for the reader to react to, and don't stack a numbered list of questions.
+
+- **Name the concrete need, not the options.** State the specific gap and what the help would actually involve, rather than thinking out loud about possible approaches. Real edit: a draft offering "two directions we're considering: live sessions or recorded reruns…" plus a 3-part numbered question list was cut to one question ("who could help facilitate these sessions?") and one ask ("Can you share your feedback and help us with finding a facilitator?").
+- If you genuinely have options to resolve, pick the one you'd recommend and ask about that — let the reader counter if they disagree, rather than handing them the whole menu.
+
+---
+
 ## Formal writing
 
 Use for: Confluence specs, how-to guides, PRDs, PR descriptions, Word docs, public announcements.
@@ -62,6 +73,8 @@ Messages are **short**. Default to the fewest sentences that carry the point. Be
 - softens an already-polite message further
 
 If the message is a single clear sentence ending in a question, that is usually the whole message. Resist padding it.
+
+This includes asks: a chat message that needs something lands on **one concrete question or request**, not a menu of options — see **Asks (universal)** above.
 
 ### Never do these (AI-tells that break the voice)
 
@@ -129,8 +142,7 @@ Don't invent emoji outside this palette, don't stack them, and skip them entirel
 **`outreach` — offering a resource or asking someone to adopt something:**
 - Lead with the person's name, then hand them the thing plainly with the link anchored to its title
 - Frame as helpful, low-pressure; invite a look
-- **One question, one ask.** An ask email lands on a single concrete question and a single request. Don't present a menu of options to react to or a numbered list of questions — pick the one thing you actually need and ask for that. Real edit: a draft that laid out two solution options (live vs. recorded reruns) plus a 3-part numbered question list was cut to one question ("who could help facilitate these sessions?") and one ask ("Can you share your feedback and help us with finding a facilitator?").
-- **Name the concrete need, not the options.** State the specific gap and what the help would actually involve, rather than thinking out loud about approaches. Real edit: "Two directions we're considering: live sessions or recorded reruns…" became "Our biggest question was who could help facilitate these sessions? This person would work with Kassandra to follow the same guidelines for all facilitators (introducing speaker, ensuring recording, moderating Q&A)."
+- Land on a single concrete question or request — see **Asks (universal)** above. Real edit: a draft offering two solution options plus a 3-part question list was cut to one question ("who could help facilitate these sessions?") and one ask ("Can you share your feedback and help us with finding a facilitator?").
 - Use the collective **"we"** for a committee/team ask ("we wanted your read", "our biggest question was"), not "I".
 - Plain framing over clever phrasing — drop quoted catchphrases. Real edit: an "extend that same '*available at a sensible local time*' experience" was plained down, and "asking teammates to join everything at odd hours" became the more considerate "asking teammates to join solely in their evening".
 - *Samples:*
