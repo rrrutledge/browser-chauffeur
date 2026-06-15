@@ -155,7 +155,7 @@ GIT_TRUSTED_SUBCOMMANDS = {
     'symbolic-ref', 'name-rev', 'grep', 'count-objects', 'merge-base', 'cherry',
     'whatchanged', 'show-ref', 'show-branch',
     # reversible writes (the effect can be undone)
-    'add', 'commit', 'stash', 'fetch', 'pull', 'merge', 'revert', 'cherry-pick',
+    'add', 'commit', 'stash', 'fetch', 'pull', 'merge', 'rebase', 'revert', 'cherry-pick',
     'worktree', 'config', 'init', 'clone',
 }
 
