@@ -27,11 +27,12 @@ known-safe forms rather than trying to enumerate everything dangerous.
 
 ## Vocabulary
 
-- **trusted** — a bare command *name* on the allowlist that may run with any
-  arguments (`ls`, `grep`, `git`). Source: `SAFE_COMMANDS` + config + your
-  settings.json + learned.
-- **safe** — a checker's verdict that a specific command, segment, or subcommand
-  may be auto-allowed (`is_*_safe`, the `*_SAFE_*` sets).
+- **trusted** — the allowlist *data*: names that are pre-allowed. The bare
+  command set `TRUSTED_COMMANDS` (e.g. `ls`, `grep`) plus the per-tool
+  `*_TRUSTED_SUBCOMMANDS` sets and `GH_AI_TRUSTED_PAIRS`. Fed by
+  `TRUSTED_COMMANDS` + config + your settings.json + learned.
+- **safe** — a checker's *verdict* that a specific command or segment may be
+  auto-allowed (the `is_*_safe` functions).
 - **allow / block / prompt** — the three decisions the hook emits.
 
 ("allowed" appears only for filesystem dirs your settings.json grants Edit/Write
@@ -108,8 +109,8 @@ running hook only ever reads its own source, never rewrites it.
 
 Those learnings are promoted to a shared PR **automatically at session end**: a
 `SessionEnd` hook runs `tools/sync_learned.py`, which folds each new entry into
-the matching allowlist in the source (`SAFE_COMMANDS` in `trust.py`, the
-`*_SAFE_SUBCOMMANDS` sets in `commands.py`) and opens/updates a single rolling
+the matching allowlist in the source (`TRUSTED_COMMANDS` in `trust.py`, the
+`*_TRUSTED_SUBCOMMANDS` sets in `commands.py`) and opens/updates a single rolling
 `safe-compounds-learned` PR via the GitHub API. It needs no local checkout
 (works from the installed plugin), never touches your working tree, and is
 best-effort — if `gh` isn't authed it just leaves the learnings local for next

@@ -66,7 +66,7 @@ def is_sed_command_safe(seg):
 # doesn't fit (curl, sed, start, wt, .cmd files, cp/mv/...) stay bespoke below.
 #
 # A spec is a dict with:
-#   safe          - set of always-allowed subcommands
+#   trusted       - set of always-allowed subcommand names
 #   category      - learned-store key (None disables AI fallback + learning)
 #   conditional   - {subcommand: {destructive flags}} -> allow unless a flag is present
 #   specials      - {subcommand: callable(args) -> bool} for one-off rules
@@ -122,7 +122,7 @@ def _check_subcommand_tool(seg, spec):
         return spec.get('allow_empty', False)
 
     category = spec.get('category')
-    allowed = spec['safe'] | (learned_subcommands(category) if category else set())
+    allowed = spec['trusted'] | (learned_subcommands(category) if category else set())
     if sub in allowed:
         return True
 
@@ -148,7 +148,7 @@ def _check_subcommand_tool(seg, spec):
 # subcommands; dual-use ones are approved unless a destructive flag is present.
 GIT_GLOBAL_OPTS_WITH_ARG = {'-C', '-c', '--git-dir', '--work-tree', '--namespace', '--super-prefix'}
 
-GIT_SAFE_SUBCOMMANDS = {
+GIT_TRUSTED_SUBCOMMANDS = {
     # read-only
     'status', 'log', 'diff', 'show', 'remote', 'describe', 'rev-parse', 'rev-list',
     'ls-files', 'ls-remote', 'shortlog', 'blame', 'reflog', 'cat-file', 'for-each-ref',
@@ -178,7 +178,7 @@ def _git_clean_ok(args):
 
 GIT_SPEC = {
     'command': 'git',
-    'safe': GIT_SAFE_SUBCOMMANDS,
+    'trusted': GIT_TRUSTED_SUBCOMMANDS,
     'conditional': GIT_CONDITIONAL_SUBCOMMANDS,
     'specials': {'checkout': _git_checkout_ok, 'clean': _git_clean_ok},
     'global_opts': GIT_GLOBAL_OPTS_WITH_ARG,
@@ -188,8 +188,8 @@ GIT_SPEC = {
 
 
 # ------------------------------------------------------ package managers ------
-NPM_SAFE_SUBCOMMANDS = {'audit', 'ci', 'dedupe', 'install', 'list', 'ls', 'outdated', 'prune', 'root', 'run', 'test', 'update'}
-YARN_SAFE_SUBCOMMANDS = {
+NPM_TRUSTED_SUBCOMMANDS = {'audit', 'ci', 'dedupe', 'install', 'list', 'ls', 'outdated', 'prune', 'root', 'run', 'test', 'update'}
+YARN_TRUSTED_SUBCOMMANDS = {
     'add', 'audit', 'backstage-cli', 'bin', 'build:all', 'build:backend',
     'build:frontend', 'check', 'dedupe', 'dev', 'dlx', 'exec', 'explain',
     'husky', 'info', 'install', 'link', 'lint:all', 'lint:fix', 'list',
@@ -197,13 +197,13 @@ YARN_SAFE_SUBCOMMANDS = {
     'remove', 'run', 'start', 'start-backend', 'test', 'test:all', 'tsc',
     'unlink', 'upgrade', 'why', 'workspace', 'workspaces',
 }
-PIP_SAFE_SUBCOMMANDS = {'2>&1', 'check', 'freeze', 'install', 'list', 'show', 'uninstall'}
-PNPM_SAFE_SUBCOMMANDS = {'install', 'add', 'update', 'remove', 'list', 'outdated', 'prune'}
-BUN_SAFE_SUBCOMMANDS = {'install', 'add', 'update', 'remove', 'test'}
+PIP_TRUSTED_SUBCOMMANDS = {'2>&1', 'check', 'freeze', 'install', 'list', 'show', 'uninstall'}
+PNPM_TRUSTED_SUBCOMMANDS = {'install', 'add', 'update', 'remove', 'list', 'outdated', 'prune'}
+BUN_TRUSTED_SUBCOMMANDS = {'install', 'add', 'update', 'remove', 'test'}
 
 
 # ------------------------------------------------------------------ gh --------
-GH_SAFE_SUBCOMMANDS = {
+GH_TRUSTED_SUBCOMMANDS = {
     'pr':       {'view', 'list', 'diff', 'checks', 'create', 'edit', 'close', 'reopen', 'ready', 'comment', 'review'},
     'issue':    {'view', 'list', 'create', 'edit', 'close', 'reopen', 'comment'},
     'repo':     {'view'},
@@ -223,14 +223,14 @@ GH_REVERSIBLE_API_PATTERNS = [
     re.compile(r'/?repos/[^/]+/[^/]+/git/refs(?:/|$)'),
     re.compile(r'/?repos/[^/]+/[^/]+/projects(?:/|$)'),
 ]
-GH_AI_SAFE_PAIRS_BASE = {
+GH_AI_TRUSTED_PAIRS_BASE = {
     '--version:*', 'issue:2>&1', 'label:*', 'org:*', 'pr:merge',
     'project:*', 'repo:clone', 'repo:create', 'repo:edit', 'repo:list',
 }
 
 
-def _gh_safe_pairs():
-    return GH_AI_SAFE_PAIRS_BASE | learned_subcommands('GH_AI_SAFE_PAIRS')
+def _gh_trusted_pairs():
+    return GH_AI_TRUSTED_PAIRS_BASE | learned_subcommands('GH_AI_TRUSTED_PAIRS')
 
 
 def _gh_api_safe(tokens):
@@ -268,29 +268,29 @@ def is_gh_command_safe(seg):
         return bool(subs) and subs[0] == 'status'
     if group == 'api':
         return _gh_api_safe(tokens)
-    if group in GH_SAFE_SUBCOMMANDS:
+    if group in GH_TRUSTED_SUBCOMMANDS:
         subs = get_subcommands(seg, skip=2)
         action = subs[0] if subs else ''
-        if action in GH_SAFE_SUBCOMMANDS[group]:
+        if action in GH_TRUSTED_SUBCOMMANDS[group]:
             return True
         pair = f'{group}:{action}'
-        if pair in _gh_safe_pairs():
+        if pair in _gh_trusted_pairs():
             return True
-        return _ai_learn('gh', f'{group} {action}', seg, 'GH_AI_SAFE_PAIRS', store_value=pair)
+        return _ai_learn('gh', f'{group} {action}', seg, 'GH_AI_TRUSTED_PAIRS', store_value=pair)
     pair = f'{group}:*'
-    if pair in _gh_safe_pairs():
+    if pair in _gh_trusted_pairs():
         return True
-    return _ai_learn('gh', group, seg, 'GH_AI_SAFE_PAIRS', store_value=pair)
+    return _ai_learn('gh', group, seg, 'GH_AI_TRUSTED_PAIRS', store_value=pair)
 
 
 # ----------------------------------------------------- the spec table ---------
 SUBCOMMAND_SPECS = {
     'git':  GIT_SPEC,
-    'npm':  {'command': 'npm',  'safe': NPM_SAFE_SUBCOMMANDS,  'category': 'NPM_SAFE_SUBCOMMANDS',  'cache_clean': True},
-    'yarn': {'command': 'yarn', 'safe': YARN_SAFE_SUBCOMMANDS, 'category': 'YARN_SAFE_SUBCOMMANDS', 'cache_clean': True, 'flag_style': 'yarn'},
-    'pip':  {'command': 'pip',  'safe': PIP_SAFE_SUBCOMMANDS,  'category': 'PIP_SAFE_SUBCOMMANDS'},
-    'pnpm': {'command': 'pnpm', 'safe': PNPM_SAFE_SUBCOMMANDS, 'category': 'PNPM_SAFE_SUBCOMMANDS'},
-    'bun':  {'command': 'bun',  'safe': BUN_SAFE_SUBCOMMANDS,  'category': 'BUN_SAFE_SUBCOMMANDS'},
+    'npm':  {'command': 'npm',  'trusted': NPM_TRUSTED_SUBCOMMANDS,  'category': 'NPM_TRUSTED_SUBCOMMANDS',  'cache_clean': True},
+    'yarn': {'command': 'yarn', 'trusted': YARN_TRUSTED_SUBCOMMANDS, 'category': 'YARN_TRUSTED_SUBCOMMANDS', 'cache_clean': True, 'flag_style': 'yarn'},
+    'pip':  {'command': 'pip',  'trusted': PIP_TRUSTED_SUBCOMMANDS,  'category': 'PIP_TRUSTED_SUBCOMMANDS'},
+    'pnpm': {'command': 'pnpm', 'trusted': PNPM_TRUSTED_SUBCOMMANDS, 'category': 'PNPM_TRUSTED_SUBCOMMANDS'},
+    'bun':  {'command': 'bun',  'trusted': BUN_TRUSTED_SUBCOMMANDS,  'category': 'BUN_TRUSTED_SUBCOMMANDS'},
     'gh':   is_gh_command_safe,
 }
 

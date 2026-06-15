@@ -1,6 +1,6 @@
 """The set of trusted command names.
 
-Built from a hardcoded base (SAFE_COMMANDS + SHELL_BUILTINS), the user's
+Built from a hardcoded base (TRUSTED_COMMANDS + SHELL_BUILTINS), the user's
 settings.json allow list, and the machine-local learned store. Tests pin the
 set exactly via SAFE_COMPOUNDS_TRUSTED_JSON.
 """
@@ -15,7 +15,7 @@ SHELL_BUILTINS = {
     '[', '[[', 'basename', 'dirname', 'printf', 'read', 'true', 'false',
 }
 
-SAFE_COMMANDS = {
+TRUSTED_COMMANDS = {
     'awk',
     'base32', 'base64', 'basename', 'bash', 'bc', 'bq', 'bun',
     'cal', 'cat', 'cd', 'claude', 'clip', 'cmp', 'column', 'comm', 'command', 'cut', 'cygpath',
@@ -75,5 +75,5 @@ def get_trusted():
         return base | {ASSIGNMENT_ONLY}
     from . import config
     configured = set(config.get_config().get('trusted_commands', []))
-    return (SHELL_BUILTINS | SAFE_COMMANDS | configured
+    return (SHELL_BUILTINS | TRUSTED_COMMANDS | configured
             | load_trusted_from_settings() | learned_commands() | {ASSIGNMENT_ONLY})

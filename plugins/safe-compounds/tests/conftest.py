@@ -18,7 +18,7 @@ def trusted_json(tmp_path_factory):
     return its path. Tests pin the trusted set to this via
     SAFE_COMPOUNDS_TRUSTED_JSON so they are hermetic and always match the source
     — no committed snapshot to drift out of sync."""
-    from safe_compounds.trust import SAFE_COMMANDS, SHELL_BUILTINS
+    from safe_compounds.trust import SHELL_BUILTINS, TRUSTED_COMMANDS
     path = tmp_path_factory.mktemp("fixtures") / "trusted_commands.json"
-    path.write_text(json.dumps(sorted(SHELL_BUILTINS | SAFE_COMMANDS)), encoding="utf-8")
+    path.write_text(json.dumps(sorted(SHELL_BUILTINS | TRUSTED_COMMANDS)), encoding="utf-8")
     return str(path)

@@ -37,11 +37,11 @@ def test_insert_multiline():
 
 
 def test_safe_commands_grouped_stays_valid():
-    text = "SAFE_COMMANDS = {\n    'awk', 'cat',\n}\n"
-    new_text, _, _ = sync_learned.insert_into_text(text, "SAFE_COMMANDS", ["curl", "ant"])
+    text = "TRUSTED_COMMANDS = {\n    'awk', 'cat',\n}\n"
+    new_text, _, _ = sync_learned.insert_into_text(text, "TRUSTED_COMMANDS", ["curl", "ant"])
     ns = {}
     exec(new_text, ns)
-    assert ns["SAFE_COMMANDS"] == {"awk", "cat", "curl", "ant"}
+    assert ns["TRUSTED_COMMANDS"] == {"awk", "cat", "curl", "ant"}
 
 
 def test_share_exclusions(tmp_path, monkeypatch):

@@ -25,13 +25,13 @@ BRANCH = "safe-compounds-learned"
 
 # learned-store key -> (path in repo, set name in that file)
 TARGETS = {
-    "commands": ("plugins/safe-compounds/safe_compounds/trust.py", "SAFE_COMMANDS"),
-    "NPM_SAFE_SUBCOMMANDS": ("plugins/safe-compounds/safe_compounds/commands.py", "NPM_SAFE_SUBCOMMANDS"),
-    "YARN_SAFE_SUBCOMMANDS": ("plugins/safe-compounds/safe_compounds/commands.py", "YARN_SAFE_SUBCOMMANDS"),
-    "PIP_SAFE_SUBCOMMANDS": ("plugins/safe-compounds/safe_compounds/commands.py", "PIP_SAFE_SUBCOMMANDS"),
-    "PNPM_SAFE_SUBCOMMANDS": ("plugins/safe-compounds/safe_compounds/commands.py", "PNPM_SAFE_SUBCOMMANDS"),
-    "BUN_SAFE_SUBCOMMANDS": ("plugins/safe-compounds/safe_compounds/commands.py", "BUN_SAFE_SUBCOMMANDS"),
-    "GH_AI_SAFE_PAIRS": ("plugins/safe-compounds/safe_compounds/commands.py", "GH_AI_SAFE_PAIRS_BASE"),
+    "commands": ("plugins/safe-compounds/safe_compounds/trust.py", "TRUSTED_COMMANDS"),
+    "NPM_TRUSTED_SUBCOMMANDS": ("plugins/safe-compounds/safe_compounds/commands.py", "NPM_TRUSTED_SUBCOMMANDS"),
+    "YARN_TRUSTED_SUBCOMMANDS": ("plugins/safe-compounds/safe_compounds/commands.py", "YARN_TRUSTED_SUBCOMMANDS"),
+    "PIP_TRUSTED_SUBCOMMANDS": ("plugins/safe-compounds/safe_compounds/commands.py", "PIP_TRUSTED_SUBCOMMANDS"),
+    "PNPM_TRUSTED_SUBCOMMANDS": ("plugins/safe-compounds/safe_compounds/commands.py", "PNPM_TRUSTED_SUBCOMMANDS"),
+    "BUN_TRUSTED_SUBCOMMANDS": ("plugins/safe-compounds/safe_compounds/commands.py", "BUN_TRUSTED_SUBCOMMANDS"),
+    "GH_AI_TRUSTED_PAIRS": ("plugins/safe-compounds/safe_compounds/commands.py", "GH_AI_TRUSTED_PAIRS_BASE"),
 }
 
 
@@ -103,7 +103,7 @@ def insert_into_text(text, set_name, items):
     already = [i for i in items if i in existing]
     if not added:
         return text, added, already
-    formatter = _format_grouped if set_name == "SAFE_COMMANDS" else _format_wrapped
+    formatter = _format_grouped if set_name == "TRUSTED_COMMANDS" else _format_wrapped
     block = m.group(1) + formatter(existing | set(added)) + m.group(3)
     return text[:m.start()] + block + text[m.end():], added, already
 

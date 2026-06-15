@@ -8,7 +8,7 @@ plain JSON file outside the plugin, one per machine, never synced.
 Schema:
     {
       "commands":    ["webpack", ...],          # top-level CLI tools
-      "subcommands": {"NPM_SAFE_SUBCOMMANDS": ["foo"], "GH_AI_SAFE_PAIRS": ["pr:merge"]}
+      "subcommands": {"NPM_TRUSTED_SUBCOMMANDS": ["foo"], "GH_AI_TRUSTED_PAIRS": ["pr:merge"]}
     }
 """
 import json
