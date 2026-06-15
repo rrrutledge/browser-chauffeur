@@ -156,7 +156,7 @@ One orchestrator (not two separate hook processes) preserves the block-then-
 approve ordering, which the Write/Edit path depends on (a temp-named file
 *inside* `.tmp/` must be allowed, not redirected).
 
-## Tests
+## Tests (run locally as needed)
 
 ```
 python -m pip install pytest
@@ -168,8 +168,8 @@ hook must produce (`expect`). `test_characterization.py` runs the hook as a
 subprocess (exactly how the harness invokes it) over the corpus and asserts each
 decision; `test_units.py` covers the parsing/classification helpers. Everything
 is hermetic — AI disabled, the trusted set pinned (generated from `trust.py` at
-test time, so it can't drift), config from a fixture, temp working dirs — so CI
-is deterministic.
+test time, so it can't drift), config from a fixture, temp working dirs. There's
+no CI; run these locally when you change the hook.
 
 ## Requirements
 
