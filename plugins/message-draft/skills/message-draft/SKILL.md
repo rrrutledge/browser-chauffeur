@@ -8,6 +8,9 @@ description: Draft a message in the active web composer and NEVER send it. Two m
 Stage a **draft** in the correct conversation and stop — a human reviews and sends. You drive
 through the **browser-chauffeur** skill (never Playwright directly). Pick a mode:
 
+**Voice:** Before composing any message, invoke the **`document-authoring`** skill to write the
+content in Russell's voice. Pass the drafted text to the mode steps below for staging.
+
 - **`teams`** — a 1:1 or group Teams chat, addressed by person name/email.
 - **`outlook`** — a reply to a specific Outlook-web email.
 - **`slack`** — future; not implemented.
@@ -36,21 +39,27 @@ Inputs: the address, message body, optional hyperlinks (display text + URL), opt
 
 0. **Pick the loaded Teams tab.** Select the Teams page with the **largest
    `document.body.innerText` length** (a loaded app ≈ 9000+ chars; blank/loading tabs are ~0–100).
-1. **Find the target.** Search box `input[data-tid="AUTOSUGGEST_INPUT"]` (clear first: Ctrl+A,
-   Delete). **1:1** — type the email (most precise), then **poll the results** until an option's
-   text matches the recipient name before clicking (default suggestions render first → wrong
-   person): `[role="option"][data-tid^="AUTOSUGGEST_SUGGESTION_TOPHITS8:orgid:"]` or `…PEOPLE8:orgid:`.
-   Name tolerance: display name may differ from the formal name (e.g. `Matt` vs `Matthew`) — match
-   last name + first-name prefix. **Group/meeting** — type the chat name (or a distinctive
-   substring) and poll for a chat/group option whose text contains it.
+   Call `page.bringToFront()` and click `body` to ensure keyboard events land on this tab.
+1. **Find the target.**
+   - **1:1:** Press `Alt+Shift+N` (new message), wait ~1.5s, then click the **people-picker input**
+     (`input#people-picker-input` or `input[aria-label="Enter name, chat, channel, email or tag"]`).
+     ⚠️ Do NOT use `input[data-tid="AUTOSUGGEST_INPUT"]` — that is the global search bar at the
+     top of the app and routes to search results, not a 1:1 chat composer. Type the recipient's
+     **email** (most precise), then **poll** `[role="option"]` until an option's `innerText`
+     includes the recipient's **last name** before clicking — default suggestions render first and
+     open the wrong person. Name tolerance: display name may differ (`Matt` vs `Matthew`) — match
+     last name + first-name prefix.
+   - **Group/meeting:** Use the global search bar (`input[data-tid="AUTOSUGGEST_INPUT"]`), type the
+     chat name or a distinctive substring, and poll for a chat/group option whose text contains it.
 2. **Identity-gate.** Confirm the chat heading (an `h1`/`h2`/`h3` containing the name —
    `[data-tid="chat-header-title"]` does NOT exist in this build) matches before typing. 1:1: last
    name + first-name prefix; group/meeting: a case-insensitive substring of the chat name.
 3. **Compose.** Target `div[data-tid="ckeditor"]:visible`. Type the body with `pressSequentially`;
    line breaks via **Shift+Enter**.
 4. **Hyperlinks.** Ctrl+K opens an Insert-link dialog; fill `[data-tid="insertHyperlink-displayText"]`
-   and `[data-tid="insertHyperlink-linkAddress"]` (⚠️ `data-tid`, not `id`), then its `Insert`
-   button. A typed GitHub repo URL also auto-unfurls a card.
+   and `[data-tid="insertHyperlink-linkAddress"]` (⚠️ `data-tid`, not `id`), then click
+   `[data-tid="insertHyperlink-insertButton"]` (⚠️ NOT `role=button` with text "Insert" — that
+   selector fails). A typed GitHub repo URL also auto-unfurls a card.
 5. **@mentions (when asked).** Type `@` then the first few chars of the name, **poll for the
    mention autocomplete dropdown, and click the matching suggestion** so a real mention chip mounts.
    Typing `@Name` as plain text does NOT notify the person — the chip must come from the dropdown.
