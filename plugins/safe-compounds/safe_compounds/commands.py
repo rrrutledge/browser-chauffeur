@@ -151,9 +151,10 @@ GIT_GLOBAL_OPTS_WITH_ARG = {'-C', '-c', '--git-dir', '--work-tree', '--namespace
 GIT_TRUSTED_SUBCOMMANDS = {
     # read-only
     'status', 'log', 'diff', 'show', 'remote', 'describe', 'rev-parse', 'rev-list',
-    'ls-files', 'ls-remote', 'shortlog', 'blame', 'reflog', 'cat-file', 'for-each-ref',
+    'ls-files', 'ls-remote', 'ls-tree', 'shortlog', 'blame', 'reflog', 'cat-file', 'for-each-ref',
     'symbolic-ref', 'name-rev', 'grep', 'count-objects', 'merge-base', 'cherry',
-    'whatchanged', 'show-ref', 'show-branch',
+    'whatchanged', 'show-ref', 'show-branch', 'archive', 'diff-tree', 'diff-index',
+    'format-patch', 'fsck', 'verify-commit', 'verify-tag', 'version', 'bisect',
     # reversible writes (the effect can be undone)
     'add', 'commit', 'stash', 'fetch', 'pull', 'merge', 'rebase', 'revert', 'cherry-pick',
     'worktree', 'config', 'init', 'clone',
