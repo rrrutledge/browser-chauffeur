@@ -7,6 +7,8 @@ description: Russell's personal style conventions for authoring or editing any d
 
 Apply these whenever authoring or editing a document or message in Russell's name.
 
+**Everything here applies to every medium by default** — Teams, Slack, email, Jira/Request Center comments, Confluence, Word, PRs. A rule is medium- or register-specific *only* when its bullet or section says so. The **Formal writing** and **Conversational writing** sections describe **register** (how warm, how structured), not which rules are in scope.
+
 ## Links
 
 Always embed links as hyperlinks on descriptive text within the sentence flow — never paste bare `https://…` URLs in prose.
@@ -70,7 +72,7 @@ Messages are **short**. Default to the fewest sentences that carry the point. Be
 - offers help or a next step that wasn't asked for and isn't needed
 - softens an already-polite message further
 
-If the message is a single clear sentence ending in a question, that is usually the whole message. Resist padding it.
+If the message is a single clear sentence ending in a question, that is usually the whole message. Resist padding it. This includes asks — see **Asks** above.
 
 ### Never do these (AI-tells that break the voice)
 
