@@ -170,7 +170,20 @@ GIT_CONDITIONAL_SUBCOMMANDS = {
 
 
 def _git_checkout_ok(args):
-    return not ('.' in args or '--' in args or '-f' in args or '--force' in args)
+    # Block checkout that discards working-tree changes: `checkout -- .` or `checkout -- <files>` without a ref
+    # Allow `checkout <ref> -- <file>` (restoring a file from a specific ref is safe/reversible)
+    if '-f' in args or '--force' in args:
+        return False
+    if '--' in args:
+        dash_idx = args.index('--')
+        # Unsafe: `-- .` with no ref before it (pure discard), or `. ` anywhere in pathspecs
+        pathspecs = args[dash_idx + 1:]
+        has_ref = dash_idx > 0  # something before `--` means a ref was given
+        if not has_ref:
+            return False
+        if '.' in pathspecs:
+            return False
+    return True
 
 
 def _git_clean_ok(args):
