@@ -7,8 +7,6 @@ description: Russell's personal style conventions for authoring or editing any d
 
 Apply these whenever authoring or editing a document or message in Russell's name.
 
-**Everything here applies to every medium by default** — Teams, Slack, email, Jira/Request Center comments, Confluence, Word, PRs. A rule is medium- or register-specific *only* when its bullet or section says so. The **Formal writing** and **Conversational writing** sections below describe **register** (how warm, how structured), not which rules are in scope — their guidance applies wherever you're writing in that register, across all channels.
-
 ## Links
 
 Always embed links as hyperlinks on descriptive text within the sentence flow — never paste bare `https://…` URLs in prose.
@@ -16,7 +14,7 @@ Always embed links as hyperlinks on descriptive text within the sentence flow �
 - Good: "see the [incident report](URL)", "the [IDP-1069](URL) ticket", "documented in [the runbook](URL)"
 - Bad: "Read here: https://wellsky.atlassian.net/wiki/…"
 
-Applies to every medium:
+Implementation by format:
 - **Confluence**: `<a href="URL">descriptive text</a>` inside the sentence
 - **Teams / Slack**: use the link dialog (Ctrl+K) to anchor the URL to text
 - **Word / email / Markdown / PRs**: anchor the link to natural words
@@ -73,8 +71,6 @@ Messages are **short**. Default to the fewest sentences that carry the point. Be
 - softens an already-polite message further
 
 If the message is a single clear sentence ending in a question, that is usually the whole message. Resist padding it.
-
-This includes asks: a chat message that needs something lands on **one concrete question or request**, not a menu of options — see **Asks** above.
 
 ### Never do these (AI-tells that break the voice)
 
