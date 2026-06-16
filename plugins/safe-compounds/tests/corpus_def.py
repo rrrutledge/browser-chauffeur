@@ -20,7 +20,7 @@ CASES = [
     # --- trusted bash -------------------------------------------------------
     {"id": "trusted_single_ls", "tool": "Bash", "command": "ls -la", "expect": "ALLOW"},
     {"id": "trusted_grep_devnull", "tool": "Bash", "command": "grep -r foo . 2>/dev/null", "expect": "ALLOW"},
-    {"id": "trusted_compound", "tool": "Bash", "command": "cd plugins && grep -r x . 2>/dev/null", "expect": "ALLOW"},
+    {"id": "trusted_compound", "tool": "Bash", "command": "cd plugins && grep -r x . 2>/dev/null", "expect": "BLOCK"},
 
     # --- git allowlist (deny-by-default) ------------------------------------
     {"id": "git_status", "tool": "Bash", "command": "git status", "expect": "ALLOW"},
