@@ -128,6 +128,8 @@ def _check_segment(seg, command, language, inline_flag):
 
 
 def check_node_segment(seg):
+    if '--check' in shell_tokenize(seg):
+        return True  # syntax-only check, never executes code
     return _check_segment(seg, 'node', 'javascript', '-e')
 
 
