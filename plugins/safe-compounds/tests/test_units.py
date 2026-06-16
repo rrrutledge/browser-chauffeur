@@ -117,6 +117,13 @@ class TestGit:
     def test_global_opt_before_subcommand(self):
         assert is_git_command_safe("git -C /repo push --force") is False
 
+    def test_redirect_not_mistaken_for_subcommand(self):
+        # A redirect after global opts must not be read as the subcommand;
+        # a subcommand-less git invocation is harmless (allow_empty).
+        assert is_git_command_safe("git -C dir 2>/dev/null") is True
+        assert is_git_command_safe("git -C dir 2> /dev/null") is True
+        assert is_git_command_safe("git status 2>/dev/null") is True
+
 
 class TestCurl:
     def test_localhost(self):
