@@ -297,11 +297,11 @@ def is_gh_command_safe(seg):
 # ----------------------------------------------------- the spec table ---------
 SUBCOMMAND_SPECS = {
     'git':  GIT_SPEC,
-    'npm':  {'command': 'npm',  'trusted': NPM_TRUSTED_SUBCOMMANDS,  'category': 'NPM_TRUSTED_SUBCOMMANDS',  'cache_clean': True},
-    'yarn': {'command': 'yarn', 'trusted': YARN_TRUSTED_SUBCOMMANDS, 'category': 'YARN_TRUSTED_SUBCOMMANDS', 'cache_clean': True, 'flag_style': 'yarn'},
-    'pip':  {'command': 'pip',  'trusted': PIP_TRUSTED_SUBCOMMANDS,  'category': 'PIP_TRUSTED_SUBCOMMANDS'},
-    'pnpm': {'command': 'pnpm', 'trusted': PNPM_TRUSTED_SUBCOMMANDS, 'category': 'PNPM_TRUSTED_SUBCOMMANDS'},
-    'bun':  {'command': 'bun',  'trusted': BUN_TRUSTED_SUBCOMMANDS,  'category': 'BUN_TRUSTED_SUBCOMMANDS'},
+    'npm':  {'command': 'npm',  'trusted': NPM_TRUSTED_SUBCOMMANDS,  'category': 'NPM_TRUSTED_SUBCOMMANDS',  'cache_clean': True, 'allow_empty': True},
+    'yarn': {'command': 'yarn', 'trusted': YARN_TRUSTED_SUBCOMMANDS, 'category': 'YARN_TRUSTED_SUBCOMMANDS', 'cache_clean': True, 'flag_style': 'yarn', 'allow_empty': True},
+    'pip':  {'command': 'pip',  'trusted': PIP_TRUSTED_SUBCOMMANDS,  'category': 'PIP_TRUSTED_SUBCOMMANDS',  'allow_empty': True},
+    'pnpm': {'command': 'pnpm', 'trusted': PNPM_TRUSTED_SUBCOMMANDS, 'category': 'PNPM_TRUSTED_SUBCOMMANDS', 'allow_empty': True},
+    'bun':  {'command': 'bun',  'trusted': BUN_TRUSTED_SUBCOMMANDS,  'category': 'BUN_TRUSTED_SUBCOMMANDS',  'allow_empty': True},
     'gh':   is_gh_command_safe,
 }
 
