@@ -38,6 +38,7 @@ Use for: Confluence specs, how-to guides, PRDs, PR descriptions, Word docs, publ
 - Structure with headings, bullets, and tables where they help the reader navigate
 - Neutral tone in reference data, tables, and formal specs; warm in narrative and intro sections
 - Center the reader with "you/your", use "we're" for the team or product, "I" for a personal action: "We're rolling out a new process…", "On our side I'm opening a Jira…"
+- **"We" for coordinating follow-up**: when describing next steps that involve reaching out, scheduling, or connecting — even if Russell is personally executing them — use "we'll" to frame it as collaborative. E.g., "we'll reach out to them to start coordinating" not "I'll reach out to them".
 - Short sentences. One idea per sentence. Fragments are fine for rhythm.
 - Make asks as a polite question ("Would you be willing to…?"), never a command
 - Teach with if/then: plain conditionals rather than abstract rules
@@ -120,17 +121,11 @@ Don't invent emoji outside this palette, don't stack them, and skip them entirel
 
 **`1on1` — private direct chat or email reply:**
 - **Email greeting format**: run the greeting into the first sentence using ` - `: `"Hi [Name] - thanks and totally makes sense."` Not `"Hi [Name],"` on its own line followed by a new paragraph.
+- **Email reply flow**: always **Reply All**, never plain Reply — preserve every CC'd recipient on the thread.
 - **Email sign-off**: just `"Russ"` on its own line — no valediction ("Talk soon", "Best", "Thanks") before the name.
+- **Energizing close**: when there's genuinely good news and you are the leader/owner of the group, end with a brief forward-looking statement — e.g., "This is going to be great."  Skip it when you're sharing news into someone else's channel or group.
 - Short, conversational, considerate of their time and life
 - Logistics + warmth. Apologize if rescheduling: "Thanks.  Let's meet tomorrow - sorry."
-- *Samples:*
-  - "Hi Mallikarjun!  I heard back from the HR folks and they've made the update to bring Workday in sync. Here is your merit statement. Let me know if that looks OK?"
-  - "Hi Caitlin - thanks and totally makes sense.  Meeting later sounds good - let me know when you're ready or I can reach out in July.\n\nAnd yes - it's good that we're getting correct information in the command center.\n\nRuss"
-**`1on1` — private direct chat or email reply:**
-- **Greeting format**: run the greeting into the first sentence using ` - ` (space-dash-space): `"Hi [Name] - thanks and totally makes sense."` Not `"Hi [Name],"` on its own line followed by a new paragraph.
-- Short, conversational, considerate of their time and life
-- Logistics + warmth. Apologize if rescheduling: "Thanks.  Let's meet tomorrow - sorry."
-- **Email sign-off**: just `"Russ"` on its own line — no valediction ("Talk soon", "Best", "Thanks") before the name.
 - *Samples:*
   - "Hi Mallikarjun!  I heard back from the HR folks and they've made the update to bring Workday in sync. Here is your merit statement. Let me know if that looks OK?"
   - "Hi Caitlin - thanks and totally makes sense.  Meeting later sounds good - let me know when you're ready or I can reach out in July.\n\nAnd yes - it's good that we're getting correct information in the command center.\n\nRuss"
