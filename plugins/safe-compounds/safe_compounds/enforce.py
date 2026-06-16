@@ -200,6 +200,20 @@ def detect_cd_cwd_prefix(command):
     return os.path.normpath(os.path.expanduser(target)).lower() == os.path.normpath(cwd).lower()
 
 
+def detect_cd_compound(command):
+    """Return the cd target if the command starts with `cd <dir> && <more>` and
+    the target differs from the current working directory (i.e. it's not the
+    redundant-prefix case already handled by detect_cd_cwd_prefix)."""
+    cwd = os.environ.get('CLAUDE_CWD', os.getcwd())
+    m = re.match(r'^cd\s+("([^"]+)"|\'([^\']+)\'|(\S+))\s*&&', command.strip())
+    if not m:
+        return None
+    target = m.group(2) or m.group(3) or m.group(4)
+    if os.path.normpath(os.path.expanduser(target)).lower() == os.path.normpath(cwd).lower():
+        return None
+    return target
+
+
 def detect_variable_assignment(command):
     segments = split_segments(command)
     for i, seg in enumerate(segments):
@@ -351,6 +365,13 @@ def enforce_bash(command):
     if detect_cd_cwd_prefix(command):
         return ('BLOCKED: Redundant "cd <cwd> &&" prefix detected. The Bash tool already sets the working '
                 'directory to the project root. Remove the cd prefix and run the command directly.')
+
+    cd_target = detect_cd_compound(command)
+    if cd_target:
+        return (f'BLOCKED: "cd {cd_target} && <command>" cannot be safely validated because the hook '
+                'cannot resolve relative file paths in the trailing command without knowing the new '
+                'working directory. Split into two separate Bash tool calls: first "cd {cd_target}", '
+                'then the command on its own.')
 
     assigned = detect_variable_assignment(command)
     if assigned:
