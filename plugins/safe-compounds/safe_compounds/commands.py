@@ -154,7 +154,7 @@ GIT_TRUSTED_SUBCOMMANDS = {
     'ls-files', 'ls-remote', 'ls-tree', 'shortlog', 'blame', 'reflog', 'cat-file', 'for-each-ref',
     'symbolic-ref', 'name-rev', 'grep', 'count-objects', 'merge-base', 'cherry',
     'whatchanged', 'show-ref', 'show-branch', 'archive', 'diff-tree', 'diff-index',
-    'format-patch', 'fsck', 'verify-commit', 'verify-tag', 'version', 'bisect',
+    'format-patch', 'fsck', 'verify-commit', 'verify-tag', 'version', 'bisect', 'check-ignore',
     # reversible writes (the effect can be undone)
     'add', 'commit', 'rm', 'stash', 'fetch', 'pull', 'merge', 'rebase', 'revert', 'cherry-pick',
     'worktree', 'config', 'init', 'clone',
