@@ -76,6 +76,11 @@ def is_sed_command_safe(seg):
 #   allow_empty   - decision when there is no subcommand (git alone is harmless)
 # A spec may instead be a callable(seg) -> bool for a fully bespoke tool (gh).
 
+# A shell redirection token, e.g. 2>/dev/null, >>out, <in, 2>&1, &>log. These
+# must never be mistaken for a subcommand when locating it.
+_REDIRECT_OP = re.compile(r'^&?\d*(>>?|<)')
+_REDIRECT_BARE = re.compile(r'^&?\d*(>>?|<)$|^&>$')
+
 
 def _subcommand_prompt(command, subcommand, full_segment):
     return (
@@ -109,6 +114,10 @@ def _extract_subcommand(tokens, global_opts, flag_style):
             continue
         if t.startswith('-'):
             i += 1
+            continue
+        if _REDIRECT_OP.match(t):
+            # Skip a redirection; a bare operator also consumes its target token.
+            i += 2 if _REDIRECT_BARE.match(t) else 1
             continue
         return t, tokens[i + 1:]
     return None, []
