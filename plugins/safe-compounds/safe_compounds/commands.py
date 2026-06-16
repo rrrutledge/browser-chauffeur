@@ -156,7 +156,7 @@ GIT_TRUSTED_SUBCOMMANDS = {
     'whatchanged', 'show-ref', 'show-branch', 'archive', 'diff-tree', 'diff-index',
     'format-patch', 'fsck', 'verify-commit', 'verify-tag', 'version', 'bisect',
     # reversible writes (the effect can be undone)
-    'add', 'commit', 'stash', 'fetch', 'pull', 'merge', 'rebase', 'revert', 'cherry-pick',
+    'add', 'commit', 'rm', 'stash', 'fetch', 'pull', 'merge', 'rebase', 'revert', 'cherry-pick',
     'worktree', 'config', 'init', 'clone',
 }
 
