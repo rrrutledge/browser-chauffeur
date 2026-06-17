@@ -47,7 +47,8 @@ CASES = [
     {"id": "gh_api_patch_repo_settings", "tool": "Bash", "command": "gh api -X PATCH repos/o/r -f delete_branch_on_merge=true", "expect": "ALLOW"},
     {"id": "gh_unknown_group", "tool": "Bash", "command": "gh secret list", "expect": "PROMPT"},
     {"id": "gh_auth_status", "tool": "Bash", "command": "gh auth status", "expect": "ALLOW"},
-    {"id": "gh_auth_token_prompts", "tool": "Bash", "command": "gh auth token", "expect": "PROMPT"},
+    {"id": "gh_auth_switch", "tool": "Bash", "command": "gh auth switch --user rrrutledge", "expect": "ALLOW"},
+    {"id": "gh_auth_token", "tool": "Bash", "command": "gh auth token", "expect": "ALLOW"},
 
     # --- wmic (read-only get/list only) -------------------------------------
     {"id": "wmic_process_get", "tool": "Bash", "command": "wmic process where \"name='python.exe'\" get ProcessId,CommandLine", "expect": "ALLOW"},
