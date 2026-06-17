@@ -1,0 +1,21 @@
+name: Version bump guardrail
+
+on:
+  pull_request:
+    paths:
+      - 'plugins/**'
+
+jobs:
+  check-version-bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check every changed plugin bumped its version
+        env:
+          BASE_REF: origin/${{ github.base_ref }}
+        run: python scripts/check_version_bump.py
