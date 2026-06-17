@@ -11,6 +11,11 @@ through the **browser-chauffeur** skill (never Playwright directly). Pick a mode
 **Voice:** Before composing any message, invoke the **`document-authoring`** skill to write the
 content in Russell's voice. Pass the drafted text to the mode steps below for staging.
 
+**Voice gate (stage-time — load-bearing):** After typing the draft into the composer, read it back
+and re-apply the **`document-authoring`** Conversational writing rules as a review pass. Re-type any
+trimmed content so what sits staged is the gated version. Report `voice-gate=passed` in the
+done-criteria once it has run.
+
 - **`teams`** — a 1:1 or group Teams chat, addressed by person name/email.
 - **`outlook`** — a reply to a specific Outlook-web email.
 - **`slack`** — future; not implemented.
@@ -92,5 +97,5 @@ reply-all vs reply (default: **Reply**, sender only), optional hyperlinks.
 
 ## Done-criteria (report this back)
 
-`mode=<teams|outlook> recipient=<who> drafted=true sent=false links=<n>` plus a one-line note of
-where the draft lives. If identity-gate failed or sign-in was needed, say so and that nothing was typed.
+`mode=<teams|outlook> recipient=<who> drafted=true sent=false voice-gate=passed links=<n>` plus a
+one-line note of where the draft lives. If identity-gate failed or sign-in was needed, say so and that nothing was typed.
