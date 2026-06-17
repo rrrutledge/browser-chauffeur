@@ -14,6 +14,7 @@ from safe_compounds import config  # noqa: E402
 from safe_compounds.commands import is_git_command_safe, is_curl_safe, is_sed_command_safe  # noqa: E402
 from safe_compounds.mcp import classify_mcp_tool  # noqa: E402
 from safe_compounds.enforce import detect_complex_bash, detect_simple_expansion  # noqa: E402
+from safe_compounds.scripts import check_node_segment  # noqa: E402
 
 
 def set_config(**kwargs):
@@ -202,3 +203,15 @@ class TestSimpleExpansion:
 
     def test_single_quote_ignored(self):
         assert detect_simple_expansion("echo '$MYTOKEN'") is None
+
+
+class TestCheckNodeSegment:
+    def test_check_flag_short_circuits(self):
+        # `node --check <file>` only parses for syntax errors, never executes,
+        # so it is auto-approved without reading or AI-judging the file.
+        set_config()
+        assert check_node_segment("node --check path/to/some/script.js") is True
+
+    def test_check_flag_with_extra_spacing(self):
+        set_config()
+        assert check_node_segment("node  --check  foo.mjs") is True
