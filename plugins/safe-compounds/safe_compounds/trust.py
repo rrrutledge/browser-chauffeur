@@ -34,7 +34,7 @@ TRUSTED_COMMANDS = {
     'pandoc', 'paste', 'perl', 'pg_isready', 'pip', 'pnpm', 'printenv', 'ps', 'psql', 'pwd',
     'Read', 'readlink', 'realpath', 'rev', 'rm', 'rmdir',
     'seq', 'sha1sum', 'sha256sum', 'sha512sum', 'sleep', 'sort', 'source', 'stat', 'strings',
-    'tac', 'tail', 'tasklist', 'tee', 'test', 'timeout', 'tr', 'tree', 'tty', 'type',
+    'tac', 'tail', 'tasklist', 'tee', 'test', 'timeout', 'touch', 'tr', 'tree', 'tty', 'type',
     'uname', 'unexpand', 'uniq', 'unzip', 'uptime', 'users',
     'w', 'wait', 'wc', 'where', 'which', 'who', 'whoami',
     'xargs', 'xxd',
