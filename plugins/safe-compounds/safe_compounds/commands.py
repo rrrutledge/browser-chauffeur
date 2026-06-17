@@ -384,7 +384,7 @@ def is_start_safe(seg):
     target = args[-1].strip('"\'')
     if target.startswith('http://') or target.startswith('https://'):
         return True
-    if target.endswith('/') or target.endswith('\\') or os.path.isdir(target):
+    if os.path.isdir(target):
         return True
     _, ext = os.path.splitext(target)
     return ext.lower() in START_SAFE_EXTENSIONS
