@@ -20,12 +20,12 @@ Because cheap API sources cost nothing when they have nothing due, slow sources 
 due-date source like Trello returns its due-now-or-earlier cards (usually none) and advances any that
 are due — no separate "daily" schedule, no multi-cadence bookkeeping.
 
-## Two layers: engine + shared providers (in the plugin) vs. injected (per machine)
+## Two layers: the plugin vs. what each machine injects
 
 | In the plugin (generic) | Injected per machine |
 | --- | --- |
-| `engine/` — driver loop, worker procedure, triage rubric, provider contract | `.claude/drainer.local.md` — which providers are active, per-provider config (Trello board ids), cadence, presence |
-| `providers/` — shared providers (Outlook, Teams, Trello) anyone can enable | `context.md` (in `local_dir`) — who the user is, their systems, standing rules |
+| `engine/` — driver loop, worker procedure, triage rubric, provider contract | `.claude/drainer.local.md` — which providers are active, per-provider config (Trello board ids), interval, presence |
+| `providers/` — the providers (Outlook, Teams, Trello) | `context.md` (in `local_dir`) — who the user is, their systems, standing rules |
 | `docs/`, `templates/` | **credentials** (OS store / env) |
 
 The plugin never contains anything that identifies the user or their organization. See

@@ -1,17 +1,15 @@
-# Contributing a provider
+# Writing a provider
 
 A **provider** teaches the engine how to read and clear ONE source. The engine's loop is
 provider-agnostic; it calls your provider's operations and never knows whether you used an API, an
-MCP, or a browser. Providers are **shared** — they live in the plugin so every machine gets them; this
-doc is for contributing a new one. The contract is `engine/channel-provider.md`; the shipped providers
-in `../providers/` are complete worked examples to copy from.
+MCP, or a browser. The contract is `engine/channel-provider.md`; the providers in `../providers/` are
+complete worked examples to copy from.
 
 ## Where it lives
-A provider is two files in the plugin's `providers/` dir:
+A provider is two files in `providers/`:
 - `providers/<channel>-channel.md` — the operations (this doc).
 - `providers/<channel>-worker-prompt.txt` — the thin worker prompt for a spawned item.
-A machine then enables it by name (with any needed config) in its `.claude/drainer.local.md` →
-`channels`.
+A machine enables it by name (with any needed config) in its `.claude/drainer.local.md` → `channels`.
 
 ## The 7 operations
 Implement each as a named section in `<channel>-channel.md` so the engine prompts can say "do the

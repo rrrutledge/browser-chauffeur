@@ -1,7 +1,7 @@
 # teams provider — Microsoft Teams on the web (browser)
 
-A **shared** provider: works for any Teams web account (`https://teams.microsoft.com/`) — you sign in
-as yourself, no tenant baked in. No config. Implements `../engine/channel-provider.md`; classify by
+A provider for Microsoft Teams on the web (`https://teams.microsoft.com/`) — you sign in as yourself,
+no tenant baked in. No config. Implements `../engine/channel-provider.md`; classify by
 `../engine/triage.md`. Use the **browser-chauffeur** skill for all browser work. id prefix: `teams-`;
 body file: `<id>.msg.md`.
 

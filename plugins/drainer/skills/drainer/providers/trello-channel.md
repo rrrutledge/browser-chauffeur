@@ -1,6 +1,6 @@
 # trello provider — outreach boards (Trello API)
 
-A **shared** provider for the **outreach** source. The card's **due date IS the queue**: harvested on
+A provider for the **outreach** source. The card's **due date IS the queue**: harvested on
 every run like any other source, it simply returns cards due now-or-earlier (usually none), so it
 rides the single schedule with no special cadence. All Trello reads and mutations go through the
 **`trello-outreach`** skill (don't reimplement the Trello API here). Implements

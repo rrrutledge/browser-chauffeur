@@ -21,12 +21,12 @@ instructions: |-
   Then read `context.md` (from `local_dir`) and the active providers.
 
   ### 2. Providers
-  Shared providers ship in **`providers/`** next to this SKILL.md — enable them in `drainer.local.md`:
+  Providers live in **`providers/`** next to this SKILL.md — enable the ones you want in
+  `drainer.local.md`:
   - `providers/outlook-channel.md` — Outlook on the web (browser).
   - `providers/teams-channel.md` — Microsoft Teams on the web (browser).
   - `providers/trello-channel.md` — outreach boards (uses the `trello-outreach` skill).
-  Adding a new source means contributing a shared provider to the plugin — see
-  `docs/writing-a-provider.md`.
+  To add a new source, write a provider — see `docs/writing-a-provider.md`.
 
   ### 3. Follow the engine specs (bundled next to this SKILL.md)
   Canonical and source-agnostic — don't restate them:

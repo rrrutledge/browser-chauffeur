@@ -1,7 +1,7 @@
 # outlook-enterprise provider — work Outlook on the web (browser)
 
-A **shared** provider for **enterprise** Outlook on the web (`https://outlook.office.com/mail/`) — no
-tenant baked in; you sign in as yourself. No config. (Personal Outlook is `outlook.live.com` and
+A provider for **enterprise** Outlook on the web (`https://outlook.office.com/mail/`) — no tenant
+baked in; you sign in as yourself. No config. (Personal Outlook is `outlook.live.com` and
 should use a **token** via the ms-graph skill, not a browser — that's a separate future provider; this
 one is enterprise-browser only.) Implements `../engine/channel-provider.md`; classify by
 `../engine/triage.md` (this file is only the mechanics). Use the **browser-chauffeur** skill for all

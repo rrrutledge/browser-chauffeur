@@ -1,9 +1,9 @@
 ---
 # Per-machine drainer settings. Copy to .claude/drainer.local.md in your project and fill in.
-# Everything machine/user-specific lives here; the plugin (engine + shared providers) stays generic.
+# Everything machine/user-specific lives here; the plugin (engine + providers) stays generic.
 
-# Which shared providers to run, plus any config that provider needs. Reference a shared provider by
-# name (they live in the plugin's providers/ dir). All sources are harvested every run on one schedule.
+# Which providers to run, plus any config each needs. Reference a provider by name (they live in the
+# plugin's providers/ dir). All sources are harvested every run on one schedule.
 channels:
   outlook:                       # work Outlook on the web (browser) — no config, just sign in
     provider: outlook
