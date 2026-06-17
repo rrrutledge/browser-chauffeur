@@ -49,6 +49,11 @@
       "name": "safe-compounds",
       "source": "./plugins/safe-compounds",
       "description": "PreToolUse hook that auto-approves compound bash commands whose every segment is already trusted, enforces CLAUDE.md style rules (no heredocs, redirection, inline scripts), and classifies MCP and Write/Edit calls — keeping long Claude Code sessions prompt-free without --dangerously-skip-permissions."
+    },
+    {
+      "name": "drainer",
+      "source": "./plugins/drainer",
+      "description": "Drain human-touch queues (email, Teams, Slack, Trello outreach) to zero with one shared loop: read each item, do the action it implies, draft any reply in your voice (draft-only, never sent), and clear it. Per-machine sources and context come from .claude/drainer.local.md."
     }
   ]
 }
