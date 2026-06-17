@@ -44,6 +44,7 @@ CASES = [
     {"id": "gh_api_get", "tool": "Bash", "command": "gh api repos/foo/bar", "expect": "ALLOW"},
     {"id": "gh_api_post_reversible", "tool": "Bash", "command": "gh api -X POST repos/o/r/issues -f title=x", "expect": "ALLOW"},
     {"id": "gh_api_delete_irreversible", "tool": "Bash", "command": "gh api -X DELETE repos/o/r", "expect": "PROMPT"},
+    {"id": "gh_api_patch_repo_settings", "tool": "Bash", "command": "gh api -X PATCH repos/o/r -f delete_branch_on_merge=true", "expect": "ALLOW"},
     {"id": "gh_unknown_group", "tool": "Bash", "command": "gh secret list", "expect": "PROMPT"},
     {"id": "gh_auth_status", "tool": "Bash", "command": "gh auth status", "expect": "ALLOW"},
     {"id": "gh_auth_token_prompts", "tool": "Bash", "command": "gh auth token", "expect": "PROMPT"},
