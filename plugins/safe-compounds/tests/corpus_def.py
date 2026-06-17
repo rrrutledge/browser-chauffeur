@@ -49,6 +49,14 @@ CASES = [
     {"id": "gh_auth_status", "tool": "Bash", "command": "gh auth status", "expect": "ALLOW"},
     {"id": "gh_auth_token_prompts", "tool": "Bash", "command": "gh auth token", "expect": "PROMPT"},
 
+    # --- wmic (read-only get/list only) -------------------------------------
+    {"id": "wmic_process_get", "tool": "Bash", "command": "wmic process where \"name='python.exe'\" get ProcessId,CommandLine", "expect": "ALLOW"},
+    {"id": "wmic_process_list", "tool": "Bash", "command": "wmic process list brief", "expect": "ALLOW"},
+    {"id": "wmic_process_call_prompts", "tool": "Bash", "command": "wmic process where \"name='python.exe'\" call terminate", "expect": "PROMPT"},
+    {"id": "wmic_process_delete_prompts", "tool": "Bash", "command": "wmic process where \"name='python.exe'\" delete", "expect": "PROMPT"},
+    {"id": "wmic_process_create_prompts", "tool": "Bash", "command": "wmic process call create notepad.exe", "expect": "PROMPT"},
+    {"id": "wmic_bare_prompts", "tool": "Bash", "command": "wmic os", "expect": "PROMPT"},
+
     # --- curl (localhost + configured domain + GET) -------------------------
     {"id": "curl_localhost", "tool": "Bash", "command": "curl http://localhost:3000/health", "expect": "ALLOW"},
     {"id": "curl_get_public", "tool": "Bash", "command": "curl https://example.com/data.json", "expect": "ALLOW"},
