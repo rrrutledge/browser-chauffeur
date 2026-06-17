@@ -1,17 +1,17 @@
-# Writing a provider — step by step
+# Contributing a provider
 
 A **provider** teaches the engine how to read and clear ONE source. The engine's loop is
 provider-agnostic; it calls your provider's operations and never knows whether you used an API, an
-MCP, or a browser. This is the doc you follow to add a source. The contract is
-`engine/channel-provider.md`; the shipped providers in `../providers/` are complete worked examples to
-copy from.
+MCP, or a browser. Providers are **shared** — they live in the plugin so every machine gets them; this
+doc is for contributing a new one. The contract is `engine/channel-provider.md`; the shipped providers
+in `../providers/` are complete worked examples to copy from.
 
 ## Where it lives
-Providers live in your **local folder** (`<local_dir>/providers/`, where `local_dir` is set in
-`.claude/drainer.local.md`), never in the plugin. Each provider is two files plus one registry entry:
+A provider is two files in the plugin's `providers/` dir:
 - `providers/<channel>-channel.md` — the operations (this doc).
 - `providers/<channel>-worker-prompt.txt` — the thin worker prompt for a spawned item.
-- one entry in `.claude/drainer.local.md` → `channels`.
+A machine then enables it by name (with any needed config) in its `.claude/drainer.local.md` →
+`channels`.
 
 ## The 7 operations
 Implement each as a named section in `<channel>-channel.md` so the engine prompts can say "do the
@@ -36,16 +36,16 @@ seven ops:
   enumerate, open-on-needs-you capture, delete-to-clear, Outlook-rule junk-learning.
 - **`teams-channel.md`** — a browser provider with the Teams footguns, deep-link capture, mark-read
   clear, and the meeting-recording container case.
-- **`trello-channel.md`** — a once-a-day, config-driven provider that delegates all reads/mutations to
-  the `trello-outreach` skill.
+- **`trello-channel.md`** — a config-driven provider that delegates all reads/mutations to the
+  `trello-outreach` skill (due-date source: returns due-now-or-earlier cards, usually none).
 
-Copy whichever is closest, change the mechanics for your source, and enable it in
-`.claude/drainer.local.md` → `channels`:
+Copy whichever is closest, change the mechanics for your source, and a machine enables it in
+`.claude/drainer.local.md` → `channels` (with any config the provider needs):
 
 ```yaml
 mychannel:
-  provider: mychannel        # a shipped provider name, or providers/mychannel-channel.md in local_dir
-  cadence: continuous        # or daily for a due-date source
+  provider: mychannel
+  # plus any provider-specific config, e.g. a board id or workspace subdomain
 ```
 
 ## Tips by source type

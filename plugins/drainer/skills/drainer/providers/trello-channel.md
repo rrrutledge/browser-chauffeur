@@ -1,11 +1,12 @@
-# trello provider — outreach boards (Trello API, once a day)
+# trello provider — outreach boards (Trello API)
 
-A **shared** provider with one config value: which board(s) to drain. Trello is the **outreach**
-source — the card's **due date IS the queue**, so it's drained once a day. All Trello reads and
-mutations go through the **`trello-outreach`** skill (don't reimplement the Trello API here).
-Implements `../engine/channel-provider.md`; classify by `../engine/triage.md`. id prefix: `trello-`.
+A **shared** provider for the **outreach** source. The card's **due date IS the queue**: harvested on
+every run like any other source, it simply returns cards due now-or-earlier (usually none), so it
+rides the single schedule with no special cadence. All Trello reads and mutations go through the
+**`trello-outreach`** skill (don't reimplement the Trello API here). Implements
+`../engine/channel-provider.md`; classify by `../engine/triage.md`. id prefix: `trello-`.
 
-## Config (in `.claude/drainer.local.md` → `outreach`)
+## Config (in `.claude/drainer.local.md` → `channels.trello`)
 - `boards` — `[{name, id}]` to drain.
 - `skip_lists` — terminal/parking lists to ignore (e.g. Abandoned, Finished, Adopted, Templates).
 - `label_vocab` — `{channels: [...], features: [...]}`; any label not in those is a contact name.
@@ -21,13 +22,20 @@ stable id: `trello-<card-name-slug>-<last6 of cardId>`. Parse each card's labels
 into channel / features / contacts so the worker knows where the conversation lives.
 
 ## CAPTURE (needs-you)
-The card itself is the item (we own these cards, so the context should already be ON the card — read
-its description + comments first). Write `items/<id>.json`:
+The card itself is the item, and **we own it** — unlike inbound mail/Teams, the same card recurs every
+follow-up, so the card is a durable cache for everything needed to act. Read its description +
+structured comments FIRST; act on that before re-discovering anything. Write `items/<id>.json`:
 `{ "id","channel":"trello","triage":"needs-you","kind":"reply|work","cardId","board","list","name",`
 `"due","url","contacts":[...],"channelLabel":"<Email|Teams|Slack|...>","ts":"<ISO now>" }`
 Then find the relevant **thread** (email / Teams / Slack) for the contact + channel and read it to
-decide the move. When you learn something the card was missing, **enrich the card** (via
-`trello-outreach`) so the next pass needs no re-discovery.
+decide the move.
+
+**Cache back to the card.** Anything you learn that the next pass would otherwise re-derive — the
+thread deep link, the contact's role/handle, where they are in the outreach, the last message
+gist/date, the agreed next step — write into the card's description/comments via `trello-outreach`, in
+a stable structured shape. CLEAR (advance) then updates that cache. Over time a card should carry
+enough that a follow-up needs almost no re-discovery. (A dedicated card schema for this is worth
+designing — see the project's Trello-caching follow-up.)
 
 ## CLEAR (advance the card)
 Only **after** the user confirms they sent/handled the message, advance the card via `trello-outreach`:

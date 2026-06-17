@@ -1,8 +1,9 @@
 # Extending the drainer — what each machine adds
 
 The **engine and the shared providers** ship in this plugin and are generic and identity-free. A
-machine adds only three things, all local: a settings file, a `context.md`, and (rarely) a custom
-provider. Credentials always live in your OS store / env, never in any repo.
+machine adds only two local things: a settings file and a `context.md`. Credentials always live in
+your OS store / env, never in any repo. (A genuinely new *source* is a shared provider contributed to
+the plugin, not a per-machine file — see `docs/writing-a-provider.md`.)
 
 ## 1. Settings — `.claude/drainer.local.md`
 The single per-machine config (the plugin-settings pattern). Copy
@@ -16,12 +17,12 @@ Copy `templates/context.example.md` to `<local_dir>/context.md` and fill in **yo
 are, the systems you act in, your internal knowledge source (if any), your tracker board, and the
 standing behavioral rules. The worker loads it at the start of every item.
 
-## 3. Providers
-Most machines need **none** — the shared providers in `providers/` cover Outlook (web), Teams (web),
-and Trello outreach; you just enable them in `drainer.local.md`. They're generic (you sign in as
-yourself; Trello takes a board id). Only a source not already shipped needs a new provider, written
-into `<local_dir>/providers/` against `engine/channel-provider.md` — see `docs/writing-a-provider.md`.
-Prefer API/MCP; use a browser only where no API exists.
+## Providers (no per-machine setup)
+You don't write providers per machine — the shared providers in `providers/` cover Outlook (web),
+Teams (web), and Trello outreach; you just enable them in `drainer.local.md` and give any config they
+need (Trello board id; a Slack workspace subdomain). They're generic: you sign in as yourself. A
+source that isn't shipped yet is added by **contributing a shared provider to the plugin** (see
+`docs/writing-a-provider.md`), so every machine gets it.
 
 ## Credentials
 OS credential store (Windows Credential Manager / Keychain) or environment variables (e.g.
@@ -38,6 +39,5 @@ tracker cards), and `browser-chauffeur` (the Outlook/Teams browser providers). A
    fill in their config (set `local_dir`).
 3. Create `<local_dir>/context.md` from `templates/context.example.md`.
 4. Wire credentials into your OS store; ensure the sibling skills are installed.
-5. (Only if you have an unshipped source) add a custom provider — `docs/writing-a-provider.md`.
-6. Add scheduling glue (presence-gate, overlap lock, cadence) for your OS.
-7. Run a source by hand until trustworthy, then schedule it (continuous, or once a day for outreach).
+5. Add scheduling glue (presence-gate, overlap lock, one interval) for your OS.
+6. Run a source by hand until trustworthy, then schedule a single harvest of all sources.

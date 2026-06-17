@@ -1,10 +1,11 @@
 # drainer driver-core — the driver loop every source's driver follows
 
-A **driver** enumerates its source's queue and works it to empty, **one item at a time**, by
-delegating each action-item to its own worker (`worker-core.md`) and waiting for that worker before
-starting the next. The driver does NOT do an item's work itself. Each source supplies only its
-**source-specific bits** (how to enumerate; how to triage; the per-source "advance" = how an item
-becomes "gone"). Read the local `context.md` first.
+A **driver** enumerates its source's queue and works it to empty by delegating each action-item to its
+own worker (`worker-core.md`), under a fixed **work-in-progress (WIP) limit** — when the number of
+in-flight workers hits the limit, it waits for one to finish before starting the next. The driver does
+NOT do an item's work itself. Each source supplies only its **source-specific bits** (how to
+enumerate; how to triage; the per-source "advance" = how an item becomes "gone"). Read the local
+`context.md` first.
 
 ## The loop
 1. **Enumerate** the source's queue (source-specific: inbox newest-first / cards due now-or-earlier /
@@ -15,23 +16,20 @@ becomes "gone"). Read the local `context.md` first.
       - **fyi / junk** → never a worker each; collected and cleared in ONE batched **digest** pass.
         Every junk item is also a signal to stop that junk arriving — propose the source's filter/rule
         so future runs spend tokens and attention only on what matters.
-   b. **needs-you → run ONE worker and SERIALIZE:**
+   b. **needs-you → run a worker (respecting the WIP limit):**
       - Capture the item to `<runtime>/<source>/items/<id>` (the data the worker reads off disk).
       - Give the worker the source's `<channel>-worker-prompt.txt` (follow `engine/worker-core.md`;
         SOURCE=…; data is `<id>.json` + payload; ADVANCE = clear per provider; write `<id>.done` last).
-      - **Wait for `<id>.done` before the next item** so exactly one item is in front of the user.
+      - Start it if under the WIP limit; otherwise **wait for any in-flight `<id>.done`** to free a
+        slot, then start the next. (WIP = 1 means strictly one at a time; a higher limit runs that many
+        workers concurrently — one item per window — and the limit bounds how many face the user at once.)
 3. Keep going until the queue is empty.
 4. **Final summary** to the user: what got workers, what was digested, and any proposed source/filter
    improvements.
 
-## One model, cadence matches arrival
-There is one model — **drain to zero, always**. The only variable is how often you re-check, which
-should match how often new items arrive:
-
-- **Continuous inbound (email, Teams, Slack)** — items can arrive any time, so re-run the full drain
-  on a short interval (~10–15 min). Each run takes the source to zero, so it stays effectively at zero.
-- **Due-date outreach (Trello)** — cards only come due on a given day, so there's nothing new to find
-  more than once a day; re-check daily and advance each due card (nudge / advance / stop) instead of
-  deleting.
-
-Same loop either way — just polled as often as new work appears.
+## One model, one schedule
+There is one model — **drain to zero, always** — and one schedule. Harvest **every** source on each
+run at a single interval, chosen for the fastest-arriving source. Cheap API sources (Trello, Slack,
+Graph) cost nothing when they have nothing due, so over-polling them is harmless and avoids any
+multi-schedule bookkeeping: a due-date source like Trello simply returns its due-now-or-earlier items
+(usually none) and advances any that are due. Pick the interval once; let the slow sources ride along.

@@ -2,40 +2,37 @@
 # Per-machine drainer settings. Copy to .claude/drainer.local.md in your project and fill in.
 # Everything machine/user-specific lives here; the plugin (engine + shared providers) stays generic.
 
-# Which shared providers to run. Reference the bundled ones by name (they live in the plugin's
-# providers/ dir); a custom one would point at local_dir/providers/<name>-channel.md instead.
+# Which shared providers to run, plus any config that provider needs. Reference a shared provider by
+# name (they live in the plugin's providers/ dir). All sources are harvested every run on one schedule.
 channels:
-  outlook:                       # Outlook on the web (browser) — no config, just sign in
+  outlook:                       # work Outlook on the web (browser) — no config, just sign in
     provider: outlook
-    cadence: continuous
   teams:                         # Microsoft Teams on the web (browser) — no config, just sign in
     provider: teams
-    cadence: continuous
+  trello:                        # outreach boards (via the trello-outreach skill)
+    provider: trello
+    boards:
+      - name: "<Board name>"
+        id: "<board id>"
+    skip_lists: [Abandoned, Finished, Adopted, Templates]
+    label_vocab:
+      channels: [Email, Teams, Slack]
+      features: ["<feature label>"]
+      # any label not in channels/features is treated as a contact name
+  # slack:                       # example of another config-bearing provider (future)
+  #   provider: slack
+  #   workspace: your-workspace  # the <workspace>.slack.com subdomain
 
-# Outreach (Trello) — drained once a day; the due date IS the queue. Handled via the trello-outreach
-# skill. Credentials come from TRELLO_KEY / TRELLO_TOKEN in the environment.
-outreach:
-  provider: trello
-  cadence: daily
-  boards:
-    - name: "<Board name>"
-      id: "<board id>"
-  skip_lists: [Abandoned, Finished, Adopted, Templates]
-  label_vocab:
-    channels: [Email, Teams, Slack]
-    features: ["<feature label>"]
-    # any label not in channels/features is treated as a contact name
+# Credentials never go here — keep them in your OS credential store / environment
+# (e.g. TRELLO_KEY / TRELLO_TOKEN for the trello provider).
 
-# A folder you control, holding context.md and any CUSTOM providers/. (Shared providers need no
-# local_dir.) Commit it wherever you like, or not.
+# A folder you control, holding context.md (your world + standing rules). Commit it wherever, or not.
 local_dir: C:\path\to\your\drainer-local
-
 runtime_dir: .tmp/drainer
 
+# One schedule for everything; set it for the fastest-arriving source. Cheap sources ride along.
 cadence:
-  continuous_interval_minutes: 12
-  daily_window_start: "04:30"
-  daily_window_hours: 8
+  harvest_interval_minutes: 12
 
 presence:
   gate_on_presence: true

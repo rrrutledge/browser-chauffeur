@@ -27,9 +27,6 @@ Volume is irrelevant; actionability is in the content, not the count.
   signal to stop it at the source — propose the channel's filter/rule so it stops arriving and future
   runs spend tokens and attention only on what matters.
 
-These are the only three classes — there is no fourth. An item that turns out to need nothing right
-now is still one of these (usually fyi); it isn't a separate "no-op" class.
-
 ## Containers that hold action items
 Some messages are not themselves actionable but point to content that may contain action items — e.g.
 a Teams meeting recording notification links to AI-generated meeting notes with action items assigned

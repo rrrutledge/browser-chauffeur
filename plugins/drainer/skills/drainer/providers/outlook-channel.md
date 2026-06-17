@@ -1,10 +1,11 @@
-# outlook provider — Outlook on the web (browser)
+# outlook-enterprise provider — work Outlook on the web (browser)
 
-A **shared** provider: works for any Outlook-on-the-web mailbox (`https://outlook.office.com/mail/`)
-— personal or work — because there's no tenant/domain baked in; you just sign in as yourself. No
-config. Implements `../engine/channel-provider.md`; classify by `../engine/triage.md` (this file is
-only the mechanics). Use the **browser-chauffeur** skill for all browser work. id prefix: `outlook-`;
-body file: `<id>.email.md`.
+A **shared** provider for **enterprise** Outlook on the web (`https://outlook.office.com/mail/`) — no
+tenant baked in; you sign in as yourself. No config. (Personal Outlook is `outlook.live.com` and
+should use a **token** via the ms-graph skill, not a browser — that's a separate future provider; this
+one is enterprise-browser only.) Implements `../engine/channel-provider.md`; classify by
+`../engine/triage.md` (this file is only the mechanics). Use the **browser-chauffeur** skill for all
+browser work. id prefix: `outlook-`; body file: `<id>.email.md`.
 
 ## AUTH-GLANCE
 Open `https://outlook.office.com/mail/`. Decide ONLY: SIGNED IN (mailbox + message list visible) or
@@ -14,7 +15,9 @@ sign-in prompt to the user (leave the tab open) and stop reading mail until they
 ## ENUMERATE
 Work from the inbox LIST view (do NOT open messages). Each row shows sender, subject, a preview line,
 and time — enough to triage. Consider the most recent ~30 messages, READ OR UNREAD (an already-read
-mail can still be an unhandled action); scroll as needed. Build a stable id:
+mail can still be an unhandled action). **Scroll the list down** to be sure no inbox items are left
+off-screen — the viewport often shows only the top few; don't miss mail below the fold. Build a
+stable id:
 `outlook-<YYYYMMDD-HHMM of received>-<sender-slug>-<first-3-subject-words-slug>` (lowercase,
 non-alphanumerics → single dashes; ≤48 chars). Triage from the row alone; only if a row is genuinely
 undecidable may you open that ONE message to disambiguate (never open more than 2 per pass).

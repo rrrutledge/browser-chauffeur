@@ -13,16 +13,12 @@ item due **now or earlier** and works through them until each is **gone** — "g
 email is **deleted/archived**; a Teams chat is **marked read**; an outreach card is **advanced or
 bumped to a later follow-up day**.
 
-## One model: always at zero
-There is one model — **drain to zero, always**. The only variable is how often you re-check, which
-should match how often new items arrive:
-
-- **Continuous inbound (Outlook, Teams, Slack)** — items arrive any time, so re-run the full drain on
-  a short interval (~10–15 min). Each run takes the source to zero, so it stays effectively at zero.
-- **Due-date outreach (Trello)** — cards only come due on a given day, so there's nothing new to find
-  more than once a day; re-check daily and advance each due card instead of deleting.
-
-Same loop either way — just polled as often as new work appears.
+## One model, one schedule: always at zero
+There is one model — **drain to zero, always** — and one schedule. Each run harvests **every** source
+and works it to zero, on a single interval chosen for the fastest-arriving source (Outlook/Teams).
+Because cheap API sources cost nothing when they have nothing due, slow sources just ride along: a
+due-date source like Trello returns its due-now-or-earlier cards (usually none) and advances any that
+are due — no separate "daily" schedule, no multi-cadence bookkeeping.
 
 ## Two layers: engine + shared providers (in the plugin) vs. injected (per machine)
 
@@ -30,7 +26,7 @@ Same loop either way — just polled as often as new work appears.
 | --- | --- |
 | `engine/` — driver loop, worker procedure, triage rubric, provider contract | `.claude/drainer.local.md` — which providers are active, per-provider config (Trello board ids), cadence, presence |
 | `providers/` — shared providers (Outlook, Teams, Trello) anyone can enable | `context.md` (in `local_dir`) — who the user is, their systems, standing rules |
-| `docs/`, `templates/` | any **custom** providers in `local_dir/providers/`; **credentials** (OS store / env) |
+| `docs/`, `templates/` | **credentials** (OS store / env) |
 
 The plugin never contains anything that identifies the user or their organization. See
 `docs/extending.md` for where each injected piece plugs in.
@@ -72,4 +68,4 @@ three; full rubric in `engine/triage.md`:
 - **Presence-gated** — away/locked → exit cheaply, do nothing.
 - **No pile-ups** — an overlap lock.
 - **Idle runs make no window and no noise** — a surface appears only for an item to handle or sign-in.
-- **Due-date sources** use a once-per-day marker.
+- **One interval** for all sources, set for the fastest-arriving one; slow/cheap sources ride along.

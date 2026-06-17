@@ -1,6 +1,6 @@
 ---
 skill: drainer
-description: Drain human-touch queues to zero — Outlook, Teams, Trello outreach (and any source you add) — with one shared loop. For each item: read the thread, do the action it implies (open a PR, file a ticket, run a check, update a system), draft any reply in the user's voice (draft-only, never sent), then clear the item. Use to drain Outlook/Teams continuously or run the once-a-day outreach drain. Per-machine settings come from .claude/drainer.local.md.
+description: Drain human-touch queues to zero — Outlook, Teams, Trello outreach — with one shared loop. For each item: read the thread, do the action it implies (open a PR, file a ticket, run a check, update a system), draft any reply in the user's voice (draft-only, never sent), then clear the item. Use to drain the work inbox / Teams / outreach to zero. Per-machine settings come from .claude/drainer.local.md.
 instructions: |-
   ## Drainer
 
@@ -8,14 +8,15 @@ instructions: |-
   decide the ACTION (reply / do work / nudge / stop / nothing) → DO the doable part now (safe,
   reversible work proceeds; irreversible/outbound-to-others waits for the user's OK) → draft any reply
   in the user's voice **draft-only, never sent** → clear the item. Outlook / Teams / outreach are the
-  **same loop over different sources**. The goal is to stay at zero: re-check each source as often as
-  new items arrive (continuously for Outlook/Teams; once a day for due-date outreach).
+  **same loop over different sources**. The goal is to stay at zero: harvest every source on one
+  interval (set for the fastest-arriving source); cheap sources like Trello ride along and surface
+  cards only when due.
 
   ### 1. Load per-machine settings FIRST
   Read **`.claude/drainer.local.md`** in the current project (YAML frontmatter): which `channels` are
-  active, per-provider config (e.g. Trello board ids), cadence, presence, and `local_dir` (a folder
-  holding `context.md` and any custom `providers/`). If it's missing, copy
-  `templates/drainer.local.example.md` to `.claude/drainer.local.md` and help the user fill it in.
+  active, per-provider config (e.g. Trello board ids), the harvest interval, presence, and `local_dir`
+  (a folder holding `context.md`). If it's missing, copy `templates/drainer.local.example.md` to
+  `.claude/drainer.local.md` and help the user fill it in.
 
   Then read `context.md` (from `local_dir`) and the active providers.
 
@@ -23,8 +24,8 @@ instructions: |-
   Shared providers ship in **`providers/`** next to this SKILL.md — enable them in `drainer.local.md`:
   - `providers/outlook-channel.md` — Outlook on the web (browser).
   - `providers/teams-channel.md` — Microsoft Teams on the web (browser).
-  - `providers/trello-channel.md` — outreach boards (once a day; uses the `trello-outreach` skill).
-  A machine with a source not covered here adds its own in `local_dir/providers/` — see
+  - `providers/trello-channel.md` — outreach boards (uses the `trello-outreach` skill).
+  Adding a new source means contributing a shared provider to the plugin — see
   `docs/writing-a-provider.md`.
 
   ### 3. Follow the engine specs (bundled next to this SKILL.md)
