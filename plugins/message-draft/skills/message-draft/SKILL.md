@@ -33,19 +33,17 @@ the done-criteria once it has run.
 
 1. **The composer is not unique — target the `:visible` one and bind every keystroke to it.**
    Web apps keep many editors mounted (Teams keeps every recent chat's `div[data-tid="ckeditor"]`
-   in the DOM). Type with browser-chauffeur's element-bound composer primitives —
-   `sp.type(selector, text)`, `sp.newline(selector)`, `sp.press(selector, key, {ctrl})`,
-   `sp.clear(selector)`, `sp.pressInComposer(selector, key)` — which resolve the **visible** match
-   and verify `document.activeElement` is that exact node before each keystroke. Never hand-roll raw
-   `Input.insertText` / `Input.dispatchKeyEvent`, or text leaks into another conversation.
+   in the DOM). Use browser-chauffeur's element-bound composer typing (it owns the mechanics — see
+   browser-chauffeur → **Composing in rich editors**); never hand-roll raw key/text events, or text
+   leaks into another conversation.
 2. **Identity-gate before AND during typing.** Confirm the active conversation header matches the
    intended recipient (Teams: first+last name; Outlook: the expected sender/subject) BEFORE the
    first keystroke, and re-assert before each segment. Abort on mismatch.
 3. **Content is ground truth.** After typing, read the composer back and verify the expected
    greeting + body (+ links) are present. Let selector drift fail loudly, not silently.
-4. **Never press a bare Enter in the composer — it sends.** Use `sp.newline(selector)` (Shift+Enter)
-   for line breaks, and prefer `sp.pressInComposer(selector, key)` for any other keystroke — it
-   refuses a bare Enter. (Enter is fine inside a link-insert dialog.)
+4. **Never press a bare Enter in the composer — it sends.** Line breaks are Shift+Enter; use
+   browser-chauffeur's bare-Enter-refusing composer primitives. (Enter is fine inside a link-insert
+   dialog.)
 5. **Selectors below are last-known-good (web UIs, 2026-06) — expect drift.** The invariants
    don't drift; rediscover selectors live via browser-chauffeur (screenshot → inspect) when they do.
 
@@ -54,14 +52,13 @@ the done-criteria once it has run.
 Addresses either a **1:1 chat** (recipient name + email) or a **group/meeting chat** (chat name).
 Inputs: the address, message body, optional hyperlinks (display text + URL), optional @mentions.
 
-0. **Open your OWN Teams tab — never adopt an existing one.** Acquire the tab with
-   `connectSinglePage(port, { openUrl: 'https://teams.microsoft.com/' })`; the persistent profile
-   means it loads already signed in. **Do not enumerate tabs and pick "the loaded Teams tab with the
-   most text"** — that tab may belong to another Claude Code instance or the user, and driving it
-   types into the wrong place (Enter sends in Teams). Capture `sp.targetId` and reuse it for every
-   later step of this draft (see browser-chauffeur → "you MUST open your own tab"). Wait for the app
-   shell to hydrate (`sp.waitFor` on the chat rail) before interacting; `sp.evaluate('window.focus()')`
-   and `sp.clickBySelector('body')` so keyboard events land on this tab.
+0. **Open your OWN Teams tab — never adopt an existing one.** Open a fresh `teams.microsoft.com` tab
+   of your own (browser-chauffeur owns the how — see "you MUST open your own tab"); the persistent
+   profile means it loads already signed in. **Do not enumerate tabs and pick "the loaded Teams tab
+   with the most text"** — that tab may belong to another Claude Code instance or the user, and
+   driving it types into the wrong place (Enter sends in Teams). Reuse that one tab for every later
+   step of this draft. Wait for the app shell to hydrate (the chat rail) and ensure keyboard events
+   land on this tab before interacting.
 1. **Find the target.**
    - **1:1:** Press `Alt+Shift+N` (new message), wait ~1.5s, then click the **people-picker input**
      (`input#people-picker-input` or `input[aria-label="Enter name, chat, channel, email or tag"]`).
@@ -76,17 +73,15 @@ Inputs: the address, message body, optional hyperlinks (display text + URL), opt
 2. **Identity-gate.** Confirm the chat heading (an `h1`/`h2`/`h3` containing the name —
    `[data-tid="chat-header-title"]` does NOT exist in this build) matches before typing. 1:1: last
    name + first-name prefix; group/meeting: a case-insensitive substring of the chat name.
-3. **Compose.** With `SEL = 'div[data-tid="ckeditor"]'`: `sp.clear(SEL)` to empty any draft auto-restore,
-   then `sp.type(SEL, '<body>')`; line breaks via `sp.newline(SEL)` (Shift+Enter, never bare Enter).
-4. **Hyperlinks.** `sp.press(SEL, 'k', {ctrl:true})` opens an Insert-link dialog; fill
-   `[data-tid="insertHyperlink-displayText"]` and `[data-tid="insertHyperlink-linkAddress"]`
-   (⚠️ `data-tid`, not `id`) with `sp.fill`, then `sp.clickBySelector('[data-tid="insertHyperlink-insertButton"]')`
-   (⚠️ NOT `role=button` with text "Insert" — that selector fails). A typed GitHub repo URL also
-   auto-unfurls a card.
-5. **@mentions (when asked).** `sp.type(SEL, '@')` then the first few chars of the name, `sp.waitFor`
-   the mention autocomplete dropdown, and `sp.clickByText(/<name>/)` on the matching suggestion so a
-   real mention chip mounts. Typing `@Name` as plain text does NOT notify the person — the chip must
-   come from the dropdown.
+3. **Compose.** The composer is `div[data-tid="ckeditor"]` (target the `:visible` one). Clear any
+   draft auto-restore, then type the body; line breaks are Shift+Enter, never a bare Enter.
+4. **Hyperlinks.** Ctrl+K opens an Insert-link dialog; fill `[data-tid="insertHyperlink-displayText"]`
+   and `[data-tid="insertHyperlink-linkAddress"]` (⚠️ `data-tid`, not `id`), then click
+   `[data-tid="insertHyperlink-insertButton"]` (⚠️ NOT `role=button` with text "Insert" — that
+   selector fails). A typed GitHub repo URL also auto-unfurls a card.
+5. **@mentions (when asked).** Type `@` then the first few chars of the name, wait for the mention
+   autocomplete dropdown, and click the matching suggestion so a real mention chip mounts. Typing
+   `@Name` as plain text does NOT notify the person — the chip must come from the dropdown.
 6. **Leave as draft.** Do NOT press Enter / click Send. Teams shows a **Draft** badge per
    conversation (persists within the live browser session). Verify content, then stop.
 
