@@ -1,5 +1,6 @@
 // Browser Chauffeur Helpers
 // Central export of all shared browser automation utilities
+// (dummy edit to verify the version-bump CI guardrail fails as intended)
 //
 // Usage in scripts:
 //   const { dismissOverlays, screenshotOnFailure } = require('browser-chauffeur-helpers');
