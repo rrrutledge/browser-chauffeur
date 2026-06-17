@@ -223,6 +223,7 @@ YARN_TRUSTED_SUBCOMMANDS = {
 PIP_TRUSTED_SUBCOMMANDS = {'2>&1', 'check', 'freeze', 'install', 'list', 'show', 'uninstall'}
 PNPM_TRUSTED_SUBCOMMANDS = {'install', 'add', 'update', 'remove', 'list', 'outdated', 'prune'}
 BUN_TRUSTED_SUBCOMMANDS = {'install', 'add', 'update', 'remove', 'test'}
+SCHTASKS_TRUSTED_SUBCOMMANDS = {'/query'}
 
 
 # ------------------------------------------------------------------ gh --------
@@ -317,7 +318,8 @@ SUBCOMMAND_SPECS = {
     'yarn': {'command': 'yarn', 'trusted': YARN_TRUSTED_SUBCOMMANDS, 'category': 'YARN_TRUSTED_SUBCOMMANDS', 'cache_clean': True, 'flag_style': 'yarn', 'allow_empty': True},
     'pip':  {'command': 'pip',  'trusted': PIP_TRUSTED_SUBCOMMANDS,  'category': 'PIP_TRUSTED_SUBCOMMANDS',  'allow_empty': True},
     'pnpm': {'command': 'pnpm', 'trusted': PNPM_TRUSTED_SUBCOMMANDS, 'category': 'PNPM_TRUSTED_SUBCOMMANDS', 'allow_empty': True},
-    'bun':  {'command': 'bun',  'trusted': BUN_TRUSTED_SUBCOMMANDS,  'category': 'BUN_TRUSTED_SUBCOMMANDS',  'allow_empty': True},
+    'bun':      {'command': 'bun',      'trusted': BUN_TRUSTED_SUBCOMMANDS,      'category': 'BUN_TRUSTED_SUBCOMMANDS',      'allow_empty': True},
+    'schtasks': {'command': 'schtasks', 'trusted': SCHTASKS_TRUSTED_SUBCOMMANDS, 'category': None},
     'gh':   is_gh_command_safe,
 }
 
