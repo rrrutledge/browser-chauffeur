@@ -13,7 +13,7 @@ instructions: |-
   cards only when due.
 
   ### 1. Load per-machine settings FIRST
-  Read **`.claude/drainer.local.md`** in the current project (YAML frontmatter): which `channels` are
+  Read **`.claude/drainer.local.md`** in the current project (YAML frontmatter): which `providers` are
   active, per-provider config (e.g. Trello board ids), the harvest interval, presence, and `local_dir`
   (a folder holding `context.md`). If it's missing, copy `templates/drainer.local.example.md` to
   `.claude/drainer.local.md` and help the user fill it in.
@@ -23,20 +23,20 @@ instructions: |-
   ### 2. Providers
   Providers live in **`providers/`** next to this SKILL.md — enable the ones you want in
   `drainer.local.md`:
-  - `providers/outlook-channel.md` — Outlook on the web (browser).
-  - `providers/teams-channel.md` — Microsoft Teams on the web (browser).
-  - `providers/trello-channel.md` — outreach boards (uses the `trello-outreach` skill).
+  - `providers/outlook-provider.md` — Outlook on the web (browser).
+  - `providers/teams-provider.md` — Microsoft Teams on the web (browser).
+  - `providers/trello-provider.md` — outreach boards (uses the `trello-outreach` skill).
   To add a new source, write a provider — see `docs/writing-a-provider.md`.
 
   ### 3. Follow the engine specs (bundled next to this SKILL.md)
   Canonical and source-agnostic — don't restate them:
   - **`engine/triage.md`** — the one rubric: needs-you / fyi / junk (only three; junk → propose a
     filter so it stops arriving).
-  - **`engine/driver-core.md`** — the loop (enumerate → triage → one serialized worker per needs-you →
-    digest the fyi/junk). One model: drain to zero, polled as often as new work appears.
+  - **`engine/driver-core.md`** — the loop (enumerate → triage → workers for needs-you under a WIP
+    limit → digest the fyi/junk). Drain to zero, polled as often as new work appears.
   - **`engine/worker-core.md`** — the per-item worker procedure (read brain → situational-check → do
     the work → draft in voice → learn from the send → advance the item).
-  - **`engine/channel-provider.md`** — the interface a provider implements.
+  - **`engine/provider.md`** — the interface a provider implements.
 
   ### 4. Hard rules (always)
   - **Draft-only outbound. Never send, never post, never press Enter to send.** Create drafts

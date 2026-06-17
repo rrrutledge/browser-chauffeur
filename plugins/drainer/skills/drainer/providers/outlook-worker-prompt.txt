@@ -1,5 +1,0 @@
-Follow the drainer engine/worker-core.md. SOURCE=outlook.
-Your item data is items/<id>.json + items/<id>.email.md (read both off disk).
-Your ADVANCE = the outlook provider's CLEAR step (delete the email → Deleted Items).
-Draft any reply via the message-draft skill in `outlook` mode (draft-only, never send).
-Write items/<id>.done as your final step.

@@ -13,12 +13,11 @@ item due **now or earlier** and works through them until each is **gone** — "g
 email is **deleted/archived**; a Teams chat is **marked read**; an outreach card is **advanced or
 bumped to a later follow-up day**.
 
-## One model, one schedule: always at zero
-There is one model — **drain to zero, always** — and one schedule. Each run harvests **every** source
-and works it to zero, on a single interval chosen for the fastest-arriving source (Outlook/Teams).
-Because cheap API sources cost nothing when they have nothing due, slow sources just ride along: a
-due-date source like Trello returns its due-now-or-earlier cards (usually none) and advances any that
-are due — no separate "daily" schedule, no multi-cadence bookkeeping.
+## Scheduling: always at zero
+Each run harvests **every** source and works it to zero, on a single interval chosen for the
+fastest-arriving source (Outlook/Teams). Because cheap API sources cost nothing when they have nothing
+due, slow sources just ride along: a due-date source like Trello returns its due-now-or-earlier cards
+(usually none) and advances any that are due.
 
 ## Two layers: the plugin vs. what each machine injects
 
@@ -47,7 +46,7 @@ three; full rubric in `engine/triage.md`:
 - **needs-you** → its **own serialized worker**, one item at a time.
 - **fyi / junk** → **never** a worker each; collected and cleared in **one digest pass**, nothing
   disposed of silently. Every **junk** item is a signal to stop it at the source — propose the
-  channel's filter/rule so future runs spend tokens and attention only on what matters.
+  source's filter/rule so future runs spend tokens and attention only on what matters.
 
 ## Hard behavioral rules (carry these into every machine's `context.md`)
 

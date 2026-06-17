@@ -1,10 +1,9 @@
-# drainer triage — the one rubric every channel uses
+# drainer triage — the rubric every source uses
 
-Shared by every drainer source (email, Teams, future channels) and by both runners that classify
-(the **sweep** and the **harvester**). Classification is identical across channels — only the
-*mechanics* of enumerating/capturing/clearing differ (those live in each channel's provider doc).
-Classify by THIS file; don't restate the buckets elsewhere. This file ONLY classifies — what the
-algorithm DOES with each bucket (own tab vs digest) lives in the driver/SKILL/digest.
+Shared by every source (Outlook, Teams, Trello, …). Classification is identical across sources — only
+the *mechanics* of enumerating/capturing/clearing differ (those live in each provider doc). Classify
+by THIS file; don't restate the buckets elsewhere. This file ONLY classifies — what the loop DOES with
+each bucket (own worker vs digest) lives in the driver and SKILL.
 
 ## The one question
 
@@ -24,7 +23,7 @@ Volume is irrelevant; actionability is in the content, not the count.
   heads-up, a decision someone else made).
 - **junk** — no information value AND no action: automated noise, newsletters, pure marketing,
   CI/build notifications, duplicate status churn, chatter not aimed at the user. Every junk item is a
-  signal to stop it at the source — propose the channel's filter/rule so it stops arriving and future
+  signal to stop it at the source — propose the source's filter/rule so it stops arriving and future
   runs spend tokens and attention only on what matters.
 
 ## Containers that hold action items

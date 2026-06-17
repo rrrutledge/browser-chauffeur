@@ -18,8 +18,9 @@ enumerate; how to triage; the per-source "advance" = how an item becomes "gone")
         so future runs spend tokens and attention only on what matters.
    b. **needs-you → run a worker (respecting the WIP limit):**
       - Capture the item to `<runtime>/<source>/items/<id>` (the data the worker reads off disk).
-      - Give the worker the source's `<channel>-worker-prompt.txt` (follow `engine/worker-core.md`;
-        SOURCE=…; data is `<id>.json` + payload; ADVANCE = clear per provider; write `<id>.done` last).
+      - Give the worker the generic `providers/worker-prompt.txt` (it follows `engine/worker-core.md`,
+        reads `<id>.json` to find its source/provider, advances per the provider's CLEAR, and writes
+        `<id>.done` last).
       - Start it if under the WIP limit; otherwise **wait for any in-flight `<id>.done`** to free a
         slot, then start the next. (WIP = 1 means strictly one at a time; a higher limit runs that many
         workers concurrently — one item per window — and the limit bounds how many face the user at once.)
@@ -27,9 +28,9 @@ enumerate; how to triage; the per-source "advance" = how an item becomes "gone")
 4. **Final summary** to the user: what got workers, what was digested, and any proposed source/filter
    improvements.
 
-## One model, one schedule
-There is one model — **drain to zero, always** — and one schedule. Harvest **every** source on each
-run at a single interval, chosen for the fastest-arriving source. Cheap API sources (Trello, Slack,
-Graph) cost nothing when they have nothing due, so over-polling them is harmless and avoids any
-multi-schedule bookkeeping: a due-date source like Trello simply returns its due-now-or-earlier items
-(usually none) and advances any that are due. Pick the interval once; let the slow sources ride along.
+## Scheduling
+Harvest **every** source on each run at a single interval, chosen for the fastest-arriving source.
+Cheap API sources (Trello, Slack, Graph) cost nothing when they have nothing due, so over-polling them
+is harmless and avoids any multi-schedule bookkeeping: a due-date source like Trello simply returns its
+due-now-or-earlier items (usually none) and advances any that are due. Pick the interval once; let the
+slow sources ride along.

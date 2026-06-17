@@ -4,13 +4,10 @@
 
 # Which providers to run, plus any config each needs. Reference a provider by name (they live in the
 # plugin's providers/ dir). All sources are harvested every run on one schedule.
-channels:
-  outlook:                       # work Outlook on the web (browser) — no config, just sign in
-    provider: outlook
-  teams:                         # Microsoft Teams on the web (browser) — no config, just sign in
-    provider: teams
+providers:
+  outlook: {}                    # work Outlook on the web (browser) — no config, just sign in
+  teams: {}                      # Microsoft Teams on the web (browser) — no config, just sign in
   trello:                        # outreach boards (via the trello-outreach skill)
-    provider: trello
     boards:
       - name: "<Board name>"
         id: "<board id>"
@@ -20,7 +17,6 @@ channels:
       features: ["<feature label>"]
       # any label not in channels/features is treated as a contact name
   # slack:                       # example of another config-bearing provider (future)
-  #   provider: slack
   #   workspace: your-workspace  # the <workspace>.slack.com subdomain
 
 # Credentials never go here — keep them in your OS credential store / environment

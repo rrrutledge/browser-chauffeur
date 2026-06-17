@@ -15,14 +15,15 @@ learn from the send → advance the item.
 - the **Voice learning loop** lives in the **document-authoring skill** — append lessons there after each send (step 5).
 - your item's data (source-specific — the captured email/message, or the card data + comments).
 
-## 1. Lead with context (always)
-Assume the user has NOT seen the item — they launched you from a drain and have zero memory of the
-thread. Your FIRST message MUST open by restating **the incoming item itself, before any diagnosis or
-ask**: who messaged, what they actually said/asked (quote or paraphrase their words), and any deadline.
-Only *after* that 1-3 line briefing do you give your analysis and what you propose. A reader who has
-never seen the message must understand *why this is in front of them* from your opening lines alone —
-never jump straight into "here's the situation / here's what to do." Your FINAL report likewise
-summarizes who/what/deadline and what you did. Never a bare "done, nothing to do."
+## 1. Lead with context — especially in the FINAL message
+Assume the user has NOT seen the item and may not have seen any of your earlier messages — they
+launched you from a drain with zero memory of the thread, and your opening lines often scroll off
+before they look. So the **last message before you yield back** is the one that must carry the
+briefing: open it by restating **the incoming item itself, before your conclusion** — who messaged,
+what they actually said/asked (quote or paraphrase), and any deadline — then what you did and what's
+needed. A reader who sees only your final message must understand *why this was in front of them* from
+its opening lines. Lead with the same briefing in your first message too, but the final one is the
+guarantee. Never a bare "done, nothing to do."
 
 ## 2. Situational-check first
 Has it already moved or been handled? (PR merged? request done? they replied and the user already
@@ -61,8 +62,7 @@ Only advance when step 3's work is complete — the task/action/deliverable is d
 task list; it stays in the queue until the work itself is finished, not just until you've drafted a reply.
 
 Clear the item so it doesn't resurface by performing your source's clear/advance — DON'T assume what
-that means, read it from the source's provider doc (the **CLEAR** op in `<channel>-channel.md`, or the
-outreach card advance).
+that means, read the **CLEAR** op in `providers/<source>-provider.md`.
 
 If you drafted a reply in step 4 but step 3's underlying work isn't done yet, STOP — do NOT clear;
 leave the item as-is and write a "paused" marker instead.

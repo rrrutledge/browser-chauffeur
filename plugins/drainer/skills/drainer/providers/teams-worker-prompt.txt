@@ -1,6 +1,0 @@
-Follow the drainer engine/worker-core.md. SOURCE=teams.
-Your item data is items/<id>.json + items/<id>.msg.md (read both off disk).
-Your ADVANCE = the teams provider's CLEAR step (mark the conversation read).
-Draft any reply via the message-draft skill in `teams` mode — identity-gate the chat, target the
-visible composer, Shift+Enter for newlines, NEVER press a bare Enter (Enter sends). Draft-only.
-Write items/<id>.done as your final step.

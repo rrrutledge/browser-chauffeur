@@ -6,10 +6,10 @@ env, never in any repo.
 
 ## 1. Settings — `.claude/drainer.local.md`
 The single per-machine config (the plugin-settings pattern). Copy
-`templates/drainer.local.example.md` to `.claude/drainer.local.md` and fill in: which `channels` are
-active (by provider name), per-provider config (e.g. Trello `boards`, label
-vocab), `local_dir`, cadence, and presence. **You decide whether to version it** — keep it in a repo,
-in this project, or uncommitted.
+`templates/drainer.local.example.md` to `.claude/drainer.local.md` and fill in: which `providers` are
+active (by name), per-provider config (e.g. Trello `boards`, label vocab), `local_dir`, the harvest
+interval, and presence. **You decide whether to version it** — keep it in a repo, in this project, or
+uncommitted.
 
 ## 2. context.md (the local brain)
 Copy `templates/context.example.md` to `<local_dir>/context.md` and fill in **your** world: who you
