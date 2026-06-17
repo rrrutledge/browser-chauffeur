@@ -235,6 +235,11 @@ GH_TRUSTED_SUBCOMMANDS = {
     'workflow': {'view', 'list', 'run'},
 }
 GH_WRITE_METHODS = {'POST', 'PUT', 'PATCH', 'DELETE'}
+# The bare repo endpoint (repos/owner/repo). A PATCH here edits repo settings
+# (delete_branch_on_merge, default_branch, visibility, ...) which is reversible —
+# just flip the value back. A DELETE here destroys the whole repo and is NOT
+# reversible, so it is deliberately excluded below (DELETE keeps prompting).
+GH_REPO_SETTINGS_PATTERN = re.compile(r'/?repos/[^/]+/[^/]+/?$')
 GH_REVERSIBLE_API_PATTERNS = [
     re.compile(r'/?orgs/[^/]+/teams(?:/|$)'),
     re.compile(r'/?repos/[^/]+/[^/]+/branches(?:/|$)'),
@@ -270,6 +275,8 @@ def _gh_api_safe(tokens):
             api_url = tokens[i]
         i += 1
     if method in GH_WRITE_METHODS:
+        if method != 'DELETE' and GH_REPO_SETTINGS_PATTERN.search(api_url):
+            return True
         return any(p.search(api_url) for p in GH_REVERSIBLE_API_PATTERNS)
     return True
 
