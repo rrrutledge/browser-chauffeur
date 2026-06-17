@@ -1,24 +1,22 @@
 ---
 # Per-machine drainer settings. Copy to .claude/drainer.local.md in your project and fill in.
-# Everything machine/user-specific lives here; the engine (plugin) stays generic.
+# Everything machine/user-specific lives here; the plugin (engine + shared providers) stays generic.
 
-# Folder holding this machine's context.md and providers/ (commit it wherever you like, or not).
-local_dir: C:\path\to\your\drainer-local
-runtime_dir: .tmp/drainer
-
-# The source registry. One entry per active source. provider/worker paths are relative to local_dir.
+# Which shared providers to run. Reference the bundled ones by name (they live in the plugin's
+# providers/ dir); a custom one would point at local_dir/providers/<name>-channel.md instead.
 channels:
-  outlook:
-    provider: providers/outlook-channel.md
-    worker: providers/outlook-worker-prompt.txt
-    idPrefix: outlook-
-    bodyExt: email.md
+  outlook:                       # Outlook on the web (browser) — no config, just sign in
+    provider: outlook
     cadence: continuous
-  # gmail: { provider: providers/gmail-channel.md, worker: providers/gmail-worker-prompt.txt, idPrefix: gmail-, bodyExt: email.md, cadence: continuous }
-  # slack:  { provider: providers/slack-channel.md,  worker: providers/slack-worker-prompt.txt,  idPrefix: slack-,  bodyExt: msg.md,   cadence: continuous }
+  teams:                         # Microsoft Teams on the web (browser) — no config, just sign in
+    provider: teams
+    cadence: continuous
 
-# Trello (or other) outreach boards drained once a day. The due date IS the queue.
+# Outreach (Trello) — drained once a day; the due date IS the queue. Handled via the trello-outreach
+# skill. Credentials come from TRELLO_KEY / TRELLO_TOKEN in the environment.
 outreach:
+  provider: trello
+  cadence: daily
   boards:
     - name: "<Board name>"
       id: "<board id>"
@@ -28,10 +26,16 @@ outreach:
     features: ["<feature label>"]
     # any label not in channels/features is treated as a contact name
 
+# A folder you control, holding context.md and any CUSTOM providers/. (Shared providers need no
+# local_dir.) Commit it wherever you like, or not.
+local_dir: C:\path\to\your\drainer-local
+
+runtime_dir: .tmp/drainer
+
 cadence:
-  sweep_interval_minutes: 12
-  once_a_day_window_start: "04:30"
-  once_a_day_window_hours: 8
+  continuous_interval_minutes: 12
+  daily_window_start: "04:30"
+  daily_window_hours: 8
 
 presence:
   gate_on_presence: true

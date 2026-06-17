@@ -1,0 +1,7 @@
+Follow the drainer engine/worker-core.md. SOURCE=trello.
+Your item data is items/<id>.json (the card). Read the card's description + comments first (via the
+trello-outreach skill), then find and read the relevant email/Teams/Slack thread for the contact.
+Decide the move; draft any message via the message-draft skill in the card's channel mode (draft-only).
+Your ADVANCE = the trello provider's CLEAR step (nudge / advance / stop via trello-outreach) — only
+AFTER the user confirms they sent it. If nothing to do right now, silently bump the due date.
+Write items/<id>.done as your final step.

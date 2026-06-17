@@ -3,8 +3,8 @@
 A **provider** teaches the engine how to read and clear ONE source. The engine's loop is
 provider-agnostic; it calls your provider's operations and never knows whether you used an API, an
 MCP, or a browser. This is the doc you follow to add a source. The contract is
-`engine/channel-provider.md`; the skeleton is `templates/provider.example.md`; this walks the whole
-flow with a worked example.
+`engine/channel-provider.md`; the shipped providers in `../providers/` are complete worked examples to
+copy from.
 
 ## Where it lives
 Providers live in your **local folder** (`<local_dir>/providers/`, where `local_dir` is set in
@@ -29,63 +29,31 @@ item's provider's CAPTURE step":
 
 Classification is NOT a provider concern — every channel uses `engine/triage.md`.
 
-## Worked example — Outlook via Microsoft Graph (API, no browser)
+## Worked examples — the shipped providers
+The best examples are the real providers in `../providers/`, each a complete implementation of the
+seven ops:
+- **`outlook-channel.md`** — a browser provider (Outlook web via browser-chauffeur): list-view
+  enumerate, open-on-needs-you capture, delete-to-clear, Outlook-rule junk-learning.
+- **`teams-channel.md`** — a browser provider with the Teams footguns, deep-link capture, mark-read
+  clear, and the meeting-recording container case.
+- **`trello-channel.md`** — a once-a-day, config-driven provider that delegates all reads/mutations to
+  the `trello-outreach` skill.
 
-`providers/outlook-channel.md`:
-
-```markdown
-# outlook provider (Microsoft Graph)
-
-## AUTH-GLANCE
-Token from the ms-graph skill's cache. Validate with `GET /me`. If 401, run the ms-graph sign-in.
-
-## ENUMERATE
-GET /me/mailFolders/inbox/messages?$filter=isRead eq false&$orderby=receivedDateTime desc&$top=50
-id = idPrefix + message.id (last 12 chars).
-
-## CAPTURE
-For a needs-you item write <id>.json with from=sender, received=receivedDateTime,
-snippet=bodyPreview, url=webLink, whatsAsked=<one line>. Body file <id>.email.md = message.body
-(html→markdown).
-
-## CLEAR
-POST /me/messages/{id}/move {destinationId:"deleteditems"}  — reversible (Deleted Items). Narrate it.
-
-## JUNK-LEARNING
-Propose an Outlook rule (from-address or subject pattern) for recurring junk.
-
-## DRAFT-MODE
-message-draft mode: outlook
-
-## WORKER-PROMPT
-providers/outlook-worker-prompt.txt
-```
-
-`providers/outlook-worker-prompt.txt`:
-
-```
-Follow engine/worker-core.md. SOURCE=outlook. Your data is items/<id>.json + items/<id>.email.md
-(read both off disk). Your ADVANCE = the outlook provider's CLEAR step (move to Deleted Items).
-Write items/<id>.done as your final step.
-```
-
+Copy whichever is closest, change the mechanics for your source, and enable it in
 `.claude/drainer.local.md` → `channels`:
 
 ```yaml
-outlook:
-  provider: providers/outlook-channel.md
-  worker: providers/outlook-worker-prompt.txt
-  idPrefix: outlook-
-  bodyExt: email.md
-  cadence: continuous
+mychannel:
+  provider: mychannel        # a shipped provider name, or providers/mychannel-channel.md in local_dir
+  cadence: continuous        # or daily for a due-date source
 ```
 
-That's it — the continuous full-drain and once-a-day loops both pick the channel up automatically.
-
-## Browser provider (work machine)
-Same seven operations, but ENUMERATE/CAPTURE/CLEAR drive the browser via **browser-chauffeur** and
-DRAFT-MODE still routes through `message-draft`. Declare browser-chauffeur in that machine's
-`DEPENDENCIES`. The engine loop is identical — only the provider body differs.
+## Tips by source type
+- **Browser providers** drive everything via **browser-chauffeur** and draft via `message-draft`;
+  the engine loop is identical, only the provider body differs (see outlook/teams).
+- **API/MCP providers** are preferred where an API exists — same seven ops, just cheaper/faster reads.
+- **Delegating providers** (like Trello) can hand reads/mutations to a sibling skill instead of
+  re-implementing an API.
 
 ## Checklist
 - [ ] `providers/<channel>-channel.md` defines all 7 ops by name.

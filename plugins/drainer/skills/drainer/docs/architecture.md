@@ -8,51 +8,50 @@ sometimes BEFORE any reply — and drafts any reply **in the user's voice (draft
 deliverable may be the work itself, not a message. (Irreversible / outbound-to-others steps wait for
 the user's explicit OK; safe, reversible work and drafts proceed immediately.)
 
-Inbox / outreach / Teams / Slack / meetings are all the **same loop** with different **sources**. Each
-run pulls every item due today-or-earlier and works through them until each is **gone** — "gone" is
-per source: an email is **deleted/archived**; a card is **advanced or bumped to a later follow-up
-day**. The procedure is identical; the only real difference between sources is **cadence**, and there
-are exactly **two modes**:
+Outlook / Teams / outreach are all the **same loop** with different **sources**. Each run pulls every
+item due **now or earlier** and works through them until each is **gone** — "gone" is per source: an
+email is **deleted/archived**; a Teams chat is **marked read**; an outreach card is **advanced or
+bumped to a later follow-up day**.
 
-- **Continuous full-drain** — run the full drain-to-zero loop every ~10–15 min, so the source is
-  effectively always at zero. For continuous inbound (email, Teams, Slack); API harvesting keeps the
-  queue read cheap enough to run often.
-- **Once-a-day due-date drain** — run the same loop once a day over "items due ≤ today," advancing
-  each instead of deleting. For due-date sources (Trello outreach).
+## One model: always at zero
+There is one model — **drain to zero, always**. The only variable is how often you re-check, which
+should match how often new items arrive:
 
-## Two layers: engine vs. injected
+- **Continuous inbound (Outlook, Teams, Slack)** — items arrive any time, so re-run the full drain on
+  a short interval (~10–15 min). Each run takes the source to zero, so it stays effectively at zero.
+- **Due-date outreach (Trello)** — cards only come due on a given day, so there's nothing new to find
+  more than once a day; re-check daily and advance each due card instead of deleting.
 
-| Engine (this repo — generic) | Injected (each machine, local & gitignored) |
+Same loop either way — just polled as often as new work appears.
+
+## Two layers: engine + shared providers (in the plugin) vs. injected (per machine)
+
+| In the plugin (generic) | Injected per machine |
 | --- | --- |
-| `engine/driver-core.md` — the canonical driver loop | the **providers**: how each source enumerates / captures / clears (API on an API-rich machine; browser as a last resort) |
-| `engine/worker-core.md` — the canonical per-item worker procedure | the local **`context.md`** — who the user is, their systems, standing rules |
-| `engine/triage.md` — the one classification rubric | the **config** — source registry, board IDs, contact/label vocab, paths, cadence |
-| `engine/channel-provider.md` — the provider interface (contract) | **credentials** (Credential Manager / env — never in any repo) |
-| `docs/`, `templates/`, generic `utils/` | the orchestration/scheduling glue tuned to the machine |
+| `engine/` — driver loop, worker procedure, triage rubric, provider contract | `.claude/drainer.local.md` — which providers are active, per-provider config (Trello board ids), cadence, presence |
+| `providers/` — shared providers (Outlook, Teams, Trello) anyone can enable | `context.md` (in `local_dir`) — who the user is, their systems, standing rules |
+| `docs/`, `templates/` | any **custom** providers in `local_dir/providers/`; **credentials** (OS store / env) |
 
-The engine never contains anything that identifies the user or their organization. See
-`docs/extending.md` for exactly where each injected piece plugs in.
+The plugin never contains anything that identifies the user or their organization. See
+`docs/extending.md` for where each injected piece plugs in.
 
 ## The driver/worker split
 
 - A **driver** enumerates the queue and triages each item; it does NOT do an item's work.
 - A **worker** handles ONE item to completion in a fresh context, following `worker-core.md`.
 - The driver **serializes**: one item in front of the user at a time, so context stays bounded and
-  nothing is half-done. The worker signals completion by writing `items/<id>.done`; the driver blocks
+  nothing is half-done. The worker signals completion by writing `items/<id>.done`; the driver waits
   on that marker before opening the next item.
-
-Prefer a **plain-code controller** as the driver for any API-backed source — the orchestrator is not
-an LLM, so it never fills its context however many items there are; the model only does per-item
-reasoning inside each worker.
 
 ## Triage (the one rubric, shared)
 
-Classify every item by asking **"What does this want the user to do?"** into three buckets — full
-rubric in `engine/triage.md`:
+Classify every item by asking **"What does this want the user to do?"** into three buckets — the only
+three; full rubric in `engine/triage.md`:
 
 - **needs-you** → its **own serialized worker**, one item at a time.
-- **fyi / junk** → **never** a worker each; collected and cleared in **one digest pass**, then cleared
-  (and junk-learned) on the user's OK. Nothing is disposed of silently.
+- **fyi / junk** → **never** a worker each; collected and cleared in **one digest pass**, nothing
+  disposed of silently. Every **junk** item is a signal to stop it at the source — propose the
+  channel's filter/rule so future runs spend tokens and attention only on what matters.
 
 ## Hard behavioral rules (carry these into every machine's `context.md`)
 
@@ -62,14 +61,15 @@ rubric in `engine/triage.md`:
 - **Delete/archive freely without asking** — reversible; narrate each with a one-line reason.
 - **Actions-first, situational-check first.** Check whether it's already handled; check the Drafts
   folder before composing.
-- **Lead with context** in every worker; **no-op items resolve quietly** (no tab, no beep).
+- **Lead with context** in every worker; an item that needs nothing right now resolves quietly.
 - **One voice brain:** all drafting via `message-draft` (which applies `document-authoring` voice and
   anchors links to descriptive text). After every send, diff sent-vs-draft and append a voice lesson.
-- **Waiting on someone else → a tracker card**, always.
+- **Waiting on someone else → a tracker card** when *you* initiated and the ball is back in their
+  court (if they initiated and you've replied, you're done).
 
 ## Scheduling requirements (machine-specific glue)
 
 - **Presence-gated** — away/locked → exit cheaply, do nothing.
 - **No pile-ups** — an overlap lock.
 - **Idle runs make no window and no noise** — a surface appears only for an item to handle or sign-in.
-- **Once-a-day sources** use a once-per-day marker.
+- **Due-date sources** use a once-per-day marker.

@@ -67,11 +67,15 @@ outreach card advance).
 If you drafted a reply in step 4 but step 3's underlying work isn't done yet, STOP — do NOT clear;
 leave the item as-is and write a "paused" marker instead.
 
-No-op items (nothing to do right now) resolve quietly — bump/skip without interrupting the user.
+If the situational check finds nothing to do right now (an outreach card that's not yet time to follow
+up, or a thread where they replied and the user already answered), resolve it quietly — bump the due
+date / clear without surfacing a tab or beep.
 
-**Waiting on someone else → tracker card (always).** When an item is handled on the user's side but
-depends on someone else to complete, create a follow-up tracker card (the user's tracker board, per
-their `context.md`) before marking done — so it stays visible instead of relying on memory.
+**Waiting on someone else → tracker card.** Decide by who's holding the conversation:
+- *They* initiated and you've now replied → the ball is in their court by default; you're done, no card.
+- *You* initiated, they replied, and you've replied again → the ball is back with them and it's easy
+  to lose track. Create a follow-up tracker card (the user's board, per `context.md`) before marking
+  done, so it stays visible instead of relying on memory.
 
 Then, as your **FINAL step**, write a one-line result to `items/<id>.done` (e.g. "completed: filed
 ticket #1234 and replied", "skipped: <reason>"). The driver/controller **serializes on this marker**

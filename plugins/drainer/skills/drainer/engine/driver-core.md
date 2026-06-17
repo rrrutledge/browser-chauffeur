@@ -7,42 +7,31 @@ starting the next. The driver does NOT do an item's work itself. Each source sup
 becomes "gone"). Read the local `context.md` first.
 
 ## The loop
-1. **Enumerate** the source's queue (source-specific: inbox newest-first / due cards ≤ today / unread
-   messages / …). Tell the user how many there are.
+1. **Enumerate** the source's queue (source-specific: inbox newest-first / cards due now-or-earlier /
+   unread messages / …). Tell the user how many there are.
 2. For each item, in order:
-   a. **Triage** per `triage.md` — does it need a worker (a real action: reply / do work / outreach),
-      or is it a no-action item the drain clears without its own worker? No-action classes are
-      source-specific (continuous channels: fyi/junk → collected and cleared in ONE batched **digest**
-      pass, never a tab each. outreach: no-op → silently bump the due date).
-   b. **Action items → spawn ONE worker and SERIALIZE:**
+   a. **Triage** per `triage.md` into needs-you / fyi / junk.
+      - **needs-you** → its own worker (below).
+      - **fyi / junk** → never a worker each; collected and cleared in ONE batched **digest** pass.
+        Every junk item is also a signal to stop that junk arriving — propose the source's filter/rule
+        so future runs spend tokens and attention only on what matters.
+   b. **needs-you → run ONE worker and SERIALIZE:**
       - Capture the item to `<runtime>/<source>/items/<id>` (the data the worker reads off disk).
-      - Write `<id>.prompt.txt` = a THIN worker prompt: "follow `engine/worker-core.md`; SOURCE=…;
-        your data is `<id>.json` (+ payload); your ADVANCE = <clear per provider>; write `<id>.done`
-        as your final step."
-      - Delete any stale `<id>.done`, then spawn the worker.
-      - **Wait for `<id>.done` before the next item.** When the driver is a plain-code controller
-        (the preferred shape for any source with an API), serialization is handled in code — the
-        controller blocks on the file. When the driver is an LLM session, poll a blocking wait.
+      - Give the worker the source's `<channel>-worker-prompt.txt` (follow `engine/worker-core.md`;
+        SOURCE=…; data is `<id>.json` + payload; ADVANCE = clear per provider; write `<id>.done` last).
+      - **Wait for `<id>.done` before the next item** so exactly one item is in front of the user.
 3. Keep going until the queue is empty.
-4. **Final summary** to the user: what got workers, what was disposed inline, and any proposed
-   rule / source improvements.
+4. **Final summary** to the user: what got workers, what was digested, and any proposed source/filter
+   improvements.
 
-## Executor choice (per source)
-- **API-backed sources** → a plain-code controller (no LLM in the orchestration loop), so it never
-  fills its context no matter how many items. This is the default and preferred shape on a machine
-  with API/MCP access — enumerate, triage, and advance are ordinary code; the model is reserved for
-  per-item judgment inside the worker.
-- **No-API sources** → the driver may have to be an LLM session (e.g. when enumerating the queue
-  itself requires browser reading). Same contract, heavier executor.
+## One model, cadence matches arrival
+There is one model — **drain to zero, always**. The only variable is how often you re-check, which
+should match how often new items arrive:
 
-## Two modes (the only two)
-The same loop runs in exactly two cadences; pick per source:
+- **Continuous inbound (email, Teams, Slack)** — items can arrive any time, so re-run the full drain
+  on a short interval (~10–15 min). Each run takes the source to zero, so it stays effectively at zero.
+- **Due-date outreach (Trello)** — cards only come due on a given day, so there's nothing new to find
+  more than once a day; re-check daily and advance each due card (nudge / advance / stop) instead of
+  deleting.
 
-- **Continuous full-drain (the always-at-zero mode).** Run the full loop every ~10–15 min: a harvester
-  sorts the queue into needs-you vs fyi/junk; the controller spawns one serialized worker per
-  needs-you item (blocking on each `<id>.done`); then ONE **digest** pass clears all the fyi/junk.
-  Because it takes the source to zero each run and runs often, the source is effectively always at
-  zero. This is the mode for continuous inbound — email, Teams, Slack. API harvesting keeps the queue
-  read cheap, so run the full drain on a short interval.
-- **Once-a-day due-date drain.** Run the same loop once a day over "items due ≤ today," advancing each
-  (stage / due / stop) instead of deleting. This is the mode for due-date sources — Trello outreach.
+Same loop either way — just polled as often as new work appears.
