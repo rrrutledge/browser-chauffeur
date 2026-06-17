@@ -51,9 +51,14 @@ the done-criteria once it has run.
 Addresses either a **1:1 chat** (recipient name + email) or a **group/meeting chat** (chat name).
 Inputs: the address, message body, optional hyperlinks (display text + URL), optional @mentions.
 
-0. **Pick the loaded Teams tab.** Select the Teams page with the **largest
-   `document.body.innerText` length** (a loaded app ≈ 9000+ chars; blank/loading tabs are ~0–100).
-   Call `page.bringToFront()` and click `body` to ensure keyboard events land on this tab.
+0. **Open your OWN Teams tab — never adopt an existing one.** Acquire the tab with
+   `connectSinglePage(port, { openUrl: 'https://teams.microsoft.com/' })`; the persistent profile
+   means it loads already signed in. **Do not enumerate tabs and pick "the loaded Teams tab with the
+   most text"** — that tab may belong to another Claude Code instance or the user, and driving it
+   types into the wrong place (Enter sends in Teams). Capture `sp.targetId` and reuse it for every
+   later step of this draft (see browser-chauffeur → "you MUST open your own tab"). Wait for the app
+   shell to hydrate (poll for the chat rail) before interacting. Call `page.bringToFront()` and click
+   `body` so keyboard events land on this tab.
 1. **Find the target.**
    - **1:1:** Press `Alt+Shift+N` (new message), wait ~1.5s, then click the **people-picker input**
      (`input#people-picker-input` or `input[aria-label="Enter name, chat, channel, email or tag"]`).
