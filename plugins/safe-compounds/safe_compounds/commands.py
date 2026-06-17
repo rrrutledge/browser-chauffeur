@@ -310,6 +310,22 @@ def is_gh_command_safe(seg):
     return _ai_learn('gh', group, seg, 'GH_AI_TRUSTED_PAIRS', store_value=pair)
 
 
+# Read-only WMI verbs; everything else (call/delete/set/create/assoc) mutates.
+WMIC_READONLY_VERBS = {'get', 'list'}
+WMIC_DESTRUCTIVE_VERBS = {'call', 'delete', 'set', 'create', 'assoc'}
+
+
+def is_wmic_safe(seg):
+    """wmic queries (`wmic <alias> where ... get/list`) are read-only and safe.
+    Its verb follows a `where` clause rather than sitting in second position, so
+    wmic gets a bespoke handler: approve when a read-only verb is present and no
+    mutating verb (call/delete/set/create) appears anywhere in the command."""
+    tokens = [t.lower() for t in shell_tokenize(seg)]
+    if WMIC_DESTRUCTIVE_VERBS & set(tokens):
+        return False
+    return bool(WMIC_READONLY_VERBS & set(tokens))
+
+
 # ----------------------------------------------------- the spec table ---------
 SUBCOMMAND_SPECS = {
     'git':  GIT_SPEC,
@@ -319,6 +335,7 @@ SUBCOMMAND_SPECS = {
     'pnpm': {'command': 'pnpm', 'trusted': PNPM_TRUSTED_SUBCOMMANDS, 'category': 'PNPM_TRUSTED_SUBCOMMANDS', 'allow_empty': True},
     'bun':  {'command': 'bun',  'trusted': BUN_TRUSTED_SUBCOMMANDS,  'category': 'BUN_TRUSTED_SUBCOMMANDS',  'allow_empty': True},
     'gh':   is_gh_command_safe,
+    'wmic': is_wmic_safe,
 }
 
 SUBCOMMAND_TOOLS = set(SUBCOMMAND_SPECS)
