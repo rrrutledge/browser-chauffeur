@@ -134,7 +134,7 @@ Script:
 ```
 
 Respond with ONLY "SAFE" or "DANGEROUS: <short reason>":"""
-    return ai.call_ai_with_reason(prompt)
+    return ai.call_ai(prompt)
 
 
 def _check_segment(seg, command, language, inline_flag):
