@@ -4,7 +4,7 @@ A provider for a **personal** Outlook.com mailbox (`outlook.live.com`) read and 
 through the **Microsoft Graph API** — no browser. All Graph calls go through the **`ms-graph`** skill's
 `mail.js` (don't reimplement Graph here); it owns auth, the token cache, and silent refresh. Implements
 `../engine/provider.md`; classify by `../engine/triage.md` (this file is only the mechanics).
-id prefix: `poutlook-`; body file: `<id>.email.md`.
+id prefix: `personal-outlook-`; body file: `<id>.email.md`.
 
 > This is the API counterpart to the browser `outlook-provider.md` (which is for **enterprise** Outlook
 > on the web). Use this one for a personal Microsoft account: it's cheaper, faster, and browser-free.
@@ -29,7 +29,7 @@ the Graph **message id**, the **deep link** (`webLink`), and a preview line — 
 block alone. Triage every returned message regardless of read state (the goal is an empty inbox, not just
 zero-unread); de-duplication against already-processed items is the **poller's** job via seen-state, not
 this provider's. Build a stable id:
-`poutlook-<YYYYMMDD-HHMM of received>-<sender-slug>-<first-3-subject-words-slug>` (lowercase,
+`personal-outlook-<YYYYMMDD-HHMM of received>-<sender-slug>-<first-3-subject-words-slug>` (lowercase,
 non-alphanumerics → single dashes; ≤48 chars). Triage from the block; if a block is genuinely
 undecidable, `node mail.js --show=<messageId>` that ONE message to disambiguate.
 
