@@ -302,6 +302,48 @@ def _subprocess_in_tmp_python(seg, word):
     return None
 
 
+# Script interpreters whose invocation from a *different*-language script is a
+# cross-language smell (rewrite into one language). Process launchers (cmd, wt,
+# powershell, start) are deliberately excluded — launching is their purpose and
+# they can't be rewritten into a library call.
+_INTERPRETERS = {
+    'node', 'nodejs', 'python', 'python3', 'perl', 'ruby',
+    'deno', 'bun', 'ts-node', 'tsx', 'bash', 'sh',
+}
+_OWN_FAMILY = {
+    'python': {'python', 'python3'},
+    'python3': {'python', 'python3'},
+    'node': {'node', 'nodejs'},
+}
+# A spawn call (python subprocess/os.system or node child_process/exec/spawn)
+# immediately followed by the launched program name as a quoted literal.
+_SPAWN_RE = re.compile(
+    r'(?:subprocess\.(?:run|Popen|call|check_call|check_output)|os\.system|os\.popen|'
+    r'child_process\.(?:exec|execSync|execFile|execFileSync|spawn|spawnSync)|'
+    r'(?<![\w.])(?:exec|execSync|execFile|execFileSync|spawn|spawnSync))'
+    r'\s*\(\s*\[?\s*[`\'"]\s*([A-Za-z0-9_./\\-]+)'
+)
+
+
+def _cross_language_subprocess(seg, word):
+    """If a readable python/node script shells out to a different-language
+    interpreter, return (filename, interpreter); otherwise None."""
+    filename = extract_script_filename(seg, word)
+    if not filename:
+        return None
+    content = read_script_file(filename)
+    if not content:
+        return None
+    own = _OWN_FAMILY.get(word, set())
+    for m in _SPAWN_RE.finditer(content):
+        target = os.path.basename(m.group(1).replace('\\', '/')).lower()
+        if target.endswith('.exe'):
+            target = target[:-4]
+        if target in _INTERPRETERS and target not in own:
+            return filename, target
+    return None
+
+
 def enforce_bash(command):
     """Return a block-reason string for `command`, or None to allow it to
     proceed to approval. Mirrors the legacy block ordering exactly."""
@@ -347,6 +389,15 @@ def enforce_bash(command):
                 return (f'BLOCKED: Script "{filename}" uses subprocess. Per CLAUDE.md, .tmp/ scripts must use '
                         'client libraries (urllib.request, requests, etc.) instead of subprocess. Rewrite the '
                         'script to make API calls directly with urllib.request or requests, then re-run it.')
+        if word in ('python', 'python3', 'node'):
+            cross = _cross_language_subprocess(seg, word)
+            if cross:
+                filename, interp = cross
+                own_lang = 'Python' if word in ('python', 'python3') else 'JavaScript/Node'
+                return (f'BLOCKED: Script "{filename}" shells out to "{interp}" via subprocess, mixing script '
+                        f'languages. Per CLAUDE.md, keep all control flow in one language — rewrite the {interp} '
+                        f'logic in {own_lang} (or merge everything into a single {interp} script) so it runs '
+                        'without spawning another interpreter, then re-run it.')
 
     inline_flag, inline_alternative = detect_inline_script(command)
     if inline_flag:

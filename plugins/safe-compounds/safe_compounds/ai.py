@@ -82,9 +82,9 @@ def _build_request(prompt, max_tokens):
     return None
 
 
-def ask(prompt, max_tokens=10):
-    """Send `prompt` to Haiku and return the uppercased response text, or None
-    if AI is disabled, unconfigured, or the request fails."""
+def ask(prompt, max_tokens=10, upper=True):
+    """Send `prompt` to Haiku and return the response text (uppercased unless
+    upper=False), or None if AI is disabled, unconfigured, or the request fails."""
     if _ai_disabled():
         return None
     try:
@@ -93,7 +93,8 @@ def ask(prompt, max_tokens=10):
             return None
         with urllib.request.urlopen(req, timeout=15) as response:
             result = json.loads(response.read().decode('utf-8'))
-            return result.get('content', [{}])[0].get('text', '').strip().upper()
+            text = result.get('content', [{}])[0].get('text', '').strip()
+            return text.upper() if upper else text
     except (urllib.error.URLError, urllib.error.HTTPError,
             json.JSONDecodeError, KeyError, IndexError) as e:
         log_debug(f"AI call failed: {type(e).__name__}: {str(e)[:100]}")
@@ -108,3 +109,25 @@ def call_ai(prompt):
     is_safe = 'SAFE' in text
     log_debug(f"AI response: {text} -> {'SAFE' if is_safe else 'DANGEROUS'}")
     return is_safe
+
+
+def call_ai_with_reason(prompt):
+    """Like call_ai, but also surface a short reason when the verdict is
+    DANGEROUS. Returns (verdict, reason): verdict is True/False/None and reason
+    is a one-line string when DANGEROUS (else None).
+
+    The caller's prompt should ask for `SAFE` or `DANGEROUS: <reason>`.
+    """
+    text = ask(prompt, max_tokens=80, upper=False)
+    if text is None:
+        return None, None
+    upper = text.upper()
+    if 'DANGEROUS' in upper:
+        reason = text.split(':', 1)[1].strip() if ':' in text else ''
+        log_debug(f"AI response: {text} -> DANGEROUS")
+        return False, (reason or None)
+    if 'SAFE' in upper:
+        log_debug(f"AI response: {text} -> SAFE")
+        return True, None
+    log_debug(f"AI response: {text} -> undecided")
+    return None, None
