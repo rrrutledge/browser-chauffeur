@@ -49,11 +49,17 @@ Keep `messageId` — the worker needs it for the reply draft and for CLEAR.
 This is the email "gone." Never a permanent purge.
 
 ## JUNK-LEARNING
-Propose an **Outlook.com inbox rule** (Settings → Rules: a sender/subject match that deletes or files
-the sender going forward) so this junk stops arriving — the goal is to spend tokens/attention only on
-what matters. Propose, never apply without the user's OK. (Graph can create rules via
-`/me/mailFolders/inbox/messageRules`; until that's wired into `mail.js`, describe the rule for the user
-to add.)
+Stop this junk arriving again, in **priority order** (best outcome = never received) — propose, never
+apply without the user's OK:
+1. **Unsubscribe** — if the message carries an unsubscribe link (a `List-Unsubscribe` header or a footer
+   link), propose using it. This is the cleanest stop.
+2. **Turn it off at the source app** — if there's no unsubscribe but the sender is an app whose
+   notifications the user controls (GitHub notification settings, LinkedIn email preferences, …),
+   propose adjusting that app's settings so the email is never sent.
+3. **Outlook.com inbox rule** — only when neither above applies, fall back to a rule (Settings → Rules:
+   a sender/subject match that deletes or files the sender going forward). Graph can create rules via
+   `/me/mailFolders/inbox/messageRules`; until that's wired into `mail.js`, describe the rule for the
+   user to add.
 
 ## DRAFT-MODE
 Apply the **`document-authoring`** voice to the message text (this is what `message-draft` would do; the
