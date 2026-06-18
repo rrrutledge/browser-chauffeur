@@ -37,6 +37,7 @@ All under `scripts/`:
   - Times are `--tz` (default `America/Chicago`). Events have **no** reminder unless `--reminder=N` (minutes before; 0 = at start).
 - **`mail.js`**
   - List unread: `node mail.js --list-unread [--top=30]` (inbox unread, newest-first; one block per message with id + webLink)
+  - List inbox (read+unread, windowed): `node mail.js --list-inbox [--since-days=7] [--top=50]` (inbox items regardless of read state within the window, newest-first; same block format with a `read`/`UNREAD` marker)
   - Search: `node mail.js --search="Griffiths" [--top=10]`
   - Show one: `node mail.js --show=<messageId>`
   - Draft reply-all (never sends): `node mail.js --reply --message-id=<id> --body-file=reply.html`

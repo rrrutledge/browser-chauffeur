@@ -2,6 +2,8 @@
 //
 // List unread:   node mail.js --list-unread [--top=30]
 //                (inbox unread, newest-first; one block per message with id + webLink)
+// List inbox:    node mail.js --list-inbox [--since-days=7] [--top=50]
+//                (inbox read+unread within a window, newest-first; same block format)
 // Search:        node mail.js --search="Griffiths" [--top=10]
 // Show one:      node mail.js --show=<messageId>
 // Draft a reply: node mail.js --reply --message-id=<id> --body-file=reply.html
@@ -40,6 +42,27 @@ async function listUnread(client) {
   console.log(`${msgs.length} unread message(s), newest first:`);
   for (const m of msgs) {
     console.log(`\n--- ${m.receivedDateTime?.slice(0, 16)}  |  ${m.subject}`);
+    console.log(`    from: ${addr(m.from)}`);
+    console.log(`    id:   ${m.id}`);
+    console.log(`    link: ${m.webLink}`);
+    console.log(`    > ${(m.bodyPreview || '').replace(/\s+/g, ' ').slice(0, 200)}`);
+  }
+}
+
+async function listInbox(client) {
+  const days = parseInt(args['since-days'] || '7', 10);
+  const cutoff = new Date(Date.now() - days * 864e5).toISOString();
+  const data = await client.api('/me/mailFolders/inbox/messages')
+    .filter(`receivedDateTime ge ${cutoff}`)
+    .orderby('receivedDateTime desc')
+    .top(parseInt(args.top || '50', 10))
+    .select('id,conversationId,subject,from,toRecipients,receivedDateTime,bodyPreview,webLink,isRead')
+    .get();
+  const msgs = data.value || [];
+  if (!msgs.length) { console.log('No inbox messages in window.'); return; }
+  console.log(`${msgs.length} inbox message(s) in last ${days}d, newest first:`);
+  for (const m of msgs) {
+    console.log(`\n--- ${m.receivedDateTime?.slice(0, 16)}  |  ${m.isRead ? 'read ' : 'UNREAD'} | ${m.subject}`);
     console.log(`    from: ${addr(m.from)}`);
     console.log(`    id:   ${m.id}`);
     console.log(`    link: ${m.webLink}`);
@@ -127,11 +150,12 @@ async function sendSelf(client) {
 (async () => {
   const client = await getGraphClient();
   if (args['list-unread']) return listUnread(client);
+  if (args['list-inbox']) return listInbox(client);
   if (args.search) return search(client);
   if (args.show) return show(client);
   if (args.reply) return reply(client);
   if (args['draft-new']) return draftNew(client);
   if (args['send-self']) return sendSelf(client);
   if (args.delete) return del(client);
-  throw new Error('Specify --list-unread, --search, --show, --reply, --draft-new, --send-self, or --delete');
+  throw new Error('Specify --list-unread, --list-inbox, --search, --show, --reply, --draft-new, --send-self, or --delete');
 })().catch(e => { console.error('Error:', e.message); process.exit(1); });
