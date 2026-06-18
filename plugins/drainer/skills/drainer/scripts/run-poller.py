@@ -202,6 +202,28 @@ def spawn_worker(iid, json_file, repo, runtime_dir, worker_model):
 
 # ---------------------------------------------------------------------------- the cycle
 
+def reconcile_done(runtime_dir):
+    """Mark any item with a worker-written <id>.done marker as cleared in seen-state, freeing a cap
+    slot. The worker writes .done on completion; the poller is the authority on seen-state status."""
+    items_dir = os.path.join(runtime_dir, "items")
+    if not os.path.isdir(items_dir):
+        return 0
+    freed = 0
+    for fn in os.listdir(items_dir):
+        if not fn.endswith(".done"):
+            continue
+        iid = fn[:-5]
+        try:
+            with open(os.path.join(items_dir, f"{iid}.json"), encoding="utf-8") as f:
+                source = json.load(f).get("source")
+        except (OSError, ValueError):
+            source = None
+        if source:
+            seen_state("clear", runtime_dir, source, iid)
+            freed += 1
+    return freed
+
+
 def collect_new(provider, cfg):
     """Enumerate a provider, stamp ids/source, drop already-seen; return (new_items, total, seen)."""
     raw = provider.enumerate(cfg["max_messages_per_cycle"])
@@ -232,6 +254,8 @@ def main():
     if not providers:
         print("No providers with a poller adapter are enabled; nothing to do.")
         return
+
+    reconcile_done(cfg["runtime_dir"])  # free cap slots for items whose workers finished last cycle
 
     for provider in providers:
         new, total, seen = collect_new(provider, cfg)
