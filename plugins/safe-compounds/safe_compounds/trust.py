@@ -32,7 +32,7 @@ TRUSTED_COMMANDS = {
     'nc', 'netstat', 'nl', 'npm', 'nproc', 'npx', 'numfmt', 'nvm',
     'od',
     'pandoc', 'paste', 'perl', 'pg_isready', 'pip', 'pnpm', 'printenv', 'ps', 'psql', 'pwd',
-    'Read', 'readlink', 'realpath', 'reg', 'rev', 'rm', 'rmdir',
+    'Read', 'readlink', 'realpath', 'rev', 'rm', 'rmdir',
     'seq', 'sha1sum', 'sha256sum', 'sha512sum', 'sleep', 'sort', 'source', 'stat', 'strings',
     'tac', 'tail', 'tasklist', 'tee', 'test', 'timeout', 'touch', 'tr', 'tree', 'tty', 'type',
     'uname', 'unexpand', 'uniq', 'unzip', 'uptime', 'users',
