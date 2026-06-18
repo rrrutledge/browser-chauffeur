@@ -6,6 +6,7 @@
 # plugin's providers/ dir). All sources are harvested every run on one schedule.
 providers:
   outlook: {}                    # work Outlook on the web (browser) — no config, just sign in
+  personal-outlook: {}           # personal Outlook.com via the Microsoft Graph API (ms-graph; no browser)
   teams: {}                      # Microsoft Teams on the web (browser) — no config, just sign in
   trello:                        # outreach boards (via the trello-outreach skill)
     boards:
@@ -33,6 +34,12 @@ cadence:
 presence:
   gate_on_presence: true
   idle_threshold_seconds: 600
+
+# Continuous-keeper (run-poller.py) knobs.
+max_open_tabs: 3              # max concurrent needs-you worker tabs dispatched-but-not-cleared; a burst
+                             # beyond this is held and retried on later cycles (fail-safe throttle).
+max_messages_per_cycle: 50   # how many inbox items each cycle enumerates (newest-first, NO time window);
+                             # the keeper drains the whole inbox a batch at a time across cycles to zero.
 ---
 
 # drainer.local

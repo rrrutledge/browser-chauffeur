@@ -19,12 +19,22 @@ Volume is irrelevant; actionability is in the content, not the count.
   ticket, a lookup, a system update…), a decision, a check, or delegating it to the team — or BOTH
   (often: do the work, then reply about the outcome). This is ONE bucket on purpose; don't try to
   decide reply-vs-work here. Record a hint: **"reply" / "work" / "work-then-reply"**.
-- **fyi** — informational; the user may want to know but nothing is asked of them (a report, a
-  heads-up, a decision someone else made).
+  A **personal, individually-written** message that shares something personal — a one-to-one note, a
+  personal update from a friend or contact, not a corporate/automated/mass announcement — is
+  **needs-you (reply)** even when it asks nothing explicitly: replying at a human level *is* the action.
+  The personal tone is the signal; the warmth of what they shared is the reason to write back.
+- **fyi** — **impersonal** information: the user may want to know but nothing is asked and no human reply
+  is owed (a report, an automated heads-up, a decision someone else made, a mass/corporate announcement).
 - **junk** — no information value AND no action: automated noise, newsletters, pure marketing,
   CI/build notifications, duplicate status churn, chatter not aimed at the user. Every junk item is a
-  signal to stop it at the source — propose the source's filter/rule so it stops arriving and future
-  runs spend tokens and attention only on what matters.
+  signal to stop it arriving, in this **priority order** (best outcome = never received again):
+  1. **Unsubscribe** — if the email carries an unsubscribe link, propose using it.
+  2. **Turn it off at the source app** — if there's no unsubscribe but the sender is an app whose
+     notifications you control (GitHub notification settings, LinkedIn email preferences, …), propose
+     adjusting those settings so the email is never sent.
+  3. **Inbox rule** — only when neither of the above applies, fall back to the source's filter/rule
+     (e.g. an Outlook.com rule) to file or delete it on arrival.
+  Always propose; never unsubscribe, change app settings, or add a rule without the user's OK.
 
 ## Containers that hold action items
 Some messages are not themselves actionable but point to content that may contain action items — e.g.
@@ -35,7 +45,14 @@ needs-you item (capture them individually, not as one bundle). If the AI notes e
 action items for Russell, it's fyi. If there are no AI notes at all, the recording notification
 itself is fyi.
 
+A **message-notification email** is the same shape: e.g. LinkedIn/Facebook "X just messaged you" or a
+forum "you have a reply" is only a pointer to a message living on another service. The notification
+carries too little to classify — **open the underlying message and classify by its content.** If no
+provider yet reaches that service, treat the notification as **needs-you**: the action is to open that
+service, read the message, and respond there.
+
 ## Tie-breakers
 - Unsure between **needs-you** and **fyi** → **needs-you** (prefer acting).
 - Unsure between **fyi** and **junk** → **fyi** (prefer keeping eyes on it).
-- Reserve **needs-you** for genuine asks directed at Russell; bias toward **fyi** otherwise.
+- Reserve **needs-you** for genuine asks directed at Russell **or personal messages owed a human
+  reply**; bias toward **fyi** for impersonal/automated information.

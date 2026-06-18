@@ -23,15 +23,15 @@ signed in. If it errors with "Not signed in" or an auth error, do the `ms-graph`
 (`node scripts/auth.js` via browser-chauffeur), then retry — never surface the token error to the user.
 
 ## ENUMERATE
-`node mail.js --list-inbox --since-days=<inbox_window_days, default 7>` — inbox **read + unread** within
-the window, newest-first. Each block gives the received time, a `read`/`UNREAD` marker, subject, sender,
-the Graph **message id**, the **deep link** (`webLink`), and a preview line — enough to triage from the
-block alone. Triage every returned message regardless of read state (the goal is an empty inbox, not just
-zero-unread); de-duplication against already-processed items is the **poller's** job via seen-state, not
-this provider's. Build a stable id:
+`node mail.js --list-inbox --json --top=<max_messages_per_cycle, default 50>` — inbox **read + unread**,
+newest-first, count-capped (NO time window): the keeper drains the whole inbox a batch at a time across
+cycles, so an 8-day-vacation backlog just takes a few cycles. `--json` returns a structured array (id,
+subject, from, received, isRead, webLink, preview) for the poller. Triage every returned message
+regardless of read state (the goal is an empty inbox, not just zero-unread); de-duplication against
+already-processed items is the **poller's** job via seen-state, not this provider's. Stable id:
 `personal-outlook-<YYYYMMDD-HHMM of received>-<sender-slug>-<first-3-subject-words-slug>` (lowercase,
-non-alphanumerics → single dashes; ≤48 chars). Triage from the block; if a block is genuinely
-undecidable, `node mail.js --show=<messageId>` that ONE message to disambiguate.
+non-alphanumerics → single dashes). If a block is genuinely undecidable, `node mail.js --show=<messageId>`
+that ONE message to disambiguate.
 
 ## CAPTURE (needs-you)
 `node mail.js --show=<messageId>` to read the full body, then capture:
