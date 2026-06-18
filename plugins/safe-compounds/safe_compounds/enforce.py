@@ -154,33 +154,15 @@ def detect_inline_script(command):
 
 def detect_output_redirection(command):
     for seg in split_segments(command):
-        tok = ShellTokenizer(seg)
-        while not tok.at_end():
-            if tok.consume_escape():
+        unquoted = re.sub(r'"[^"\\]*(?:\\.[^"\\]*)*"|\'[^\'\\]*(?:\\.[^\'\\]*)*\'', '', seg)
+        for m in re.finditer(r'(\d*)(>>?)\s*([^\s;&|]+)', unquoted):
+            fd = m.group(1)
+            target = m.group(3).strip().strip('"\'')
+            if fd == '2' and target in ('/dev/null', '&1'):
                 continue
-            if tok.update_quote_state():
-                tok.advance()
+            if target == '/dev/null' or target.startswith('&'):
                 continue
-            if not tok.in_quotes() and tok.peek() == '>':
-                fd = seg[tok.pos - 1] if tok.pos > 0 and seg[tok.pos - 1].isdigit() else ''
-                tok.advance()
-                if not tok.at_end() and tok.peek() == '>':
-                    tok.advance()
-                # skip whitespace before target
-                while not tok.at_end() and tok.peek() in (' ', '\t'):
-                    tok.advance()
-                # collect target token
-                target_chars = []
-                while not tok.at_end() and tok.peek() not in (' ', '\t', ';', '|'):
-                    target_chars.append(tok.peek())
-                    tok.advance()
-                target = ''.join(target_chars).strip('"\'')
-                if fd == '2' and target in ('/dev/null', '&1'):
-                    continue
-                if target in ('/dev/null',) or target.startswith('&'):
-                    continue
-                return True
-            tok.advance()
+            return True
     return False
 
 
