@@ -134,6 +134,7 @@ Don't invent emoji outside this palette, don't stack them, and skip them entirel
   - "I'm sorry I have to move this again. I'll just cancel and we can do it next Monday."
 
 **`outreach` — offering a resource or asking someone to adopt something:**
+- **With peers and reports: open with one genuine personal sentence before the business ask.** After a recent meeting or interaction, acknowledge it first — "It was great to meet you." / "Thanks for the great call." — then transition to the action. Real edit (LinkedIn DM to a peer after their first meeting): draft opened with the action directly ("Hi Gurpreet - I just forwarded you the FINOS InnerSource SIG series invite."); Russell added "It was great to meet you." before it. Skip this opener only for purely transactional one-liners with close collaborators.
 - Lead with the person's name, then hand them the thing plainly with the link anchored to its title
 - Frame as helpful, low-pressure; invite a look
 - Land on a single concrete question or request — see **Asks** above. Real edit: a draft offering two solution options plus a 3-part question list was cut to one question ("who could help facilitate these sessions?") and one ask ("Can you share your feedback and help us with finding a facilitator?").
