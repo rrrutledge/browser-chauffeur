@@ -105,6 +105,12 @@ worst-case failure is *redundant work*, never a *dropped item*:
 { needs-you: capture + spawn worker tab + record seen-id ; fyi/junk: capture to
 digest-queue + record seen-id } → exit (no window if nothing actionable)`
 
+**The poller never clears.** Nothing is deleted/archived during the fast cycle — the poller
+only reads, captures, dispatches, and records seen-ids. The source item is cleared (`CLEAR`)
+later, in exactly one of two places: the **worker tab** when its work completes (needs-you),
+or the **EOD digest** after Russell reviews it (fyi/junk). This keeps every mailbox mutation
+behind either real completion or human review, so a poller failure can never lose mail.
+
 **End of day:**
 `cron → digest tab → read digest-queue → summarize fyi, group junk + propose source-stops →
 Russell reviews → on OK: provider CLEAR each + empty queue → reconciliation sweep`
