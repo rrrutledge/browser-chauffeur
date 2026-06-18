@@ -207,7 +207,11 @@ Find the frame with the real content and target all locators at that frame objec
 
 ### Out-of-process iframes (cross-origin, site isolation)
 
-When `frameLocator(...).locator(...)` times out at 30s on a page with nested iframes — common in SCORM players, Workday Learning, SuccessFactors, and other LMS wrappers — the iframe is probably **out-of-process**. Chrome's site isolation runs each cross-origin iframe as a separate OS process with its own CDP target. Playwright's `connectOverCDP` connects only to the page target; the iframe's target is independent.
+When `frameLocator(...).locator(...)` times out at 30s on a page with nested iframes — the iframe is probably **out-of-process**.
+
+**Common apps that use out-of-process iframes:** Word Online / SharePoint (`usc-word-edit.officeapps.live.com`), SCORM players, Workday Learning, SuccessFactors, and other LMS wrappers. If you're trying to read or type into a Word Online document and getting empty DOM results, this is why.
+
+Chrome's site isolation runs each cross-origin iframe as a separate OS process with its own CDP target. Playwright's `connectOverCDP` connects only to the page target; the iframe's target is independent.
 
 **How to detect:** `page.frames()` shows the iframe with an empty URL, or `page.accessibility.snapshot()` returns only the parent frame's tree without the iframe's content.
 
@@ -252,6 +256,8 @@ await evalIn(session, ctxId, `
 ```
 
 See **Anti-Patterns → OS Coordinates Don't Reach Cross-Origin Iframe Content** and **Tab Key Is Unreliable Across Cross-Origin Iframe Boundaries** for the failure modes this replaces.
+
+**Word Online specifics (verified 2026-06-18):** The editor iframe is at `usc-word-edit.officeapps.live.com`. Once attached via CDPSession, use `ctxList[0]` (the highest-id utility world context) — it can read paragraph DOM elements (`[class*="Paragraph"]`, `SPAN.NormalTextRun`) that the main world context cannot. Typing works via `page.keyboard.type()` on the Playwright page object after clicking an element via `evalIn`. `Input.dispatchKeyEvent` through the CDPSession does NOT reliably reach the Word editor model — always use `page.keyboard` for typing. `Shift+End` selection may fail; verify selection with `evalIn(session, ctxId, "window.getSelection()?.toString()")` before typing.
 
 ---
 
