@@ -237,6 +237,7 @@ def is_in_trusted_script_dir(filename):
     """True if the script lives in a known-safe directory (.tmp, .claude, or a
     consumer-configured directory)."""
     from . import config
-    normalized = filename.replace('\\', '/')
+    resolved = _abs_against_cwd(filename)
+    normalized = resolved.replace('\\', '/')
     dirs = TRUSTED_SCRIPT_DIRS + list(config.get_config().get('trusted_script_dirs', []))
     return any(d.replace('\\', '/') in normalized for d in dirs)
