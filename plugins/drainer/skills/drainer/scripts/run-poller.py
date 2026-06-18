@@ -79,6 +79,11 @@ def read_config(repo):
         "max_open_tabs": int(scalar("max_open_tabs", "3")),
         "max_messages_per_cycle": int(scalar("max_messages_per_cycle", "50")),
         "idle_threshold_seconds": int(scalar("idle_threshold_seconds", "600")),
+        # Worker tabs need an explicit model — otherwise they inherit the session default, which may be
+        # a 1M-context model the account can't use. The poller picks per item by triage complexity:
+        # simple -> worker_model, complex -> worker_model_complex (both standard context).
+        "worker_model": scalar("worker_model", "claude-sonnet-4-6"),
+        "worker_model_complex": scalar("worker_model_complex", "claude-opus-4-8"),
     }
 
 
@@ -127,9 +132,11 @@ def load_providers(cfg):
 TRIAGE_INSTRUCTIONS = (
     "You are the drainer poller's triage step. Classify each item per the rubric below, applied with "
     "the world-knowledge below. For EACH item decide its bucket; for needs-you also give "
-    "kind = reply | work | work-then-reply (else null). Return ONLY a JSON array, one object per input "
+    "kind = reply | work | work-then-reply (else null) and complexity = simple | complex (simple = a "
+    "quick reply or a trivial action; complex = multi-step work, research, code, or a delicate / "
+    "high-stakes message — these get a stronger model). Return ONLY a JSON array, one object per input "
     'id: [{"id": "...", "bucket": "needs-you|fyi|junk", "kind": "reply|work|work-then-reply|null", '
-    '"reason": "<short>"}] — no prose, no code fence.'
+    '"complexity": "simple|complex", "reason": "<short>"}] — no prose, no code fence.'
 )
 
 
@@ -175,7 +182,7 @@ def triage(items, repo, local_dir):
 
 # ---------------------------------------------------------------------------- dispatch
 
-def spawn_worker(iid, json_file, repo, runtime_dir):
+def spawn_worker(iid, json_file, repo, runtime_dir, worker_model):
     seeds = os.path.join(runtime_dir, "seeds")
     os.makedirs(seeds, exist_ok=True)
     prompt_file = os.path.join(seeds, f"{iid}.prompt.txt")
@@ -190,7 +197,7 @@ def spawn_worker(iid, json_file, repo, runtime_dir):
             f"item cleared per CLEAR), write `{json_file[:-5]}.done` last, then stop.\n"
         )
     spawn_cmd = os.path.join(SCRIPT_DIR, "spawn-tab.cmd")
-    subprocess.Popen(["cmd", "/c", spawn_cmd, f"drain:{iid}", repo, prompt_file], cwd=repo)
+    subprocess.Popen(["cmd", "/c", spawn_cmd, f"drain:{iid}", repo, prompt_file, worker_model], cwd=repo)
 
 
 # ---------------------------------------------------------------------------- the cycle
@@ -236,6 +243,7 @@ def main():
         for it in new:
             v = verdicts.get(it["_id"], {"bucket": "needs-you", "kind": "reply"})  # unjudged -> act (fail-safe)
             it["_bucket"], it["_kind"] = v.get("bucket", "needs-you"), v.get("kind")
+            it["_complexity"] = v.get("complexity", "simple")
         counts = {b: sum(1 for it in new if it["_bucket"] == b) for b in ("needs-you", "fyi", "junk")}
         oc = open_count(seen)
 
@@ -246,7 +254,11 @@ def main():
                 held = it["_bucket"] == "needs-you" and oc >= cfg["max_open_tabs"]
                 if it["_bucket"] == "needs-you" and not held:
                     oc += 1
-                action = ("HOLD (at cap)" if held else "spawn worker") if it["_bucket"] == "needs-you" else "queue -> digest"
+                if it["_bucket"] == "needs-you":
+                    model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
+                    action = "HOLD (at cap)" if held else f"spawn worker [{it['_complexity']} -> {model}]"
+                else:
+                    action = "queue -> digest"
                 print(f"  [{it['_bucket']:9}] {it['_id']}  ->  {action}\n"
                       f"      {it.get('from')} | {it.get('subject')}")
             continue
@@ -258,8 +270,9 @@ def main():
                 if oc >= cfg["max_open_tabs"]:
                     held += 1  # leave UNRECORDED -> retried next cycle (fail-safe throttle)
                     continue
+                model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
                 json_file = provider.capture(it, iid, cfg["runtime_dir"])
-                spawn_worker(iid, json_file, repo, cfg["runtime_dir"])
+                spawn_worker(iid, json_file, repo, cfg["runtime_dir"], model)
                 seen_state("record", cfg["runtime_dir"], provider.name, iid, "needs-you")
                 oc += 1
                 dispatched += 1

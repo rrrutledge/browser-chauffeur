@@ -31,10 +31,13 @@ spawn, record — is code. No AI re-implements the loop.
    window**: the keeper drains the whole inbox a batch at a time across cycles). Compute each item's
    stable id, drop any already in seen-state (`scripts/seen-state.js`), and keep up to
    `max_messages_per_cycle` new ones.
-4. **Triage** the new items in one `claude -p` call → bucket (needs-you / fyi / junk) + kind.
+4. **Triage** the new items in one `claude -p` call → bucket (needs-you / fyi / junk) + kind +
+   complexity (simple / complex).
 5. **Dispatch** (deterministic):
    - **needs-you** → if open worker tabs < `max_open_tabs`: capture to `items/<id>.json`, spawn a worker
-     tab (`spawn-tab.cmd`), then record seen **after** the spawn succeeds. At the cap: leave it
+     tab (`spawn-tab.cmd`) **with an explicit model chosen by complexity** (`worker_model` for simple,
+     `worker_model_complex` for complex — so a worker never inherits a 1M-context session default the
+     account can't use), then record seen **after** the spawn succeeds. At the cap: leave it
      **unrecorded** so a later cycle picks it up (throttle + fail-safe).
    - **fyi / junk** → capture, add to the digest queue (`seen-state.js queue-add`), record seen.
 6. **Never clear.** Workers clear needs-you on completion; the daily digest clears fyi/junk after review.
