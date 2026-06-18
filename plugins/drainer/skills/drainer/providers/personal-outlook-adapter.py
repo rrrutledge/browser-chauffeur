@@ -46,10 +46,13 @@ class Provider(ProviderBase):
         return json.loads(res.stdout or "[]")
 
     def stable_id(self, item):
-        recv = (item.get("received") or "")[:16].replace("-", "").replace("T", "-").replace(":", "")[:13]
+        # Timestamp to the second (plus ms when Graph supplies them) so two messages from the same
+        # sender with the same opening subject in the same minute don't collide and silently drop one.
+        digits = "".join(c for c in (item.get("received") or "") if c.isdigit())
+        recv = f"{digits[:8]}-{digits[8:14]}{digits[14:17]}"  # YYYYMMDD-HHMMSS(ms)
         sender = slug((item.get("fromAddress") or item.get("from") or "").split("@")[0])
         subj3 = slug("-".join((item.get("subject") or "").split()[:3]))
-        return f"{self.name}-{recv}-{sender}-{subj3}".strip("-")[:64]
+        return f"{self.name}-{recv}-{sender}-{subj3}".strip("-")[:72]
 
     def capture(self, item, iid, runtime_dir):
         items_dir = os.path.join(runtime_dir, "items")
