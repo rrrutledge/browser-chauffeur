@@ -1,24 +1,27 @@
 ---
 name: message-draft
-description: Draft a message in the active web composer and NEVER send it. Two modes — `teams` (a Teams chat) and `outlook` (an Outlook-web email reply). Browser-chauffeur executes these steps; this skill is the spec. Use whenever staging a Teams chat message or an Outlook email reply for human review. (Supersedes teams-message; `slack` mode is future.)
+description: Draft a message and NEVER send it. Two modes — `teams` (a Teams chat, staged in the web composer via browser-chauffeur) and `outlook` (a work-email reply or new email, created as an Outlook draft via the `ms-rest` skill's REST API). Use whenever staging a Teams chat message or a work Outlook email for human review. (Supersedes teams-message; `slack` mode is future.)
 ---
 
 # message-draft
 
-Stage a **draft** in the correct conversation and stop — a human reviews and sends. You drive
-through the **browser-chauffeur** skill (never Playwright directly). Pick a mode:
+Stage a **draft** and stop — a human reviews and sends. Pick a mode:
+
+- **`teams`** — a 1:1 or group Teams chat, staged in the web composer (you drive **browser-chauffeur**,
+  never Playwright directly).
+- **`outlook`** — a work-email reply or new email, created as an Outlook **draft** via the **`ms-rest`**
+  skill's REST API (no browser composer). `ms-rest` is the WORK-account Outlook plugin; don't
+  confuse it with the personal `ms-graph` skill.
+- **`slack`** — future; not implemented.
 
 **Voice:** Before composing any message, invoke the **`document-authoring`** skill to write the
 content in Russell's voice. Pass the drafted text to the mode steps below for staging.
 
-**Voice gate (stage-time — load-bearing):** After typing the draft into the composer, read it back
-and re-apply the **`document-authoring`** Conversational writing rules as a review pass. Re-type any
-trimmed content so what sits staged is the gated version. Report `voice-gate=passed` in the
-done-criteria once it has run.
-
-- **`teams`** — a 1:1 or group Teams chat, addressed by person name/email.
-- **`outlook`** — a reply to a specific Outlook-web email.
-- **`slack`** — future; not implemented.
+**Voice gate (stage-time — load-bearing):** After the draft is staged, read it back from where it
+lives (Teams: the composer; Outlook: `ms-rest get <draftId>`) and re-apply the **`document-authoring`**
+Conversational writing rules as a review pass. If anything was trimmed, re-stage the gated version
+(Teams: re-type it; Outlook: re-create the draft from the gated body). Report `voice-gate=passed` in
+the done-criteria once it has run.
 
 ## Behavioral preferences
 
@@ -79,29 +82,42 @@ Inputs: the address, message body, optional hyperlinks (display text + URL), opt
 
 ## Mode: `outlook`
 
-Inputs: the target message (deep link or enough to locate it in the mailbox), reply body,
-reply-all vs reply (default: **Reply**, sender only), optional hyperlinks.
+Creates an Outlook **draft** for the WORK account via the **`ms-rest`** skill's REST API — no browser
+composer. The draft lands un-sent in **Drafts** (reviewable on web and mobile) with clickable links;
+for a reply, the quoted original sits below the new text. This skill never sends — `ms-rest send-draft`
+is gated separately and reserved for Russell's explicit OK.
 
-1. **Open the message.** Navigate to its deep link if given, else open
-   `https://outlook.office.com/mail/` and open the message from the list. Confirm signed in
-   (mailbox visible) — if a Microsoft/Okta sign-in shows, report auth-needed and stop.
-2. **Identity-gate.** Confirm the open message's sender + subject match the intended target
-   before composing. Abort on mismatch.
-3. **Start the reply.** Click **Reply** (or Reply all if asked). This opens the reply composer
-   — typically an inline editor at the bottom of the reading pane (a `div[role="textbox"]`
-   / `[contenteditable="true"]` reply body; the Reply button often carries
-   `aria-label="Reply"` or sits in the message toolbar). Rediscover live if these drift.
-4. **Compose.** Target the **visible** reply textbox; type the body with `pressSequentially`;
-   line breaks via Enter are fine in the Outlook body (Outlook does NOT send on Enter — Send is
-   Ctrl+Enter or the Send button). To be safe, never press **Ctrl+Enter** and never click
-   **Send**.
-5. **Hyperlinks.** Use the composer's Insert-link control (toolbar link button or Ctrl+K),
-   filling display text + address, for clean anchor text.
-6. **Leave as draft.** Outlook **auto-saves** the reply to the Drafts folder. Do NOT click Send.
-   Verify the draft body reads back correctly (greeting + body + links), then stop and report
-   where the draft is (it appears in Drafts and inline under the original thread).
+Two shapes:
+- **Reply** to an existing message — needs that message's Outlook REST `id`.
+- **New email** — needs subject + recipients.
+
+Run from the repo root: `node .claude/skills/ms-rest/outlook-mail.js <verb>`.
+
+1. **Auth-glance.** `node .claude/skills/ms-rest/outlook-mail.js token`. `Token OK ✅` → ready. If it
+   reports no token, follow `ms-rest` AUTH-GLANCE (sign in to Outlook web in the CDP browser once),
+   then retry. Never surface a token error — fix it and continue.
+2. **Resolve the target (reply only).** If you were handed the source `messageId` (e.g. from the
+   channel-watch CAPTURE record), use it. Otherwise locate the message with
+   `outlook-mail.js enumerate` (and `get <id>` to confirm), and **identity-gate**: the message's
+   sender + subject must match the intended target. Abort on mismatch.
+3. **Write the body to a file.** Author the body in Russell's voice (the **Voice** step above), as
+   **HTML** with real `<a href="URL">anchor text</a>` links (never a bare URL in prose). Write it to
+   a temp file, e.g. `.tmp/outlook-draft.json`:
+   - Reply: `{ "comment": "<p>…new reply text…</p>" }`
+   - New email: `{ "subject": "…", "body": "<p>…</p>", "to": ["a@b.com"], "cc": [] }`
+4. **Create the draft.**
+   - Reply: `node .claude/skills/ms-rest/outlook-mail.js create-reply <messageId> --json .tmp/outlook-draft.json`
+   - New: `node .claude/skills/ms-rest/outlook-mail.js create-draft --json .tmp/outlook-draft.json`
+   It prints `{ draftId, webLink, folder:"Drafts", sent:false }`.
+5. **Voice gate + read-back.** `node .claude/skills/ms-rest/outlook-mail.js get <draftId>` and confirm
+   the body reads back correctly (greeting + body + clickable links; for a reply, the quoted original
+   below the new text). Re-apply the `document-authoring` Conversational rules; if anything was
+   trimmed, rewrite the body file and re-run step 4 (the new draft supersedes the old — delete the
+   stale one with `delete <draftId>` if needed).
+6. **Leave as draft.** Never send. Report where the draft lives (Drafts; `webLink` is the deep link).
 
 ## Done-criteria (report this back)
 
 `mode=<teams|outlook> recipient=<who> drafted=true sent=false voice-gate=passed links=<n>` plus a
-one-line note of where the draft lives. If identity-gate failed or sign-in was needed, say so and that nothing was typed.
+one-line note of where the draft lives (Outlook: the `webLink`/draftId). If identity-gate failed or
+sign-in was needed, say so and that nothing was staged.
