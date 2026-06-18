@@ -5,13 +5,18 @@ description: Read, delete, and compose Outlook mail for Russell's WORK account v
 
 # ms-rest — Outlook (work account) read · delete · compose
 
-Owns Outlook communication for Russell's **work** mailbox. One script, `outlook-mail.js`, drives
-everything over the **Outlook REST API v2.0** (`https://outlook.office.com/api/v2.0`) using a bearer
-token sniffed from Russell's live Outlook web session — so after a one-time sign-in, operations run
-with **no browser at all** until the token expires.
+Owns Outlook communication and calendar for Russell's **work** account. Two scripts drive everything
+over the **Outlook REST API v2.0** (`https://outlook.office.com/api/v2.0`) using a bearer token
+sniffed from Russell's live Outlook web session — so after a one-time sign-in, operations run with
+**no browser at all** until the token expires:
 
-Use this skill directly for ad-hoc work ("find the email about X", "delete that message", "draft a
-reply to Y", "write a work email to Z") and as the engine the `message-draft` skill calls for email.
+- **`outlook-mail.js`** — inbox read, delete, draft, reply, send
+- **`outlook-calendar.js`** — calendar view, event create/move/retime/delete (also usable as a Node library)
+
+Both share auth plumbing via `outlook-core.js`.
+
+Use this skill directly for ad-hoc work ("find the email about X", "what's on my calendar tomorrow",
+"draft a reply to Y") and as the engine the `message-draft` skill calls for email.
 
 **Work vs personal — don't mix them up.** This skill is the **work** account (corporate Outlook,
 session-token sniff). The **`ms-graph`** skill is Russell's **personal** Microsoft account (MSAL +
