@@ -52,6 +52,23 @@ HTML bodies go in a JSON file to avoid shell escaping. Write the file (e.g. to `
 Recipients accept a plain address string or `{ "address": "...", "name": "..." }`. Use real
 `<a href="...">anchor text</a>` for links so they render clickable (matches `document-authoring`).
 
+## Calendar commands
+
+```
+node .claude/skills/ms-rest/outlook-calendar.js <command>
+```
+
+| Command | What it does |
+|---|---|
+| `calendar-view --start <iso> --end <iso>` | JSON array of all events in the range (recurring series expanded into instances). Each item: `Id`, `Subject`, `Start`/`End` (wall-clock, America/Chicago), `IsAllDay`, `Type`, `SeriesMasterId`, `IsCancelled`, `Attendees`, `IsOnlineMeeting`. |
+| `event-get <id>` | Full event JSON for a single event or recurring series master. |
+| `event-create --json <path>` | Create a new event. Payload: `{ subject, start, end, timeZone?, isAllDay?, body?, location?, attendees?, isOnlineMeeting?, reminderMinutesBeforeStart?, categories? }`. Prints `{id, webLink, subject, start}`. |
+| `event-move <id> --date <YYYY-MM-DD>` | Move an event to a new date, keeping time-of-day and duration. Returns `{status: "moved"}` or `{status: "boundary-blocked"}` (Outlook won't let a recurring occurrence cross its neighbors — leave it in place). |
+| `event-set-time <id> --start <iso> --end <iso>` | Reschedule to explicit wall-clock start/end times. |
+| `event-delete <id>` | Delete an event (204 = deleted, 404 = already gone — idempotent). |
+
+`outlook-calendar.js` can also be used as a Node.js library (`require('./outlook-calendar')`), exporting `{ TZ, calendarView, eventGet, eventCreate, eventMove, eventSetTime, eventDelete }`.
+
 ## DRAFT-ONLY default (never auto-send)
 `create-draft` and `create-reply` only ever produce **drafts** — they never send. Sending is a
 separate, gated step (`send-draft --yes`) reserved for an explicit OK from Russell. Drafting lands the
