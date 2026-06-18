@@ -3,8 +3,12 @@
 A provider for a **personal** Outlook.com mailbox (`outlook.live.com`) read and cleared entirely
 through the **Microsoft Graph API** — no browser. All Graph calls go through the **`ms-graph`** skill's
 `mail.js` (don't reimplement Graph here); it owns auth, the token cache, and silent refresh. Implements
-`../engine/provider.md`; classify by `../engine/triage.md` (this file is only the mechanics).
+`../engine/provider.md`; classify by `../engine/triage.md`.
 id prefix: `personal-outlook-`; body file: `<id>.email.md`.
+
+> Two-file provider: the **reading** mechanics (enumerate, stable id, capture-writing) live in the
+> sibling **`personal-outlook-adapter.py`** that the poller drives. This doc is the **worker-facing**
+> prose — AUTH-GLANCE, the captured item shape, CLEAR, JUNK-LEARNING, DRAFT-MODE.
 
 > This is the API counterpart to the browser `outlook-provider.md` (which is for **enterprise** Outlook
 > on the web). Use this one for a personal Microsoft account: it's cheaper, faster, and browser-free.
@@ -22,27 +26,15 @@ Run `node mail.js --list-unread --top=1`. If it prints messages (or "No unread m
 signed in. If it errors with "Not signed in" or an auth error, do the `ms-graph` one-time sign-in
 (`node scripts/auth.js` via browser-chauffeur), then retry — never surface the token error to the user.
 
-## ENUMERATE
-`node mail.js --list-inbox --json --top=<max_messages_per_cycle, default 50>` — inbox **read + unread**,
-newest-first, count-capped (NO time window): the keeper drains the whole inbox a batch at a time across
-cycles, so an 8-day-vacation backlog just takes a few cycles. `--json` returns a structured array (id,
-subject, from, received, isRead, webLink, preview) for the poller. Triage every returned message
-regardless of read state (the goal is an empty inbox, not just zero-unread); de-duplication against
-already-processed items is the **poller's** job via seen-state, not this provider's. Stable id:
-`personal-outlook-<YYYYMMDD-HHMM of received>-<sender-slug>-<first-3-subject-words-slug>` (lowercase,
-non-alphanumerics → single dashes). If a block is genuinely undecidable, `node mail.js --show=<messageId>`
-that ONE message to disambiguate.
+## CAPTURE (the item shape the worker reads)
+The adapter writes these two files for each dispatched item (`personal-outlook-adapter.py` → `capture`);
+this is the shape the worker can rely on:
+- `items/<id>.email.md` — header block (From, Received, Link, MessageId) + the full body text (from
+  `mail.js --show=<messageId>`).
+- `items/<id>.json` — `{ "id","source":"personal-outlook","triage","kind","from","subject","received",`
+  `"snippet","url":"<webLink>","messageId":"<Graph id>","emailFile":"<abs path>","ts" }`.
 
-## CAPTURE (needs-you)
-`node mail.js --show=<messageId>` to read the full body, then capture:
-- **Deep link** = the message's `webLink` from ENUMERATE (an `outlook.live.com` deep link).
-- Write `items/<id>.email.md` — header block (From, To, Cc, Date, Subject, Link, MessageId) + the full
-  body text from `--show`.
-- Write `items/<id>.json`:
-  `{ "id","source":"personal-outlook","triage":"needs-you","kind":"reply|work|work-then-reply","from",`
-  `"subject","received","snippet","whatsAsked":"<1-2 lines>","url":"<webLink>","messageId":"<Graph id>",`
-  `"emailFile":"<abs path to .email.md>","ts":"<ISO now>" }`
-Keep `messageId` — the worker needs it for the reply draft and for CLEAR.
+`messageId` is the load-bearing field — the worker needs it for the reply draft and for CLEAR.
 
 ## CLEAR
 `node mail.js --delete=<messageId>` — moves the message to **Deleted Items** (reversible; narrate it).
