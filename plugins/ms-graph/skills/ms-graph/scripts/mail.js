@@ -6,6 +6,8 @@
 // Show one:      node mail.js --show=<messageId>
 // Draft a reply: node mail.js --reply --message-id=<id> --body-file=reply.html
 //                (creates a DRAFT reply-all in the thread; never sends)
+// Draft new:     node mail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.html [--cc=c@z]
+//                (creates a fresh DRAFT to specific recipients; never sends)
 // Send to self:  node mail.js --send-self --subject="..." --body-file=note.txt
 //                (sends a plain-text mail to your own inbox; handy for phone copy-paste)
 // Delete one:    node mail.js --delete=<messageId>
@@ -88,6 +90,22 @@ async function reply(client) {
   console.log(`Draft reply created in thread (id ${draft.id.slice(0, 20)}...). Review in Outlook Drafts.`);
 }
 
+async function draftNew(client) {
+  if (!args.to || !args.subject || !args['body-file']) {
+    throw new Error('--draft-new requires --to, --subject, and --body-file');
+  }
+  const html = fs.readFileSync(args['body-file'], 'utf8');
+  const recip = (s) => String(s).split(',').map(a => ({ emailAddress: { address: a.trim() } }));
+  const message = {
+    subject: args.subject,
+    body: { contentType: 'html', content: html },
+    toRecipients: recip(args.to),
+  };
+  if (args.cc) message.ccRecipients = recip(args.cc);
+  const draft = await client.api('/me/messages').post(message);
+  console.log(`Draft created to ${args.to} (id ${draft.id.slice(0, 20)}...). Review in Outlook Drafts; never sent.`);
+}
+
 async function sendSelf(client) {
   if (!args.subject || !args['body-file']) {
     throw new Error('--send-self requires --subject and --body-file');
@@ -112,7 +130,8 @@ async function sendSelf(client) {
   if (args.search) return search(client);
   if (args.show) return show(client);
   if (args.reply) return reply(client);
+  if (args['draft-new']) return draftNew(client);
   if (args['send-self']) return sendSelf(client);
   if (args.delete) return del(client);
-  throw new Error('Specify --list-unread, --search, --show, --reply, --send-self, or --delete');
+  throw new Error('Specify --list-unread, --search, --show, --reply, --draft-new, --send-self, or --delete');
 })().catch(e => { console.error('Error:', e.message); process.exit(1); });

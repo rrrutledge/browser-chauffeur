@@ -54,10 +54,14 @@ what matters. Propose, never apply without the user's OK. (Graph can create rule
 to add.)
 
 ## DRAFT-MODE
-Apply the **`document-authoring`** voice to the reply text (this is what `message-draft` would do; the
+Apply the **`document-authoring`** voice to the message text (this is what `message-draft` would do; the
 voice loop in the document-authoring skill still applies — diff sent-vs-draft after each send and append
-a lesson). Write the reply as HTML to a file, then create the draft with
-`node mail.js --reply --message-id=<messageId> --body-file=<file>`. It lands in **Outlook Drafts** as a
-reply-all in the thread and is **never sent** — show the draft text in the terminal and tell the user to
-edit + send it themselves. Include the quoted original per `~/.claude/CLAUDE.md` (Graph's reply-all
-keeps the thread quote below your text automatically).
+a lesson). Write the body as HTML to a file, then create the draft with `mail.js` — **never sent**. Show
+the draft text in the terminal and tell the user to edit + send it themselves. Pick the mode by who the
+message goes to:
+- **Reply on the thread** (responding to inbound mail): `node mail.js --reply --message-id=<messageId>
+  --body-file=<file>` — a reply-all draft in the thread. Include the quoted original per
+  `~/.claude/CLAUDE.md` (Graph's reply-all keeps the thread quote below your text automatically).
+- **Fresh 1:1 (or small-group) note** (e.g. an outreach nudge to one contact — do NOT reply-all a group
+  thread to single someone out): `node mail.js --draft-new --to="<addr>" --subject="<subj>"
+  --body-file=<file> [--cc="<addrs>"]`.
