@@ -229,8 +229,7 @@ def read_script_file(filename):
 # directories via the "trusted_script_dirs" config key.
 TRUSTED_SCRIPT_DIRS = [
     '.tmp/', '/.tmp/', '\\.tmp\\',
-    '.claude/plugins/',
-    '.claude/skills/', '.claude/commands/',
+    '.claude/',
 ]
 
 
