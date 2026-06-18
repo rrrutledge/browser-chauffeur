@@ -4,6 +4,8 @@
 //                (inbox unread, newest-first; one block per message with id + webLink)
 // List inbox:    node mail.js --list-inbox [--since-days=7] [--top=50]
 //                (inbox read+unread within a window, newest-first; same block format)
+// List drafts:   node mail.js --list-drafts [--top=30]
+//                (drafts folder, most-recently-edited first; same block format with id)
 // Search:        node mail.js --search="Griffiths" [--top=10]
 // Show one:      node mail.js --show=<messageId>
 // Draft a reply: node mail.js --reply --message-id=<id> --body-file=reply.html
@@ -103,13 +105,31 @@ async function show(client) {
   console.log('\n' + strip(m.body?.content));
 }
 
+async function listDrafts(client) {
+  const data = await client.api('/me/mailFolders/drafts/messages')
+    .orderby('lastModifiedDateTime desc')
+    .top(parseInt(args.top || '30', 10))
+    .select('id,subject,toRecipients,lastModifiedDateTime,bodyPreview')
+    .get();
+  const msgs = data.value || [];
+  if (!msgs.length) { console.log('No drafts.'); return; }
+  console.log(`${msgs.length} draft(s), most-recently-edited first:`);
+  for (const m of msgs) {
+    console.log(`\n--- ${m.lastModifiedDateTime?.slice(0, 16)}  |  ${m.subject}`);
+    console.log(`    to: ${(m.toRecipients || []).map(addr).join(', ')}`);
+    console.log(`    id: ${m.id}`);
+    console.log(`    > ${(m.bodyPreview || '').replace(/\s+/g, ' ').slice(0, 200)}`);
+  }
+}
+
 async function reply(client) {
   if (!args['message-id'] || !args['body-file']) {
     throw new Error('--reply requires --message-id and --body-file');
   }
   const html = fs.readFileSync(args['body-file'], 'utf8');
   const draft = await client.api(`/me/messages/${args['message-id']}/createReplyAll`).post({});
-  await client.api(`/me/messages/${draft.id}`).patch({ body: { contentType: 'html', content: html } });
+  const quoted = draft.body?.content || '';
+  await client.api(`/me/messages/${draft.id}`).patch({ body: { contentType: 'html', content: html + quoted } });
   console.log(`Draft reply created in thread (id ${draft.id.slice(0, 20)}...). Review in Outlook Drafts.`);
 }
 
@@ -151,11 +171,12 @@ async function sendSelf(client) {
   const client = await getGraphClient();
   if (args['list-unread']) return listUnread(client);
   if (args['list-inbox']) return listInbox(client);
+  if (args['list-drafts']) return listDrafts(client);
   if (args.search) return search(client);
   if (args.show) return show(client);
   if (args.reply) return reply(client);
   if (args['draft-new']) return draftNew(client);
   if (args['send-self']) return sendSelf(client);
   if (args.delete) return del(client);
-  throw new Error('Specify --list-unread, --list-inbox, --search, --show, --reply, --draft-new, --send-self, or --delete');
+  throw new Error('Specify --list-unread, --list-inbox, --list-drafts, --search, --show, --reply, --draft-new, --send-self, or --delete');
 })().catch(e => { console.error('Error:', e.message); process.exit(1); });
