@@ -94,6 +94,8 @@ CASES = [
     {"id": "inline_node", "tool": "Bash", "command": "node -e \"console.log(1)\"", "expect": "BLOCK"},
     {"id": "powershell_cmdlet", "tool": "Bash", "command": "Get-ChildItem", "expect": "BLOCK"},
     {"id": "redundant_cd_cwd", "tool": "Bash", "command": "cd {CWD} && ls", "expect": "BLOCK"},
+    {"id": "redundant_cd_cwd_semi", "tool": "Bash", "command": "cd {CWD}; ls", "expect": "BLOCK"},
+    {"id": "cd_compound_semi", "tool": "Bash", "command": "cd ~/Dev/some-other-dir; node mail.js --list-unread", "expect": "BLOCK"},
 
     # --- start / wt ---------------------------------------------------------
     {"id": "start_docx", "tool": "Bash", "command": "start report.docx", "expect": "ALLOW"},
