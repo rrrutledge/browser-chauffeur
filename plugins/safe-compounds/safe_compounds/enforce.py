@@ -154,16 +154,18 @@ def detect_inline_script(command):
 
 def detect_output_redirection(command):
     for seg in split_segments(command):
-        for m in re.finditer(r'(\d*)(>>?)\s*([^\s;&|]+)', seg):
+        for m in re.finditer(r'(\d*)(>>?)(\s*)([^\s;&|]+)', seg):
             fd = m.group(1)
-            raw_target = m.group(3)
+            space = m.group(3)
+            raw_target = m.group(4)
             target = raw_target.strip().strip('"\'')
             if fd == '2' and target in ('/dev/null', '&1'):
                 continue
             if target == '/dev/null' or target.startswith('&'):
                 continue
-            # ">=" is a comparison operator, not redirection
-            if m.group(2) == '>' and raw_target.startswith('='):
+            # ">=" with no whitespace is a comparison operator, not redirection.
+            # ">" followed by space and then "=file" is real redirection and must not be skipped.
+            if m.group(2) == '>' and not space and raw_target.startswith('='):
                 continue
             return True
     return False
