@@ -293,7 +293,7 @@ def is_gh_command_safe(seg):
         return True
     if group == 'auth':
         subs = get_subcommands(seg, skip=2)
-        return bool(subs) and subs[0] in ('status', 'token')
+        return bool(subs) and subs[0] in ('status', 'token', 'switch')
     if group == 'api':
         return _gh_api_safe(tokens)
     if group in GH_TRUSTED_SUBCOMMANDS:
