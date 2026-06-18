@@ -154,7 +154,8 @@ def detect_inline_script(command):
 
 def detect_output_redirection(command):
     for seg in split_segments(command):
-        for m in re.finditer(r'(\d*)(>>?)\s*([^\s;&|]+)', seg):
+        unquoted = re.sub(r'"[^"\\]*(?:\\.[^"\\]*)*"|\'[^\'\\]*(?:\\.[^\'\\]*)*\'', '', seg)
+        for m in re.finditer(r'(\d*)(>>?)\s*([^\s;&|]+)', unquoted):
             fd = m.group(1)
             target = m.group(3).strip().strip('"\'')
             if fd == '2' and target in ('/dev/null', '&1'):
