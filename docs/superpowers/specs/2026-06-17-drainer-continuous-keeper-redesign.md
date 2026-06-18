@@ -2,7 +2,9 @@
 
 **Date:** 2026-06-17
 **Status:** Approved design; ready for implementation planning (Stage 1).
-**Plugin:** `drainer` (name kept; "continuous keeper" is the framing, not a rename).
+**Plugin:** `drainer` for now. **Chosen future name: `Skimmer`** (like a pool skimmer that
+continuously keeps the surface clean) — rename deferred until the continuous model is
+working, to avoid reinstall/config churn before then.
 
 ## Motivation
 
@@ -70,8 +72,13 @@ worst-case failure is *redundant work*, never a *dropped item*:
 
 1. **Poller (fast loop).** Headless Claude on a ~5-minute cron. Each cycle:
    1. **Presence-gate** — away/locked → exit cheaply, no work, no window.
-   2. **Acquire overlap-lock** (with a stale-TTL so a crashed poller can't wedge the loop
-      forever — a lock older than N minutes is treated as stale and broken).
+   2. **Acquire overlap-lock** (*optional optimization*). It prevents a cycle that runs
+      longer than the interval from overlapping the next one and double-spawning tabs /
+      stacking pollers. It is **not** load-bearing for correctness — the fail-safe +
+      idempotent-worker design already makes a duplicate dispatch resolve quietly — so it
+      can be dropped for simplicity, accepting the rare duplicate tab. If kept, give it a
+      stale-TTL so a crashed poller can't wedge the loop forever (a lock older than N
+      minutes is treated as stale and broken).
    3. Read `.claude/drainer.local.md` (enabled providers, cadence, presence) + `context.md`.
    4. For each enabled provider: `AUTH-GLANCE` → `ENUMERATE` candidate items → drop any in
       seen-state → triage the rest → **dispatch** (spawn worker tab for needs-you; capture
@@ -109,8 +116,9 @@ Russell reviews → on OK: provider CLEAR each + empty queue → reconciliation 
 ## Error handling & edge cases
 
 - **Presence away/locked** → cheap no-op, no window, no noise.
-- **Overlap lock with stale-TTL** → a crashed prior cycle can't wedge the loop; a stale
-  lock is broken after N minutes.
+- **Overlap lock (optional)** → if kept, a stale-TTL means a crashed prior cycle can't
+  wedge the loop (a stale lock is broken after N minutes). If dropped, a rare overlap just
+  produces a duplicate tab that resolves quietly — correctness is unaffected.
 - **Provider auth failure** (`AUTH-GLANCE` fails) → surface one sign-in tab for that
   source, skip it this cycle (record no seen-ids for it), keep processing other sources.
 - **Duplicate dispatch** (seen-state lost) → the second tab's situational-check sees it's
@@ -148,15 +156,21 @@ spec → plan → build cycle.
   matches his GitHub-unsubscribe instinct).
 - Sending anything outbound (draft-only remains absolute).
 - SMS and other sources beyond Outlook/Gmail/Trello (named only as future direction).
-- Renaming the plugin.
+- Renaming the plugin to `Skimmer` now (deferred until the model works — see header).
 
-## Behavioral rules carried forward (unchanged)
+## Behavioral rules — where they live
+
+Email/voice/drafting behavioral rules are **owned by the `message-draft` skill** (Russell's
+accumulating email etiquette), not restated here. The keeper *sources* them from there. The
+canonical example, to be recorded in `message-draft`:
+
+- **Prefer replying to an existing thread** over composing a fresh message.
+
+The keeper's own engine rules (already in the drainer engine docs) carry forward unchanged:
 
 - **Draft-only outbound. Never send/post.** Drafts created immediately (reversible);
   Russell edits and sends. Only sending/posting/permanent-purge/destructive changes wait
   for explicit OK.
-- **Prefer replying to an existing thread** over composing a fresh message (saved as a
-  durable preference in `message-draft`).
 - **Delete/archive is reversible** — but junk/fyi are cleared only via the reviewed daily
   digest, not silently in the fast loop.
 - **Lead with context** in every worker's final message.
