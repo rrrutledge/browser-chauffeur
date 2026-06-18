@@ -124,8 +124,8 @@ Russell reviews → on OK: provider CLEAR each + empty queue → reconciliation 
   hours ago is unfinished.** The daily **reconciliation sweep** (folded into the EOD
   digest) re-surfaces these stale dispatched-but-uncleared items. Fail-safe at the
   *completion* level, not just dispatch.
-- **Headless poll failure** → cycle aborts, lock released (or later stale-broken); next
-  cycle retries. No item lost.
+- **Headless poll failure** → cycle aborts; the next cron cycle retries. Seen-ids are
+  recorded only after successful dispatch, so an aborted cycle loses no item.
 - **Digest not run / not reviewed** → fyi/junk stay queued (safe); nothing cleared without
   review.
 
@@ -138,7 +138,7 @@ spec → plan → build cycle.
   read+unread, `DRAFT-MODE` prefer-reply, and the "always reply to an existing thread over
   a fresh compose" preference saved in the `message-draft` skill.
 - **Stage 1:** the continuous Outlook keeper — poller + seen-state + worker-tab spawn,
-  presence + overlap-lock. Acceptance: it holds the Outlook inbox at zero un-started
+  presence-gated. Acceptance: it holds the Outlook inbox at zero un-started
   actionable items hands-free, fail-safe, draft-only.
 - **Stage 2:** EOD digest tab — fyi summaries + junk source-stop proposals + the
   reconciliation sweep.
