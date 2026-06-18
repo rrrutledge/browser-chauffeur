@@ -33,16 +33,17 @@ the done-criteria once it has run.
 
 1. **The composer is not unique — target the `:visible` one and bind every keystroke to it.**
    Web apps keep many editors mounted (Teams keeps every recent chat's `div[data-tid="ckeditor"]`
-   in the DOM). Resolve the **visible** composer locator and send keystrokes via
-   `compose.press(...)` / `compose.pressSequentially(...)` — never global `page.keyboard.type`,
-   or text leaks into another conversation.
+   in the DOM). Use browser-chauffeur's element-bound composer typing (it owns the mechanics — see
+   browser-chauffeur → **Composing in rich editors**); never hand-roll raw key/text events, or text
+   leaks into another conversation.
 2. **Identity-gate before AND during typing.** Confirm the active conversation header matches the
    intended recipient (Teams: first+last name; Outlook: the expected sender/subject) BEFORE the
    first keystroke, and re-assert before each segment. Abort on mismatch.
 3. **Content is ground truth.** After typing, read the composer back and verify the expected
    greeting + body (+ links) are present. Let selector drift fail loudly, not silently.
-4. **Never press Enter in the composer — it sends.** Use **Shift+Enter** for line breaks.
-   (Enter is fine inside a link-insert dialog.)
+4. **Never press a bare Enter in the composer — it sends.** Line breaks are Shift+Enter; use
+   browser-chauffeur's bare-Enter-refusing composer primitives. (Enter is fine inside a link-insert
+   dialog.)
 5. **Selectors below are last-known-good (web UIs, 2026-06) — expect drift.** The invariants
    don't drift; rediscover selectors live via browser-chauffeur (screenshot → inspect) when they do.
 
@@ -51,9 +52,13 @@ the done-criteria once it has run.
 Addresses either a **1:1 chat** (recipient name + email) or a **group/meeting chat** (chat name).
 Inputs: the address, message body, optional hyperlinks (display text + URL), optional @mentions.
 
-0. **Pick the loaded Teams tab.** Select the Teams page with the **largest
-   `document.body.innerText` length** (a loaded app ≈ 9000+ chars; blank/loading tabs are ~0–100).
-   Call `page.bringToFront()` and click `body` to ensure keyboard events land on this tab.
+0. **Open your OWN Teams tab — never adopt an existing one.** Open a fresh `teams.microsoft.com` tab
+   of your own (browser-chauffeur owns the how — see "you MUST open your own tab"); the persistent
+   profile means it loads already signed in. **Do not enumerate tabs and pick "the loaded Teams tab
+   with the most text"** — that tab may belong to another Claude Code instance or the user, and
+   driving it types into the wrong place (Enter sends in Teams). Reuse that one tab for every later
+   step of this draft. Wait for the app shell to hydrate (the chat rail) and ensure keyboard events
+   land on this tab before interacting.
 1. **Find the target.**
    - **1:1:** Press `Alt+Shift+N` (new message), wait ~1.5s, then click the **people-picker input**
      (`input#people-picker-input` or `input[aria-label="Enter name, chat, channel, email or tag"]`).
@@ -68,15 +73,15 @@ Inputs: the address, message body, optional hyperlinks (display text + URL), opt
 2. **Identity-gate.** Confirm the chat heading (an `h1`/`h2`/`h3` containing the name —
    `[data-tid="chat-header-title"]` does NOT exist in this build) matches before typing. 1:1: last
    name + first-name prefix; group/meeting: a case-insensitive substring of the chat name.
-3. **Compose.** Target `div[data-tid="ckeditor"]:visible`. Type the body with `pressSequentially`;
-   line breaks via **Shift+Enter**.
+3. **Compose.** The composer is `div[data-tid="ckeditor"]` (target the `:visible` one). Clear any
+   draft auto-restore, then type the body; line breaks are Shift+Enter, never a bare Enter.
 4. **Hyperlinks.** Ctrl+K opens an Insert-link dialog; fill `[data-tid="insertHyperlink-displayText"]`
    and `[data-tid="insertHyperlink-linkAddress"]` (⚠️ `data-tid`, not `id`), then click
    `[data-tid="insertHyperlink-insertButton"]` (⚠️ NOT `role=button` with text "Insert" — that
    selector fails). A typed GitHub repo URL also auto-unfurls a card.
-5. **@mentions (when asked).** Type `@` then the first few chars of the name, **poll for the
-   mention autocomplete dropdown, and click the matching suggestion** so a real mention chip mounts.
-   Typing `@Name` as plain text does NOT notify the person — the chip must come from the dropdown.
+5. **@mentions (when asked).** Type `@` then the first few chars of the name, wait for the mention
+   autocomplete dropdown, and click the matching suggestion so a real mention chip mounts. Typing
+   `@Name` as plain text does NOT notify the person — the chip must come from the dropdown.
 6. **Leave as draft.** Do NOT press Enter / click Send. Teams shows a **Draft** badge per
    conversation (persists within the live browser session). Verify content, then stop.
 
