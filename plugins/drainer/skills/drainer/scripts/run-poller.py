@@ -84,6 +84,9 @@ def read_config(repo):
         # simple -> worker_model, complex -> worker_model_complex (both standard context).
         "worker_model": scalar("worker_model", "claude-sonnet-4-6"),
         "worker_model_complex": scalar("worker_model_complex", "claude-opus-4-8"),
+        # The triage call must also pin a model — under the scheduled task it has no parent session,
+        # so it would otherwise inherit a 1M-context default the account can't use. Standard Sonnet.
+        "triage_model": scalar("triage_model", "claude-sonnet-4-6"),
     }
 
 
@@ -148,7 +151,7 @@ def _read(path):
         return ""
 
 
-def triage(items, repo, local_dir):
+def triage(items, repo, local_dir, model):
     claude = shutil.which("claude") or "claude"
     rubric = _read(os.path.join(SCRIPT_DIR, "..", "engine", "triage.md"))  # embed -> self-contained
     context = _read(os.path.join(local_dir, "context.md"))
@@ -163,7 +166,7 @@ def triage(items, repo, local_dir):
     res = subprocess.run(
         # Triage is pure text-in / JSON-out (rubric + context are embedded below), so it needs no
         # tools and no elevated permissions; --setting-sources "" keeps the call lightweight.
-        [claude, "-p", "--output-format", "json", "--setting-sources", ""],
+        [claude, "-p", "--model", model, "--output-format", "json", "--setting-sources", ""],
         input=prompt,  # prompt goes on stdin (too long for an argv on Windows)
         capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=repo, timeout=420,
     )
@@ -263,7 +266,7 @@ def main():
             print(f"{provider.name}: {total} enumerated, 0 new. Nothing to dispatch.")
             continue
 
-        verdicts = triage(new, repo, cfg["local_dir"])
+        verdicts = triage(new, repo, cfg["local_dir"], cfg["triage_model"])
         for it in new:
             v = verdicts.get(it["_id"], {"bucket": "needs-you", "kind": "reply"})  # unjudged -> act (fail-safe)
             it["_bucket"], it["_kind"] = v.get("bucket", "needs-you"), v.get("kind")
