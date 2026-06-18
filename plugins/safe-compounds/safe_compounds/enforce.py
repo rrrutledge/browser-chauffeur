@@ -154,20 +154,33 @@ def detect_inline_script(command):
 
 def detect_output_redirection(command):
     for seg in split_segments(command):
-        for m in re.finditer(r'(\d*)(>>?)(\s*)([^\s;&|]+)', seg):
-            fd = m.group(1)
-            space = m.group(3)
-            raw_target = m.group(4)
-            target = raw_target.strip().strip('"\'')
-            if fd == '2' and target in ('/dev/null', '&1'):
+        tok = ShellTokenizer(seg)
+        while not tok.at_end():
+            if tok.consume_escape():
                 continue
-            if target == '/dev/null' or target.startswith('&'):
+            if tok.update_quote_state():
+                tok.advance()
                 continue
-            # ">=" with no whitespace is a comparison operator, not redirection.
-            # ">" followed by space and then "=file" is real redirection and must not be skipped.
-            if m.group(2) == '>' and not space and raw_target.startswith('='):
-                continue
-            return True
+            if not tok.in_quotes() and tok.peek() == '>':
+                fd = seg[tok.pos - 1] if tok.pos > 0 and seg[tok.pos - 1].isdigit() else ''
+                tok.advance()
+                if not tok.at_end() and tok.peek() == '>':
+                    tok.advance()
+                # skip whitespace before target
+                while not tok.at_end() and tok.peek() in (' ', '\t'):
+                    tok.advance()
+                # collect target token
+                target_chars = []
+                while not tok.at_end() and tok.peek() not in (' ', '\t', ';', '|'):
+                    target_chars.append(tok.peek())
+                    tok.advance()
+                target = ''.join(target_chars).strip('"\'')
+                if fd == '2' and target in ('/dev/null', '&1'):
+                    continue
+                if target in ('/dev/null',) or target.startswith('&'):
+                    continue
+                return True
+            tok.advance()
     return False
 
 
