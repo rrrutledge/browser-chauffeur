@@ -72,13 +72,17 @@ node ~/.claude/plugins/cache/*/ms-rest/*/skills/ms-rest/outlook-calendar.js <com
 | Command | What it does |
 |---|---|
 | `calendar-view --start <iso> --end <iso>` | JSON array of all events in the range (recurring series expanded into instances). Each item: `Id`, `Subject`, `Start`/`End` (wall-clock, America/Chicago), `IsAllDay`, `Type`, `SeriesMasterId`, `IsCancelled`, `Attendees`, `IsOnlineMeeting`. |
+| `calendar-getschedule --schedules a,b --start <iso> --end <iso> [--interval 30]` | Free/busy for a set of mailboxes (self **and** other tenant attendees). Per schedule: `AvailabilityView` (per-interval `0`=Free/`2`=Busy/`3`=OOF string), `ScheduleItems`, `WorkingHours.TimeZone`, and an `Error` for any address that doesn't resolve. |
 | `event-get <id>` | Full event JSON for a single event or recurring series master. |
-| `event-create --json <path>` | Create a new event. Payload: `{ subject, start, end, timeZone?, isAllDay?, body?, location?, attendees?, isOnlineMeeting?, reminderMinutesBeforeStart?, categories? }`. Prints `{id, webLink, subject, start}`. |
+| `event-create --json <path>` | Create a new event. Payload: `{ subject, start, end, timeZone?, isAllDay?, body?, location?, attendees?, isOnlineMeeting?, reminderMinutesBeforeStart?, categories?, isDraft? }`. Set `isDraft:true` to stage an on-calendar meeting that sends **no** invitation (opens in OWA with a "Send" button). Prints `{id, webLink, subject, start}`. |
 | `event-move <id> --date <YYYY-MM-DD>` | Move an event to a new date, keeping time-of-day and duration. Returns `{status: "moved"}` or `{status: "boundary-blocked"}` (Outlook won't let a recurring occurrence cross its neighbors — leave it in place). |
 | `event-set-time <id> --start <iso> --end <iso>` | Reschedule to explicit wall-clock start/end times. |
 | `event-delete <id>` | Delete an event (204 = deleted, 404 = already gone — idempotent). |
+| `token` | Print token status (`Token OK ✅` + expiry/audience) without any API call. |
 
-`outlook-calendar.js` can also be used as a Node.js library (`require('./outlook-calendar')`), exporting `{ TZ, calendarView, eventGet, eventCreate, eventMove, eventSetTime, eventDelete }`.
+**Teams-on-draft note:** when `isOnlineMeeting:true` is set on a **draft** (`isDraft:true`), the API read-back reports `IsOnlineMeeting:false` / `OnlineMeetingProvider:Unknown` / no join URL. This is **expected, not a bug** — the OWA editor still shows the Teams toggle ON and provisions the join link at Send. Don't "fix" the false read-back.
+
+`outlook-calendar.js` can also be used as a Node.js library (`require('./outlook-calendar')`), exporting `{ TZ, calendarView, getSchedule, eventGet, eventCreate, eventMove, eventSetTime, eventDelete }`.
 
 ## DRAFT-ONLY default (never auto-send)
 `create-draft` and `create-reply` only ever produce **drafts** — they never send. Sending is a
