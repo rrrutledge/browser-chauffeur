@@ -193,7 +193,7 @@ def detect_input_redirection(command):
 
 def detect_cd_cwd_prefix(command):
     cwd = os.environ.get('CLAUDE_CWD', os.getcwd())
-    m = re.match(r'^cd\s+("([^"]+)"|\'([^\']+)\'|(\S+))\s*&&', command.strip())
+    m = re.match(r'^cd\s+("([^"]+)"|\'([^\']+)\'|(\S+))\s*(?:&&|;)', command.strip())
     if not m:
         return False
     target = m.group(2) or m.group(3) or m.group(4)
@@ -201,11 +201,10 @@ def detect_cd_cwd_prefix(command):
 
 
 def detect_cd_compound(command):
-    """Return the cd target if the command starts with `cd <dir> && <more>` and
-    the target differs from the current working directory (i.e. it's not the
-    redundant-prefix case already handled by detect_cd_cwd_prefix)."""
+    """Return the cd target if the command starts with `cd <dir> && <more>` or
+    `cd <dir>; <more>` and the target differs from the current working directory."""
     cwd = os.environ.get('CLAUDE_CWD', os.getcwd())
-    m = re.match(r'^cd\s+("([^"]+)"|\'([^\']+)\'|(\S+))\s*&&', command.strip())
+    m = re.match(r'^cd\s+("([^"]+)"|\'([^\']+)\'|(\S+))\s*(?:&&|;)', command.strip())
     if not m:
         return None
     target = m.group(2) or m.group(3) or m.group(4)
@@ -368,10 +367,16 @@ def enforce_bash(command):
 
     cd_target = detect_cd_compound(command)
     if cd_target:
-        return (f'BLOCKED: "cd {cd_target} && <command>" cannot be safely validated because the hook '
-                'cannot resolve relative file paths in the trailing command without knowing the new '
-                'working directory. Split into two separate Bash tool calls: first "cd {cd_target}", '
-                'then the command on its own.')
+        return (f'BLOCKED: "cd {cd_target}" followed by more commands cannot be safely validated because '
+                'the hook cannot resolve relative file paths in the trailing command without knowing the '
+                'new working directory. Use an absolute path in the command directly, or split into '
+                'two separate Bash tool calls: first "cd {cd_target}", then the command on its own.')
+
+    if re.search(r'\bgit\s+-C\b', command):
+        return ('BLOCKED: "git -C <dir>" changes the working directory context, making path validation '
+                'unreliable. Per CLAUDE.md rules, use an absolute path in the git command arguments '
+                'directly, or split into two separate Bash tool calls: first "cd <dir>", then the git '
+                'command on its own.')
 
     assigned = detect_variable_assignment(command)
     if assigned:

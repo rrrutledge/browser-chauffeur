@@ -293,7 +293,7 @@ def is_gh_command_safe(seg):
         return True
     if group == 'auth':
         subs = get_subcommands(seg, skip=2)
-        return bool(subs) and subs[0] in ('status', 'token')
+        return bool(subs) and subs[0] in ('status', 'token', 'switch')
     if group == 'api':
         return _gh_api_safe(tokens)
     if group in GH_TRUSTED_SUBCOMMANDS:
@@ -336,6 +336,7 @@ SUBCOMMAND_SPECS = {
     'pnpm': {'command': 'pnpm', 'trusted': PNPM_TRUSTED_SUBCOMMANDS, 'category': 'PNPM_TRUSTED_SUBCOMMANDS', 'allow_empty': True},
     'bun':      {'command': 'bun',      'trusted': BUN_TRUSTED_SUBCOMMANDS,      'category': 'BUN_TRUSTED_SUBCOMMANDS',      'allow_empty': True},
     'schtasks': {'command': 'schtasks', 'trusted': SCHTASKS_TRUSTED_SUBCOMMANDS, 'category': None},
+    'reg':      {'command': 'reg',      'trusted': {'query'},                     'category': None},
     'gh':   is_gh_command_safe,
     'wmic': is_wmic_safe,
 }

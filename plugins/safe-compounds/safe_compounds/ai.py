@@ -91,7 +91,7 @@ def ask(prompt, max_tokens=10):
         req = _build_request(prompt, max_tokens)
         if req is None:
             return None
-        with urllib.request.urlopen(req, timeout=5) as response:
+        with urllib.request.urlopen(req, timeout=15) as response:
             result = json.loads(response.read().decode('utf-8'))
             return result.get('content', [{}])[0].get('text', '').strip().upper()
     except (urllib.error.URLError, urllib.error.HTTPError,
