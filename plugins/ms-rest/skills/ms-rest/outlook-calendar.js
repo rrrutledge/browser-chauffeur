@@ -12,11 +12,15 @@
 //
 // Usage:
 //   node outlook-calendar.js calendar-view --start <iso> --end <iso>   -> JSON array of events
+//   node outlook-calendar.js calendar-getschedule --schedules a,b --start <iso> --end <iso> [--interval 30]
+//                                                                      -> per-attendee free/busy
 //   node outlook-calendar.js event-get <id>                            -> full event JSON
 //   node outlook-calendar.js event-create --json <path>                -> new event; prints {id, webLink}
+//                                                  (set "isDraft": true in the JSON to stage without sending)
 //   node outlook-calendar.js event-move <id> --date <YYYY-MM-DD>       -> change date, keep time-of-day
 //   node outlook-calendar.js event-set-time <id> --start <iso> --end <iso>  -> reschedule to new times
 //   node outlook-calendar.js event-delete <id>                         -> delete (204/404 = ok)
+//   node outlook-calendar.js token                                     -> print token status (no API call)
 //
 // `event-move` reports {status: "moved" | "boundary-blocked"}; boundary-blocked is the Outlook rule
 // that forbids relocating a recurring occurrence across its own neighbors
@@ -24,7 +28,7 @@
 // JSON goes to stdout; errors go to stderr with a non-zero exit.
 
 const fs = require('fs');
-const { apiCall, enc } = require('./outlook-core');
+const { apiCall, enc, getToken } = require('./outlook-core');
 
 const TZ = 'America/Chicago';
 const PREFER = { Prefer: `outlook.timezone="${TZ}"` };
@@ -65,6 +69,28 @@ async function calendarView(startIso, endIso, select) {
   return out;
 }
 
+// Free/busy for a set of mailboxes via POST /me/calendar/getschedule. Works for self AND other
+// tenant attendees. `schedules` is an array of SMTP addresses; start/end are naive wall-clock strings
+// interpreted in TZ; interval is the AvailabilityView granularity in minutes (default 30).
+// Returns the raw per-schedule array; each entry has:
+//   ScheduleId            — the mailbox address
+//   AvailabilityView      — per-interval string ('0'=Free, '1'=Tentative, '2'=Busy, '3'=OOF, '4'=WorkingElsewhere)
+//   ScheduleItems[]       — {Status, Start, End, Subject?} (subjects hidden for other mailboxes — fine)
+//   WorkingHours          — {StartTime, EndTime, TimeZone:{Name}, DaysOfWeek[]}
+//   Error                 — present (with ResponseCode/Message) when the mailbox can't be resolved
+// An unresolved address comes back with an Error entry — callers use that to validate addresses.
+async function getSchedule(schedules, startNaive, endNaive, interval) {
+  const body = {
+    Schedules: schedules,
+    StartTime: { DateTime: startNaive, TimeZone: TZ },
+    EndTime: { DateTime: endNaive, TimeZone: TZ },
+    AvailabilityViewInterval: interval || 30,
+  };
+  const res = await apiCall('POST', '/me/calendar/getschedule', body, PREFER);
+  if (res.status !== 200) throw new Error(`getschedule HTTP ${res.status}: ${res.body.slice(0, 400)}`);
+  return JSON.parse(res.body).value || [];
+}
+
 // Read a single event by id (also reads a recurring series master via its SeriesMasterId).
 async function eventGet(id, select) {
   const sel = select ? `?$select=${select}` : '';
@@ -76,7 +102,7 @@ async function eventGet(id, select) {
 // Create a calendar event. `spec` is a friendly object; missing fields fall back to Outlook defaults.
 //   { subject, start, end, timeZone?, isAllDay?, body?, bodyType?, location?,
 //     attendees?: [<address> | {address, name, type}], isOnlineMeeting?, reminderMinutesBeforeStart?,
-//     categories? }
+//     categories?, isDraft? }
 // start/end are naive wall-clock strings ("2026-06-18T12:00:00") interpreted in timeZone (default TZ).
 async function eventCreate(spec) {
   if (!spec || !spec.subject) throw new Error('event-create needs a "subject"');
@@ -94,6 +120,12 @@ async function eventCreate(spec) {
   if (spec.isOnlineMeeting) { ev.IsOnlineMeeting = true; ev.OnlineMeetingProvider = 'teamsForBusiness'; }
   if (spec.reminderMinutesBeforeStart !== undefined) ev.ReminderMinutesBeforeStart = spec.reminderMinutesBeforeStart;
   if (spec.categories) ev.Categories = spec.categories;
+  // Draft-only staging: IsDraft:true lands the meeting on the calendar but dispatches NO invitation.
+  // Opened in Outlook web it shows the full meeting editor with the primary button = "Send", so a human
+  // reviews then sends. Teams nuance: with isOnlineMeeting set on a DRAFT, the API read-back reports
+  // IsOnlineMeeting:false / no join URL — expected, not a bug; the OWA editor still shows the Teams toggle
+  // ON and provisions the join link at Send. Don't "fix" the false read-back.
+  if (spec.isDraft) ev.IsDraft = true;
   const res = await apiCall('POST', '/me/events', ev, PREFER);
   if (res.status !== 201 && res.status !== 200) throw new Error(`event-create HTTP ${res.status}: ${res.body.slice(0, 400)}`);
   const m = JSON.parse(res.body);
@@ -137,7 +169,7 @@ async function eventDelete(id) {
   throw new Error(`event-delete HTTP ${res.status}: ${res.body.slice(0, 400)}`);
 }
 
-module.exports = { TZ, calendarView, eventGet, eventCreate, eventMove, eventSetTime, eventDelete };
+module.exports = { TZ, calendarView, getSchedule, eventGet, eventCreate, eventMove, eventSetTime, eventDelete };
 
 // ---- CLI --------------------------------------------------------------------
 if (require.main === module) {
@@ -152,6 +184,16 @@ if (require.main === module) {
       switch (cmd) {
         case 'calendar-view':
           out = await calendarView(flagVal('--start'), flagVal('--end')); break;
+        case 'calendar-getschedule':
+          out = await getSchedule(
+            (flagVal('--schedules') || '').split(',').map(s => s.trim()).filter(Boolean),
+            flagVal('--start'), flagVal('--end'),
+            flagVal('--interval') ? parseInt(flagVal('--interval'), 10) : 30); break;
+        case 'token': {
+          const meta = await getToken(false);
+          out = { status: 'Token OK ✅', expISO: meta.expISO, aud: meta.aud };
+          break;
+        }
         case 'event-get':
           out = await eventGet(pos[0]); break;
         case 'event-create':
@@ -164,8 +206,9 @@ if (require.main === module) {
           out = await eventDelete(pos[0]); break;
         default:
           process.stderr.write('Usage: outlook-calendar.js <calendar-view --start <iso> --end <iso>|'
+            + 'calendar-getschedule --schedules a,b --start <iso> --end <iso> [--interval 30]|'
             + 'event-get <id>|event-create --json <p>|event-move <id> --date <YYYY-MM-DD>|'
-            + 'event-set-time <id> --start <iso> --end <iso>|event-delete <id>>\n');
+            + 'event-set-time <id> --start <iso> --end <iso>|event-delete <id>|token>\n');
           process.exit(1);
       }
       process.stdout.write(JSON.stringify(out, null, 2) + '\n');
