@@ -2,8 +2,9 @@
 //
 // List unread:   node mail.js --list-unread [--top=30]
 //                (inbox unread, newest-first; one block per message with id + webLink)
-// List inbox:    node mail.js --list-inbox [--since-days=7] [--top=50]
-//                (inbox read+unread within a window, newest-first; same block format)
+// List inbox:    node mail.js --list-inbox [--top=50] [--since-days=N] [--json]
+//                (inbox read+unread, newest-first; count-capped by --top, NO time window unless
+//                 --since-days is given; --json emits a structured array for scripts)
 // Search:        node mail.js --search="Griffiths" [--top=10]
 // Show one:      node mail.js --show=<messageId>
 // Draft a reply: node mail.js --reply --message-id=<id> --body-file=reply.html
@@ -50,17 +51,31 @@ async function listUnread(client) {
 }
 
 async function listInbox(client) {
-  const days = parseInt(args['since-days'] || '7', 10);
-  const cutoff = new Date(Date.now() - days * 864e5).toISOString();
-  const data = await client.api('/me/mailFolders/inbox/messages')
-    .filter(`receivedDateTime ge ${cutoff}`)
+  // Count-capped by --top (default 50); newest-first. The keeper drains the whole inbox a
+  // batch at a time across cycles, so by default there is NO time window — pass --since-days=N
+  // to restrict to the last N days when you want one.
+  let req = client.api('/me/mailFolders/inbox/messages')
     .orderby('receivedDateTime desc')
     .top(parseInt(args.top || '50', 10))
-    .select('id,conversationId,subject,from,toRecipients,receivedDateTime,bodyPreview,webLink,isRead')
-    .get();
+    .select('id,conversationId,subject,from,toRecipients,receivedDateTime,bodyPreview,webLink,isRead');
+  if (args['since-days']) {
+    const days = parseInt(args['since-days'], 10);
+    req = req.filter(`receivedDateTime ge ${new Date(Date.now() - days * 864e5).toISOString()}`);
+  }
+  const data = await req.get();
   const msgs = data.value || [];
-  if (!msgs.length) { console.log('No inbox messages in window.'); return; }
-  console.log(`${msgs.length} inbox message(s) in last ${days}d, newest first:`);
+  if (args.json) {
+    console.log(JSON.stringify(msgs.map(m => ({
+      id: m.id, conversationId: m.conversationId, subject: m.subject,
+      from: addr(m.from), fromAddress: m.from?.emailAddress?.address || '',
+      received: m.receivedDateTime, isRead: m.isRead, webLink: m.webLink,
+      preview: (m.bodyPreview || '').replace(/\s+/g, ' ').slice(0, 300),
+    })), null, 2));
+    return;
+  }
+  const scope = args['since-days'] ? `in last ${args['since-days']}d` : `(newest ${msgs.length})`;
+  if (!msgs.length) { console.log('No inbox messages.'); return; }
+  console.log(`${msgs.length} inbox message(s) ${scope}, newest first:`);
   for (const m of msgs) {
     console.log(`\n--- ${m.receivedDateTime?.slice(0, 16)}  |  ${m.isRead ? 'read ' : 'UNREAD'} | ${m.subject}`);
     console.log(`    from: ${addr(m.from)}`);
