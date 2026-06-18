@@ -182,28 +182,32 @@ def load_providers(cfg):
 # ---------------------------------------------------------------------------- triage (the AI step)
 
 TRIAGE_INSTRUCTIONS = (
-    "You are the drainer poller's triage step. Use the installed `drainer` skill's `engine/triage.md` "
-    "rubric (the three buckets needs-you / fyi / junk, the personal-message and container rules, and "
-    "the tie-breakers) together with the world-knowledge below. For EACH item decide its bucket; for "
-    "needs-you also give kind = reply | work | work-then-reply (else null). Return ONLY a JSON array, "
-    'one object per input id: [{"id": "...", "bucket": "needs-you|fyi|junk", '
-    '"kind": "reply|work|work-then-reply|null", "reason": "<short>"}] — no prose, no code fence.'
+    "You are the drainer poller's triage step. Classify each item per the rubric below, applied with "
+    "the world-knowledge below. For EACH item decide its bucket; for needs-you also give "
+    "kind = reply | work | work-then-reply (else null). Return ONLY a JSON array, one object per input "
+    'id: [{"id": "...", "bucket": "needs-you|fyi|junk", "kind": "reply|work|work-then-reply|null", '
+    '"reason": "<short>"}] — no prose, no code fence.'
 )
+
+
+def _read(path):
+    try:
+        with open(path, encoding="utf-8") as f:
+            return f.read()
+    except OSError:
+        return ""
 
 
 def triage(items, repo, local_dir):
     claude = shutil.which("claude") or "claude"
-    context = ""
-    try:
-        with open(os.path.join(local_dir, "context.md"), encoding="utf-8") as f:
-            context = f.read()
-    except OSError:
-        pass
+    rubric = _read(os.path.join(SCRIPT_DIR, "..", "engine", "triage.md"))  # embed -> self-contained
+    context = _read(os.path.join(local_dir, "context.md"))
     payload = [{"id": it["_id"], "source": it["_source"], "from": it.get("from"),
                 "subject": it.get("subject"), "received": it.get("received"),
                 "isRead": it.get("isRead"), "preview": it.get("preview")} for it in items]
     prompt = (
-        f"{TRIAGE_INSTRUCTIONS}\n\n## World-knowledge (drainer context.md)\n{context}\n\n"
+        f"{TRIAGE_INSTRUCTIONS}\n\n## Rubric (engine/triage.md)\n{rubric}\n\n"
+        f"## World-knowledge (drainer context.md)\n{context}\n\n"
         f"## New items to triage (JSON)\n{json.dumps(payload, indent=2)}\n"
     )
     res = subprocess.run(
