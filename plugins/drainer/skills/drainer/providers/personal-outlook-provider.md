@@ -23,10 +23,12 @@ signed in. If it errors with "Not signed in" or an auth error, do the `ms-graph`
 (`node scripts/auth.js` via browser-chauffeur), then retry — never surface the token error to the user.
 
 ## ENUMERATE
-`node mail.js --list-unread --top=30` — inbox unread, newest-first. Each block gives the received time,
-subject, sender, the Graph **message id**, the **deep link** (`webLink`), and a preview line — enough
-to triage from the block alone. Consider all returned unread messages (an already-read mail isn't
-listed; clear unread by handling or deleting). Build a stable id:
+`node mail.js --list-inbox --since-days=<inbox_window_days, default 7>` — inbox **read + unread** within
+the window, newest-first. Each block gives the received time, a `read`/`UNREAD` marker, subject, sender,
+the Graph **message id**, the **deep link** (`webLink`), and a preview line — enough to triage from the
+block alone. Triage every returned message regardless of read state (the goal is an empty inbox, not just
+zero-unread); de-duplication against already-processed items is the **poller's** job via seen-state, not
+this provider's. Build a stable id:
 `poutlook-<YYYYMMDD-HHMM of received>-<sender-slug>-<first-3-subject-words-slug>` (lowercase,
 non-alphanumerics → single dashes; ≤48 chars). Triage from the block; if a block is genuinely
 undecidable, `node mail.js --show=<messageId>` that ONE message to disambiguate.
