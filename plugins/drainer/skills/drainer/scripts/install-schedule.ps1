@@ -36,7 +36,12 @@ $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) `
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
     -StartWhenAvailable -MultipleInstances IgnoreNew
 
+# Run in the logged-on interactive desktop session — required so the spawned worker tabs (wt.exe
+# new-tab) actually appear on screen and so presence detection reads the real user's idle time.
+$principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType Interactive -RunLevel Limited
+
 Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings `
+    -Principal $principal `
     -Description "Drainer continuous keeper — one presence-gated poller cycle every $IntervalMinutes min." `
     -Force | Out-Null
 
