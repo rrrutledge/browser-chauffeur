@@ -6,6 +6,15 @@ are safe.
 
 ---
 
+## Contributing
+
+**Every change to a plugin requires a version bump in that plugin's `.claude-plugin/plugin.json`.**
+Whenever you modify any file under `plugins/<name>/`, increment the `version` field of that
+plugin (patch for fixes, minor for features) in the same PR. Claude Code keys plugin updates
+off this version, so a change that ships without a bump won't roll out to installed copies.
+
+---
+
 ## safe-compounds — How It Works
 
 ### Core philosophy
