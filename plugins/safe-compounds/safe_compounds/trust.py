@@ -29,7 +29,7 @@ TRUSTED_COMMANDS = {
     'kill', 'kubectl',
     'less', 'locale', 'logname', 'look', 'ls', 'lsof',
     'md5sum', 'mkdir', 'more',
-    'nc', 'netstat', 'nl', 'node', 'npm', 'nproc', 'npx', 'numfmt', 'nvm',
+    'nc', 'netstat', 'nl', 'npm', 'nproc', 'npx', 'numfmt', 'nvm',
     'od',
     'pandoc', 'paste', 'perl', 'pg_isready', 'pip', 'pnpm', 'printenv', 'ps', 'psql', 'pwd',
     'Read', 'readlink', 'realpath', 'rev', 'rm', 'rmdir',
