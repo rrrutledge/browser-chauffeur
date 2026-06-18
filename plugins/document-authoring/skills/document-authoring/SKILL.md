@@ -77,7 +77,7 @@ If the message is a single clear sentence ending in a question, that is usually 
 
 - No corporate/AI filler: "I hope this message finds you well", "I wanted to reach out", "Please don't hesitate to", "As per", "Kindly", "Furthermore", "Moreover", "delve", "leverage" (as a verb), "streamline", "I'm excited to share"
 - No "It's not just X, it's Y" constructions, no rule-of-three flourishes, no breathless enthusiasm
-- **Skip colorful idioms and figurative flourishes — say it plainly.** Russell swaps vivid metaphors and set-phrase idioms for literal phrasing; the warmth stays, the ornament goes. Real edits (a warm LinkedIn reply): "you've caught me mid-whirlwind" → "This year I've been heads-down…"; "I'd love for you to throw your hat in — I'll send you the CFP the moment it's live" → "I will send you the CFP for sure"; "whether in KC or somewhere on the conference circuit" → "one way or other, sounds like 👍" (a casual emoji is welcome in a personal DM where a flourish was cut).
+- **Skip vivid metaphors and set-phrase idioms — say it plainly.** Russell swaps figurative phrasing for literal; the warmth stays, the ornament goes. Real edits (a warm LinkedIn reply): "you've caught me mid-whirlwind" → "This year I've been heads-down…"; "throw your hat in — I'll send you the CFP the moment it's live" → "I will send you the CFP for sure"; "somewhere on the conference circuit" → "one way or other, sounds like 👍" (a casual emoji is welcome in a personal DM where a flourish was cut).
 - No bare URLs — always anchor links (see the Links rule above)
 - Don't over-format short messages. A quick reply is one or two plain sentences, not a structured block.
 - Don't be effusive or salesy. Russell is warm but understated.
