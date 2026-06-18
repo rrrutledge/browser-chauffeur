@@ -74,8 +74,18 @@ worst-case failure is *redundant work*, never a *dropped item*:
    1. **Presence-gate** — away/locked → exit cheaply, no work, no window.
    2. Read `.claude/drainer.local.md` (enabled providers, cadence, presence) + `context.md`.
    3. For each enabled provider: `AUTH-GLANCE` → `ENUMERATE` candidate items → drop any in
-      seen-state → triage the rest → **dispatch** (spawn worker tab for needs-you; capture
-      to digest-queue for fyi/junk) → record seen-id after each successful dispatch.
+      seen-state → triage the rest → **dispatch** → record seen-id after each successful
+      dispatch:
+      - **needs-you** → spawn a worker tab, **up to a concurrent-tab cap**
+        (`max_open_tabs`, default 3) counting needs-you items that are dispatched-but-not-
+        yet-cleared. At the cap, leave the item **unrecorded** so a later cycle picks it up
+        once an open tab finishes. This throttles a backlog or a burst (e.g. 5 mails in one
+        cycle → 3 tabs now, 2 next time) instead of flooding, and unrecorded = retried
+        (fail-safe).
+      - **fyi / junk** → capture to the digest-queue.
+   - **Dry-run mode** (`--dry-run`): triage everything and print a report (counts +
+     per-item call) but spawn no tabs, queue nothing, clear nothing. Used for the first
+     backlog pass and for debugging triage before any tab opens.
 
    No overlap lock: if a long cycle overlaps the next, the worst case is a duplicate tab
    that resolves quietly (fail-safe + idempotent workers cover it), so the machinery isn't
@@ -144,8 +154,15 @@ spec → plan → build cycle.
   read+unread, `DRAFT-MODE` prefer-reply, and the "always reply to an existing thread over
   a fresh compose" preference saved in the `message-draft` skill.
 - **Stage 1:** the continuous Outlook keeper — poller + seen-state + worker-tab spawn,
-  presence-gated. Acceptance: it holds the Outlook inbox at zero un-started
-  actionable items hands-free, fail-safe, draft-only.
+  presence-gated, with the `max_open_tabs` concurrent cap (default 3) and a `--dry-run`
+  report mode. Acceptance: it holds the Outlook inbox at zero un-started actionable items
+  hands-free, fail-safe, draft-only.
+  **Tryout ramp** (how Stage 1 is validated against the real backlog): (1) **dry-run** one
+  cycle over the whole backlog → review the triage report, tune `context.md`/rubric; (2)
+  **live, capped** manual runs → walk a few worker tabs end-to-end (cap keeps it to ≤3 at a
+  time); (3) **schedule** the every-5-min task once the manual runs are trusted — it drains
+  the rest a few per cycle, then maintains zero. Build + the first dry-run happen in the
+  same session.
 - **Stage 2:** EOD digest tab — fyi summaries + junk source-stop proposals + the
   reconciliation sweep.
 - **Stage 3:** one-time backlog sweep of existing read mail → inbox truly empty.
