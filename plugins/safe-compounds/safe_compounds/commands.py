@@ -170,7 +170,7 @@ GIT_TRUSTED_SUBCOMMANDS = {
 }
 
 GIT_CONDITIONAL_SUBCOMMANDS = {
-    'push':   {'--force', '-f', '--force-with-lease', '--delete'},
+    'push':   {'--force', '-f', '--delete'},
     'branch': {'-D', '-d', '--delete', '--force'},
     'tag':    {'-d', '--delete'},
     'reset':  {'--hard'},
