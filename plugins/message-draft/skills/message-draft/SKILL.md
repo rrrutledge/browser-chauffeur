@@ -10,8 +10,8 @@ Stage a **draft** and stop — a human reviews and sends. Pick a mode:
 - **`teams`** — a 1:1 or group Teams chat, staged in the web composer (you drive **browser-chauffeur**,
   never Playwright directly).
 - **`outlook`** — a work-email reply or new email, created as an Outlook **draft** via the **`ms-rest`**
-  skill's REST API (no browser composer). `ms-rest` is the WORK-account Outlook skill in the
-  russ-ai-pod repo; don't confuse it with the personal `ms-graph` skill.
+  skill's REST API (no browser composer). `ms-rest` is the WORK-account Outlook plugin; don't
+  confuse it with the personal `ms-graph` skill.
 - **`slack`** — future; not implemented.
 
 **Voice:** Before composing any message, invoke the **`document-authoring`** skill to write the
@@ -91,7 +91,7 @@ Two shapes:
 - **Reply** to an existing message — needs that message's Outlook REST `id`.
 - **New email** — needs subject + recipients.
 
-Run `ms-rest` from the russ-ai-pod repo root: `node .claude/skills/ms-rest/outlook-mail.js <verb>`.
+Run from the repo root: `node .claude/skills/ms-rest/outlook-mail.js <verb>`.
 
 1. **Auth-glance.** `node .claude/skills/ms-rest/outlook-mail.js token`. `Token OK ✅` → ready. If it
    reports no token, follow `ms-rest` AUTH-GLANCE (sign in to Outlook web in the CDP browser once),

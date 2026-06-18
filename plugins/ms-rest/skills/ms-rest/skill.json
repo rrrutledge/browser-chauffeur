@@ -1,0 +1,5 @@
+{
+  "name": "ms-rest",
+  "description": "Read, delete, and compose Outlook mail for Russell's WORK account via the Outlook REST API — no browser needed after a one-time sign-in (token sniffed from the live Outlook web session). Use to enumerate/search the work inbox, read a message, delete mail, or draft a work email or reply (lands un-sent in Drafts; never sends without explicit OK). For the PERSONAL Microsoft account use `ms-graph` instead.",
+  "triggers": ["/ms-rest"]
+}

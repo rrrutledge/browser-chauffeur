@@ -7,9 +7,9 @@ description: Read/write a personal Microsoft account's Outlook mail and calendar
 
 **Personal vs work — pick the right skill.** This `ms-graph` skill is Russell's **personal**
 Microsoft account (consumer Outlook.com) via MSAL + Graph SDK. For the **work** mailbox use the
-**`ms-rest`** skill (Outlook REST API, session-token sniff) in the russ-ai-pod repo — a corporate
-MSAL app registration is ruled out there, so it rides the live Outlook-web token instead. Different
-auth path, different mailbox.
+**`ms-rest`** plugin (Outlook REST API, session-token sniff) — a corporate MSAL app registration is
+ruled out there, so it rides the live Outlook-web token instead. Different auth path, different
+mailbox.
 
 Read and write a **personal** Outlook.com mailbox and calendar directly through the Microsoft Graph REST API, no browser automation. Built on Microsoft's own libraries:
 
