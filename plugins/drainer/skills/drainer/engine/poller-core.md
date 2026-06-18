@@ -49,9 +49,10 @@ action, including any held at the cap), with no spawns, no queueing, no records,
 - Workers are idempotent: a duplicate tab's situational-check resolves quietly. No overlap lock.
 
 ## Provider-agnostic orchestration
-`run-poller.py` reads which providers are enabled from `drainer.local.md` and drives each through a
-small **adapter** exposing `enumerate` / `stable_id` / `capture`. All source-specific mechanics — for
-personal-outlook, `mail.js` and the Graph id scheme — live inside that adapter; the loop (drop-seen,
-cap, triage, dispatch, record) never names a source or a tool. A provider listed in config but without
-an adapter is skipped with a note. New sources (Gmail, Trello, …) plug in by adding an adapter; the
-triage rubric, seen-state, cap, and worker flow are unchanged.
+`run-poller.py` reads which providers are enabled from `drainer.local.md` and **dynamically loads each
+one's adapter** from `providers/<name>-adapter.py` (beside its prose `providers/<name>-provider.md`).
+An adapter implements `provider_base.ProviderBase` — `enumerate` / `stable_id` / `capture` — and is the
+only place a source's mechanics live (for personal-outlook: `mail.js`, the Graph id scheme, the captured
+item shape). The poller's loop (drop-seen, cap, triage, dispatch, record) holds no source or tool name;
+a provider enabled in config without an adapter file is skipped with a note. New sources (Gmail, Trello,
+…) plug in by adding an adapter; the triage rubric, seen-state, cap, and worker flow are unchanged.

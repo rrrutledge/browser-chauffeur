@@ -18,35 +18,27 @@ Usage:
     python run-poller.py --repo C:/Users/russe/Dev/personal-ai-pod --dry-run  # triage report only
 """
 import argparse
+import importlib.util
 import json
 import os
 import re
 import shutil
 import subprocess
 import sys
-from datetime import datetime, timezone
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROVIDERS_DIR = os.path.join(SCRIPT_DIR, "..", "providers")
 sys.path.insert(0, SCRIPT_DIR)
 import presence  # noqa: E402  (sibling module)
+from provider_base import run_node  # noqa: E402  (shared subprocess helper)
 
 SEEN_STATE = os.path.join(SCRIPT_DIR, "seen-state.js")
 
 
 # ---------------------------------------------------------------------------- generic helpers
 
-def run_node(args, **kw):
-    return subprocess.run(["node", *args], capture_output=True, text=True,
-                          encoding="utf-8", errors="replace", **kw)
-
-
 def seen_state(*cli_args):
     return run_node([SEEN_STATE, *cli_args])
-
-
-def slug(s, maxlen=18):
-    s = re.sub(r"[^a-z0-9]+", "-", (s or "").lower()).strip("-")
-    return s[:maxlen].strip("-")
 
 
 def load_seen(runtime_dir, source):
@@ -110,72 +102,22 @@ def parse_provider_names(text):
 
 # ---------------------------------------------------------------------------- provider adapters
 
-class PersonalOutlookProvider:
-    """personal-outlook mechanics — the only place mail.js / the Graph id scheme appears."""
-    name = "personal-outlook"
-
-    def __init__(self):
-        self.mailjs = self._find_mail_js()
-
-    @staticmethod
-    def _find_mail_js():
-        d = SCRIPT_DIR
-        while d and os.path.basename(d) != "plugins":
-            parent = os.path.dirname(d)
-            if parent == d:
-                d = None
-                break
-            d = parent
-        if d:
-            cand = os.path.join(d, "ms-graph", "skills", "ms-graph", "scripts", "mail.js")
-            if os.path.exists(cand):
-                return cand
-        raise SystemExit("Could not locate ms-graph mail.js for personal-outlook.")
-
-    def enumerate(self, limit):
-        res = run_node([self.mailjs, "--list-inbox", "--json", f"--top={limit}"])
-        if res.returncode != 0:
-            raise SystemExit(f"personal-outlook enumerate failed (auth?): {res.stderr.strip()[:300]}")
-        return json.loads(res.stdout or "[]")
-
-    def stable_id(self, item):
-        recv = (item.get("received") or "")[:16].replace("-", "").replace("T", "-").replace(":", "")[:13]
-        sender = slug((item.get("fromAddress") or item.get("from") or "").split("@")[0])
-        subj3 = slug("-".join((item.get("subject") or "").split()[:3]))
-        return f"personal-outlook-{recv}-{sender}-{subj3}".strip("-")[:64]
-
-    def capture(self, item, iid, runtime_dir):
-        items_dir = os.path.join(runtime_dir, "items")
-        os.makedirs(items_dir, exist_ok=True)
-        email_file = os.path.join(items_dir, f"{iid}.email.md")
-        show = run_node([self.mailjs, f"--show={item['id']}"])
-        body = show.stdout if show.returncode == 0 else "(could not load body)"
-        with open(email_file, "w", encoding="utf-8") as f:
-            f.write(f"# {item.get('subject')}\n\nFrom: {item.get('from')}\nReceived: {item.get('received')}\n"
-                    f"Link: {item.get('webLink')}\nMessageId: {item['id']}\n\n---\n\n{body}\n")
-        record = {
-            "id": iid, "source": self.name, "triage": item["_bucket"], "kind": item.get("_kind"),
-            "from": item.get("from"), "subject": item.get("subject"), "received": item.get("received"),
-            "snippet": item.get("preview"), "url": item.get("webLink"), "messageId": item["id"],
-            "emailFile": email_file, "ts": datetime.now(timezone.utc).isoformat(),
-        }
-        json_file = os.path.join(items_dir, f"{iid}.json")
-        with open(json_file, "w", encoding="utf-8") as f:
-            json.dump(record, f, indent=2)
-        return json_file
-
-
-ADAPTERS = {PersonalOutlookProvider.name: PersonalOutlookProvider}
-
-
 def load_providers(cfg):
-    """Instantiate an adapter for each enabled provider we have code for; note the rest."""
+    """Dynamically load each enabled provider's adapter from providers/<name>-adapter.py.
+
+    The poller holds no provider mechanics; an adapter lives beside its prose provider doc and
+    implements provider_base.ProviderBase. A provider enabled in config without an adapter is skipped.
+    """
     providers = []
     for name in cfg["providers"]:
-        if name in ADAPTERS:
-            providers.append(ADAPTERS[name]())
-        else:
-            print(f"(skipping provider '{name}': no poller adapter yet)")
+        path = os.path.join(PROVIDERS_DIR, f"{name}-adapter.py")
+        if not os.path.exists(path):
+            print(f"(skipping provider '{name}': no poller adapter at providers/{name}-adapter.py)")
+            continue
+        spec = importlib.util.spec_from_file_location(f"{name.replace('-', '_')}_adapter", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        providers.append(mod.Provider())
     return providers
 
 
@@ -211,8 +153,9 @@ def triage(items, repo, local_dir):
         f"## New items to triage (JSON)\n{json.dumps(payload, indent=2)}\n"
     )
     res = subprocess.run(
-        [claude, "-p", "--output-format", "json",
-         "--permission-mode", "bypassPermissions", "--setting-sources", ""],
+        # Triage is pure text-in / JSON-out (rubric + context are embedded below), so it needs no
+        # tools and no elevated permissions; --setting-sources "" keeps the call lightweight.
+        [claude, "-p", "--output-format", "json", "--setting-sources", ""],
         input=prompt,  # prompt goes on stdin (too long for an argv on Windows)
         capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=repo, timeout=420,
     )
