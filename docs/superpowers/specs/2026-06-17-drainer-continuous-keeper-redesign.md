@@ -72,18 +72,14 @@ worst-case failure is *redundant work*, never a *dropped item*:
 
 1. **Poller (fast loop).** Headless Claude on a ~5-minute cron. Each cycle:
    1. **Presence-gate** — away/locked → exit cheaply, no work, no window.
-   2. **Acquire overlap-lock** (*optional optimization*). It prevents a cycle that runs
-      longer than the interval from overlapping the next one and double-spawning tabs /
-      stacking pollers. It is **not** load-bearing for correctness — the fail-safe +
-      idempotent-worker design already makes a duplicate dispatch resolve quietly — so it
-      can be dropped for simplicity, accepting the rare duplicate tab. If kept, give it a
-      stale-TTL so a crashed poller can't wedge the loop forever (a lock older than N
-      minutes is treated as stale and broken).
-   3. Read `.claude/drainer.local.md` (enabled providers, cadence, presence) + `context.md`.
-   4. For each enabled provider: `AUTH-GLANCE` → `ENUMERATE` candidate items → drop any in
+   2. Read `.claude/drainer.local.md` (enabled providers, cadence, presence) + `context.md`.
+   3. For each enabled provider: `AUTH-GLANCE` → `ENUMERATE` candidate items → drop any in
       seen-state → triage the rest → **dispatch** (spawn worker tab for needs-you; capture
       to digest-queue for fyi/junk) → record seen-id after each successful dispatch.
-   5. Release the lock.
+
+   No overlap lock: if a long cycle overlaps the next, the worst case is a duplicate tab
+   that resolves quietly (fail-safe + idempotent workers cover it), so the machinery isn't
+   worth it.
 
 2. **Seen-state store** (in `runtime_dir`). Two parts: the processed message-ids per
    source, and the **pending-digest queue** (captured fyi/junk items awaiting the EOD
@@ -105,9 +101,9 @@ worst-case failure is *redundant work*, never a *dropped item*:
 ## Data flow
 
 **Fast cycle:**
-`cron → poller → presence? → lock → per provider: enumerate → minus seen-ids → triage each
-new → { needs-you: capture + spawn worker tab + record seen-id ; fyi/junk: capture to
-digest-queue + record seen-id } → unlock → exit (no window if nothing actionable)`
+`cron → poller → presence? → per provider: enumerate → minus seen-ids → triage each new →
+{ needs-you: capture + spawn worker tab + record seen-id ; fyi/junk: capture to
+digest-queue + record seen-id } → exit (no window if nothing actionable)`
 
 **End of day:**
 `cron → digest tab → read digest-queue → summarize fyi, group junk + propose source-stops →
@@ -116,9 +112,8 @@ Russell reviews → on OK: provider CLEAR each + empty queue → reconciliation 
 ## Error handling & edge cases
 
 - **Presence away/locked** → cheap no-op, no window, no noise.
-- **Overlap lock (optional)** → if kept, a stale-TTL means a crashed prior cycle can't
-  wedge the loop (a stale lock is broken after N minutes). If dropped, a rare overlap just
-  produces a duplicate tab that resolves quietly — correctness is unaffected.
+- **Overlapping cycles** (a slow cycle running into the next) → tolerated, no lock. The
+  second cycle may dispatch a duplicate tab, which the situational-check resolves quietly.
 - **Provider auth failure** (`AUTH-GLANCE` fails) → surface one sign-in tab for that
   source, skip it this cycle (record no seen-ids for it), keep processing other sources.
 - **Duplicate dispatch** (seen-state lost) → the second tab's situational-check sees it's
