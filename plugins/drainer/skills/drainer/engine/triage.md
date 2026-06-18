@@ -19,23 +19,30 @@ Volume is irrelevant; actionability is in the content, not the count.
   ticket, a lookup, a system update…), a decision, a check, or delegating it to the team — or BOTH
   (often: do the work, then reply about the outcome). This is ONE bucket on purpose; don't try to
   decide reply-vs-work here. Record a hint: **"reply" / "work" / "work-then-reply"**.
-- **fyi** — informational; the user may want to know but nothing is asked of them (a report, a
-  heads-up, a decision someone else made).
+  A **personal, individually-written** message that shares something personal — a one-to-one note, a
+  personal update from a friend or contact, not a corporate/automated/mass announcement — is
+  **needs-you (reply)** even when it asks nothing explicitly: replying at a human level *is* the action.
+  The personal tone is the signal; the warmth of what they shared is the reason to write back.
+- **fyi** — **impersonal** information: the user may want to know but nothing is asked and no human reply
+  is owed (a report, an automated heads-up, a decision someone else made, a mass/corporate announcement).
 - **junk** — no information value AND no action: automated noise, newsletters, pure marketing,
-  CI/build notifications, duplicate status churn, chatter not aimed at the user. Every junk item is a
-  signal to stop it at the source — propose the source's filter/rule so it stops arriving and future
-  runs spend tokens and attention only on what matters.
+  CI/build notifications, duplicate status churn, chatter not aimed at the user. Junk is also a signal
+  to stop it arriving again; *how* to stop it is provider mechanics — each provider's **JUNK-LEARNING**
+  section owns the remediation (unsubscribe → source-app notification settings → inbox rule, in that
+  order). Triage only labels it junk.
 
-## Containers that hold action items
-Some messages are not themselves actionable but point to content that may contain action items — e.g.
-a Teams meeting recording notification links to AI-generated meeting notes with action items assigned
-to specific people. Don't classify the notification itself; **open the linked content and classify
-based on what's inside.** If there are action items assigned to Russell, each one is a separate
-needs-you item (capture them individually, not as one bundle). If the AI notes exist but have no
-action items for Russell, it's fyi. If there are no AI notes at all, the recording notification
-itself is fyi.
+## Containers that point to action items
+Some messages are not themselves the content — they POINT to it: a Teams meeting-recording notice links
+to AI meeting notes with action items; a LinkedIn/Facebook "X just messaged you" points to a DM on
+another service. **Triage classifies from what's in front of it — it does NOT go open the linked
+content** (that lookup is the worker's job, and the batched triage step has no browser anyway). When a
+container plausibly holds something for Russell, bucket it **needs-you**, with the action being *open
+the linked content, see what's there, and act* — the worker then does the lookup (extract each assigned
+action item and capture it separately, read and answer the DM, …). Only when the notification itself
+plainly carries the whole story and asks nothing (e.g. a recording notice with no notes) is it **fyi**.
 
 ## Tie-breakers
 - Unsure between **needs-you** and **fyi** → **needs-you** (prefer acting).
 - Unsure between **fyi** and **junk** → **fyi** (prefer keeping eyes on it).
-- Reserve **needs-you** for genuine asks directed at Russell; bias toward **fyi** otherwise.
+- Reserve **needs-you** for genuine asks directed at Russell **or personal messages owed a human
+  reply**; bias toward **fyi** for impersonal/automated information.

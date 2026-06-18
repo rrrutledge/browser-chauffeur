@@ -8,9 +8,13 @@ instructions: |-
   decide the ACTION (reply / do work / nudge / stop / nothing) → DO the doable part now (safe,
   reversible work proceeds; irreversible/outbound-to-others waits for the user's OK) → draft any reply
   in the user's voice **draft-only, never sent** → clear the item. Outlook / Teams / outreach are the
-  **same loop over different sources**. The goal is to stay at zero: harvest every source on one
-  interval (set for the fastest-arriving source); cheap sources like Trello ride along and surface
-  cards only when due.
+  **same loop over different sources**.
+
+  It runs as a **continuous keeper**: a presence-gated poller (`scripts/run-poller.py`) runs a short
+  cycle every few minutes and holds each source at **zero un-started actionable items** — needs-you
+  items immediately open a worker tab (up to `max_open_tabs`), fyi/junk queue for a once-a-day digest,
+  and the poller itself never clears. The loop is code; AI is used only to **triage** each cycle's new
+  items and to run each **worker**.
 
   ### 1. Load per-machine settings FIRST
   Read **`.claude/drainer.local.md`** in the current project (YAML frontmatter): which `providers` are
@@ -32,9 +36,10 @@ instructions: |-
   ### 3. Follow the engine specs (bundled next to this SKILL.md)
   Canonical and source-agnostic — don't restate them:
   - **`engine/triage.md`** — the one rubric: needs-you / fyi / junk (only three; junk → propose a
-    filter so it stops arriving).
-  - **`engine/driver-core.md`** — the loop (enumerate → triage → workers for needs-you under a WIP
-    limit → digest the fyi/junk). Drain to zero, polled as often as new work appears.
+    source-stop in priority order: unsubscribe, then app notification settings, then an inbox rule).
+  - **`engine/poller-core.md`** — the continuous keeper's contract: what `scripts/run-poller.py` does
+    each cycle (presence → enumerate → triage → dispatch, never clear; `--dry-run` for a report) and
+    where AI is used (batched triage + the worker).
   - **`engine/worker-core.md`** — the per-item worker procedure (read brain → situational-check → do
     the work → draft in voice → learn from the send → advance the item).
   - **`engine/provider.md`** — the interface a provider implements.

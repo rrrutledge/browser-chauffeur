@@ -2,8 +2,9 @@
 //
 // List unread:   node mail.js --list-unread [--top=30]
 //                (inbox unread, newest-first; one block per message with id + webLink)
-// List inbox:    node mail.js --list-inbox [--since-days=7] [--top=50]
-//                (inbox read+unread within a window, newest-first; same block format)
+// List inbox:    node mail.js --list-inbox [--top=50] [--json]
+//                (inbox read+unread, newest-first; count-capped by --top; --json emits a
+//                 structured array for scripts)
 // List drafts:   node mail.js --list-drafts [--top=30]
 //                (drafts folder, most-recently-edited first; same block format with id)
 // Search:        node mail.js --search="Griffiths" [--top=10]
@@ -52,17 +53,25 @@ async function listUnread(client) {
 }
 
 async function listInbox(client) {
-  const days = parseInt(args['since-days'] || '7', 10);
-  const cutoff = new Date(Date.now() - days * 864e5).toISOString();
+  // Count-capped by --top (default 50); newest-first, no time window — the keeper drains the
+  // whole inbox a batch at a time across cycles.
   const data = await client.api('/me/mailFolders/inbox/messages')
-    .filter(`receivedDateTime ge ${cutoff}`)
     .orderby('receivedDateTime desc')
     .top(parseInt(args.top || '50', 10))
     .select('id,conversationId,subject,from,toRecipients,receivedDateTime,bodyPreview,webLink,isRead')
     .get();
   const msgs = data.value || [];
-  if (!msgs.length) { console.log('No inbox messages in window.'); return; }
-  console.log(`${msgs.length} inbox message(s) in last ${days}d, newest first:`);
+  if (args.json) {
+    console.log(JSON.stringify(msgs.map(m => ({
+      id: m.id, conversationId: m.conversationId, subject: m.subject,
+      from: addr(m.from), fromAddress: m.from?.emailAddress?.address || '',
+      received: m.receivedDateTime, isRead: m.isRead, webLink: m.webLink,
+      preview: (m.bodyPreview || '').replace(/\s+/g, ' ').slice(0, 300),
+    })), null, 2));
+    return;
+  }
+  if (!msgs.length) { console.log('No inbox messages.'); return; }
+  console.log(`${msgs.length} inbox message(s) (newest first):`);
   for (const m of msgs) {
     console.log(`\n--- ${m.receivedDateTime?.slice(0, 16)}  |  ${m.isRead ? 'read ' : 'UNREAD'} | ${m.subject}`);
     console.log(`    from: ${addr(m.from)}`);
