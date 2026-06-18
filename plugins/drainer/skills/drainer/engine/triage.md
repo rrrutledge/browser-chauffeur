@@ -26,30 +26,20 @@ Volume is irrelevant; actionability is in the content, not the count.
 - **fyi** — **impersonal** information: the user may want to know but nothing is asked and no human reply
   is owed (a report, an automated heads-up, a decision someone else made, a mass/corporate announcement).
 - **junk** — no information value AND no action: automated noise, newsletters, pure marketing,
-  CI/build notifications, duplicate status churn, chatter not aimed at the user. Every junk item is a
-  signal to stop it arriving, in this **priority order** (best outcome = never received again):
-  1. **Unsubscribe** — if the email carries an unsubscribe link, propose using it.
-  2. **Turn it off at the source app** — if there's no unsubscribe but the sender is an app whose
-     notifications you control (GitHub notification settings, LinkedIn email preferences, …), propose
-     adjusting those settings so the email is never sent.
-  3. **Inbox rule** — only when neither of the above applies, fall back to the source's filter/rule
-     (e.g. an Outlook.com rule) to file or delete it on arrival.
-  Always propose; never unsubscribe, change app settings, or add a rule without the user's OK.
+  CI/build notifications, duplicate status churn, chatter not aimed at the user. Junk is also a signal
+  to stop it arriving again; *how* to stop it is provider mechanics — each provider's **JUNK-LEARNING**
+  section owns the remediation (unsubscribe → source-app notification settings → inbox rule, in that
+  order). Triage only labels it junk.
 
-## Containers that hold action items
-Some messages are not themselves actionable but point to content that may contain action items — e.g.
-a Teams meeting recording notification links to AI-generated meeting notes with action items assigned
-to specific people. Don't classify the notification itself; **open the linked content and classify
-based on what's inside.** If there are action items assigned to Russell, each one is a separate
-needs-you item (capture them individually, not as one bundle). If the AI notes exist but have no
-action items for Russell, it's fyi. If there are no AI notes at all, the recording notification
-itself is fyi.
-
-A **message-notification email** is the same shape: e.g. LinkedIn/Facebook "X just messaged you" or a
-forum "you have a reply" is only a pointer to a message living on another service. The notification
-carries too little to classify — **open the underlying message and classify by its content.** If no
-provider yet reaches that service, treat the notification as **needs-you**: the action is to open that
-service, read the message, and respond there.
+## Containers that point to action items
+Some messages are not themselves the content — they POINT to it: a Teams meeting-recording notice links
+to AI meeting notes with action items; a LinkedIn/Facebook "X just messaged you" points to a DM on
+another service. **Triage classifies from what's in front of it — it does NOT go open the linked
+content** (that lookup is the worker's job, and the batched triage step has no browser anyway). When a
+container plausibly holds something for Russell, bucket it **needs-you**, with the action being *open
+the linked content, see what's there, and act* — the worker then does the lookup (extract each assigned
+action item and capture it separately, read and answer the DM, …). Only when the notification itself
+plainly carries the whole story and asks nothing (e.g. a recording notice with no notes) is it **fyi**.
 
 ## Tie-breakers
 - Unsure between **needs-you** and **fyi** → **needs-you** (prefer acting).

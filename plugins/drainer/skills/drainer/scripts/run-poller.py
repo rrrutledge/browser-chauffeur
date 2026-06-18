@@ -1,13 +1,17 @@
 """Drainer continuous-keeper poller — ONE fast-loop cycle, orchestrated in code.
 
-The loop itself (enumerate -> drop seen -> cap -> dispatch -> record) is a deterministic algorithm,
-so it lives here in Python — cheaper and more reliable than asking an AI to follow it each cycle.
-AI is used for exactly two things: a single batched **triage** call per cycle (the needs-you / fyi /
-junk judgment, per the drainer triage.md rubric) and the per-item **worker** session (the actual
-reply/work, draft-only). See engine/poller-core.md for the contract.
+The loop itself (enumerate -> drop seen -> cap -> dispatch -> record) is a deterministic algorithm, so
+it lives here in Python — cheaper and more reliable than asking an AI to follow it each cycle. AI is used
+for exactly two things: a single batched **triage** call per cycle (the needs-you / fyi / junk judgment,
+per engine/triage.md) and the per-item **worker** session (the actual reply/work, draft-only).
 
-Fail-safe: the poller never clears; a message-id is recorded as seen only AFTER its dispatch
-succeeds; losing seen-state re-processes items (safe), never drops one.
+The orchestration below is **provider-agnostic**: it reads which providers are enabled from
+`.claude/drainer.local.md` and drives each through a small adapter (enumerate / stable_id / capture).
+All source-specific mechanics — mail.js, the Outlook id scheme, the Graph message body — live inside an
+adapter class, never in the loop. New sources (Gmail, Trello, …) plug in by adding an adapter.
+
+Fail-safe: the poller never clears; a message-id is recorded as seen only AFTER its dispatch succeeds;
+losing seen-state re-processes items (safe), never drops one. See engine/poller-core.md for the contract.
 
 Usage:
     python run-poller.py --repo C:/Users/russe/Dev/personal-ai-pod            # one live cycle
@@ -29,32 +33,37 @@ import presence  # noqa: E402  (sibling module)
 SEEN_STATE = os.path.join(SCRIPT_DIR, "seen-state.js")
 
 
-# ---------------------------------------------------------------------------- helpers
+# ---------------------------------------------------------------------------- generic helpers
 
-def find_plugins_root():
-    """Walk up from this script to the 'plugins' dir so we can locate sibling plugins (ms-graph)."""
-    d = SCRIPT_DIR
-    while d and os.path.basename(d) != "plugins":
-        parent = os.path.dirname(d)
-        if parent == d:
-            return None
-        d = parent
-    return d
+def run_node(args, **kw):
+    return subprocess.run(["node", *args], capture_output=True, text=True,
+                          encoding="utf-8", errors="replace", **kw)
 
 
-def mail_js_path(override):
-    if override:
-        return override
-    root = find_plugins_root()
-    if root:
-        cand = os.path.join(root, "ms-graph", "skills", "ms-graph", "scripts", "mail.js")
-        if os.path.exists(cand):
-            return cand
-    raise SystemExit("Could not locate ms-graph mail.js; pass --mail-js <path>.")
+def seen_state(*cli_args):
+    return run_node([SEEN_STATE, *cli_args])
+
+
+def slug(s, maxlen=18):
+    s = re.sub(r"[^a-z0-9]+", "-", (s or "").lower()).strip("-")
+    return s[:maxlen].strip("-")
+
+
+def load_seen(runtime_dir, source):
+    """Return the {id: {triage, status}} map for a source; missing/corrupt -> {} (fail-safe)."""
+    try:
+        with open(os.path.join(runtime_dir, "seen.json"), encoding="utf-8") as f:
+            return (json.load(f) or {}).get(source, {})
+    except (OSError, ValueError):
+        return {}
+
+
+def open_count(seen):
+    return sum(1 for r in seen.values() if r.get("triage") == "needs-you" and r.get("status") == "dispatched")
 
 
 def read_config(repo):
-    """Pull the scalar knobs the orchestrator needs out of .claude/drainer.local.md frontmatter."""
+    """Pull the scalar knobs + enabled provider names out of .claude/drainer.local.md frontmatter."""
     path = os.path.join(repo, ".claude", "drainer.local.md")
     text = ""
     try:
@@ -71,61 +80,114 @@ def read_config(repo):
     if not os.path.isabs(runtime_dir):
         runtime_dir = os.path.join(repo, runtime_dir)
     return {
+        "providers": parse_provider_names(text),
         "runtime_dir": runtime_dir,
         "local_dir": scalar("local_dir", os.path.join(repo, "drainer-local")),
         "max_open_tabs": int(scalar("max_open_tabs", "3")),
         "max_messages_per_cycle": int(scalar("max_messages_per_cycle", "50")),
         "idle_threshold_seconds": int(scalar("idle_threshold_seconds", "600")),
-        "has_personal_outlook": "personal-outlook:" in text,
     }
 
 
-def slug(s, maxlen=24):
-    s = re.sub(r"[^a-z0-9]+", "-", (s or "").lower()).strip("-")
-    return s[:maxlen].strip("-")
+def parse_provider_names(text):
+    """The immediate child keys under the `providers:` block (e.g. personal-outlook, trello)."""
+    names, in_block = [], False
+    for line in text.splitlines():
+        if re.match(r"^\s*providers\s*:\s*$", line):
+            in_block = True
+            continue
+        if in_block:
+            if re.match(r"^\S", line) or line.strip() in ("---", ""):
+                if line.strip() == "":
+                    continue
+                if re.match(r"^\S", line):
+                    break
+            m = re.match(r"^\s{2}([A-Za-z0-9_-]+)\s*:", line)
+            if m:
+                names.append(m.group(1))
+    return names
 
 
-def stable_id(item):
-    """personal-outlook-<YYYYMMDD-HHMM>-<sender>-<first-3-subject-words> (lowercase, dash-joined)."""
-    recv = (item.get("received") or "")[:16].replace("-", "").replace("T", "-").replace(":", "")
-    recv = recv[:13]  # YYYYMMDD-HHMM
-    sender = slug((item.get("fromAddress") or item.get("from") or "").split("@")[0], 18)
-    subj3 = slug("-".join((item.get("subject") or "").split()[:3]), 18)
-    return f"personal-outlook-{recv}-{sender}-{subj3}".strip("-")[:64]
+# ---------------------------------------------------------------------------- provider adapters
+
+class PersonalOutlookProvider:
+    """personal-outlook mechanics — the only place mail.js / the Graph id scheme appears."""
+    name = "personal-outlook"
+
+    def __init__(self):
+        self.mailjs = self._find_mail_js()
+
+    @staticmethod
+    def _find_mail_js():
+        d = SCRIPT_DIR
+        while d and os.path.basename(d) != "plugins":
+            parent = os.path.dirname(d)
+            if parent == d:
+                d = None
+                break
+            d = parent
+        if d:
+            cand = os.path.join(d, "ms-graph", "skills", "ms-graph", "scripts", "mail.js")
+            if os.path.exists(cand):
+                return cand
+        raise SystemExit("Could not locate ms-graph mail.js for personal-outlook.")
+
+    def enumerate(self, limit):
+        res = run_node([self.mailjs, "--list-inbox", "--json", f"--top={limit}"])
+        if res.returncode != 0:
+            raise SystemExit(f"personal-outlook enumerate failed (auth?): {res.stderr.strip()[:300]}")
+        return json.loads(res.stdout or "[]")
+
+    def stable_id(self, item):
+        recv = (item.get("received") or "")[:16].replace("-", "").replace("T", "-").replace(":", "")[:13]
+        sender = slug((item.get("fromAddress") or item.get("from") or "").split("@")[0])
+        subj3 = slug("-".join((item.get("subject") or "").split()[:3]))
+        return f"personal-outlook-{recv}-{sender}-{subj3}".strip("-")[:64]
+
+    def capture(self, item, iid, runtime_dir):
+        items_dir = os.path.join(runtime_dir, "items")
+        os.makedirs(items_dir, exist_ok=True)
+        email_file = os.path.join(items_dir, f"{iid}.email.md")
+        show = run_node([self.mailjs, f"--show={item['id']}"])
+        body = show.stdout if show.returncode == 0 else "(could not load body)"
+        with open(email_file, "w", encoding="utf-8") as f:
+            f.write(f"# {item.get('subject')}\n\nFrom: {item.get('from')}\nReceived: {item.get('received')}\n"
+                    f"Link: {item.get('webLink')}\nMessageId: {item['id']}\n\n---\n\n{body}\n")
+        record = {
+            "id": iid, "source": self.name, "triage": item["_bucket"], "kind": item.get("_kind"),
+            "from": item.get("from"), "subject": item.get("subject"), "received": item.get("received"),
+            "snippet": item.get("preview"), "url": item.get("webLink"), "messageId": item["id"],
+            "emailFile": email_file, "ts": datetime.now(timezone.utc).isoformat(),
+        }
+        json_file = os.path.join(items_dir, f"{iid}.json")
+        with open(json_file, "w", encoding="utf-8") as f:
+            json.dump(record, f, indent=2)
+        return json_file
 
 
-def load_seen(runtime_dir, source):
-    """Return the {id: {triage, status}} map for a source; missing/corrupt -> {} (fail-safe)."""
-    try:
-        with open(os.path.join(runtime_dir, "seen.json"), encoding="utf-8") as f:
-            return (json.load(f) or {}).get(source, {})
-    except (OSError, ValueError):
-        return {}
+ADAPTERS = {PersonalOutlookProvider.name: PersonalOutlookProvider}
 
 
-def open_count(seen):
-    return sum(1 for r in seen.values() if r.get("triage") == "needs-you" and r.get("status") == "dispatched")
-
-
-def run_node(args, **kw):
-    return subprocess.run(["node", *args], capture_output=True, text=True,
-                          encoding="utf-8", errors="replace", **kw)
-
-
-def seen_state(*cli_args):
-    return run_node([SEEN_STATE, *cli_args])
+def load_providers(cfg):
+    """Instantiate an adapter for each enabled provider we have code for; note the rest."""
+    providers = []
+    for name in cfg["providers"]:
+        if name in ADAPTERS:
+            providers.append(ADAPTERS[name]())
+        else:
+            print(f"(skipping provider '{name}': no poller adapter yet)")
+    return providers
 
 
 # ---------------------------------------------------------------------------- triage (the AI step)
 
 TRIAGE_INSTRUCTIONS = (
-    "You are the drainer poller's triage step. Use the installed `drainer` skill's "
-    "`engine/triage.md` rubric (the three buckets needs-you / fyi / junk, the personal-message and "
-    "container rules, and the tie-breakers) together with the world-knowledge below. For EACH item "
-    "decide its bucket; for needs-you also give kind = reply | work | work-then-reply (else null). "
-    "Return ONLY a JSON array, one object per input id: "
-    '[{"id": "...", "bucket": "needs-you|fyi|junk", "kind": "reply|work|work-then-reply|null", '
-    '"reason": "<short>"}] — no prose, no code fence.'
+    "You are the drainer poller's triage step. Use the installed `drainer` skill's `engine/triage.md` "
+    "rubric (the three buckets needs-you / fyi / junk, the personal-message and container rules, and "
+    "the tie-breakers) together with the world-knowledge below. For EACH item decide its bucket; for "
+    "needs-you also give kind = reply | work | work-then-reply (else null). Return ONLY a JSON array, "
+    'one object per input id: [{"id": "...", "bucket": "needs-you|fyi|junk", '
+    '"kind": "reply|work|work-then-reply|null", "reason": "<short>"}] — no prose, no code fence.'
 )
 
 
@@ -137,9 +199,9 @@ def triage(items, repo, local_dir):
             context = f.read()
     except OSError:
         pass
-    payload = [{"id": it["_id"], "from": it.get("from"), "subject": it.get("subject"),
-                "received": it.get("received"), "isRead": it.get("isRead"),
-                "preview": it.get("preview")} for it in items]
+    payload = [{"id": it["_id"], "source": it["_source"], "from": it.get("from"),
+                "subject": it.get("subject"), "received": it.get("received"),
+                "isRead": it.get("isRead"), "preview": it.get("preview")} for it in items]
     prompt = (
         f"{TRIAGE_INSTRUCTIONS}\n\n## World-knowledge (drainer context.md)\n{context}\n\n"
         f"## New items to triage (JSON)\n{json.dumps(payload, indent=2)}\n"
@@ -160,36 +222,13 @@ def triage(items, repo, local_dir):
     m = re.search(r"\[.*\]", result, re.DOTALL)
     if not m:
         raise SystemExit(f"triage returned no JSON array:\n{result[:400]}")
-    verdicts = {v["id"]: v for v in json.loads(m.group(0))}
-    return verdicts
+    return {v["id"]: v for v in json.loads(m.group(0))}
 
 
-# ---------------------------------------------------------------------------- capture + dispatch
+# ---------------------------------------------------------------------------- dispatch
 
-def capture(item, cfg, mailjs):
-    items_dir = os.path.join(cfg["runtime_dir"], "items")
-    os.makedirs(items_dir, exist_ok=True)
-    iid = item["_id"]
-    email_file = os.path.join(items_dir, f"{iid}.email.md")
-    show = run_node([mailjs, f"--show={item['id']}"])
-    body = show.stdout if show.returncode == 0 else "(could not load body)"
-    with open(email_file, "w", encoding="utf-8") as f:
-        f.write(f"# {item.get('subject')}\n\nFrom: {item.get('from')}\nReceived: {item.get('received')}\n"
-                f"Link: {item.get('webLink')}\nMessageId: {item['id']}\n\n---\n\n{body}\n")
-    record = {
-        "id": iid, "source": "personal-outlook", "triage": item["_bucket"], "kind": item.get("_kind"),
-        "from": item.get("from"), "subject": item.get("subject"), "received": item.get("received"),
-        "snippet": item.get("preview"), "url": item.get("webLink"), "messageId": item["id"],
-        "emailFile": email_file, "ts": datetime.now(timezone.utc).isoformat(),
-    }
-    json_file = os.path.join(items_dir, f"{iid}.json")
-    with open(json_file, "w", encoding="utf-8") as f:
-        json.dump(record, f, indent=2)
-    return json_file
-
-
-def spawn_worker(iid, json_file, repo, cfg):
-    seeds = os.path.join(cfg["runtime_dir"], "seeds")
+def spawn_worker(iid, json_file, repo, runtime_dir):
+    seeds = os.path.join(runtime_dir, "seeds")
     os.makedirs(seeds, exist_ok=True)
     prompt_file = os.path.join(seeds, f"{iid}.prompt.txt")
     with open(prompt_file, "w", encoding="utf-8") as f:
@@ -207,85 +246,81 @@ def spawn_worker(iid, json_file, repo, cfg):
 
 # ---------------------------------------------------------------------------- the cycle
 
-def enumerate_personal_outlook(cfg, mailjs):
-    res = run_node([mailjs, "--list-inbox", "--json", f"--top={cfg['max_messages_per_cycle']}"])
-    if res.returncode != 0:
-        raise SystemExit(f"enumerate failed (auth?): {res.stderr.strip()[:300]}")
-    return json.loads(res.stdout or "[]")
+def collect_new(provider, cfg):
+    """Enumerate a provider, stamp ids/source, drop already-seen; return (new_items, total, seen)."""
+    raw = provider.enumerate(cfg["max_messages_per_cycle"])
+    seen = load_seen(cfg["runtime_dir"], provider.name)
+    new = []
+    for it in raw:
+        it["_id"] = provider.stable_id(it)
+        it["_source"] = provider.name
+        if it["_id"] not in seen:
+            new.append(it)
+    return new, len(raw), seen
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--repo", required=True)
     ap.add_argument("--dry-run", action="store_true")
-    ap.add_argument("--mail-js")
     args = ap.parse_args()
     repo = os.path.abspath(args.repo)
     cfg = read_config(repo)
-    mailjs = mail_js_path(args.mail_js)
 
     if not args.dry_run:
-        present, idle, locked = presence.is_present(cfg["idle_threshold_seconds"])
+        present, _, _ = presence.is_present(cfg["idle_threshold_seconds"])
         if not present:
             return  # away/locked -> silent no-op
 
-    if not cfg["has_personal_outlook"]:
-        print("No personal-outlook provider enabled; nothing to do.")
+    providers = load_providers(cfg)
+    if not providers:
+        print("No providers with a poller adapter are enabled; nothing to do.")
         return
 
-    raw = enumerate_personal_outlook(cfg, mailjs)
-    seen = load_seen(cfg["runtime_dir"], "personal-outlook")
-    new = []
-    for it in raw:
-        it["_id"] = stable_id(it)
-        if it["_id"] not in seen:
-            new.append(it)
-    if not new:
-        print(f"personal-outlook: {len(raw)} in inbox, 0 new. Nothing to dispatch.")
-        return
+    for provider in providers:
+        new, total, seen = collect_new(provider, cfg)
+        if not new:
+            print(f"{provider.name}: {total} enumerated, 0 new. Nothing to dispatch.")
+            continue
 
-    verdicts = triage(new, repo, cfg["local_dir"])
-    for it in new:
-        v = verdicts.get(it["_id"], {"bucket": "needs-you", "kind": "reply"})  # fail-safe: unjudged -> act
-        it["_bucket"], it["_kind"] = v.get("bucket", "needs-you"), v.get("kind")
-
-    counts = {"needs-you": 0, "fyi": 0, "junk": 0}
-    for it in new:
-        counts[it["_bucket"]] = counts.get(it["_bucket"], 0) + 1
-
-    if args.dry_run:
-        print(f"DRY-RUN — personal-outlook: {len(new)} new of {len(raw)} | "
-              f"{counts['needs-you']} needs-you, {counts['fyi']} fyi, {counts['junk']} junk")
-        oc = open_count(seen)
+        verdicts = triage(new, repo, cfg["local_dir"])
         for it in new:
-            held = it["_bucket"] == "needs-you" and oc >= cfg["max_open_tabs"]
-            if it["_bucket"] == "needs-you" and not held:
-                oc += 1
-            action = ("HOLD (at cap)" if held else "spawn worker") if it["_bucket"] == "needs-you" else "queue -> digest"
-            print(f"  [{it['_bucket']:9}] {it['_id']}  ->  {action}\n"
-                  f"      {it.get('from')} | {it.get('subject')}")
-        return
+            v = verdicts.get(it["_id"], {"bucket": "needs-you", "kind": "reply"})  # unjudged -> act (fail-safe)
+            it["_bucket"], it["_kind"] = v.get("bucket", "needs-you"), v.get("kind")
+        counts = {b: sum(1 for it in new if it["_bucket"] == b) for b in ("needs-you", "fyi", "junk")}
+        oc = open_count(seen)
 
-    oc = open_count(seen)
-    dispatched, held, queued = 0, 0, 0
-    for it in new:
-        iid = it["_id"]
-        if it["_bucket"] == "needs-you":
-            if oc >= cfg["max_open_tabs"]:
-                held += 1  # leave UNRECORDED -> retried next cycle (fail-safe throttle)
-                continue
-            json_file = capture(it, cfg, mailjs)
-            spawn_worker(iid, json_file, repo, cfg)
-            seen_state("record", cfg["runtime_dir"], "personal-outlook", iid, "needs-you")
-            oc += 1
-            dispatched += 1
-        else:
-            json_file = capture(it, cfg, mailjs)
-            seen_state("queue-add", cfg["runtime_dir"], "personal-outlook", iid, json_file)
-            seen_state("record", cfg["runtime_dir"], "personal-outlook", iid, it["_bucket"])
-            queued += 1
-    print(f"personal-outlook: dispatched {dispatched} worker tab(s), queued {queued} for digest, "
-          f"held {held} at cap. Poller never clears.")
+        if args.dry_run:
+            print(f"DRY-RUN - {provider.name}: {len(new)} new of {total} | "
+                  f"{counts['needs-you']} needs-you, {counts['fyi']} fyi, {counts['junk']} junk")
+            for it in new:
+                held = it["_bucket"] == "needs-you" and oc >= cfg["max_open_tabs"]
+                if it["_bucket"] == "needs-you" and not held:
+                    oc += 1
+                action = ("HOLD (at cap)" if held else "spawn worker") if it["_bucket"] == "needs-you" else "queue -> digest"
+                print(f"  [{it['_bucket']:9}] {it['_id']}  ->  {action}\n"
+                      f"      {it.get('from')} | {it.get('subject')}")
+            continue
+
+        dispatched, held, queued = 0, 0, 0
+        for it in new:
+            iid = it["_id"]
+            if it["_bucket"] == "needs-you":
+                if oc >= cfg["max_open_tabs"]:
+                    held += 1  # leave UNRECORDED -> retried next cycle (fail-safe throttle)
+                    continue
+                json_file = provider.capture(it, iid, cfg["runtime_dir"])
+                spawn_worker(iid, json_file, repo, cfg["runtime_dir"])
+                seen_state("record", cfg["runtime_dir"], provider.name, iid, "needs-you")
+                oc += 1
+                dispatched += 1
+            else:
+                json_file = provider.capture(it, iid, cfg["runtime_dir"])
+                seen_state("queue-add", cfg["runtime_dir"], provider.name, iid, json_file)
+                seen_state("record", cfg["runtime_dir"], provider.name, iid, it["_bucket"])
+                queued += 1
+        print(f"{provider.name}: dispatched {dispatched} worker tab(s), queued {queued} for digest, "
+              f"held {held} at cap. Poller never clears.")
 
 
 if __name__ == "__main__":

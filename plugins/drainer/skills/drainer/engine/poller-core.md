@@ -48,7 +48,10 @@ action, including any held at the cap), with no spawns, no queueing, no records,
 - A seen-id is recorded only **after** dispatch succeeds — an aborted cycle loses no item.
 - Workers are idempotent: a duplicate tab's situational-check resolves quietly. No overlap lock.
 
-## Adding a provider
-`run-poller.py` currently enumerates and captures the **personal-outlook** provider directly. Other
-providers (Gmail, Trello, …) plug into the same dispatch core by adding their enumerate + capture
-mechanics; the triage rubric, seen-state, cap, and worker flow are source-agnostic and unchanged.
+## Provider-agnostic orchestration
+`run-poller.py` reads which providers are enabled from `drainer.local.md` and drives each through a
+small **adapter** exposing `enumerate` / `stable_id` / `capture`. All source-specific mechanics — for
+personal-outlook, `mail.js` and the Graph id scheme — live inside that adapter; the loop (drop-seen,
+cap, triage, dispatch, record) never names a source or a tool. A provider listed in config but without
+an adapter is skipped with a note. New sources (Gmail, Trello, …) plug in by adding an adapter; the
+triage rubric, seen-state, cap, and worker flow are unchanged.

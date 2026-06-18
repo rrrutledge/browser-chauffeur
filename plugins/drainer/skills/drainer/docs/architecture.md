@@ -35,6 +35,12 @@ each cycle. AI is used for exactly two things:
   `engine/triage.md`.
 - **The per-item worker session** — the actual reply/work, following `engine/worker-core.md`, draft-only.
 
+This is the **poller / worker split**: the poller (the script) enumerates and triages but never does an
+item's work; each needs-you item gets its **own worker** that handles it to completion in a fresh
+context (its own tab), so context stays bounded and nothing is half-done. The worker signals completion
+by writing `items/<id>.done` and clears the source item itself. The poller runs up to `max_open_tabs`
+workers at once (it does not serialize); the cap, not a queue, bounds how many face the user.
+
 ## Fail-safe, never miss
 
 Every mechanism's worst case is *redundant work*, never a *dropped item*:
