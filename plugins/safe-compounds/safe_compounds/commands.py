@@ -172,7 +172,7 @@ GIT_TRUSTED_SUBCOMMANDS = {
 
 GIT_CONDITIONAL_SUBCOMMANDS = {
     'push':   {'--force', '-f', '--delete'},
-    'branch': {'-D', '-d', '--delete', '--force'},
+    'branch': {'-D', '--force'},
     'tag':    {'-d', '--delete'},
     'reset':  {'--hard'},
     'switch': {'--discard-changes', '-f', '--force'},
@@ -180,16 +180,14 @@ GIT_CONDITIONAL_SUBCOMMANDS = {
 
 
 def _git_checkout_ok(args):
-    # Block checkout that discards working-tree changes: `checkout -- .` or `checkout -- <files>` without a ref
-    # Allow `checkout <ref> -- <file>` (restoring a file from a specific ref is safe/reversible)
+    # Block force-discards and broad wildcard restores; allow specific-file restores
     if '-f' in args or '--force' in args:
         return False
     if '--' in args:
         dash_idx = args.index('--')
-        # Unsafe: `-- .` with no ref before it (pure discard), or `. ` anywhere in pathspecs
         pathspecs = args[dash_idx + 1:]
-        has_ref = dash_idx > 0  # something before `--` means a ref was given
-        if not has_ref:
+        has_ref = dash_idx > 0
+        if not has_ref and pathspecs == ['.']:
             return False
         if '.' in pathspecs:
             return False
