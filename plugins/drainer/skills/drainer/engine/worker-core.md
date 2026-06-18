@@ -31,6 +31,25 @@ answered?) That changes the right action. For an unknown mechanism internal to t
 organization, consult the user's designated internal knowledge source first (if their `context.md`
 names one) before asking the user directly.
 
+## 2b. If the item is a pointer, open the real content yourself
+If your item is a **notification that points to content living elsewhere** — a LinkedIn/Facebook
+"X just messaged you", a meeting-recording notice, a forum "you have a reply" — it is NOT the content,
+only a pointer. **Go open and read the underlying message yourself before doing anything else**, using
+the right tool for that surface: for a web service like LinkedIn, drive **browser-chauffeur** to the
+link in the captured item and read the actual message. Reading it is YOUR job; never hand the lookup
+back to the user ("go read the message yourself").
+
+Then **triage what you find with `triage.md`** (the same rubric the poller uses, in this engine/ folder),
+exactly as if that content had arrived as email:
+- **needs-you** → proceed through the steps below; stage any reply draft-only in that surface's composer
+  (for LinkedIn, the LinkedIn web composer via browser-chauffeur), never send.
+- **fyi / junk** → do NOT bug the user. Route it to the digest queue so the daily digest handles it
+  (junk also gets a source-stop proposal) instead of being lost: run
+  `node <skill>/scripts/seen-state.js queue-add <runtime_dir> <source> <id> <path to items/<id>.json>`
+  — `<runtime_dir>` is the parent of the `items/` folder your `<id>.json` lives in, `<source>` is the
+  item's `source` field, and the helper sits at `scripts/seen-state.js` under this skill. Then go
+  straight to step 6 and write `.done`; leave the source notification for the digest to clear.
+
 ## 3. Do the action (you do the work WITH the user)
 Figure out what the item needs and **DO THE WORK in this session**. You are the implementer, not a
 task manager. Opening a PR? You open it. Filing a ticket? You file it. Completing a form? You fill it
@@ -78,9 +97,10 @@ date / clear without surfacing a tab or beep.
   done, so it stays visible instead of relying on memory.
 
 Then, as your **FINAL step**, write a one-line result to `items/<id>.done` (e.g. "completed: filed
-ticket #1234 and replied", "skipped: <reason>"). The driver/controller **serializes on this marker**
-— it waits for `<id>.done` before opening the next item, so one item is in front of the user at a
-time. (Tab-close can't be detected reliably, so this worker-written marker is the advance signal.)
+ticket #1234 and replied", "skipped: <reason>"). This marker is your **completion signal**: the keeper
+reads it next cycle to mark the item cleared in seen-state, which **frees a slot under the concurrency
+cap** so a held needs-you item can open. (Tab-close can't be detected reliably, so this worker-written
+marker is the advance signal.)
 
 ## 7. Improve the source (don't just hoard facts)
 If the user had to tell you something you could have known, don't just note it — figure out *where it

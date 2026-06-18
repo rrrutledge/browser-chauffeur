@@ -8,45 +8,71 @@ sometimes BEFORE any reply — and drafts any reply **in the user's voice (draft
 deliverable may be the work itself, not a message. (Irreversible / outbound-to-others steps wait for
 the user's explicit OK; safe, reversible work and drafts proceed immediately.)
 
-Outlook / Teams / outreach are all the **same loop** with different **sources**. Each run pulls every
-item due **now or earlier** and works through them until each is **gone** — "gone" is per source: an
-email is **deleted/archived**; a Teams chat is **marked read**; an outreach card is **advanced or
+Outlook / Teams / outreach are all the **same loop** with different **sources**. "Gone" is per source:
+an email is **deleted/archived**; a Teams chat is **marked read**; an outreach card is **advanced or
 bumped to a later follow-up day**.
 
-## Scheduling: always at zero
-Each run harvests **every** source and works it to zero, on a single interval chosen for the
-fastest-arriving source (Outlook/Teams). Because cheap API sources cost nothing when they have nothing
-due, slow sources just ride along: a due-date source like Trello returns its due-now-or-earlier cards
-(usually none) and advances any that are due.
+## The continuous keeper (the one model)
+
+The drainer runs as a **continuous keeper**: a presence-gated **poller** runs a short cycle every few
+minutes (a ~5-min cron) and holds each source at **zero un-started actionable items** all day.
+
+- **needs-you →** the poller immediately spawns a **worker tab** (up to `max_open_tabs` concurrent,
+  default 3), so the user starts acting right away. Beyond the cap, items are held and picked up on a
+  later cycle.
+- **fyi / junk →** captured to a **digest queue** for a once-a-day readout; nothing is disposed of
+  silently in the fast loop.
+- **The poller never clears.** The source item is cleared in exactly one place: the worker tab on
+  completion (needs-you), or the daily digest after the user reviews it (fyi/junk).
+
+## The poller is code; AI is judgment
+
+The loop — enumerate → drop already-seen → cap → dispatch → record — is a deterministic algorithm, so it
+lives in a script (`scripts/run-poller.py`): cheaper and more reliable than asking an AI to follow it
+each cycle. AI is used for exactly two things:
+
+- **One batched triage call per cycle** — the needs-you / fyi / junk judgment for all new items, per
+  `engine/triage.md`.
+- **The per-item worker session** — the actual reply/work, following `engine/worker-core.md`, draft-only.
+
+This is the **poller / worker split**: the poller (the script) enumerates and triages but never does an
+item's work; each needs-you item gets its **own worker** that handles it to completion in a fresh
+context (its own tab), so context stays bounded and nothing is half-done. The worker signals completion
+by writing `items/<id>.done` and clears the source item itself. The poller runs up to `max_open_tabs`
+workers at once (it does not serialize); the cap, not a queue, bounds how many face the user.
+
+## Fail-safe, never miss
+
+Every mechanism's worst case is *redundant work*, never a *dropped item*:
+
+- **Seen-state** (`scripts/seen-state.js`) is a separate store of processed message-ids per source — not
+  the read/unread flag, not inbox presence. Losing it re-processes items (safe), never hides them.
+- **Record-seen-only-after-dispatch** — an id is recorded only after its worker tab spawns or it is
+  queued; a failed cycle leaves it unrecorded, so the next cycle retries it.
+- **Idempotent workers** — a duplicate tab's situational-check sees the item is already handled and
+  resolves quietly. No overlap lock is needed.
 
 ## Two layers: the plugin vs. what each machine injects
 
 | In the plugin (generic) | Injected per machine |
 | --- | --- |
-| `engine/` — driver loop, worker procedure, triage rubric, provider contract | `.claude/drainer.local.md` — which providers are active, per-provider config (Trello board ids), interval, presence |
+| `engine/` — poller contract, worker procedure, triage rubric, provider contract; `scripts/` — the deterministic glue | `.claude/drainer.local.md` — which providers are active, per-provider config, `max_open_tabs`, `max_messages_per_cycle`, presence |
 | `providers/` — the providers (Outlook, Teams, Trello) | `context.md` (in `local_dir`) — who the user is, their systems, standing rules |
 | `docs/`, `templates/` | **credentials** (OS store / env) |
 
 The plugin never contains anything that identifies the user or their organization. See
 `docs/extending.md` for where each injected piece plugs in.
 
-## The driver/worker split
-
-- A **driver** enumerates the queue and triages each item; it does NOT do an item's work.
-- A **worker** handles ONE item to completion in a fresh context, following `worker-core.md`.
-- The driver **serializes**: one item in front of the user at a time, so context stays bounded and
-  nothing is half-done. The worker signals completion by writing `items/<id>.done`; the driver waits
-  on that marker before opening the next item.
-
 ## Triage (the one rubric, shared)
 
 Classify every item by asking **"What does this want the user to do?"** into three buckets — the only
 three; full rubric in `engine/triage.md`:
 
-- **needs-you** → its **own serialized worker**, one item at a time.
-- **fyi / junk** → **never** a worker each; collected and cleared in **one digest pass**, nothing
-  disposed of silently. Every **junk** item is a signal to stop it at the source — propose the
-  source's filter/rule so future runs spend tokens and attention only on what matters.
+- **needs-you** → its **own worker tab** (up to `max_open_tabs` concurrent).
+- **fyi / junk** → **never** a worker each; captured to the digest queue and read out once a day
+  (the EOD digest), nothing disposed of silently. Every **junk** item is a signal to stop it at the
+  source — propose, in priority order, an **unsubscribe**, then the source app's **notification
+  settings**, then an **inbox rule**, so future cycles spend tokens and attention only on what matters.
 
 ## Hard behavioral rules (carry these into every machine's `context.md`)
 
@@ -62,9 +88,9 @@ three; full rubric in `engine/triage.md`:
 - **Waiting on someone else → a tracker card** when *you* initiated and the ball is back in their
   court (if they initiated and you've replied, you're done).
 
-## Scheduling requirements (machine-specific glue)
+## Scheduling (machine-specific glue)
 
-- **Presence-gated** — away/locked → exit cheaply, do nothing.
-- **No pile-ups** — an overlap lock.
-- **Idle runs make no window and no noise** — a surface appears only for an item to handle or sign-in.
-- **One interval** for all sources, set for the fastest-arriving one; slow/cheap sources ride along.
+- **Presence-gated** — away/locked → exit cheaply, do nothing (`scripts/presence.py`).
+- **Idle runs make no window and no noise** — a surface appears only for an item to handle or a sign-in.
+- **One interval** for all sources, set for the fastest-arriving one; cheap sources ride along.
+- Registered once via `scripts/install-schedule.ps1` (a Scheduled Task running `run-poller.py`).
