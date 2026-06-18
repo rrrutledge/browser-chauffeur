@@ -17,7 +17,7 @@ SHELL_BUILTINS = {
 
 TRUSTED_COMMANDS = {
     'awk',
-    'base32', 'base64', 'basename', 'bash', 'bc', 'bq', 'bun',
+    'base32', 'base64', 'basename', 'bc', 'bq',
     'cal', 'cat', 'cd', 'claude', 'clip', 'cmp', 'column', 'comm', 'command', 'cut', 'cygpath',
     'date', 'decktape', 'df', 'diff', 'dirname', 'docker', 'du',
     'echo', 'env', 'exec', 'expand', 'explorer', 'export', 'expr',
@@ -29,9 +29,9 @@ TRUSTED_COMMANDS = {
     'kill', 'kubectl',
     'less', 'locale', 'logname', 'look', 'ls', 'lsof',
     'md5sum', 'mkdir', 'more',
-    'nc', 'netstat', 'nl', 'npm', 'nproc', 'npx', 'numfmt', 'nvm',
+    'nc', 'netstat', 'nl', 'npm', 'nproc', 'numfmt', 'nvm',
     'od',
-    'pandoc', 'paste', 'perl', 'pg_isready', 'pip', 'pnpm', 'printenv', 'ps', 'psql', 'pwd',
+    'pandoc', 'paste', 'pg_isready', 'pip', 'pnpm', 'printenv', 'ps', 'psql', 'pwd',
     'Read', 'readlink', 'realpath', 'rev', 'rm', 'rmdir',
     'seq', 'sha1sum', 'sha256sum', 'sha512sum', 'sleep', 'sort', 'source', 'stat', 'strings',
     'tac', 'tail', 'tasklist', 'tee', 'test', 'timeout', 'touch', 'tr', 'tree', 'tty', 'type',

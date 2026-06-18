@@ -43,7 +43,7 @@ def ask_ai_if_temp_file(file_path):
     text = ai.ask(prompt, max_tokens=5)
     if text is None:
         return None
-    return 'YES' in text
+    return 'YES' in text.upper()
 
 
 def _temp_redirect_reason(file_path):

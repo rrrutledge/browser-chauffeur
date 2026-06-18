@@ -20,7 +20,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from safe_compounds import config, paths  # noqa: E402
+from safe_compounds import config, paths, scripts  # noqa: E402
 from safe_compounds.approve import is_segment_trusted  # noqa: E402
 from safe_compounds.enforce import enforce_bash  # noqa: E402
 from safe_compounds.log import log_debug  # noqa: E402
@@ -74,6 +74,10 @@ def handle_bash(command):
     paths.extract_pending_worktree_paths(non_empty)
 
     if not all(is_segment_trusted(seg, trusted) for seg in non_empty):
+        block = scripts.get_block_reason()
+        if block:
+            log_debug(f"DECISION: Deny (AI judged script unsafe): {block[:80]}")
+            deny(block)
         log_debug("DECISION: Defer (not all segments trusted)")
         defer()
 
@@ -96,6 +100,7 @@ def main():
     config.reset()
     paths.reset_pending_worktree_paths()
     paths.reset_allowed_edit_dirs()
+    scripts.reset_block_reason()
 
     tool = data.get('tool_name')
     tool_input = data.get('tool_input', {})
