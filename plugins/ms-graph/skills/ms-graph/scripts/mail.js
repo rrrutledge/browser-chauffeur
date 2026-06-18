@@ -1,11 +1,19 @@
 // Read / draft / send personal Outlook mail via Microsoft Graph.
 //
+// List unread:   node mail.js --list-unread [--top=30]
+//                (inbox unread, newest-first; one block per message with id + webLink)
+// List inbox:    node mail.js --list-inbox [--since-days=7] [--top=50]
+//                (inbox read+unread within a window, newest-first; same block format)
 // Search:        node mail.js --search="Griffiths" [--top=10]
 // Show one:      node mail.js --show=<messageId>
 // Draft a reply: node mail.js --reply --message-id=<id> --body-file=reply.html
 //                (creates a DRAFT reply-all in the thread; never sends)
+// Draft new:     node mail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.html [--cc=c@z]
+//                (creates a fresh DRAFT to specific recipients; never sends)
 // Send to self:  node mail.js --send-self --subject="..." --body-file=note.txt
 //                (sends a plain-text mail to your own inbox; handy for phone copy-paste)
+// Delete one:    node mail.js --delete=<messageId>
+//                (moves the message to Deleted Items — reversible, never a permanent purge)
 
 const fs = require('fs');
 const { getGraphClient } = require('./graph-client');
@@ -21,6 +29,51 @@ const addr = (r) => r?.emailAddress ? `${r.emailAddress.name || ''} <${r.emailAd
 const strip = (html) => (html || '')
   .replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ')
   .replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+
+async function listUnread(client) {
+  const data = await client.api('/me/mailFolders/inbox/messages')
+    .filter('isRead eq false')
+    .orderby('receivedDateTime desc')
+    .top(parseInt(args.top || '30', 10))
+    .select('id,conversationId,subject,from,toRecipients,receivedDateTime,bodyPreview,webLink')
+    .get();
+  const msgs = data.value || [];
+  if (!msgs.length) { console.log('No unread messages.'); return; }
+  console.log(`${msgs.length} unread message(s), newest first:`);
+  for (const m of msgs) {
+    console.log(`\n--- ${m.receivedDateTime?.slice(0, 16)}  |  ${m.subject}`);
+    console.log(`    from: ${addr(m.from)}`);
+    console.log(`    id:   ${m.id}`);
+    console.log(`    link: ${m.webLink}`);
+    console.log(`    > ${(m.bodyPreview || '').replace(/\s+/g, ' ').slice(0, 200)}`);
+  }
+}
+
+async function listInbox(client) {
+  const days = parseInt(args['since-days'] || '7', 10);
+  const cutoff = new Date(Date.now() - days * 864e5).toISOString();
+  const data = await client.api('/me/mailFolders/inbox/messages')
+    .filter(`receivedDateTime ge ${cutoff}`)
+    .orderby('receivedDateTime desc')
+    .top(parseInt(args.top || '50', 10))
+    .select('id,conversationId,subject,from,toRecipients,receivedDateTime,bodyPreview,webLink,isRead')
+    .get();
+  const msgs = data.value || [];
+  if (!msgs.length) { console.log('No inbox messages in window.'); return; }
+  console.log(`${msgs.length} inbox message(s) in last ${days}d, newest first:`);
+  for (const m of msgs) {
+    console.log(`\n--- ${m.receivedDateTime?.slice(0, 16)}  |  ${m.isRead ? 'read ' : 'UNREAD'} | ${m.subject}`);
+    console.log(`    from: ${addr(m.from)}`);
+    console.log(`    id:   ${m.id}`);
+    console.log(`    link: ${m.webLink}`);
+    console.log(`    > ${(m.bodyPreview || '').replace(/\s+/g, ' ').slice(0, 200)}`);
+  }
+}
+
+async function del(client) {
+  await client.api(`/me/messages/${args.delete}/move`).post({ destinationId: 'deleteditems' });
+  console.log(`Moved to Deleted Items (id ${String(args.delete).slice(0, 20)}...). Reversible from the Deleted Items folder.`);
+}
 
 async function search(client) {
   const data = await client.api('/me/messages')
@@ -60,6 +113,22 @@ async function reply(client) {
   console.log(`Draft reply created in thread (id ${draft.id.slice(0, 20)}...). Review in Outlook Drafts.`);
 }
 
+async function draftNew(client) {
+  if (!args.to || !args.subject || !args['body-file']) {
+    throw new Error('--draft-new requires --to, --subject, and --body-file');
+  }
+  const html = fs.readFileSync(args['body-file'], 'utf8');
+  const recip = (s) => String(s).split(',').map(a => ({ emailAddress: { address: a.trim() } }));
+  const message = {
+    subject: args.subject,
+    body: { contentType: 'html', content: html },
+    toRecipients: recip(args.to),
+  };
+  if (args.cc) message.ccRecipients = recip(args.cc);
+  const draft = await client.api('/me/messages').post(message);
+  console.log(`Draft created to ${args.to} (id ${draft.id.slice(0, 20)}...). Review in Outlook Drafts; never sent.`);
+}
+
 async function sendSelf(client) {
   if (!args.subject || !args['body-file']) {
     throw new Error('--send-self requires --subject and --body-file');
@@ -80,9 +149,13 @@ async function sendSelf(client) {
 
 (async () => {
   const client = await getGraphClient();
+  if (args['list-unread']) return listUnread(client);
+  if (args['list-inbox']) return listInbox(client);
   if (args.search) return search(client);
   if (args.show) return show(client);
   if (args.reply) return reply(client);
+  if (args['draft-new']) return draftNew(client);
   if (args['send-self']) return sendSelf(client);
-  throw new Error('Specify --search, --show, --reply, or --send-self');
+  if (args.delete) return del(client);
+  throw new Error('Specify --list-unread, --list-inbox, --search, --show, --reply, --draft-new, --send-self, or --delete');
 })().catch(e => { console.error('Error:', e.message); process.exit(1); });

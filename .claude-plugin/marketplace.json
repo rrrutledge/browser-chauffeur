@@ -54,6 +54,11 @@
       "name": "drainer",
       "source": "./plugins/drainer",
       "description": "Drain human-touch queues (email, Teams, Slack, Trello outreach) to zero with one shared loop: read each item, do the action it implies, draft any reply in your voice (draft-only, never sent), and clear it. Per-machine sources and context come from .claude/drainer.local.md."
+    },
+    {
+      "name": "ms-rest",
+      "source": "./plugins/ms-rest",
+      "description": "Read, delete, and compose Outlook mail and calendar events for a WORK Microsoft account via the Outlook REST API — no browser needed after a one-time sign-in (token sniffed from the live Outlook web session)."
     }
   ]
 }
