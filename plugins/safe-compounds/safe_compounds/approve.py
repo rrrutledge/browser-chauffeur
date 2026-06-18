@@ -37,10 +37,6 @@ def is_segment_trusted(seg, trusted):
 
     word = first_word(seg)
 
-    # Block git -C: changes working directory context, making path validation unreliable
-    if word == 'git' and ' -C ' in seg:
-        return False
-
     if word == 'curl':
         return commands.is_curl_safe(seg)
     if word == 'node':
