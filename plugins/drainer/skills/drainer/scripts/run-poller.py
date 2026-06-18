@@ -27,7 +27,8 @@ import subprocess
 import sys
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROVIDERS_DIR = os.path.join(SCRIPT_DIR, "..", "providers")
+SKILL_DIR = os.path.dirname(SCRIPT_DIR)
+PROVIDERS_DIR = os.path.join(SKILL_DIR, "providers")
 sys.path.insert(0, SCRIPT_DIR)
 import presence  # noqa: E402  (sibling module)
 from provider_base import run_node  # noqa: E402  (shared subprocess helper)
@@ -178,14 +179,15 @@ def spawn_worker(iid, json_file, repo, runtime_dir):
     seeds = os.path.join(runtime_dir, "seeds")
     os.makedirs(seeds, exist_ok=True)
     prompt_file = os.path.join(seeds, f"{iid}.prompt.txt")
+    worker_core = os.path.join(SKILL_DIR, "engine", "worker-core.md")
     with open(prompt_file, "w", encoding="utf-8") as f:
         f.write(
             "You are a drainer worker handling ONE item. Read `~/.claude/CLAUDE.md`, then follow the "
-            "installed `drainer` skill's `engine/worker-core.md` for the single captured item at\n"
-            f"`{json_file}`.\nThe item's `source` names the provider — read that provider doc's CLEAR "
-            "and DRAFT-MODE and use them. Draft-only: never send or post. When the work is complete "
-            f"(draft staged and the source item cleared per CLEAR), write `{json_file[:-5]}.done` last, "
-            "then stop.\n"
+            f"drainer worker procedure at `{worker_core}` for the single captured item at\n"
+            f"`{json_file}`.\nThe item's `source` field names the provider — read "
+            f"`{PROVIDERS_DIR}/<source>-provider.md` for its CLEAR and DRAFT-MODE and use them. "
+            "Draft-only: never send or post. When the work is complete (draft staged and the source "
+            f"item cleared per CLEAR), write `{json_file[:-5]}.done` last, then stop.\n"
         )
     spawn_cmd = os.path.join(SCRIPT_DIR, "spawn-tab.cmd")
     subprocess.Popen(["cmd", "/c", spawn_cmd, f"drain:{iid}", repo, prompt_file], cwd=repo)
