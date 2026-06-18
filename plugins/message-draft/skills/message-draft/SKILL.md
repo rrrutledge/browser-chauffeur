@@ -91,9 +91,11 @@ Two shapes:
 - **Reply** to an existing message — needs that message's Outlook REST `id`.
 - **New email** — needs subject + recipients.
 
-Run from the repo root: `node .claude/skills/ms-rest/outlook-mail.js <verb>`.
+`ms-rest` ships inside its plugin's versioned cache, not in any repo's `.claude/`. Address its script
+through the cache glob (run the newest if several are cached) from the repo root:
+`node ~/.claude/plugins/cache/*/ms-rest/*/skills/ms-rest/outlook-mail.js <verb>`.
 
-1. **Auth-glance.** `node .claude/skills/ms-rest/outlook-mail.js token`. `Token OK ✅` → ready. If it
+1. **Auth-glance.** `node ~/.claude/plugins/cache/*/ms-rest/*/skills/ms-rest/outlook-mail.js token`. `Token OK ✅` → ready. If it
    reports no token, follow `ms-rest` AUTH-GLANCE (sign in to Outlook web in the CDP browser once),
    then retry. Never surface a token error — fix it and continue.
 2. **Resolve the target (reply only).** If you were handed the source `messageId` (e.g. from the
@@ -106,10 +108,10 @@ Run from the repo root: `node .claude/skills/ms-rest/outlook-mail.js <verb>`.
    - Reply: `{ "comment": "<p>…new reply text…</p>" }`
    - New email: `{ "subject": "…", "body": "<p>…</p>", "to": ["a@b.com"], "cc": [] }`
 4. **Create the draft.**
-   - Reply: `node .claude/skills/ms-rest/outlook-mail.js create-reply <messageId> --json .tmp/outlook-draft.json`
-   - New: `node .claude/skills/ms-rest/outlook-mail.js create-draft --json .tmp/outlook-draft.json`
+   - Reply: `node ~/.claude/plugins/cache/*/ms-rest/*/skills/ms-rest/outlook-mail.js create-reply <messageId> --json .tmp/outlook-draft.json`
+   - New: `node ~/.claude/plugins/cache/*/ms-rest/*/skills/ms-rest/outlook-mail.js create-draft --json .tmp/outlook-draft.json`
    It prints `{ draftId, webLink, folder:"Drafts", sent:false }`.
-5. **Voice gate + read-back.** `node .claude/skills/ms-rest/outlook-mail.js get <draftId>` and confirm
+5. **Voice gate + read-back.** `node ~/.claude/plugins/cache/*/ms-rest/*/skills/ms-rest/outlook-mail.js get <draftId>` and confirm
    the body reads back correctly (greeting + body + clickable links; for a reply, the quoted original
    below the new text). Re-apply the `document-authoring` Conversational rules; if anything was
    trimmed, rewrite the body file and re-run step 4 (the new draft supersedes the old — delete the

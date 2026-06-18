@@ -1,9 +1,9 @@
 ---
 name: ms-rest
-description: Read, delete, and compose Outlook mail for Russell's WORK account via the Outlook REST API — no browser needed after a one-time sign-in (token sniffed from the live Outlook web session). Use to enumerate/search the work inbox, read a message, delete mail, or draft a work email or reply (lands un-sent in Drafts; never sends without explicit OK). For the PERSONAL Microsoft account use `ms-graph` instead.
+description: Read, delete, and compose Outlook mail and read, create, and manage calendar events for Russell's WORK account via the Outlook REST API — no browser needed after a one-time sign-in (token sniffed from the live Outlook web session). For the PERSONAL Microsoft account use `ms-graph` instead.
 ---
 
-# ms-rest — Outlook (work account) read · delete · compose
+# ms-rest — Outlook (work account) mail + calendar
 
 Owns Outlook communication and calendar for Russell's **work** account. Two scripts drive everything
 over the **Outlook REST API v2.0** (`https://outlook.office.com/api/v2.0`) using a bearer token
@@ -23,13 +23,19 @@ session-token sniff). The **`ms-graph`** skill is Russell's **personal** Microso
 Graph SDK, `russell.rutledge@outlook.com`). Different auth path, different mailbox. Pick by whose
 mail you mean.
 
+## Invocation (resolve the installed copy)
+
+These scripts ship inside this plugin, which Claude Code installs into a versioned cache —
+`~/.claude/plugins/cache/<marketplace>/ms-rest/<version>/skills/ms-rest/`. They are **not** copied
+into any consuming repo's `.claude/`, so address them through the cache glob below and run from the
+repo root (the script resolves `.tmp/` relative to your current repo for token caching). The glob
+resolves the installed `ms-rest`; if more than one version is cached, run the newest.
+
+```
+node ~/.claude/plugins/cache/*/ms-rest/*/skills/ms-rest/outlook-mail.js <command>
+```
+
 ## Commands
-
-Run from the repo root (the script resolves `.tmp/` relative to the repo):
-
-```
-node .claude/skills/ms-rest/outlook-mail.js <command>
-```
 
 | Command | What it does |
 |---|---|
@@ -60,7 +66,7 @@ Recipients accept a plain address string or `{ "address": "...", "name": "..." }
 ## Calendar commands
 
 ```
-node .claude/skills/ms-rest/outlook-calendar.js <command>
+node ~/.claude/plugins/cache/*/ms-rest/*/skills/ms-rest/outlook-calendar.js <command>
 ```
 
 | Command | What it does |
@@ -81,7 +87,7 @@ message in **Drafts** for him to review, edit, and send himself — which also p
 learning loop (the sent-vs-draft diff feeds `document-authoring`'s voice SSOT).
 
 ## AUTH-GLANCE (is a token available?)
-Run `node .claude/skills/ms-rest/outlook-mail.js token`. `Token OK ✅` means a valid token is cached
+Run `node ~/.claude/plugins/cache/*/ms-rest/*/skills/ms-rest/outlook-mail.js token`. `Token OK ✅` means a valid token is cached
 or was just sniffed and the skill is ready. If it reports **"No Mail.ReadWrite token sniffed"**,
 Outlook web needs a signed-in tab on the CDP browser (port 9222) to sniff from. Open one via
 browser-chauffeur (navigate to `https://outlook.cloud.microsoft/mail/` and sign in), or reuse the
