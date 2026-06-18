@@ -23,7 +23,8 @@ instructions: |-
   ### 2. Providers
   Providers live in **`providers/`** next to this SKILL.md — enable the ones you want in
   `drainer.local.md`:
-  - `providers/outlook-provider.md` — Outlook on the web (browser).
+  - `providers/outlook-provider.md` — enterprise Outlook on the web (browser).
+  - `providers/personal-outlook-provider.md` — personal Outlook.com via the Microsoft Graph API (the `ms-graph` skill; no browser).
   - `providers/teams-provider.md` — Microsoft Teams on the web (browser).
   - `providers/trello-provider.md` — outreach boards (uses the `trello-outreach` skill).
   To add a new source, write a provider — see `docs/writing-a-provider.md`.

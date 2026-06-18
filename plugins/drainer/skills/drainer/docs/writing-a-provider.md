@@ -29,6 +29,10 @@ Classification is NOT a provider concern — every provider uses `engine/triage.
 Each is a complete implementation to copy from:
 - **`outlook-provider.md`** — a browser provider (Outlook web via browser-chauffeur): list-view
   enumerate, open-on-needs-you capture, delete-to-clear, Outlook-rule junk-learning.
+- **`personal-outlook-provider.md`** — an API provider (personal Outlook.com via the Microsoft Graph
+  API through the `ms-graph` skill): `mail.js --list-unread` enumerate, `--show` capture, `--delete`
+  (move to Deleted Items) clear, `--reply` draft. The API counterpart to `outlook-provider.md`, no
+  browser — copy this when wrapping any API/MCP source through a sibling skill.
 - **`teams-provider.md`** — a browser provider with the Teams footguns, deep-link capture, mark-read
   clear, and the meeting-recording container case.
 - **`trello-provider.md`** — a config-driven provider that delegates all reads/mutations to the

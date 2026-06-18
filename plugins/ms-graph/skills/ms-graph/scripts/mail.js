@@ -1,11 +1,15 @@
 // Read / draft / send personal Outlook mail via Microsoft Graph.
 //
+// List unread:   node mail.js --list-unread [--top=30]
+//                (inbox unread, newest-first; one block per message with id + webLink)
 // Search:        node mail.js --search="Griffiths" [--top=10]
 // Show one:      node mail.js --show=<messageId>
 // Draft a reply: node mail.js --reply --message-id=<id> --body-file=reply.html
 //                (creates a DRAFT reply-all in the thread; never sends)
 // Send to self:  node mail.js --send-self --subject="..." --body-file=note.txt
 //                (sends a plain-text mail to your own inbox; handy for phone copy-paste)
+// Delete one:    node mail.js --delete=<messageId>
+//                (moves the message to Deleted Items — reversible, never a permanent purge)
 
 const fs = require('fs');
 const { getGraphClient } = require('./graph-client');
@@ -21,6 +25,30 @@ const addr = (r) => r?.emailAddress ? `${r.emailAddress.name || ''} <${r.emailAd
 const strip = (html) => (html || '')
   .replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ')
   .replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+
+async function listUnread(client) {
+  const data = await client.api('/me/mailFolders/inbox/messages')
+    .filter('isRead eq false')
+    .orderby('receivedDateTime desc')
+    .top(parseInt(args.top || '30', 10))
+    .select('id,conversationId,subject,from,toRecipients,receivedDateTime,bodyPreview,webLink')
+    .get();
+  const msgs = data.value || [];
+  if (!msgs.length) { console.log('No unread messages.'); return; }
+  console.log(`${msgs.length} unread message(s), newest first:`);
+  for (const m of msgs) {
+    console.log(`\n--- ${m.receivedDateTime?.slice(0, 16)}  |  ${m.subject}`);
+    console.log(`    from: ${addr(m.from)}`);
+    console.log(`    id:   ${m.id}`);
+    console.log(`    link: ${m.webLink}`);
+    console.log(`    > ${(m.bodyPreview || '').replace(/\s+/g, ' ').slice(0, 200)}`);
+  }
+}
+
+async function del(client) {
+  await client.api(`/me/messages/${args.delete}/move`).post({ destinationId: 'deleteditems' });
+  console.log(`Moved to Deleted Items (id ${String(args.delete).slice(0, 20)}...). Reversible from the Deleted Items folder.`);
+}
 
 async function search(client) {
   const data = await client.api('/me/messages')
@@ -80,9 +108,11 @@ async function sendSelf(client) {
 
 (async () => {
   const client = await getGraphClient();
+  if (args['list-unread']) return listUnread(client);
   if (args.search) return search(client);
   if (args.show) return show(client);
   if (args.reply) return reply(client);
   if (args['send-self']) return sendSelf(client);
-  throw new Error('Specify --search, --show, --reply, or --send-self');
+  if (args.delete) return del(client);
+  throw new Error('Specify --list-unread, --search, --show, --reply, --send-self, or --delete');
 })().catch(e => { console.error('Error:', e.message); process.exit(1); });

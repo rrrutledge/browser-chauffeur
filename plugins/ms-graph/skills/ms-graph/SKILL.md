@@ -36,10 +36,12 @@ All under `scripts/`:
   - Update reminder: `node calendar.js --update --subject="Dentist" --reminder=off`
   - Times are `--tz` (default `America/Chicago`). Events have **no** reminder unless `--reminder=N` (minutes before; 0 = at start).
 - **`mail.js`**
+  - List unread: `node mail.js --list-unread [--top=30]` (inbox unread, newest-first; one block per message with id + webLink)
   - Search: `node mail.js --search="Griffiths" [--top=10]`
   - Show one: `node mail.js --show=<messageId>`
   - Draft reply-all (never sends): `node mail.js --reply --message-id=<id> --body-file=reply.html`
   - Send to self: `node mail.js --send-self --subject="..." --body-file=note.txt`
+  - Delete one (reversible): `node mail.js --delete=<messageId>` (moves to Deleted Items, never a permanent purge)
 
 ## Auth-error handling (do without being asked)
 
