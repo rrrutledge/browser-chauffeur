@@ -93,6 +93,7 @@ If the message is a single clear sentence ending in a question, that is usually 
 - **Answer the question first.** When replying to a direct question, lead with the answer — then add context. Don't bury it behind a preamble or a generic thanks. ("Not yet, but I've opened a ticket to track it: …" — the "Not yet, but" comes before anything else.)
 - Opens groups with "Hey guys", "Hey folks", or "Hey everyone". 1:1s often open with no greeting at all, or the person's name.
 - Addresses people by name mid-message: "Stuart Foster here is the information…", "Thanks for looking at this, Kern". In chat platforms (Teams, Slack, etc.), this means @tagging them using the platform's mention mechanism — not just writing their name as plain text — so they get notified.
+- **Address someone who outranks you by their title, not their first name** — pointedly in church contexts. Replying to his Bishop (Michael Smith), Russell changed "Thanks, Michael" to "Thanks, Bishop". And keep thanks to a superior to a single word — he cut the trailing "Appreciate you tracking the numbers down." because piling extra gratitude on someone who outranks him reads as patronizing. A bare "Thanks," carries it.
 - Ellipses for softening: "If you need to leave you can just say so ... especially if we're going over time."
 - Apologizes genuinely and briefly: "Sorry this is taking so long.", "I'm sorry I have to move this again."
 - Confirms understanding with a short question: "Let me know if I've got that right — one codebase supports two Solutions?", "see if that makes sense?"
@@ -133,6 +134,7 @@ Don't invent emoji outside this palette, don't stack them, and skip them entirel
   - "I'm sorry I have to move this again. I'll just cancel and we can do it next Monday."
 
 **`outreach` — offering a resource or asking someone to adopt something:**
+- **With peers and reports: open with one genuine personal sentence before the business ask.** After a recent meeting or interaction, acknowledge it first — "It was great to meet you." / "Thanks for the great call." — then transition to the action. Real edit (LinkedIn DM to a peer after their first meeting): draft opened with the action directly ("Hi Gurpreet - I just forwarded you the FINOS InnerSource SIG series invite."); Russell added "It was great to meet you." before it. Skip this opener only for purely transactional one-liners with close collaborators.
 - Lead with the person's name, then hand them the thing plainly with the link anchored to its title
 - Frame as helpful, low-pressure; invite a look
 - Land on a single concrete question or request — see **Asks** above. Real edit: a draft offering two solution options plus a 3-part question list was cut to one question ("who could help facilitate these sessions?") and one ask ("Can you share your feedback and help us with finding a facilitator?").

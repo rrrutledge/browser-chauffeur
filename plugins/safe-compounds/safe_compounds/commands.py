@@ -95,7 +95,8 @@ def _subcommand_prompt(command, subcommand, full_segment):
 
 def _ai_learn(command, label, seg, category, store_value=None):
     """Ask the AI about an unknown subcommand; remember it on approval."""
-    if ai.call_ai(_subcommand_prompt(command, label, seg)) is True:
+    verdict, _ = ai.call_ai(_subcommand_prompt(command, label, seg))
+    if verdict is True:
         add_learned_subcommand(category, store_value if store_value is not None else label)
         return True
     return False
@@ -170,7 +171,7 @@ GIT_TRUSTED_SUBCOMMANDS = {
 }
 
 GIT_CONDITIONAL_SUBCOMMANDS = {
-    'push':   {'--force', '-f', '--force-with-lease', '--delete'},
+    'push':   {'--force', '-f', '--delete'},
     'branch': {'-D', '-d', '--delete', '--force'},
     'tag':    {'-d', '--delete'},
     'reset':  {'--hard'},
@@ -594,8 +595,8 @@ tools, or anything that could cause irreversible system damage. Examples: dd, mk
 format, etc. Also respond DANGEROUS if you don't recognize the tool at all.
 
 Response (SAFE or DANGEROUS):"""
-    result = ai.call_ai(prompt)
-    if result is True:
+    verdict, _ = ai.call_ai(prompt)
+    if verdict is True:
         add_learned_command(command_name)
         return True
     return False

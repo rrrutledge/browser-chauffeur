@@ -83,8 +83,9 @@ def _build_request(prompt, max_tokens):
 
 
 def ask(prompt, max_tokens=10):
-    """Send `prompt` to Haiku and return the uppercased response text, or None
-    if AI is disabled, unconfigured, or the request fails."""
+    """Send `prompt` to Haiku and return the response text as-is (stripped), or
+    None if AI is disabled, unconfigured, or the request fails. Callers match
+    keywords case-insensitively (e.g. `'SAFE' in text.upper()`)."""
     if _ai_disabled():
         return None
     try:
@@ -93,7 +94,7 @@ def ask(prompt, max_tokens=10):
             return None
         with urllib.request.urlopen(req, timeout=15) as response:
             result = json.loads(response.read().decode('utf-8'))
-            return result.get('content', [{}])[0].get('text', '').strip().upper()
+            return result.get('content', [{}])[0].get('text', '').strip()
     except (urllib.error.URLError, urllib.error.HTTPError,
             json.JSONDecodeError, KeyError, IndexError) as e:
         log_debug(f"AI call failed: {type(e).__name__}: {str(e)[:100]}")
@@ -101,10 +102,21 @@ def ask(prompt, max_tokens=10):
 
 
 def call_ai(prompt):
-    """Return True (SAFE), False (DANGEROUS), or None (could not decide)."""
-    text = ask(prompt, max_tokens=10)
+    """Classify a SAFE/DANGEROUS prompt. Returns (verdict, reason): verdict is
+    True (SAFE), False (DANGEROUS), or None (could not decide); reason is the
+    one-line explanation when the prompt asks for `DANGEROUS: <reason>` and the
+    model supplies one, else None. Callers that only need the verdict can ignore
+    the reason — generating it costs nothing on a one-word SAFE reply."""
+    text = ask(prompt, max_tokens=80)
     if text is None:
-        return None
-    is_safe = 'SAFE' in text
-    log_debug(f"AI response: {text} -> {'SAFE' if is_safe else 'DANGEROUS'}")
-    return is_safe
+        return None, None
+    upper = text.upper()
+    if 'DANGEROUS' in upper:
+        reason = text.split(':', 1)[1].strip() if ':' in text else ''
+        log_debug(f"AI response: {text} -> DANGEROUS")
+        return False, (reason or None)
+    if 'SAFE' in upper:
+        log_debug(f"AI response: {text} -> SAFE")
+        return True, None
+    log_debug(f"AI response: {text} -> undecided")
+    return None, None
