@@ -20,6 +20,12 @@ done-criteria once it has run.
 - **`outlook`** — a reply to a specific Outlook-web email.
 - **`slack`** — future; not implemented.
 
+## Behavioral preferences
+
+- **Prefer replying to an existing thread over composing a fresh message.** When a relevant thread
+  exists, draft a reply on it rather than a new email; only compose new when there's genuinely no
+  thread to reply to.
+
 ## Load-bearing invariants (apply to ALL modes — violating these has typed into the WRONG place)
 
 1. **The composer is not unique — target the `:visible` one and bind every keystroke to it.**
