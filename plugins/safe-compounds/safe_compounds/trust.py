@@ -36,7 +36,7 @@ TRUSTED_COMMANDS = {
     'seq', 'sha1sum', 'sha256sum', 'sha512sum', 'sleep', 'sort', 'source', 'stat', 'strings',
     'tac', 'tail', 'tasklist', 'tee', 'test', 'timeout', 'touch', 'tr', 'tree', 'tty', 'type',
     'uname', 'unexpand', 'uniq', 'unzip', 'uptime', 'users',
-    'w', 'wait', 'wc', 'where', 'which', 'who', 'whoami', 'wt.exe',
+    'w', 'wait', 'wc', 'where', 'which', 'who', 'whoami',
     'xargs', 'xxd',
     'yarn', 'yes', 'yt-dlp',
 }
