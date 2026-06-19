@@ -26,6 +26,13 @@ Run `node mail.js --list-unread --top=1`. If it prints messages (or "No unread m
 signed in. If it errors with "Not signed in" or an auth error, do the `ms-graph` one-time sign-in
 (`node scripts/auth.js` via browser-chauffeur), then retry — never surface the token error to the user.
 
+## SITUATIONAL-CHECK (do this BEFORE drafting any reply)
+The captured item is the original inbound message; the conversation may have moved on since. Read the
+whole thread first: `node mail.js --search="<subject>"` lists every message in the thread newest-first,
+including your own sent replies. Read your latest sent message on the thread and reply only to what is
+still open. If the newest message in the thread is already yours, the ball is in their court — close the
+item with no new draft. This catches the common case where you (or a prior session) already answered.
+
 ## CAPTURE (the item shape the worker reads)
 The adapter writes these two files for each dispatched item (`personal-outlook-adapter.py` → `capture`);
 this is the shape the worker can rely on:
