@@ -101,7 +101,7 @@ If the message is a single clear sentence ending in a question, that is usually 
 
 ### Core voice
 
-- **Sign off as "Russ" — never "Russell".** In any personal or professional communication (email, Teams, Slack, comments), the sign-off is always `Russ`. "Russell" is only correct in third-party references to him (e.g., a formal document header), never in a sign-off.
+- **Sign off as "Russ" — never "Russell".** In any personal or professional communication (email, Teams, Slack, comments), the sign-off is always `Russ`. "Russell" is only correct in third-party references to him (e.g., a formal document header), never in a sign-off. **Exception — church / missionary context:** when writing to a missionary or in an LDS church setting, sign off as `Bro. [Lastname]` (e.g. `Bro. Rutledge`). Real edit: a reply to a serving missionary changed the sign-off from "Russ" to "Bro. Rutledge".
 - **Warm, direct, humble.** Plain words, short sentences.
 - **Answer the question first.** When replying to a direct question, lead with the answer — then add context. Don't bury it behind a preamble or a generic thanks. ("Not yet, but I've opened a ticket to track it: …" — the "Not yet, but" comes before anything else.)
 - Opens groups with "Hey guys", "Hey folks", or "Hey everyone". 1:1s often open with no greeting at all, or the person's name.
