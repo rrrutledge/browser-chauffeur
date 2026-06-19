@@ -96,11 +96,23 @@ date / clear without surfacing a tab or beep.
   to lose track. Create a follow-up tracker card (the user's board, per `context.md`) before marking
   done, so it stays visible instead of relying on memory.
 
-Then, as your **FINAL step**, write a one-line result to `items/<id>.done` (e.g. "completed: filed
-ticket #1234 and replied", "skipped: <reason>"). This marker is your **completion signal**: the keeper
-reads it next cycle to mark the item cleared in seen-state, which **frees a slot under the concurrency
-cap** so a held needs-you item can open. (Tab-close can't be detected reliably, so this worker-written
-marker is the advance signal.)
+Then **present your result to the user and WAIT** — give the final briefing (per §1: restate the
+incoming item, what you did, and any draft you staged) and **yield**. Do NOT write `.done` in that same
+turn. Only after the user has responded — acknowledged they've seen it, given direction, said they sent
+the draft, or told you to drop it — write a one-line result to `items/<id>.done` (e.g. "completed: filed
+ticket #1234 and replied", "skipped: <reason>") as your final step.
+
+`.done` is your **completion signal**: the keeper reads it next cycle to mark the item cleared in
+seen-state, which **frees a slot under the concurrency cap** so a new needs-you tab can open. Writing it
+only *after* the user engages is deliberate — it means a fresh tab opens once the user has actually dealt
+with this one, not the instant a draft was staged, so tabs never pile up faster than they can be handled.
+(Tab-close can't be detected reliably, so this acknowledged-then-written marker is the advance signal.)
+
+**Exception — silent resolutions write `.done` immediately.** An item you resolve WITHOUT surfacing it
+for the user's attention — a pointer you re-triaged to fyi/junk and routed to the digest (§2b), or a
+situational no-op close (nothing to do right now) — needs no acknowledgment: write `.done` at once so it
+doesn't hold a slot. The wait-for-acknowledgment gate applies only when you've genuinely put something in
+front of the user.
 
 ## 7. Improve the source (don't just hoard facts)
 If the user had to tell you something you could have known, don't just note it — figure out *where it
