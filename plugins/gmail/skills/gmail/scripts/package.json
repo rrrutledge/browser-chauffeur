@@ -1,0 +1,11 @@
+{
+  "name": "gmail-scripts",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Gmail helper scripts (IMAP via imapflow + app password; MIME via nodemailer; parse via mailparser)",
+  "dependencies": {
+    "imapflow": "^1.0.164",
+    "mailparser": "^3.7.1",
+    "nodemailer": "^6.9.14"
+  }
+}
