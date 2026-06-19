@@ -169,3 +169,22 @@ def check_node_segment(seg):
 
 def check_python_segment(seg, command):
     return _check_segment(seg, command, 'python', '-c')
+
+
+def check_direct_script_segment(seg, language):
+    """Handle a segment where the script is the command itself (e.g. `run-poller.py arg`)."""
+    tokens = shell_tokenize(seg)
+    if not tokens:
+        return True
+    filename = tokens[0]
+    log_debug(f"Direct {language} script execution: {filename}")
+    if is_in_trusted_script_dir(filename):
+        log_debug(f"Direct script in trusted directory, allowing: {filename}")
+        return True
+    content = read_script_file(filename)
+    if content is None:
+        return False
+    verdict, reason = ask_ai_about_script(content, language, command_line=seg)
+    if verdict is False:
+        _record_block(filename, language, reason)
+    return verdict is True
