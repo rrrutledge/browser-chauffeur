@@ -125,6 +125,10 @@ def main():
             allow()
         defer()
 
+    if tool == 'Monitor':
+        log_debug("DECISION: Allow Monitor tool (always read-only)")
+        allow()
+
     if tool != 'Bash':
         defer()
 
