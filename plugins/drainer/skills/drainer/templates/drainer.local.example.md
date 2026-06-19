@@ -47,6 +47,12 @@ max_messages_per_cycle: 50   # how many inbox items each cycle enumerates (newes
 worker_model: claude-sonnet-4-6          # simple items (quick replies, trivial actions)
 worker_model_complex: claude-opus-4-8    # complex items (multi-step work, code, delicate messages)
 triage_model: claude-sonnet-4-6          # the per-cycle batched triage call (also pinned, standard context)
+
+# EOD digest (run-digest.py) — the once-a-day interactive slow loop.
+digest_model: claude-opus-4-8   # the digest session (summarize fyi, group junk, reconciliation); standard context
+stale_hours: 12                 # reconciliation: a needs-you item still dispatched-but-uncleared past this
+                                # many hours is stale-but-unfinished and gets re-surfaced in the digest.
+digest_time: "17:00"            # wall-clock time (HH:MM, 24h) the daily digest task fires (used by the installer).
 ---
 
 # drainer.local

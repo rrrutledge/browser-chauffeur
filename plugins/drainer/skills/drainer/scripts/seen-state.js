@@ -16,6 +16,7 @@
 //   node seen-state.js queue-add   <runtimeDir> <source> <id> <json-file> -> append a captured fyi/junk item to the digest queue
 //   node seen-state.js queue-list  <runtimeDir>                          -> prints the queue as JSON
 //   node seen-state.js queue-clear <runtimeDir> <id>                     -> removes one item from the queue
+//   node seen-state.js stale-list  <runtimeDir> <staleHours>             -> prints needs-you items dispatched-but-uncleared older than staleHours (reconciliation)
 
 const fs = require('fs');
 const path = require('path');
@@ -103,7 +104,53 @@ function queueClear(runtimeDir, id) {
   writeJsonAtomic(queuePath(runtimeDir), queue);
 }
 
-module.exports = { isSeen, record, openCount, clear, queueAdd, queueList, queueClear };
+// Parse the YYYYMMDD-HHMMSS timestamp embedded in a stable id (e.g.
+// personal-outlook-20260618-152426-...) as a fallback when items/<id>.json has no ts.
+function parseIdTs(id) {
+  const m = /(\d{8})-(\d{6})/.exec(id || '');
+  if (!m) return null;
+  const d = m[1], t = m[2];
+  // Treat the embedded stamp as UTC (the capture ts that seeds it is UTC).
+  const iso = `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}T` +
+    `${t.slice(0, 2)}:${t.slice(2, 4)}:${t.slice(4, 6)}Z`;
+  const ms = Date.parse(iso);
+  return Number.isNaN(ms) ? null : ms;
+}
+
+// Reconciliation: needs-you items still 'dispatched' (never cleared) and older than staleHours.
+// A worker writes <id>.done -> the poller flips it to 'cleared', so anything still 'dispatched'
+// and old is a worker that crashed or was never finished. Age comes from the captured
+// items/<id>.json ts (dispatch time), falling back to the id's embedded timestamp.
+function staleList(runtimeDir, staleHours) {
+  const cutoffMs = Number(staleHours) * 3600 * 1000;
+  const now = Date.now();
+  const seen = loadSeen(runtimeDir);
+  const out = [];
+  for (const source of Object.keys(seen)) {
+    const items = seen[source] || {};
+    for (const id of Object.keys(items)) {
+      const r = items[id];
+      if (r.triage !== 'needs-you' || r.status !== 'dispatched') continue;
+      const item = readJson(path.join(runtimeDir, 'items', `${id}.json`), null);
+      let ts = item && item.ts ? Date.parse(item.ts) : null;
+      if (!ts || Number.isNaN(ts)) ts = parseIdTs(id);
+      const ageMs = ts ? now - ts : null;
+      // No usable timestamp -> surface it too (can't prove it's fresh; fail toward visibility).
+      if (ageMs === null || ageMs >= cutoffMs) {
+        out.push({
+          id, source,
+          ts: ts ? new Date(ts).toISOString() : null,
+          ageHours: ageMs === null ? null : Math.round(ageMs / 3600000),
+          item,
+        });
+      }
+    }
+  }
+  out.sort((a, b) => (b.ageHours || 0) - (a.ageHours || 0));
+  return out;
+}
+
+module.exports = { isSeen, record, openCount, clear, queueAdd, queueList, queueClear, staleList };
 
 if (require.main === module) {
   const [cmd, ...rest] = process.argv.slice(2);
@@ -137,8 +184,11 @@ if (require.main === module) {
         queueClear(rest[0], rest[1]);
         console.log(`dequeued ${rest[1]}`);
         break;
+      case 'stale-list':
+        console.log(JSON.stringify(staleList(rest[0], rest[1] || 12), null, 2));
+        break;
       default:
-        throw new Error('Usage: seen-state.js <seen|record|open-count|clear|queue-add|queue-list|queue-clear> ...');
+        throw new Error('Usage: seen-state.js <seen|record|open-count|clear|queue-add|queue-list|queue-clear|stale-list> ...');
     }
   } catch (e) {
     console.error('Error:', e.message);
