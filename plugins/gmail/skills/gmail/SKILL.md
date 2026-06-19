@@ -18,7 +18,8 @@ stage drafts) flows through. Simpler to set up and headless-safe (no token to re
 
 ## Setup (per machine)
 
-1. **Install deps** (idempotent, one-time): `npm install --prefix <skill>/scripts`.
+1. **Install deps** (idempotent, one-time): `node <skill>/scripts/setup.js` — installs imapflow /
+   mailparser / nodemailer to `~/.claude/gmail/node_modules` so any copy of the script resolves them.
 2. **Enable the prerequisites on the Google account** (once):
    - Turn on **2-Step Verification**.
    - In Gmail → Settings → **Forwarding and POP/IMAP** → **Enable IMAP**. For Workspace, the admin

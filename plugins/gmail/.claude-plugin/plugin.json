@@ -1,6 +1,6 @@
 {
   "name": "gmail",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Read/draft/clear a personal Gmail or Google Workspace mailbox via IMAP using an app password — no OAuth app or browser. List the inbox, show a message, move to Trash, and stage reply/new drafts in the Drafts folder (never sent).",
   "author": {
     "name": "Russell Rutledge"
