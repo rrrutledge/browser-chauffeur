@@ -19,6 +19,13 @@
 //                (connects and reports the inbox count; non-zero exit on auth failure)
 
 const fs = require('fs');
+const path = require('path');
+const os = require('os');
+
+// Resolve deps from a stable per-user location so this script works regardless of which plugin copy
+// (cache vs marketplace clone) runs it. Seed it once with setup.js. Mirrors ms-graph's graph-client.js.
+module.paths.push(path.join(os.homedir(), '.claude', 'gmail', 'node_modules'));
+
 const { ImapFlow } = require('imapflow');
 const { simpleParser } = require('mailparser');
 const MailComposer = require('nodemailer/lib/mail-composer');
