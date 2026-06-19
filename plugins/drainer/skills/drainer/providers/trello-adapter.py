@@ -229,7 +229,15 @@ class Provider(ProviderBase):
         return items[:limit]
 
     def stable_id(self, item):
-        return f"{self.name}-{slug(item.get('name'), 40)}-{item['cardId'][-6:]}".strip("-")[:72]
+        # The due date is PART OF the identity, not just a field: a card recurs every follow-up cycle
+        # (CLEAR bumps its due date out), and seen-state's `clear` leaves a drained id in seen.json
+        # forever (status=cleared, key persists) while dedup is pure key-presence. So a stable
+        # per-card id would be marked seen on the first drain and never resurface when the next due
+        # date arrives. Folding the due date (YYYYMMDD) in makes each due-cycle a distinct item that
+        # surfaces anew; an undated card uses "nodue" and so stays seen until it's given a due date.
+        due = (item.get("due") or "")
+        stamp = "".join(c for c in due if c.isdigit())[:8] or "nodue"
+        return f"{self.name}-{slug(item.get('name'), 40)}-{item['cardId'][-6:]}-{stamp}".strip("-")[:72]
 
     def capture(self, item, iid, runtime_dir):
         items_dir = os.path.join(runtime_dir, "items")
