@@ -77,9 +77,7 @@ def load_providers(cfg):
         spec = importlib.util.spec_from_file_location(f"{name.replace('-', '_')}_adapter", path)
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
-        prov = mod.Provider()
-        prov.configure(cfg)  # hand the adapter the parsed config (repo + knobs); no-op for inbox adapters
-        providers.append(prov)
+        providers.append(mod.Provider())
     return providers
 
 
