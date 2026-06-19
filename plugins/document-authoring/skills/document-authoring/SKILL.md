@@ -16,11 +16,6 @@ Always embed links as hyperlinks on descriptive text within the sentence flow �
 - Good: "see the [incident report](URL)", "the [IDP-1069](URL) ticket", "documented in [the runbook](URL)"
 - Bad: "Read here: https://wellsky.atlassian.net/wiki/…"
 
-Keep links inside the sentences. Anchor each one to the two or three natural words it relates to and let it sit in the running prose — never gather links into a trailing "Links:" block or put each link on its own labelled line.
-
-- Good: "the [Mac app](URL) is already live, and the [Windows app](URL) refreshes tomorrow … I'm tracking it in [IDP-1095](URL), with the change in [PR #1379](URL)."
-- Bad: a list at the end — "Mac app: [link]" / "Windows app: [link]" / "Tracking: [IDP-1095] / [PR #1379]"
-
 Implementation by format:
 - **Confluence**: `<a href="URL">descriptive text</a>` inside the sentence
 - **Teams / Slack**: use the link dialog (Ctrl+K) to anchor the URL to text
