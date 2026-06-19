@@ -46,6 +46,17 @@ Use for: Confluence specs, how-to guides, PRDs, PR descriptions, Word docs, publ
 - **Summarize — give the gist, hold the detail.** Even formal replies (Jira/Request Center comments, email) stay short: lead with the point and the few facts that matter, and let the reader ask if they want the full technical breakdown. Resist listing every permission, every alternative, every implementation note. Real edit: a Request Center reply that spelled out each Graph scope, every alternative, and the credential-storage mechanism should have been a few summarized sentences (approach chosen + why it beats the alternative we use today).
 - Avoid: corporate filler ("leverage", "streamline", "as per"), long compound sentences, effusive sign-offs
 
+### Reports, reviews & status updates
+
+Use for: self-evaluations, quarterly/weekly R&D reviews, stakeholder and status updates — first-person reports measured against goals or competencies. Builds on the formal-writing basics above.
+
+- **Evidence-led.** Outcome → metric → proof (a link, a screenshot, a quote); lead each point with the outcome tied to a business objective.
+- **Honest, defensible numbers.** Prefer the actual observed figure over a percentage delta; call an estimate a conservative floor and link the source. An honest number beats an inflated one — readers probe.
+- **Balance strengths with genuine growth areas.** In a self-assessment, pair confident accomplishments with real, specific gaps (a conflict avoided, a hire that didn't fit, a strategy gap) — credible, not humble-brags.
+- **Continuity.** Tie back to the prior period's report: what you said you'd do → what you did.
+- **Right altitude.** Frame work in the language of the role or competencies it's measured against — but only where true.
+- **Bullets with bold lead-ins.** Start each bullet with a **bold 4–7 word key phrase**, then " — " and the detail; put an intro sentence above a list with a blank line before the list.
+
 ### Draft first, then send
 
 Any message that leaves Russell's hands — a Jira/Request Center comment, an email, a Teams post — is drafted for his approval before it's sent. He sends it himself.
