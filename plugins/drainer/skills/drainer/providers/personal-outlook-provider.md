@@ -63,10 +63,9 @@ apply without the user's OK:
 ## DRAFT-MODE
 **First, before writing a single word of the body: invoke the `document-authoring` skill (call the Skill
 tool to load it) and read its Conversational writing + "Never do these" sections. Compose the draft
-against what you just read — do not write from memory.** The skill owns Russell's voice and its hard
-rules (sign off "Russ", no em dash — use ` - `, no AI filler, no helper tail); a draft composed from
-memory reliably leaks the very tokens those rules ban. This read is a gate: it happens before drafting,
-not as an after-the-fact check.
+against what you just read — do not write from memory.** The skill is the single source of truth for
+Russell's voice and its hard rules; a draft composed from memory reliably leaks the very tokens those
+rules ban. This read is a gate: it happens before drafting, not as an after-the-fact check.
 
 Then write the message text in that voice. The voice loop in the document-authoring skill still applies —
 diff sent-vs-draft after each send and append a lesson. Write the body as HTML to a file, then create the
