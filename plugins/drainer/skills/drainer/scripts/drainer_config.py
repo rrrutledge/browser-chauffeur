@@ -50,6 +50,7 @@ def read_config(repo):
         runtime_dir = os.path.join(repo, runtime_dir)
     return {
         "providers": parse_provider_names(text),
+        "repo": repo,  # so adapters that drain configured targets (e.g. trello boards) can re-read this file
         "runtime_dir": runtime_dir,
         "local_dir": scalar("local_dir", os.path.join(repo, "drainer-local")),
         "max_open_tabs": int(scalar("max_open_tabs", "3")),
