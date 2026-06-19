@@ -28,7 +28,7 @@ $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $poller = Join-Path $scriptDir 'run-poller.py'
 
 $action = New-ScheduledTaskAction -Execute 'python' `
-    -Argument "`"$poller`" --repo `"$RepoDir`""
+    -Argument ('"' + $poller + '" --repo "' + $RepoDir + '"')
 
 $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) `
     -RepetitionInterval (New-TimeSpan -Minutes $IntervalMinutes)
@@ -46,4 +46,4 @@ Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Se
     -Force | Out-Null
 
 Write-Host "Registered '$TaskName': python run-poller.py --repo $RepoDir every $IntervalMinutes min."
-Write-Host "Remove with:  powershell -File install-schedule.ps1 -RepoDir `"$RepoDir`" -Remove"
+Write-Host "Remove with:  install-schedule.ps1 -RepoDir $RepoDir -Remove"
