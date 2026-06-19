@@ -167,7 +167,7 @@ GIT_TRUSTED_SUBCOMMANDS = {
     'format-patch', 'fsck', 'verify-commit', 'verify-tag', 'version', 'bisect',
     # reversible writes (the effect can be undone)
     'add', 'commit', 'rm', 'stash', 'fetch', 'pull', 'merge', 'rebase', 'revert', 'cherry-pick',
-    'worktree', 'config', 'init', 'clone',
+    'worktree', 'config', 'init', 'clone', 'update-ref',
 }
 
 GIT_CONDITIONAL_SUBCOMMANDS = {
