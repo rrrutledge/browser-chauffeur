@@ -162,7 +162,7 @@ GIT_TRUSTED_SUBCOMMANDS = {
     # read-only
     'status', 'log', 'diff', 'show', 'remote', 'describe', 'rev-parse', 'rev-list',
     'ls-files', 'ls-remote', 'ls-tree', 'shortlog', 'blame', 'reflog', 'cat-file', 'for-each-ref',
-    'symbolic-ref', 'name-rev', 'grep', 'count-objects', 'merge-base', 'cherry',
+    'symbolic-ref', 'name-rev', 'grep', 'count-objects', 'merge-base', 'merge-tree', 'cherry',
     'whatchanged', 'show-ref', 'show-branch', 'archive', 'diff-tree', 'diff-index', 'diff-files',
     'format-patch', 'fsck', 'verify-commit', 'verify-tag', 'verify-pack', 'version', 'bisect',
     'check-ignore', 'check-attr', 'check-ref-format', 'check-mailmap',
