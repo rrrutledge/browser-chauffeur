@@ -219,56 +219,86 @@ def main():
 
     reconcile_done(cfg["runtime_dir"])  # free cap slots for items whose workers finished last cycle
 
+    # --- enumerate ALL providers first, accumulate into one global list ---
+    all_new, seen_by_source, totals = [], {}, {}
     for provider in providers:
         new, total, seen = collect_new(provider, cfg)
+        seen_by_source[provider.name] = seen
+        totals[provider.name] = total
+        all_new.extend(new)
         if not new:
-            print(f"{provider.name}: {total} enumerated, 0 new. Nothing to dispatch.")
-            continue
+            print(f"{provider.name}: {total} enumerated, 0 new.")
 
-        verdicts = triage(new, repo, cfg["local_dir"], cfg["triage_model"])
-        for it in new:
-            v = verdicts.get(it["_id"], {"bucket": "needs-you", "kind": "reply"})  # unjudged -> act (fail-safe)
-            it["_bucket"], it["_kind"] = v.get("bucket", "needs-you"), v.get("kind")
-            it["_complexity"] = v.get("complexity", "simple")
-        counts = {b: sum(1 for it in new if it["_bucket"] == b) for b in ("needs-you", "fyi", "junk")}
-        oc = open_count(seen)
+    if not all_new:
+        print("0 new items across all sources. Nothing to dispatch.")
+        return
 
-        if args.dry_run:
-            print(f"DRY-RUN - {provider.name}: {len(new)} new of {total} | "
-                  f"{counts['needs-you']} needs-you, {counts['fyi']} fyi, {counts['junk']} junk")
-            for it in new:
-                held = it["_bucket"] == "needs-you" and oc >= cfg["max_open_tabs"]
-                if it["_bucket"] == "needs-you" and not held:
-                    oc += 1
-                if it["_bucket"] == "needs-you":
-                    model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
-                    action = "HOLD (at cap)" if held else f"spawn worker [{it['_complexity']} -> {model}]"
-                else:
-                    action = "queue -> digest"
-                print(f"  [{it['_bucket']:9}] {it['_id']}  ->  {action}\n"
-                      f"      {it.get('from')} | {it.get('subject')}")
-            continue
+    # --- one combined triage call over all sources ---
+    verdicts = triage(all_new, repo, cfg["local_dir"], cfg["triage_model"])
+    for it in all_new:
+        v = verdicts.get(it["_id"], {"bucket": "needs-you", "kind": "reply"})  # unjudged -> act (fail-safe)
+        it["_bucket"], it["_kind"] = v.get("bucket", "needs-you"), v.get("kind")
+        it["_complexity"] = v.get("complexity", "simple")
 
-        dispatched, held, queued = 0, 0, 0
-        for it in new:
-            iid = it["_id"]
-            if it["_bucket"] == "needs-you":
-                if oc >= cfg["max_open_tabs"]:
-                    held += 1  # leave UNRECORDED -> retried next cycle (fail-safe throttle)
-                    continue
-                model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
-                json_file = provider.capture(it, iid, cfg["runtime_dir"])
-                spawn_worker(iid, json_file, repo, cfg["runtime_dir"], model)
-                seen_state("record", cfg["runtime_dir"], provider.name, iid, "needs-you")
+    # --- global open count across ALL sources ---
+    global_oc = sum(open_count(s) for s in seen_by_source.values())
+
+    # --- split: needs-you (newest-first globally) vs others ---
+    needs = sorted(
+        (it for it in all_new if it["_bucket"] == "needs-you"),
+        key=lambda it: it.get("received") or "",
+        reverse=True,  # newest first; items missing received sort last via ""
+    )
+    others = [it for it in all_new if it["_bucket"] != "needs-you"]
+
+    prov = {p.name: p for p in providers}  # name -> adapter for cross-source dispatch
+
+    if args.dry_run:
+        counts = {b: sum(1 for it in all_new if it["_bucket"] == b) for b in ("needs-you", "fyi", "junk")}
+        total_all = sum(totals.values())
+        print(f"DRY-RUN — {len(all_new)} new of {total_all} across {len(providers)} source(s) | "
+              f"{counts['needs-you']} needs-you, {counts['fyi']} fyi, {counts['junk']} junk | "
+              f"global cap {cfg['max_open_tabs']}, currently open {global_oc}")
+        print("  needs-you (newest-first globally):")
+        oc = global_oc
+        for it in needs:
+            held = oc >= cfg["max_open_tabs"]
+            if not held:
                 oc += 1
-                dispatched += 1
-            else:
-                json_file = provider.capture(it, iid, cfg["runtime_dir"])
-                seen_state("queue-add", cfg["runtime_dir"], provider.name, iid, json_file)
-                seen_state("record", cfg["runtime_dir"], provider.name, iid, it["_bucket"])
-                queued += 1
-        print(f"{provider.name}: dispatched {dispatched} worker tab(s), queued {queued} for digest, "
-              f"held {held} at cap. Poller never clears.")
+            model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
+            action = "HOLD (at cap)" if held else f"spawn worker [{it['_complexity']} -> {model}]"
+            print(f"    [{it['_source']:20}] {it['_id']}  ->  {action}\n"
+                  f"        {it.get('received')} | {it.get('from')} | {it.get('subject')}")
+        if others:
+            print("  others -> digest:")
+            for it in others:
+                print(f"    [{it['_bucket']:9}] [{it['_source']:20}] {it['_id']}\n"
+                      f"        {it.get('from')} | {it.get('subject')}")
+        return
+
+    dispatched, held, queued = 0, 0, 0
+    for it in needs:
+        provider = prov[it["_source"]]
+        iid = it["_id"]
+        if global_oc >= cfg["max_open_tabs"]:
+            held += 1  # leave UNRECORDED -> retried next cycle (fail-safe throttle)
+            continue
+        model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
+        json_file = provider.capture(it, iid, cfg["runtime_dir"])
+        spawn_worker(iid, json_file, repo, cfg["runtime_dir"], model)
+        seen_state("record", cfg["runtime_dir"], it["_source"], iid, "needs-you")
+        global_oc += 1
+        dispatched += 1
+    for it in others:
+        provider = prov[it["_source"]]
+        iid = it["_id"]
+        json_file = provider.capture(it, iid, cfg["runtime_dir"])
+        seen_state("queue-add", cfg["runtime_dir"], it["_source"], iid, json_file)
+        seen_state("record", cfg["runtime_dir"], it["_source"], iid, it["_bucket"])
+        queued += 1
+
+    print(f"dispatched {dispatched} worker tab(s), queued {queued} for digest, "
+          f"held {held} at global cap of {cfg['max_open_tabs']}. Poller never clears.")
 
 
 if __name__ == "__main__":
