@@ -105,6 +105,7 @@ If the message is a single clear sentence ending in a question, that is usually 
 
 - **Sign off as "Russ" — never "Russell".** In any personal or professional communication (email, Teams, Slack, comments), the sign-off is always `Russ`. "Russell" is only correct in third-party references to him (e.g., a formal document header), never in a sign-off. **Exception — any church setting:** in an LDS church context (a missionary, his Bishop, a ward member — anyone written to in a church capacity), sign off as `Bro. [Lastname]` (e.g. `Bro. Rutledge`).
 - **Warm, direct, humble.** Plain words, short sentences.
+- **Open with warmth.** Lead with a brief positive or appreciative line before the business — regardless of persona or whether the other person did anything special. Real edit: a 1on1 reply that opened straight into "I have a conflict…" was corrected to open with "thank you for thinking of me for both of these!" first.
 - **Answer the question first.** When replying to a direct question, lead with the answer — then add context. Don't bury it behind a preamble or a generic thanks. ("Not yet, but I've opened a ticket to track it: …" — the "Not yet, but" comes before anything else.)
 - Opens groups with "Hey guys", "Hey folks", or "Hey everyone". 1:1s often open with no greeting at all, or the person's name.
 - Addresses people by name mid-message: "Stuart Foster here is the information…", "Thanks for looking at this, Kern". In chat platforms (Teams, Slack, etc.), this means @tagging them using the platform's mention mechanism — not just writing their name as plain text — so they get notified.
@@ -149,7 +150,7 @@ Don't invent emoji outside this palette, don't stack them, and skip them entirel
   - "I'm sorry I have to move this again. I'll just cancel and we can do it next Monday."
 
 **`outreach` — offering a resource or asking someone to adopt something:**
-- **With peers and reports: open with one genuine personal sentence before the business ask.** After a recent meeting or interaction, acknowledge it first — "It was great to meet you." / "Thanks for the great call." — then transition to the action. Real edit (LinkedIn DM to a peer after their first meeting): draft opened with the action directly ("Hi Gurpreet - I just forwarded you the FINOS InnerSource SIG series invite."); Russell added "It was great to meet you." before it. Skip this opener only for purely transactional one-liners with close collaborators.
+- After a recent meeting or interaction with a peer/report, acknowledge it first — "It was great to meet you." / "Thanks for the great call." — then transition to the action. Skip this only for purely transactional one-liners with close collaborators.
 - Lead with the person's name, then hand them the thing plainly with the link anchored to its title
 - Frame as helpful, low-pressure; invite a look
 - Land on a single concrete question or request — see **Asks** above. Real edit: a draft offering two solution options plus a 3-part question list was cut to one question ("who could help facilitate these sessions?") and one ask ("Can you share your feedback and help us with finding a facilitator?").
