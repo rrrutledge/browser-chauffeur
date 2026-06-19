@@ -1,0 +1,99 @@
+"""slack poller adapter — InnerSource Commons Slack via the slack skill's slack.js (Web API).
+
+All slack mechanics live HERE, alongside the prose contract in `slack-provider.md`: locating slack.js,
+the `--list-unread --json` enumerate, the `<channel>:<ts>` id scheme, and the captured item shape. The
+poller (`scripts/run-poller.py`) loads this adapter dynamically and drives it through the `ProviderBase`
+interface — it contains no Slack specifics.
+
+This is the API sibling of `gmail-adapter.py` / `personal-outlook-adapter.py`: same operations, a
+different transport. slack.js talks the Slack Web API with a personal xoxc token + xoxd `d` cookie from
+the environment (SLACK_BOT_TOKEN / SLACK_COOKIE_D / SLACK_TEAM_ID).
+"""
+import glob
+import json
+import os
+import re
+import sys
+from datetime import datetime, timezone
+
+# scripts/ is on sys.path (the poller inserts it); fall back to a relative add when run standalone.
+_SCRIPTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts")
+if _SCRIPTS not in sys.path:
+    sys.path.insert(0, _SCRIPTS)
+from provider_base import ProviderBase, run_node  # noqa: E402
+
+
+class Provider(ProviderBase):
+    name = "slack"
+
+    def __init__(self):
+        self.slackjs = self._find_slack_js()
+
+    @staticmethod
+    def _find_slack_js():
+        """Locate the slack skill's slack.js across both the dev-repo and installed-plugin-cache layouts.
+
+        Dev repo:   <plugins>/slack/skills/slack/scripts/slack.js          (sibling of drainer)
+        Installed:  <plugins>/cache/<marketplace>/slack/<ver>/skills/slack/scripts/slack.js
+        Walk up to the first `plugins` dir, then try the sibling path, else glob for any slack
+        slack.js beneath it and take the highest-versioned (lexically greatest) path.
+        """
+        d = os.path.dirname(os.path.abspath(__file__))
+        while d and os.path.basename(d) != "plugins":
+            parent = os.path.dirname(d)
+            if parent == d:
+                d = None
+                break
+            d = parent
+        if d:
+            sibling = os.path.join(d, "slack", "skills", "slack", "scripts", "slack.js")
+            if os.path.exists(sibling):
+                return sibling
+            matches = glob.glob(os.path.join(d, "**", "slack", "**", "scripts", "slack.js"),
+                                recursive=True)
+            if matches:
+                return sorted(matches)[-1]  # highest version / latest path
+        raise SystemExit("Could not locate the slack skill's slack.js for the slack provider.")
+
+    def enumerate(self, limit):
+        res = run_node([self.slackjs, "--list-unread", "--json", f"--top={limit}"])
+        if res.returncode != 0:
+            raise SystemExit(f"slack enumerate failed (auth/token+cookie?): {res.stderr.strip()[:300]}")
+        return json.loads(res.stdout or "[]")
+
+    def stable_id(self, item):
+        # <channel>:<ts> is already unique per message (a Slack ts is unique within a channel); slugify
+        # to a filesystem-safe id and keep it stable across cycles so seen-state dedups on it.
+        raw = f"{self.name}-{item.get('channel')}-{item.get('ts')}"
+        return re.sub(r"[^A-Za-z0-9]+", "-", raw).strip("-")[:72]
+
+    def capture(self, item, iid, runtime_dir):
+        items_dir = os.path.join(runtime_dir, "items")
+        os.makedirs(items_dir, exist_ok=True)
+        body_file = os.path.join(items_dir, f"{iid}.slack.md")
+        channel, ts = item["channel"], item["ts"]
+        show = run_node([self.slackjs, "--show", f"--channel={channel}", f"--ts={ts}", "--json"])
+        text, permalink = item.get("preview", ""), ""
+        if show.returncode == 0:
+            try:
+                shown = json.loads(show.stdout or "{}")
+                text = shown.get("text") or text
+                permalink = shown.get("permalink") or ""
+            except ValueError:
+                pass
+        with open(body_file, "w", encoding="utf-8") as f:
+            f.write(f"# {item.get('subject')}\n\nFrom: {item.get('from')}\n"
+                    f"Channel: {item.get('channelName')} ({channel})\nReceived: {item.get('received')}\n"
+                    f"Link: {permalink}\nMessageRef: {channel}:{ts}\n\n---\n\n{text}\n")
+        record = {
+            "id": iid, "source": self.name, "triage": item["_bucket"], "kind": item.get("_kind"),
+            "from": item.get("from"), "subject": item.get("subject"), "received": item.get("received"),
+            "snippet": item.get("preview"), "url": permalink, "messageId": f"{channel}:{ts}",
+            "channel": channel, "ts": ts, "channelType": item.get("channelType"),
+            "channelName": item.get("channelName"), "bodyFile": body_file,
+            "ts_captured": datetime.now(timezone.utc).isoformat(),
+        }
+        json_file = os.path.join(items_dir, f"{iid}.json")
+        with open(json_file, "w", encoding="utf-8") as f:
+            json.dump(record, f, indent=2)
+        return json_file
