@@ -414,6 +414,12 @@ WT_FLAGS_WITH_ARG = {
 }
 
 
+def is_wt_exe_path_safe(seg):
+    """Approve full-path wt.exe only when launching the Claude session script."""
+    seg_lower = seg.lower()
+    return 'launch-session.ps1' in seg_lower and 'claude' in seg_lower
+
+
 def is_wt_safe(seg, trusted):
     """Approve `wt` only if the program it ultimately launches is trusted."""
     tokens = shell_tokenize(seg)
