@@ -1,7 +1,7 @@
 {
   "name": "slack",
-  "version": "1.0.0",
-  "description": "Read and mark-read a personal Slack workspace via the Slack Web API using a sniffed xoxc user token + xoxd cookie — no bot app, no OAuth scopes, no browser. List unread DMs, group DMs, and @-mentions, show a message with its permalink, and mark a conversation read.",
+  "version": "1.1.0",
+  "description": "Read and mark-read a Slack workspace via the Slack Web API. List unread DMs, group DMs, @-mentions, and unread thread replies (muted conversations skipped), show a message with its permalink, and mark a conversation or thread read. No browser; reply drafting is handled separately by the message-draft skill.",
   "author": {
     "name": "Russell Rutledge"
   },

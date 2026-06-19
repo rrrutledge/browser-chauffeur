@@ -53,7 +53,7 @@
     {
       "name": "slack",
       "source": "./plugins/slack",
-      "description": "Read and mark-read a personal Slack workspace (InnerSource Commons) via the Slack Web API using a sniffed xoxc user token + xoxd cookie — no bot app, no OAuth scopes, no browser. List unread DMs, group DMs, and @-mentions, show a message with its permalink, or mark a conversation read."
+      "description": "Read and mark-read a Slack workspace via the Slack Web API. List unread DMs, group DMs, @-mentions, and unread thread replies (muted conversations skipped), show a message with its permalink, or mark a conversation or thread read. No browser; reply drafting is handled separately by the message-draft skill."
     },
     {
       "name": "safe-compounds",
