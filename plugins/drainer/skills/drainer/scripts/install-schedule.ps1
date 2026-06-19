@@ -1,4 +1,4 @@
-# install-schedule.ps1 — register (or remove) the ~5-min Scheduled Task that runs the keeper.
+# install-schedule.ps1 - register (or remove) the ~5-min Scheduled Task that runs the keeper.
 #
 # This is the ONLY PowerShell in the keeper, and you run it BY HAND once (not from a Claude session),
 # after the manual tryout is trusted. It registers a Windows Scheduled Task that runs the Python
@@ -36,13 +36,13 @@ $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) `
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
     -StartWhenAvailable -MultipleInstances IgnoreNew
 
-# Run in the logged-on interactive desktop session — required so the spawned worker tabs (wt.exe
+# Run in the logged-on interactive desktop session - required so the spawned worker tabs (wt.exe
 # new-tab) actually appear on screen and so presence detection reads the real user's idle time.
 $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType Interactive -RunLevel Limited
 
 Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings `
     -Principal $principal `
-    -Description "Drainer continuous keeper — one presence-gated poller cycle every $IntervalMinutes min." `
+    -Description "Drainer continuous keeper - one presence-gated poller cycle every $IntervalMinutes min." `
     -Force | Out-Null
 
 Write-Host "Registered '$TaskName': python run-poller.py --repo $RepoDir every $IntervalMinutes min."
