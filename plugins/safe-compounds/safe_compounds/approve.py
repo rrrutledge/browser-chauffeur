@@ -2,7 +2,7 @@
 operations. The orchestrator (hook.py) approves a command when every segment
 passes this check."""
 from . import commands
-from .scripts import check_node_segment, check_python_segment
+from .scripts import check_direct_script_segment, check_node_segment, check_python_segment
 from .shell import first_word, shell_tokenize
 
 SHELL_BODY_KEYWORDS = {'do', 'then', 'else', 'elif', 'if', 'while', 'until'}
@@ -43,6 +43,10 @@ def is_segment_trusted(seg, trusted):
         return check_node_segment(seg)
     if word in ('python', 'python3'):
         return check_python_segment(seg, word)
+    if word.endswith('.py'):
+        return check_direct_script_segment(seg, 'python')
+    if word.endswith(('.js', '.mjs', '.ts')):
+        return check_direct_script_segment(seg, 'javascript')
     if word == 'sed':
         return commands.is_sed_command_safe(seg)
     if word in commands.SUBCOMMAND_TOOLS:
