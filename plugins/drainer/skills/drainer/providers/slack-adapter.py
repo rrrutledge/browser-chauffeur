@@ -72,7 +72,11 @@ class Provider(ProviderBase):
         os.makedirs(items_dir, exist_ok=True)
         body_file = os.path.join(items_dir, f"{iid}.slack.md")
         channel, ts = item["channel"], item["ts"]
-        show = run_node([self.slackjs, "--show", f"--channel={channel}", f"--ts={ts}", "--json"])
+        thread_ts = item.get("threadTs") or ""
+        show_cmd = [self.slackjs, "--show", f"--channel={channel}", f"--ts={ts}", "--json"]
+        if thread_ts:
+            show_cmd.append(f"--thread-ts={thread_ts}")
+        show = run_node(show_cmd)
         text, permalink = item.get("preview", ""), ""
         if show.returncode == 0:
             try:
@@ -89,8 +93,9 @@ class Provider(ProviderBase):
             "id": iid, "source": self.name, "triage": item["_bucket"], "kind": item.get("_kind"),
             "from": item.get("from"), "subject": item.get("subject"), "received": item.get("received"),
             "snippet": item.get("preview"), "url": permalink, "messageId": f"{channel}:{ts}",
-            "channel": channel, "ts": ts, "channelType": item.get("channelType"),
-            "channelName": item.get("channelName"), "bodyFile": body_file,
+            "channel": channel, "ts": ts, "threadTs": thread_ts,
+            "channelType": item.get("channelType"), "channelName": item.get("channelName"),
+            "bodyFile": body_file,
             "ts_captured": datetime.now(timezone.utc).isoformat(),
         }
         json_file = os.path.join(items_dir, f"{iid}.json")
