@@ -1,5 +1,5 @@
 @echo off
-REM spawn-tab.cmd — open ONE Windows Terminal tab running a fresh interactive Claude worker session.
+REM spawn-tab.cmd - open ONE Windows Terminal tab running a fresh interactive Claude worker session.
 REM Called from run-poller.py via:  subprocess.Popen(["cmd","/c", spawn-tab.cmd, TITLE, REPO, PROMPTFILE])
 REM A .cmd shim is used (not a direct Popen of wt.exe) because wt.exe tokenization breaks on quoted
 REM paths passed through a Python subprocess; cmd escaping handles it reliably.
