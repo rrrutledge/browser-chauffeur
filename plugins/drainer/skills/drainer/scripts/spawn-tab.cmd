@@ -14,4 +14,6 @@ set "PFILE=%~3"
 set "MODEL=%~4"
 set "WT=%LOCALAPPDATA%\Microsoft\WindowsApps\wt.exe"
 set "LAUNCHER=%USERPROFILE%\OneDrive\Claude\scripts\launch-session.ps1"
-"%WT%" -w 0 new-tab --title "%TITLE%" --startingDirectory "%REPO%" powershell -NoExit -NoProfile -File "%LAUNCHER%" -PromptFile "%PFILE%" -Model "%MODEL%"
+REM -w drainer: always collect worker tabs in a single, consistently-named "drainer" window, rather
+REM than -w 0 (most-recently-used), which is unpredictable when the scheduled task creates the window.
+"%WT%" -w drainer new-tab --title "%TITLE%" --startingDirectory "%REPO%" powershell -NoExit -NoProfile -File "%LAUNCHER%" -PromptFile "%PFILE%" -Model "%MODEL%"
