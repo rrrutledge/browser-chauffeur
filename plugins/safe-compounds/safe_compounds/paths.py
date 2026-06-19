@@ -230,6 +230,7 @@ def read_script_file(filename):
 TRUSTED_SCRIPT_DIRS = [
     '.tmp/', '/.tmp/', '\\.tmp\\',
     '.claude/',
+    'plugins/',
 ]
 
 
