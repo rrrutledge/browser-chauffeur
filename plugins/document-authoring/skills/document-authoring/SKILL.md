@@ -141,6 +141,7 @@ Don't invent emoji outside this palette, don't stack them, and skip them entirel
 - **Email sign-off**: just `"Russ"` on its own line — no valediction ("Talk soon", "Best", "Thanks") before the name.
 - **Energizing close**: when there's genuinely good news and you are the leader/owner of the group, end with a brief forward-looking statement — e.g., "This is going to be great."  Skip it when you're sharing news into someone else's channel or group.
 - Short, conversational, considerate of their time and life
+- **Open with something positive** — when someone has offered an opportunity, extended a kindness, or done you a favor, lead with a brief warm acknowledgement before the business. Real edit: a draft that opened straight into "I have a conflict…" was corrected to open with "thank you for thinking of me for both of these!" first.
 - Logistics + warmth. Apologize if rescheduling: "Thanks.  Let's meet tomorrow - sorry."
 - *Samples:*
   - "Hi Mallikarjun!  I heard back from the HR folks and they've made the update to bring Workday in sync. Here is your merit statement. Let me know if that looks OK?"
