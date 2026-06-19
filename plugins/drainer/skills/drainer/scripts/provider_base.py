@@ -8,10 +8,15 @@ poller itself. This module is the small shared surface (subprocess + slug helper
 import re
 import subprocess
 
+# Suppress the brief console window each child process would otherwise flash when the poller runs
+# under pythonw (no parent console). 0 on non-Windows. The visible worker tabs are spawned via wt.exe
+# separately and are unaffected.
+NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
 
 def run_node(args, **kw):
     return subprocess.run(["node", *args], capture_output=True, text=True,
-                          encoding="utf-8", errors="replace", **kw)
+                          encoding="utf-8", errors="replace", creationflags=NO_WINDOW, **kw)
 
 
 def slug(s, maxlen=18):

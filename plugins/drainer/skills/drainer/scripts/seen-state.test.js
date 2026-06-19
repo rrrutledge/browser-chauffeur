@@ -6,7 +6,7 @@ const os = require('os');
 const path = require('path');
 
 const {
-  isSeen, record, openCount, clear, queueAdd, queueList, queueClear,
+  isSeen, record, openCount, clear, queueAdd, queueList, queueClear, staleList,
 } = require('./seen-state');
 
 function tmpDir() {
@@ -79,4 +79,49 @@ test('digest queue add / list / clear round-trips', () => {
 test('queue-list on empty/missing dir returns []', () => {
   const dir = path.join(tmpDir(), 'empty');
   assert.deepStrictEqual(queueList(dir), []);
+});
+
+// Helper: write a captured items/<id>.json with a ts so stale-list can age it.
+function writeItem(dir, id, source, ts, extra = {}) {
+  const itemsDir = path.join(dir, 'items');
+  fs.mkdirSync(itemsDir, { recursive: true });
+  fs.writeFileSync(path.join(itemsDir, `${id}.json`),
+    JSON.stringify({ id, source, ts, ...extra }, null, 2));
+}
+
+test('stale-list surfaces only dispatched needs-you older than the threshold', () => {
+  const dir = tmpDir();
+  const old = new Date(Date.now() - 30 * 3600 * 1000).toISOString();   // 30h ago
+  const fresh = new Date(Date.now() - 2 * 3600 * 1000).toISOString();  // 2h ago
+  record(dir, 'personal-outlook', 'stale-old', 'needs-you');
+  writeItem(dir, 'stale-old', 'personal-outlook', old, { subject: 'old ask' });
+  record(dir, 'personal-outlook', 'fresh-one', 'needs-you');
+  writeItem(dir, 'fresh-one', 'personal-outlook', fresh);
+  record(dir, 'personal-outlook', 'done-one', 'needs-you');
+  writeItem(dir, 'done-one', 'personal-outlook', old);
+  clear(dir, 'personal-outlook', 'done-one');                          // cleared -> excluded
+  record(dir, 'personal-outlook', 'fyi-one', 'fyi');                   // not needs-you -> excluded
+
+  const stale = staleList(dir, 12);
+  assert.strictEqual(stale.length, 1);
+  assert.strictEqual(stale[0].id, 'stale-old');
+  assert.strictEqual(stale[0].item.subject, 'old ask');
+  assert.ok(stale[0].ageHours >= 29 && stale[0].ageHours <= 31);
+});
+
+test('stale-list ages off the id timestamp when items json is missing', () => {
+  const dir = tmpDir();
+  record(dir, 'personal-outlook', 'personal-outlook-20200101-000000-x', 'needs-you');
+  const stale = staleList(dir, 12);                                    // year 2020 -> very stale
+  assert.strictEqual(stale.length, 1);
+  assert.strictEqual(stale[0].item, null);
+  assert.ok(stale[0].ageHours > 1000);
+});
+
+test('stale-list is empty when nothing is overdue', () => {
+  const dir = tmpDir();
+  const fresh = new Date(Date.now() - 1 * 3600 * 1000).toISOString();
+  record(dir, 'personal-outlook', 'fresh', 'needs-you');
+  writeItem(dir, 'fresh', 'personal-outlook', fresh);
+  assert.deepStrictEqual(staleList(dir, 12), []);
 });

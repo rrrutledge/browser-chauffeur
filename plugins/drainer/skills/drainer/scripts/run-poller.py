@@ -31,7 +31,8 @@ SKILL_DIR = os.path.dirname(SCRIPT_DIR)
 PROVIDERS_DIR = os.path.join(SKILL_DIR, "providers")
 sys.path.insert(0, SCRIPT_DIR)
 import presence  # noqa: E402  (sibling module)
-from provider_base import run_node  # noqa: E402  (shared subprocess helper)
+from provider_base import run_node, NO_WINDOW  # noqa: E402  (shared subprocess helper + console-hide flag)
+from drainer_config import read_config  # noqa: E402  (shared .claude/drainer.local.md reader)
 
 SEEN_STATE = os.path.join(SCRIPT_DIR, "seen-state.js")
 
@@ -55,58 +56,8 @@ def open_count(seen):
     return sum(1 for r in seen.values() if r.get("triage") == "needs-you" and r.get("status") == "dispatched")
 
 
-def read_config(repo):
-    """Pull the scalar knobs + enabled provider names out of .claude/drainer.local.md frontmatter."""
-    path = os.path.join(repo, ".claude", "drainer.local.md")
-    text = ""
-    try:
-        with open(path, encoding="utf-8") as f:
-            text = f.read()
-    except OSError:
-        pass
-
-    def scalar(key, default):
-        m = re.search(rf"^\s*{re.escape(key)}\s*:\s*(.+?)\s*$", text, re.MULTILINE)
-        return m.group(1).strip().strip('"\'') if m else default
-
-    runtime_dir = scalar("runtime_dir", ".tmp/drainer")
-    if not os.path.isabs(runtime_dir):
-        runtime_dir = os.path.join(repo, runtime_dir)
-    return {
-        "providers": parse_provider_names(text),
-        "runtime_dir": runtime_dir,
-        "local_dir": scalar("local_dir", os.path.join(repo, "drainer-local")),
-        "max_open_tabs": int(scalar("max_open_tabs", "3")),
-        "max_messages_per_cycle": int(scalar("max_messages_per_cycle", "50")),
-        "idle_threshold_seconds": int(scalar("idle_threshold_seconds", "600")),
-        # Worker tabs need an explicit model — otherwise they inherit the session default, which may be
-        # a 1M-context model the account can't use. The poller picks per item by triage complexity:
-        # simple -> worker_model, complex -> worker_model_complex (both standard context).
-        "worker_model": scalar("worker_model", "claude-sonnet-4-6"),
-        "worker_model_complex": scalar("worker_model_complex", "claude-opus-4-8"),
-        # The triage call must also pin a model — under the scheduled task it has no parent session,
-        # so it would otherwise inherit a 1M-context default the account can't use. Standard Sonnet.
-        "triage_model": scalar("triage_model", "claude-sonnet-4-6"),
-    }
-
-
-def parse_provider_names(text):
-    """The immediate child keys under the `providers:` block (e.g. personal-outlook, trello)."""
-    names, in_block = [], False
-    for line in text.splitlines():
-        if re.match(r"^\s*providers\s*:\s*$", line):
-            in_block = True
-            continue
-        if in_block:
-            if re.match(r"^\S", line) or line.strip() in ("---", ""):
-                if line.strip() == "":
-                    continue
-                if re.match(r"^\S", line):
-                    break
-            m = re.match(r"^\s{2}([A-Za-z0-9_-]+)\s*:", line)
-            if m:
-                names.append(m.group(1))
-    return names
+# read_config / parse_provider_names live in drainer_config.py — shared with the digest launcher so
+# the two entry points never drift on knob names or defaults (imported at the top of the file).
 
 
 # ---------------------------------------------------------------------------- provider adapters
@@ -169,6 +120,7 @@ def triage(items, repo, local_dir, model):
         [claude, "-p", "--model", model, "--output-format", "json", "--setting-sources", ""],
         input=prompt,  # prompt goes on stdin (too long for an argv on Windows)
         capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=repo, timeout=420,
+        creationflags=NO_WINDOW,  # no console flash under pythonw
     )
     if res.returncode != 0:
         raise SystemExit(f"triage call failed: {res.stderr.strip()[:400]}")
@@ -200,7 +152,9 @@ def spawn_worker(iid, json_file, repo, runtime_dir, worker_model):
             f"item cleared per CLEAR), write `{json_file[:-5]}.done` last, then stop.\n"
         )
     spawn_cmd = os.path.join(SCRIPT_DIR, "spawn-tab.cmd")
-    subprocess.Popen(["cmd", "/c", spawn_cmd, f"drain:{iid}", repo, prompt_file, worker_model], cwd=repo)
+    # CREATE_NO_WINDOW hides the brief cmd shim console; wt.exe opens its own (visible) worker tab.
+    subprocess.Popen(["cmd", "/c", spawn_cmd, f"drain:{iid}", repo, prompt_file, worker_model],
+                     cwd=repo, creationflags=NO_WINDOW)
 
 
 # ---------------------------------------------------------------------------- the cycle
