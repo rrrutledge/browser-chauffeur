@@ -31,7 +31,7 @@ SKILL_DIR = os.path.dirname(SCRIPT_DIR)
 PROVIDERS_DIR = os.path.join(SKILL_DIR, "providers")
 sys.path.insert(0, SCRIPT_DIR)
 import presence  # noqa: E402  (sibling module)
-from provider_base import run_node  # noqa: E402  (shared subprocess helper)
+from provider_base import run_node, NO_WINDOW  # noqa: E402  (shared subprocess helper + console-hide flag)
 
 SEEN_STATE = os.path.join(SCRIPT_DIR, "seen-state.js")
 
@@ -169,6 +169,7 @@ def triage(items, repo, local_dir, model):
         [claude, "-p", "--model", model, "--output-format", "json", "--setting-sources", ""],
         input=prompt,  # prompt goes on stdin (too long for an argv on Windows)
         capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=repo, timeout=420,
+        creationflags=NO_WINDOW,  # no console flash under pythonw
     )
     if res.returncode != 0:
         raise SystemExit(f"triage call failed: {res.stderr.strip()[:400]}")
@@ -200,7 +201,9 @@ def spawn_worker(iid, json_file, repo, runtime_dir, worker_model):
             f"item cleared per CLEAR), write `{json_file[:-5]}.done` last, then stop.\n"
         )
     spawn_cmd = os.path.join(SCRIPT_DIR, "spawn-tab.cmd")
-    subprocess.Popen(["cmd", "/c", spawn_cmd, f"drain:{iid}", repo, prompt_file, worker_model], cwd=repo)
+    # CREATE_NO_WINDOW hides the brief cmd shim console; wt.exe opens its own (visible) worker tab.
+    subprocess.Popen(["cmd", "/c", spawn_cmd, f"drain:{iid}", repo, prompt_file, worker_model],
+                     cwd=repo, creationflags=NO_WINDOW)
 
 
 # ---------------------------------------------------------------------------- the cycle
