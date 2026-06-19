@@ -33,6 +33,12 @@ class TestSplitSegments:
     def test_double_quotes_protect_pipe(self):
         assert split_segments('echo "x | y"') == ['echo "x | y"']
 
+    def test_newlines_treated_as_whitespace(self):
+        # Newlines in multi-line commands should not split segments
+        assert split_segments("grep -iE\n      \"pattern\"") == ["grep -iE\n      \"pattern\""]
+        # But semicolons should still split
+        assert split_segments("echo foo\necho bar; echo baz") == ["echo foo\necho bar", " echo baz"]
+
 
 class TestFirstWord:
     def test_plain(self):

@@ -65,8 +65,9 @@ def shell_tokenize(text):
 
 
 def split_segments(cmd):
-    """Split a compound command into segments on &&, ||, ;, |, and newlines,
-    only when those operators appear outside quotes."""
+    """Split a compound command into segments on &&, ||, ;, and | operators,
+    only when those operators appear outside quotes. Newlines are treated as
+    whitespace, not command separators, to support multi-line command formatting."""
     segments = []
     current = []
     tok = ShellTokenizer(cmd)
@@ -89,7 +90,7 @@ def split_segments(cmd):
                 current = []
                 tok.advance(2)
                 continue
-            if tok.peek() in (';', '|', '\n'):
+            if tok.peek() in (';', '|'):
                 segments.append(''.join(current))
                 current = []
                 tok.advance()
