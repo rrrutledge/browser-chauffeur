@@ -51,6 +51,11 @@
       "description": "Read/draft/clear a personal Gmail or Google Workspace mailbox via IMAP using a Google app password — no OAuth app, no Cloud project, no browser. List the inbox, show a message, move mail to Trash, or stage reply/new drafts in Drafts (never sent)."
     },
     {
+      "name": "slack",
+      "source": "./plugins/slack",
+      "description": "Read and mark-read a personal Slack workspace (InnerSource Commons) via the Slack Web API using a sniffed xoxc user token + xoxd cookie — no bot app, no OAuth scopes, no browser. List unread DMs, group DMs, and @-mentions, show a message with its permalink, or mark a conversation read."
+    },
+    {
       "name": "safe-compounds",
       "source": "./plugins/safe-compounds",
       "description": "PreToolUse hook that auto-approves compound bash commands whose every segment is already trusted, enforces CLAUDE.md style rules (no heredocs, redirection, inline scripts), and classifies MCP and Write/Edit calls — keeping long Claude Code sessions prompt-free without --dangerously-skip-permissions."
