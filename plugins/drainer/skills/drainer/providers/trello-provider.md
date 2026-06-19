@@ -10,10 +10,10 @@ rides the single schedule with no special cadence. All Trello reads and mutation
 - `boards` — `[{name, id}]` to drain.
 - `skip_lists` — terminal/parking lists to ignore (e.g. Abandoned, Finished, Adopted, Templates).
 - `label_vocab` — `{channels: [...], features: [...]}`; any label not in those is a contact name.
-Credentials: `TRELLO_KEY` / `TRELLO_TOKEN` in the environment (used by `trello-outreach`).
+Credentials: `TRELLO_API_KEY` / `TRELLO_TOKEN` in the environment (used by `trello-outreach`).
 
 ## AUTH-GLANCE
-Confirm `TRELLO_KEY`/`TRELLO_TOKEN` are set. If not, tell the user to set them and stop.
+Confirm `TRELLO_API_KEY`/`TRELLO_TOKEN` are set. If not, tell the user to set them and stop.
 
 ## ENUMERATE
 Via `trello-outreach`, list cards across the configured boards that sit in an **active** list (not in
