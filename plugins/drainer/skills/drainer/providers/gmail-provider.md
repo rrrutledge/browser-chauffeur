@@ -48,6 +48,15 @@ RFC822 Message-ID header (with angle brackets). The `url` opens the message in G
 `node gmail.js --trash=<messageId>` — moves the message to **[Gmail]/Trash** (reversible; narrate it).
 This is the email "gone." Never a permanent purge.
 
+**Order matters when you're also drafting a reply:** stage the threaded reply draft (DRAFT-MODE below)
+*before* you trash the original. `--reply` reads the original out of the inbox to thread on and quote it,
+so once the message is in Trash a reply can no longer thread. If the original was already trashed (a prior
+session cleared it, or you cleared it first), restore it from Trash back to the inbox before replying, then
+trash it again after the draft is staged:
+```js
+// .tmp restore helper — search [Gmail]/Trash by Message-ID, messageMove(uid, 'INBOX')
+```
+
 ## JUNK-LEARNING
 Stop this junk arriving again, in **priority order** (best outcome = never received) — propose, never
 apply without the user's OK:
@@ -71,9 +80,13 @@ Then write the message text in that voice. The voice loop in the document-author
 diff sent-vs-draft after each send and append a lesson. Write the body as HTML to a file, then create the
 draft with `gmail.js` — **never sent**. Show the draft text in the terminal and tell the user to edit +
 send it themselves in Gmail. Pick the mode by who the message goes to:
-- **Reply on the thread** (responding to inbound mail): `node gmail.js --reply --message-id=<messageId>
-  --body-file=<file>` — a threaded draft (In-Reply-To/References set) with the quoted original appended
-  below your text, landing in [Gmail]/Drafts.
+- **Reply on the thread** (responding to inbound mail): always use `node gmail.js --reply
+  --message-id=<messageId> --body-file=<file>` — it sets In-Reply-To/References and appends the quoted
+  original, so the draft lands *inside* the conversation in [Gmail]/Drafts. This is what makes the draft
+  openable and editable in Gmail's compose box at the bottom of the thread. A draft made with `--draft-new`
+  carries no threading headers — Gmail shows it as a floating duplicate that's awkward to open — so never
+  fall back to `--draft-new` for a reply. The original must be in the inbox for `--reply` to work; if it's
+  already in Trash, restore it first (see CLEAR), reply, then re-trash.
 - **Fresh 1:1 (or small-group) note** (e.g. an outreach nudge to one contact — do NOT reply-all a group
   thread to single someone out): `node gmail.js --draft-new --to="<addr>" --subject="<subj>"
   --body-file=<file> [--cc="<addrs>"]`.
