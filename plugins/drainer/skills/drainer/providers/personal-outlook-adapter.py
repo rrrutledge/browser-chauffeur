@@ -5,6 +5,7 @@ All personal-outlook mechanics live HERE, alongside the prose contract in
 scheme, and the captured item shape. The poller (`scripts/run-poller.py`) loads this adapter
 dynamically and drives it through the `ProviderBase` interface — it contains no Outlook specifics.
 """
+import glob
 import json
 import os
 import sys
@@ -25,7 +26,13 @@ class Provider(ProviderBase):
 
     @staticmethod
     def _find_mail_js():
-        """Locate ms-graph's mail.js by walking up to the shared plugins/ dir."""
+        """Locate ms-graph's mail.js across both the dev-repo and installed-plugin-cache layouts.
+
+        Dev repo:   <plugins>/ms-graph/skills/ms-graph/scripts/mail.js          (sibling of drainer)
+        Installed:  <plugins>/cache/<marketplace>/ms-graph/<ver>/skills/ms-graph/scripts/mail.js
+        Walk up to the first `plugins` dir, then try the sibling path, else glob for any ms-graph
+        mail.js beneath it and take the highest-versioned (lexically greatest) path.
+        """
         d = os.path.dirname(os.path.abspath(__file__))
         while d and os.path.basename(d) != "plugins":
             parent = os.path.dirname(d)
@@ -34,9 +41,13 @@ class Provider(ProviderBase):
                 break
             d = parent
         if d:
-            cand = os.path.join(d, "ms-graph", "skills", "ms-graph", "scripts", "mail.js")
-            if os.path.exists(cand):
-                return cand
+            sibling = os.path.join(d, "ms-graph", "skills", "ms-graph", "scripts", "mail.js")
+            if os.path.exists(sibling):
+                return sibling
+            matches = glob.glob(os.path.join(d, "**", "ms-graph", "**", "scripts", "mail.js"),
+                                recursive=True)
+            if matches:
+                return sorted(matches)[-1]  # highest version / latest path
         raise SystemExit("Could not locate ms-graph mail.js for personal-outlook.")
 
     def enumerate(self, limit):
