@@ -13,7 +13,7 @@ from safe_compounds.shell import (  # noqa: E402
 from safe_compounds import config  # noqa: E402
 from safe_compounds.commands import is_git_command_safe, is_curl_safe, is_sed_command_safe  # noqa: E402
 from safe_compounds.mcp import classify_mcp_tool  # noqa: E402
-from safe_compounds.enforce import detect_complex_bash, detect_simple_expansion  # noqa: E402
+from safe_compounds.enforce import detect_complex_bash, detect_simple_expansion, enforce_bash  # noqa: E402
 from safe_compounds.scripts import check_node_segment  # noqa: E402
 
 
@@ -124,6 +124,15 @@ class TestGit:
         assert is_git_command_safe("git -C dir 2>/dev/null") is True
         assert is_git_command_safe("git -C dir 2> /dev/null") is True
         assert is_git_command_safe("git status 2>/dev/null") is True
+
+    # "git -C <dir>" is not a special form to block: its safety is decided by the
+    # subcommand + flags exactly as without -C. enforce_bash must let it through so
+    # the subcommand checker can validate it (the shell CWD resets between Bash
+    # calls, so "cd <dir> && git ..." is not a usable alternative).
+    def test_global_opt_not_blocked_by_enforce(self):
+        assert enforce_bash("git -C /repo push -u origin feature") is None
+        assert enforce_bash("git -C /repo add file.txt") is None
+        assert enforce_bash("git -C /repo commit -m x") is None
 
 
 class TestCurl:

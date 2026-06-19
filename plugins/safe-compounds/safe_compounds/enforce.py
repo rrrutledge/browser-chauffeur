@@ -373,12 +373,6 @@ def enforce_bash(command):
                 'new working directory. Use an absolute path in the command directly, or split into '
                 'two separate Bash tool calls: first "cd {cd_target}", then the command on its own.')
 
-    if re.search(r'\bgit\s+-C\b', command):
-        return ('BLOCKED: "git -C <dir>" changes the working directory context, making path validation '
-                'unreliable. Per CLAUDE.md rules, use an absolute path in the git command arguments '
-                'directly, or split into two separate Bash tool calls: first "cd <dir>", then the git '
-                'command on its own.')
-
     assigned = detect_variable_assignment(command)
     if assigned:
         return (f'BLOCKED: Variable assignment "{assigned}=..." followed by more commands. Per CLAUDE.md rules, '
