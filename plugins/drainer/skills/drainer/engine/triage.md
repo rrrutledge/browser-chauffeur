@@ -5,13 +5,24 @@ the *mechanics* of enumerating/capturing/clearing differ (those live in each pro
 by THIS file; don't restate the buckets elsewhere. This file ONLY classifies — what the loop DOES with
 each bucket (own worker vs digest) lives in the driver and SKILL.
 
-## The one question
+## The two questions
 
-For every inbound item ask **"What does this want Russell to do?"** Answer that BEFORE assigning a
-bucket. If the answer is anything other than "nothing," it's **needs-you**. An automated sender does
-not make something junk — read the content and ask what it wants (a training deadline wants the
-training done; a code-scan alert wants a fix; a reminder wants the thing it's reminding about).
-Volume is irrelevant; actionability is in the content, not the count.
+For every inbound item ask both questions before assigning a bucket:
+
+1. **"What does this want Russell to do?"** — If the answer is anything other than "nothing," there
+   is an action. An automated sender does not make something junk — read the content and ask what it
+   wants (a training deadline wants the training done; a code-scan alert wants a fix; a reminder wants
+   the thing it's reminding about). Volume is irrelevant; actionability is in the content, not the count.
+
+2. **"Is there an advantage to acting NOW?"** — Even when there is an action, ask whether doing it
+   immediately matters. Is someone waiting on Russell? Does it keep a conversation moving? Is there a
+   deadline in the next day or two? If yes → **needs-you** (open a worker tab). If the action could
+   wait a day with no consequence to anyone → **fyi** (let the digest surface it). The worker tab is
+   for items where timing matters; the digest handles everything else.
+
+**Delivery-failure bounces (MAILER-DAEMON / Postmaster):** always **fyi**. They report that someone's
+email didn't reach Russell; he may eventually want to contact that person another way, but there's no
+urgency, no one is blocked waiting for his reply, and the digest is the right venue.
 
 ## The three buckets
 

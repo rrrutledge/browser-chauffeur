@@ -114,6 +114,16 @@ CASES = [
     {"id": "pyfile_outside", "tool": "Bash", "command": "python src/run.py",
      "files": {"src/run.py": "print(1)\n"}, "expect": "PROMPT"},
 
+    # --- direct script execution (.py/.js as the command) -------------------
+    {"id": "direct_py_tmp", "tool": "Bash", "command": ".tmp/run.py",
+     "files": {".tmp/run.py": "print(1)\n"}, "expect": "ALLOW"},
+    {"id": "direct_py_outside", "tool": "Bash", "command": "src/run.py",
+     "files": {"src/run.py": "print(1)\n"}, "expect": "PROMPT"},
+    {"id": "direct_js_tmp", "tool": "Bash", "command": ".tmp/run.js",
+     "files": {".tmp/run.js": "console.log(1)\n"}, "expect": "ALLOW"},
+    {"id": "direct_js_outside", "tool": "Bash", "command": "src/run.js",
+     "files": {"src/run.js": "console.log(1)\n"}, "expect": "PROMPT"},
+
     # --- MCP ----------------------------------------------------------------
     {"id": "mcp_read", "tool": "mcp__server__get_thing", "expect": "ALLOW"},
     {"id": "mcp_write_reversible", "tool": "mcp__server__create_thing", "expect": "ALLOW"},

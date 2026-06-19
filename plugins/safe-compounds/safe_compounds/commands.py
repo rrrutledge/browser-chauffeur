@@ -162,9 +162,11 @@ GIT_TRUSTED_SUBCOMMANDS = {
     # read-only
     'status', 'log', 'diff', 'show', 'remote', 'describe', 'rev-parse', 'rev-list',
     'ls-files', 'ls-remote', 'ls-tree', 'shortlog', 'blame', 'reflog', 'cat-file', 'for-each-ref',
-    'symbolic-ref', 'name-rev', 'grep', 'count-objects', 'merge-base', 'cherry',
-    'whatchanged', 'show-ref', 'show-branch', 'archive', 'diff-tree', 'diff-index',
-    'format-patch', 'fsck', 'verify-commit', 'verify-tag', 'version', 'bisect',
+    'symbolic-ref', 'name-rev', 'grep', 'count-objects', 'merge-base', 'merge-tree', 'cherry',
+    'whatchanged', 'show-ref', 'show-branch', 'archive', 'diff-tree', 'diff-index', 'diff-files',
+    'format-patch', 'fsck', 'verify-commit', 'verify-tag', 'verify-pack', 'version', 'bisect',
+    'check-ignore', 'check-attr', 'check-ref-format', 'check-mailmap',
+    'range-diff', 'patch-id', 'var', 'help', 'interpret-trailers', 'index-pack',
     # reversible writes (the effect can be undone)
     'add', 'commit', 'rm', 'stash', 'fetch', 'pull', 'merge', 'rebase', 'revert', 'cherry-pick',
     'worktree', 'config', 'init', 'clone',
@@ -410,6 +412,12 @@ WT_FLAGS_WITH_ARG = {
     '--colorScheme', '-w', '--window', '--size', '--pos', '-s', '--startingDir',
     '--appendCommandLine',
 }
+
+
+def is_wt_exe_path_safe(seg):
+    """Approve full-path wt.exe only when launching the Claude session script."""
+    seg_lower = seg.lower()
+    return 'launch-session.ps1' in seg_lower and 'claude' in seg_lower
 
 
 def is_wt_safe(seg, trusted):

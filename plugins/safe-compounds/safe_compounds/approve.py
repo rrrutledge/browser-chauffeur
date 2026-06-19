@@ -2,7 +2,7 @@
 operations. The orchestrator (hook.py) approves a command when every segment
 passes this check."""
 from . import commands
-from .scripts import check_node_segment, check_python_segment
+from .scripts import check_direct_script_segment, check_node_segment, check_python_segment
 from .shell import first_word, shell_tokenize
 
 SHELL_BODY_KEYWORDS = {'do', 'then', 'else', 'elif', 'if', 'while', 'until'}
@@ -43,6 +43,10 @@ def is_segment_trusted(seg, trusted):
         return check_node_segment(seg)
     if word in ('python', 'python3'):
         return check_python_segment(seg, word)
+    if word.endswith('.py'):
+        return check_direct_script_segment(seg, 'python')
+    if word.endswith(('.js', '.mjs', '.ts')):
+        return check_direct_script_segment(seg, 'javascript')
     if word == 'sed':
         return commands.is_sed_command_safe(seg)
     if word in commands.SUBCOMMAND_TOOLS:
@@ -55,6 +59,8 @@ def is_segment_trusted(seg, trusted):
         return commands.is_powershell_safe(seg)
     if word == 'wt':
         return commands.is_wt_safe(seg, trusted)
+    if word.lower().endswith('wt.exe'):
+        return commands.is_wt_exe_path_safe(seg)
     if word.lower().endswith('.cmd'):
         tokens = shell_tokenize(seg)
         filepath = tokens[0] if tokens else seg.strip()

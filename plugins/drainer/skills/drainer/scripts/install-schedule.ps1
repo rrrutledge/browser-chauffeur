@@ -27,7 +27,9 @@ if ($Remove) {
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $poller = Join-Path $scriptDir 'run-poller.py'
 
-$action = New-ScheduledTaskAction -Execute 'python' `
+# pythonw (no console) so the recurring cycle runs silently in the background — no black window flash
+# every interval. The visible worker tabs come from wt.exe and are unaffected.
+$action = New-ScheduledTaskAction -Execute 'pythonw' `
     -Argument ('"' + $poller + '" --repo "' + $RepoDir + '"')
 
 $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) `

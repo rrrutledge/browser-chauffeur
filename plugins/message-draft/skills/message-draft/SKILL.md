@@ -1,6 +1,6 @@
 ---
 name: message-draft
-description: Draft a message and NEVER send it. Two modes — `teams` (a Teams chat, staged in the web composer via browser-chauffeur) and `outlook` (a work-email reply or new email, created as an Outlook draft via the `ms-rest` skill's REST API). Use whenever staging a Teams chat message or a work Outlook email for human review. (Supersedes teams-message; `slack` mode is future.)
+description: Draft a message and NEVER send it. Three modes — `teams` (a Teams chat, staged in the web composer via browser-chauffeur), `slack` (a Slack message/reply, typed into the Slack composer via browser-chauffeur and left as an auto-saved draft), and `outlook` (a work-email reply or new email, created as an Outlook draft via the `ms-rest` skill's REST API). Use whenever staging a Teams chat, a Slack message, or a work Outlook email for human review. (Supersedes teams-message and slack-message.)
 ---
 
 # message-draft
@@ -12,15 +12,16 @@ Stage a **draft** and stop — a human reviews and sends. Pick a mode:
 - **`outlook`** — a work-email reply or new email, created as an Outlook **draft** via the **`ms-rest`**
   skill's REST API (no browser composer). `ms-rest` is the WORK-account Outlook plugin; don't
   confuse it with the personal `ms-graph` skill.
-- **`slack`** — future; not implemented.
+- **`slack`** — a Slack DM, group DM, channel message, or threaded reply, typed into the Slack composer
+  (you drive **browser-chauffeur**) and left as Slack's auto-saved draft.
 
 **Voice:** Before composing any message, invoke the **`document-authoring`** skill to write the
 content in Russell's voice. Pass the drafted text to the mode steps below for staging.
 
 **Voice gate (stage-time — load-bearing):** After the draft is staged, read it back from where it
-lives (Teams: the composer; Outlook: `ms-rest get <draftId>`) and re-apply the **`document-authoring`**
+lives (Teams/Slack: the composer; Outlook: `ms-rest get <draftId>`) and re-apply the **`document-authoring`**
 Conversational writing rules as a review pass. If anything was trimmed, re-stage the gated version
-(Teams: re-type it; Outlook: re-create the draft from the gated body). Report `voice-gate=passed` in
+(Teams/Slack: re-type it; Outlook: re-create the draft from the gated body). Report `voice-gate=passed` in
 the done-criteria once it has run.
 
 ## Behavioral preferences
@@ -85,6 +86,39 @@ Inputs: the address, message body, optional hyperlinks (display text + URL), opt
 6. **Leave as draft.** Do NOT press Enter / click Send. Teams shows a **Draft** badge per
    conversation (persists within the live browser session). Verify content, then stop.
 
+## Mode: `slack`
+
+Stages a draft in the **Slack composer** (web) for a DM, group DM, channel message, or threaded reply.
+Slack has no draft API — typing into the composer and stopping leaves Slack's own per-conversation
+auto-saved **draft**. You drive **browser-chauffeur**; never Playwright directly.
+
+Inputs: the target (a person's name for a DM, or a channel/conversation, or — when replying to a captured
+drainer item — its `channel` + `ts` + optional `threadTs` + permalink), the message body, optional links.
+
+0. **Open your OWN Slack tab — never adopt an existing one.** Open a fresh `app.slack.com/client/<teamId>`
+   tab of your own (browser-chauffeur owns the how); the persistent profile loads it already signed in. If
+   a sign-in wall shows, have the user sign in, then continue. Reuse that one tab for every later step.
+1. **Open the target conversation.**
+   - **From a captured item** (the reliable path): open the message's **permalink** (the item's `url`) —
+     it lands directly in the right DM/channel/thread. For a thread reply, the permalink opens the thread.
+   - **By person/channel name:** press `Ctrl+K` (quick switcher — it searches ALL members, unlike the
+     paginated `users.list` API), type the full name or channel, wait ~1.5s for autocomplete, and open the
+     top match with Enter. A person's Slack handle can differ from their real name — confirm it's them.
+2. **Identity-gate before typing.** Read the conversation header (`[data-qa="channel_name"]`,
+   `.p-view_header__channel_title`) and confirm it matches the intended recipient/channel BEFORE the first
+   keystroke. On mismatch, don't type — re-navigate. Typing into a stranger's DM is the failure to avoid.
+3. **Compose.** Click the composer (`[data-qa="message_input"] .ql-editor`,
+   `.ql-editor[contenteditable="true"]`, `div[role="textbox"][contenteditable="true"]` — target the
+   `:visible` one), clear any auto-restored draft (Ctrl+A, Backspace), then type the body. Line breaks are
+   **Shift+Enter**; a bare **Enter sends**, so never press it. (Use browser-chauffeur's
+   bare-Enter-refusing composer primitives.)
+4. **Links.** Slack renders a pasted URL as a link automatically; for anchor-text links, type the phrase
+   and apply a link via the composer's link affordance (Ctrl+K inside the Slack composer opens its
+   link dialog — distinct from the quick switcher, which is Ctrl+K when no composer is focused).
+5. **Leave as draft.** Do NOT press Enter / click Send. Slack shows a **Draft** badge on the conversation
+   in the sidebar (the draft is client/session-bound — the user reviews and sends it before it's lost).
+   Read the composer back (`.ql-editor` innerText) and verify it holds the intended body.
+
 ## Mode: `outlook`
 
 Creates an Outlook **draft** for the WORK account via the **`ms-rest`** skill's REST API — no browser
@@ -125,6 +159,6 @@ through the cache glob (run the newest if several are cached) from the repo root
 
 ## Done-criteria (report this back)
 
-`mode=<teams|outlook> recipient=<who> drafted=true sent=false voice-gate=passed links=<n>` plus a
-one-line note of where the draft lives (Outlook: the `webLink`/draftId). If identity-gate failed or
-sign-in was needed, say so and that nothing was staged.
+`mode=<teams|slack|outlook> recipient=<who> drafted=true sent=false voice-gate=passed links=<n>` plus a
+one-line note of where the draft lives (Outlook: the `webLink`/draftId; Teams/Slack: the conversation the
+Draft badge is on). If identity-gate failed or sign-in was needed, say so and that nothing was staged.

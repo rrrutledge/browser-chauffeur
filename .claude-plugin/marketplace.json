@@ -46,6 +46,16 @@
       "description": "Read/write a personal Microsoft account's Outlook mail and calendar via the Microsoft Graph API (official @azure/msal-node + @microsoft/microsoft-graph-client). List/create calendar events, search/read mail, draft replies, or send yourself a note — no browser after a one-time sign-in."
     },
     {
+      "name": "gmail",
+      "source": "./plugins/gmail",
+      "description": "Read/draft/clear a personal Gmail or Google Workspace mailbox via IMAP using a Google app password — no OAuth app, no Cloud project, no browser. List the inbox, show a message, move mail to Trash, or stage reply/new drafts in Drafts (never sent)."
+    },
+    {
+      "name": "slack",
+      "source": "./plugins/slack",
+      "description": "Read and mark-read a Slack workspace via the Slack Web API. List unread DMs, group DMs, @-mentions, and unread thread replies (muted conversations skipped), show a message with its permalink, or mark a conversation or thread read. No browser; reply drafting is handled separately by the message-draft skill."
+    },
+    {
       "name": "safe-compounds",
       "source": "./plugins/safe-compounds",
       "description": "PreToolUse hook that auto-approves compound bash commands whose every segment is already trusted, enforces CLAUDE.md style rules (no heredocs, redirection, inline scripts), and classifies MCP and Write/Edit calls — keeping long Claude Code sessions prompt-free without --dangerously-skip-permissions."
