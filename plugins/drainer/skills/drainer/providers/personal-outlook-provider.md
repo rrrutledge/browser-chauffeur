@@ -61,9 +61,15 @@ apply without the user's OK:
    user to add.
 
 ## DRAFT-MODE
-Apply the **`document-authoring`** voice to the message text (this is what `message-draft` would do; the
-voice loop in the document-authoring skill still applies — diff sent-vs-draft after each send and append
-a lesson). Write the body as HTML to a file, then create the draft with `mail.js` — **never sent**. Show
+**First, before writing a single word of the body: invoke the `document-authoring` skill (call the Skill
+tool to load it) and read its Conversational writing + "Never do these" sections. Compose the draft
+against what you just read — do not write from memory.** The skill is the single source of truth for
+Russell's voice and its hard rules; a draft composed from memory reliably leaks the very tokens those
+rules ban. This read is a gate: it happens before drafting, not as an after-the-fact check.
+
+Then write the message text in that voice. The voice loop in the document-authoring skill still applies —
+diff sent-vs-draft after each send and append a lesson. Write the body as HTML to a file, then create the
+draft with `mail.js` — **never sent**. Show
 the draft text in the terminal and tell the user to edit + send it themselves. Pick the mode by who the
 message goes to:
 - **Reply on the thread** (responding to inbound mail): `node mail.js --reply --message-id=<messageId>
