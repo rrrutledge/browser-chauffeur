@@ -228,6 +228,8 @@ class Provider(ProviderBase):
             return []
         try:
             return self._enumerate(limit)
+        except ProviderError:
+            raise  # already typed (kind preserved) — don't re-wrap as auth
         except Exception as e:
             # The board/list/card fetches hit the Trello REST API with TRELLO_API_KEY / TRELLO_TOKEN;
             # a bad/expired token or network error surfaces here. Raise the typed error so the poller
