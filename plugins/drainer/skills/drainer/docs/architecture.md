@@ -42,11 +42,20 @@ by writing `items/<id>.done` and clears the source item itself. The poller runs 
 workers at once (it does not serialize); the cap, not a queue, bounds how many face the user.
 
 - **Orphan self-recovery:** a worker tab closed or hung without writing `.done` would hold a cap slot
-  forever. Each cycle the poller's `reconcile_stale` sweep (sibling of the `.done` reconciliation) finds
-  any needs-you item still dispatched past `stale_hours` and **re-queues** it — drops its seen key so the
-  next enumerate re-dispatches a fresh tab — freeing the slot. No retry cap: a finished item resolves by
-  the worker writing `.done`, so a re-opened tab converges, and an item no longer present in its source
-  simply doesn't re-enumerate.
+  forever. Each cycle the poller's `reconcile_stale` sweep (sibling of the `.done` reconciliation)
+  **re-queues** such an item — drops its seen key so the next enumerate re-dispatches a fresh tab,
+  freeing the slot — on either of two signals:
+  - **Tab closed (fast):** the worker's `claude --session-id <guid>` process is gone (the guid is written
+    to `seeds/<id>.prompt.txt.session` at launch; the sweep checks it against running processes). A closed
+    tab can never finish, so it's recovered the next cycle rather than waiting out the timeout. A
+    `orphan_grace_minutes` window keeps a just-launched tab whose process isn't up yet from being misread
+    as dead, and if the process scan can't run, the fast-path is skipped (never reaps a live tab on a
+    blind cycle). This is what distinguishes *closed* from *parked waiting for the user* (process alive).
+  - **Tab hung (backstop):** still dispatched past `stale_hours` — catches an open-but-stuck tab whose
+    process is alive but idle, which liveness can't see.
+
+  No retry cap: a finished item resolves by the worker writing `.done`, so a re-opened tab converges, and
+  an item no longer present in its source simply doesn't re-enumerate.
 
 ## Fail-safe, never miss
 

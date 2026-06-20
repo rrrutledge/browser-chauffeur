@@ -71,6 +71,10 @@ def read_config(repo):
         # older than this many hours is an orphaned worker tab (closed or hung, never wrote .done). The
         # poller auto-re-queues it each cycle (reconcile_stale) and the digest also lists any stragglers.
         "stale_hours": int(scalar("stale_hours", "12")),
+        # Liveness fast-path grace: a worker tab whose claude --session-id process is gone is treated as
+        # closed (recovered immediately), but only once it's been launched at least this many minutes —
+        # so a just-dispatched tab whose process hasn't appeared yet isn't misread as dead.
+        "orphan_grace_minutes": int(scalar("orphan_grace_minutes", "15")),
         # Wall-clock time (HH:MM, 24h) the daily digest task fires; consumed by the installer.
         "digest_time": scalar("digest_time", "17:00"),
     }

@@ -25,6 +25,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -313,25 +314,75 @@ def reconcile_done(runtime_dir):
     return freed
 
 
-def reconcile_stale(runtime_dir, cfg):
-    """Self-heal orphaned worker tabs. A needs-you item still 'dispatched' past stale_hours is a worker
-    that was closed or hung without ever writing <id>.done — it holds one of the global cap slots forever.
-    Re-queue it: drop its seen key so the next enumerate re-dispatches a fresh tab, freeing the slot. No
-    retry cap — the natural resolution of a finished item is the worker writing .done, so a re-opened tab
-    converges; an item that's no longer present in its source simply doesn't re-enumerate. Sibling of
-    reconcile_done — same place in the cycle, the other half of slot bookkeeping."""
+def live_session_ids():
+    """The set of session guids that currently have a running `claude --session-id <guid>` process.
+    Worker tabs launch claude with --session-id on the command line (launch-session.ps1), so a tab that
+    was closed (or whose claude exited) drops out of this set. That distinguishes 'tab closed' (process
+    gone — never going to finish) from 'parked, waiting for Russell' (process alive, just idle), which a
+    transcript-activity check cannot. One CIM query per cycle.
+
+    Returns None if the scan can't be run/parsed — the caller then SKIPS the liveness fast-path this cycle
+    (the time-based backstop still applies), so an inability to see processes never reaps a live tab."""
+    ps = (r"Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'session-id' } | "
+          r"ForEach-Object { $_.CommandLine }")
     try:
-        stale = json.loads(seen_state("stale-list", runtime_dir, str(cfg["stale_hours"])).stdout or "[]")
+        out = subprocess.run(["powershell", "-NoProfile", "-Command", ps],
+                             capture_output=True, text=True, timeout=30,
+                             creationflags=NO_WINDOW).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return set(re.findall(r"session-id\s+([0-9a-fA-F-]{36})", out))
+
+
+def _session_guid(runtime_dir, iid):
+    """(guid, mtime) from the worker's seeds/<id>.prompt.txt.session, or (None, None). mtime ~ launch
+    time, used to give a freshly-launched tab a grace period before liveness can reap it."""
+    p = os.path.join(runtime_dir, "seeds", f"{iid}.prompt.txt.session")
+    try:
+        with open(p, encoding="utf-8") as f:
+            return f.read().strip(), os.path.getmtime(p)
+    except OSError:
+        return None, None
+
+
+def reconcile_stale(runtime_dir, cfg):
+    """Self-heal orphaned worker tabs that hold a global cap slot forever (closed or hung, never wrote
+    <id>.done). Two signals, both re-queue the item (drop its seen key so the next enumerate re-dispatches
+    a fresh tab, freeing the slot):
+
+      * tab CLOSED (fast) — the worker's claude --session-id process is gone, so it can never finish.
+        Recovered the very next cycle (~one cadence) instead of waiting out the timeout. Guarded by
+        orphan_grace_minutes so a just-launched tab whose process isn't up yet isn't misread as dead.
+      * tab HUNG (backstop) — still dispatched past stale_hours. Catches an open-but-stuck tab that
+        liveness can't (its process is alive, just doing nothing).
+
+    No retry cap — a finished item resolves by the worker writing .done, so a re-opened tab converges; an
+    item no longer present in its source simply doesn't re-enumerate. Sibling of reconcile_done — same
+    place in the cycle, the other half of slot bookkeeping."""
+    try:  # stale-list with 0 hours returns EVERY dispatched needs-you item (with ages), not just old ones
+        dispatched = json.loads(seen_state("stale-list", runtime_dir, "0").stdout or "[]")
     except ValueError:
-        stale = []
+        dispatched = []
+    live = live_session_ids()  # None -> scan unavailable, skip the liveness fast-path (time-based only)
+    grace_s = cfg["orphan_grace_minutes"] * 60
+    now = time.time()
     requeued = 0
-    for r in stale:
+    for r in dispatched:
         iid, source = r.get("id"), r.get("source")
         if not iid or not source:
             continue
-        seen_state("requeue", runtime_dir, source, iid)
-        print(f"orphan {iid} ({source}, age {r.get('ageHours')}h): re-queued for a fresh tab.")
-        requeued += 1
+        age_h = r.get("ageHours")
+        timed_out = age_h is None or age_h >= cfg["stale_hours"]
+        dead_tab = False
+        if not timed_out and live is not None:
+            guid, smtime = _session_guid(runtime_dir, iid)
+            if guid and guid not in live and smtime is not None and (now - smtime) >= grace_s:
+                dead_tab = True  # launched > grace ago, process now gone -> the tab was closed
+        if timed_out or dead_tab:
+            seen_state("requeue", runtime_dir, source, iid)
+            why = "timed out" if timed_out else "tab closed"
+            print(f"orphan {iid} ({source}, age {age_h}h, {why}): re-queued for a fresh tab.")
+            requeued += 1
     if requeued:
         print(f"orphan recovery: {requeued} re-queued.")
     return requeued
