@@ -24,6 +24,11 @@ For every inbound item ask both questions before assigning a bucket:
 email didn't reach Russell; he may eventually want to contact that person another way, but there's no
 urgency, no one is blocked waiting for his reply, and the digest is the right venue.
 
+**Security / account-activity notifications (failed login, new device sign-in, password changed, etc.):**
+always **fyi**. If Russell himself triggered the event, he already knows it and the email adds nothing.
+If he didn't, there's no tight timing constraint — a fraud response call can wait for the daily digest
+without consequence. These are automated informational alerts, not asks directed at Russell.
+
 ## The three buckets
 
 - **needs-you** — there is something to DO: a reply, a piece of work to kick off (code, a doc, a
