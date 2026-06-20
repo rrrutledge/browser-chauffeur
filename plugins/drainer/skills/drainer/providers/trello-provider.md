@@ -6,10 +6,14 @@ rides the single schedule with no special cadence. All Trello reads and mutation
 **`trello-outreach`** skill (don't reimplement the Trello API here). Implements
 `../engine/provider.md`; classify by `../engine/triage.md`. id prefix: `trello-`.
 
-## Config (in `.claude/drainer.local.md` → `providers.trello`)
-- `boards` — `[{name, id}]` to drain.
-- `skip_lists` — terminal/parking lists to ignore (e.g. Abandoned, Finished, Adopted, Templates).
-- `label_vocab` — `{channels: [...], features: [...]}`; any label not in those is a contact name.
+## Config
+- **Boards** — the single source of truth is `<repo>/trello-boards.yaml` (a `boards:` list of
+  `{name, id}`), the same registry the `trello-outreach` skill reads. The drainer drains **every** board
+  in it, so adding a board is a one-file edit. (Legacy fallback: a `providers.trello.boards` list in
+  `.claude/drainer.local.md` if no registry file exists.)
+- Drainer knobs in `.claude/drainer.local.md` → `providers.trello`:
+  - `skip_lists` — terminal/parking lists to ignore (e.g. Abandoned, Finished, Adopted, Templates).
+  - `label_vocab` — `{channels: [...], features: [...]}`; any label not in those is a contact name.
 Credentials: `TRELLO_API_KEY` / `TRELLO_TOKEN` in the environment (used by `trello-outreach`).
 
 ## AUTH-GLANCE
