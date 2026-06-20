@@ -37,6 +37,14 @@ class ProviderBase:
         """Return a list of candidate item dicts (newest-first, up to `limit`)."""
         raise NotImplementedError
 
+    def triage_text(self, item):
+        """The body text the triage step shows the model for this item. Default: the light `preview`
+        that `enumerate` already attached. Adapters whose `enumerate` returns no usable body (e.g. the
+        gmail adapter, where the IMAP envelope listing carries no preview) override this to fetch a
+        quote-stripped excerpt of the new message — so triage classifies on real content, not just the
+        subject line. Called only for the NEW items being triaged, so a per-item fetch here stays cheap."""
+        return item.get("preview") or ""
+
     def stable_id(self, item):
         """A deterministic id for an item (stable across cycles), used for seen-state."""
         raise NotImplementedError
