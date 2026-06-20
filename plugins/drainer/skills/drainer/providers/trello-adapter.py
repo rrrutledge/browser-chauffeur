@@ -196,7 +196,11 @@ class Provider(ProviderBase):
             bid, bname = board["id"], board.get("name", board["id"])
             lists = {l["id"]: l["name"] for l in self._utils.get_board_lists(bid, self.session)}
             for card in self._utils.get_board_cards(bid, self.session):
-                list_name = lists.get(card.get("idList")) or ""
+                list_name = lists.get(card.get("idList"))
+                # get_board_lists returns only OPEN lists; a card whose list isn't in that map sits on
+                # an archived/closed list (still an open card, but off the board) — not active, skip it.
+                if not list_name:
+                    continue
                 ln = list_name.lower()
                 if any(tok in ln for tok in self.skip_lists):
                     continue
