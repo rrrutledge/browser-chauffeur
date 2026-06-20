@@ -31,6 +31,12 @@ answered?) That changes the right action. For an unknown mechanism internal to t
 organization, consult the user's designated internal knowledge source first (if their `context.md`
 names one) before asking the user directly.
 
+**For email items specifically:** read the whole thread (sent + inbox) before drafting anything.
+The captured item is the inbound message, but the user may have replied after it was captured. If
+the user's most recent message on the thread is already a reply to this sender, the item is done —
+close it without a new draft. Each provider's SITUATIONAL-CHECK describes how to pull the full
+thread for that source.
+
 ## 2b. If the item is a pointer, open the real content yourself
 If your item is a **notification that points to content living elsewhere** — a LinkedIn/Facebook
 "X just messaged you", a meeting-recording notice, a forum "you have a reply" — it is NOT the content,

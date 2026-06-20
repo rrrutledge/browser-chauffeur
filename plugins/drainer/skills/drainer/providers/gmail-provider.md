@@ -28,10 +28,13 @@ IMAP is disabled — re-mint the app password, re-set `GMAIL_APP_PASSWORD`, conf
 retry. There is no token to refresh; never surface a raw auth error to the user.
 
 ## SITUATIONAL-CHECK (do this BEFORE drafting any reply)
-The captured item is the original inbound message; the conversation may have moved on. Check the Drafts
-folder first — `node gmail.js --list-drafts` shows whether you (or a prior session) already have a reply
-going on this subject. If a draft already covers it, don't make a second one. Reply only to what is
-still open.
+The captured item is the original inbound message; the conversation may have moved on. Check the
+sent thread first — search Gmail for the subject with `in:sent` to see whether the user has already
+replied since this item was captured. Use `mcp__claude_ai_Gmail__search_threads` with a query like
+`subject:"<subject>" from:<user_address> in:sent` and read the thread to find the latest sent
+message. If the user's most recent message on the thread is already a reply to this sender, close
+the item without a new draft. Also check Drafts — `node gmail.js --list-drafts` — to avoid
+creating a duplicate if a prior session already staged one.
 
 ## CAPTURE (the item shape the worker reads)
 The adapter writes these two files for each dispatched item (`gmail-adapter.py` → `capture`); this is
