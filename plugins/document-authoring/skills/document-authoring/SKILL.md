@@ -46,6 +46,7 @@ Use for: Confluence specs, how-to guides, PRDs, PR descriptions, Word docs, publ
 - Teach with if/then: plain conditionals rather than abstract rules
 - Contractions always (we're, isn't, won't, I'll)
 - **Summarize — give the gist, hold the detail.** Even formal replies (Jira/Request Center comments, email) stay short: lead with the point and the few facts that matter, and let the reader ask if they want the full technical breakdown. Resist listing every permission, every alternative, every implementation note. Real edit: a Request Center reply that spelled out each Graph scope, every alternative, and the credential-storage mechanism should have been a few summarized sentences (approach chosen + why it beats the alternative we use today).
+- **When a document is attached, the body summarizes — it doesn't restate the attachment.** Give a few high-level points and point to the attachment for the rest; don't duplicate in prose what the attachment already carries, and end right after pointing to it — no follow-on offer. Real edit: a sponsorship reply with the prospectus PDF attached had its full "Sponsorship tiers" pricing bullet and a trailing "Happy to put together an order form…" offer both cut, leaving two summary bullets and "I've attached the full prospectus so they have everything in one place."
 - Avoid: corporate filler ("leverage", "streamline", "as per"), long compound sentences, effusive sign-offs
 
 ### Reports, reviews & status updates
