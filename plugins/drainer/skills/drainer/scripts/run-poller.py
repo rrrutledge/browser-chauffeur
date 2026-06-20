@@ -207,15 +207,14 @@ def triage(items, repo, local_dir, model, providers_by_name):
 
 # ---------------------------------------------------------------------------- dispatch
 
-def _worker_title(iid, json_file):
-    """A short, human-readable tab title from the captured item (source + subject + who), so worker tabs
-    are tellable apart at a glance instead of all reading `drain:<id>`. Falls back to the id on any error."""
+def _item_bits(json_file):
+    """(display-label, subject/name, who) parsed from a captured item json; ('', '', '') on error."""
     labels = {"personal-outlook": "Outlook", "gmail": "Gmail", "slack": "Slack", "trello": "Trello"}
     try:
         with open(json_file, encoding="utf-8") as f:
             rec = json.load(f)
     except (OSError, ValueError):
-        return f"drain:{iid}"
+        return "", "", ""
     src = rec.get("source") or ""
     label = labels.get(src, (src.split("-")[0] or "item").capitalize())
     subject = (rec.get("subject") or rec.get("name") or "").strip()
@@ -226,12 +225,38 @@ def _worker_title(iid, json_file):
     if "<" in who:  # "Name <addr>" -> the name (or the address if unnamed)
         head, _, tail = who.partition("<")
         who = head.strip().strip('"') or tail.rstrip(">").strip()
+    return label, subject, who
+
+
+def _worker_title(iid, json_file):
+    """The INITIAL tab title (shown for the ~1s before the worker's Claude session renames the tab
+    itself). Short and human-readable; falls back to the id on any error."""
+    label, subject, who = _item_bits(json_file)
+    if not label:
+        return f"drain:{iid}"
     title = f"{label}: {subject}" if subject else label
     if who:
         title += f" - {who}"
     title = re.sub(r'[&<>|%"^]', " ", title)  # neutralize cmd-breaking chars
     title = re.sub(r"\s+", " ", title).strip()  # collapse whitespace
     return title[:50].strip() or f"drain:{iid}"
+
+
+def _worker_summary(json_file):
+    """A one-line item summary that LEADS the worker's seed prompt. Claude names the tab off its first
+    message, so leading with this makes the tab self-title descriptively while keeping its attention star
+    (no --suppressApplicationTitle needed). Lead with the CONTENT — the subject/card and who it's from —
+    since that's what matters at a glance; the source (Gmail/Slack/Trello/…) is incidental and is NOT
+    forced into the title. '' when there's nothing to say."""
+    _label, subject, who = _item_bits(json_file)
+    if not subject and not who:
+        return ""
+    s = "You are handling this"
+    if subject:
+        s += f': "{subject}"'
+    if who:
+        s += f", from {who}"
+    return s + "."
 
 
 def spawn_worker(iid, json_file, repo, runtime_dir, worker_model):
@@ -253,10 +278,15 @@ def spawn_worker(iid, json_file, repo, runtime_dir, worker_model):
             "to the user — junk routed to the digest, or a situational no-op close — get .done "
             "immediately, since they never opened for the user's attention.)\n"
         )
+    # A one-line summary leads the seed so the worker's Claude session self-titles the tab descriptively
+    # while keeping its attention star (the launcher prepends this; see launch-session.ps1 -SummaryFile).
+    summary_file = os.path.join(seeds, f"{iid}.summary.txt")
+    with open(summary_file, "w", encoding="utf-8") as f:
+        f.write(_worker_summary(json_file))
     spawn_cmd = os.path.join(SCRIPT_DIR, "spawn-tab.cmd")
     # CREATE_NO_WINDOW hides the brief cmd shim console; wt.exe opens its own (visible) worker tab.
-    subprocess.Popen(["cmd", "/c", spawn_cmd, _worker_title(iid, json_file), repo, prompt_file, worker_model],
-                     cwd=repo, creationflags=NO_WINDOW)
+    subprocess.Popen(["cmd", "/c", spawn_cmd, _worker_title(iid, json_file), repo, prompt_file,
+                      worker_model, summary_file], cwd=repo, creationflags=NO_WINDOW)
 
 
 # ---------------------------------------------------------------------------- the cycle
