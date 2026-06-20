@@ -251,7 +251,7 @@ def _worker_summary(json_file):
     _label, subject, who = _item_bits(json_file)
     if not subject and not who:
         return ""
-    s = "You are handling this for Russell"
+    s = "You are handling this"
     if subject:
         s += f': "{subject}"'
     if who:
