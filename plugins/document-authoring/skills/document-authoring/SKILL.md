@@ -140,7 +140,7 @@ Don't invent emoji outside this palette, don't stack them, and skip them entirel
 - **Email greeting format**: run the greeting into the first sentence using ` - `: `"Hi [Name] - thanks and totally makes sense."` Not `"Hi [Name],"` on its own line followed by a new paragraph.
 - **Email reply flow**: always **Reply All**, never plain Reply — preserve every CC'd recipient on the thread.
 - **Email sign-off**: just `"Russ"` on its own line — no valediction ("Talk soon", "Best", "Thanks") before the name.
-- **Energizing close**: when there's genuinely good news and you are the leader/owner of the group, end with a brief forward-looking statement — e.g., "This is going to be great."  Skip it when you're sharing news into someone else's channel or group.
+- **Energizing close**: when there's genuinely good news, or you're replying to someone's positive progress update, end with a brief forward-looking note — e.g., "This is going to be great." Real edit: a reply to a peer's outreach-progress update gained a closing "This is really coming together." before the sign-off. Skip it when you're sharing news into someone else's channel or group.
 - Short, conversational, considerate of their time and life
 - Logistics + warmth. Apologize if rescheduling: "Thanks.  Let's meet tomorrow - sorry."
 - *Samples:*
