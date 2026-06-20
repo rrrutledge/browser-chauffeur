@@ -25,9 +25,8 @@ email didn't reach Russell; he may eventually want to contact that person anothe
 urgency, no one is blocked waiting for his reply, and the digest is the right venue.
 
 **Security / account-activity notifications (failed login, new device sign-in, password changed, etc.):**
-always **fyi**. If Russell himself triggered the event, he already knows it and the email adds nothing.
-If he didn't, there's no tight timing constraint — a fraud response call can wait for the daily digest
-without consequence. These are automated informational alerts, not asks directed at Russell.
+always **fyi**, never **needs-you**. If Russell triggered the event he already knows it; if he didn't,
+calling the bank can wait for the daily digest — there's no hours-matter urgency.
 
 ## The three buckets
 
