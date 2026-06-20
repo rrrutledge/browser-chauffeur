@@ -28,7 +28,7 @@ from datetime import datetime, timezone
 _SCRIPTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts")
 if _SCRIPTS not in sys.path:
     sys.path.insert(0, _SCRIPTS)
-from provider_base import ProviderBase, slug  # noqa: E402
+from provider_base import ProviderBase, ProviderError, slug  # noqa: E402
 
 
 class Provider(ProviderBase):
@@ -76,7 +76,9 @@ class Provider(ProviderBase):
                 if matches:
                     path = sorted(matches)[-1]
         if not path:
-            raise SystemExit("Could not locate trello-outreach's trello_utils.py for the trello provider.")
+            raise ProviderError(
+                "Could not locate trello-outreach's trello_utils.py for the trello provider.",
+                kind="config")
         import importlib.util
         spec = importlib.util.spec_from_file_location("trello_utils", path)
         mod = importlib.util.module_from_spec(spec)
@@ -224,6 +226,17 @@ class Provider(ProviderBase):
     def enumerate(self, limit):
         if not self.boards:
             return []
+        try:
+            return self._enumerate(limit)
+        except ProviderError:
+            raise  # already typed (kind preserved) — don't re-wrap as auth
+        except Exception as e:
+            # The board/list/card fetches hit the Trello REST API with TRELLO_API_KEY / TRELLO_TOKEN;
+            # a bad/expired token or network error surfaces here. Raise the typed error so the poller
+            # isolates trello and records it to provider-health instead of aborting the whole cycle.
+            raise ProviderError(f"trello enumerate failed (auth/API?): {e}", kind="auth")
+
+    def _enumerate(self, limit):
         now = datetime.now(timezone.utc)
         items = []
         for board in self.boards:

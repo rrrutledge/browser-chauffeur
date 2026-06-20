@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 _SCRIPTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts")
 if _SCRIPTS not in sys.path:
     sys.path.insert(0, _SCRIPTS)
-from provider_base import ProviderBase, run_node, slug  # noqa: E402
+from provider_base import ProviderBase, ProviderError, run_node, slug  # noqa: E402
 
 
 class Provider(ProviderBase):
@@ -53,7 +53,8 @@ class Provider(ProviderBase):
                                 recursive=True)
             if matches:
                 return sorted(matches)[-1]  # highest version / latest path
-        raise SystemExit("Could not locate the gmail skill's gmail.js for the gmail provider.")
+        raise ProviderError("Could not locate the gmail skill's gmail.js for the gmail provider.",
+                            kind="config")
 
     @staticmethod
     def _web_link(message_id):
@@ -64,7 +65,8 @@ class Provider(ProviderBase):
     def enumerate(self, limit):
         res = run_node([self.gmailjs, "--list-inbox", "--json", f"--top={limit}"])
         if res.returncode != 0:
-            raise SystemExit(f"gmail enumerate failed (auth/IMAP?): {res.stderr.strip()[:300]}")
+            raise ProviderError(f"gmail enumerate failed (auth/IMAP?): {res.stderr.strip()[:300]}",
+                                kind="auth")
         return json.loads(res.stdout or "[]")
 
     def triage_text(self, item):

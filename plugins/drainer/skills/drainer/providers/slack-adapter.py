@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 _SCRIPTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts")
 if _SCRIPTS not in sys.path:
     sys.path.insert(0, _SCRIPTS)
-from provider_base import ProviderBase, run_node  # noqa: E402
+from provider_base import ProviderBase, ProviderError, run_node  # noqa: E402
 
 
 class Provider(ProviderBase):
@@ -53,12 +53,14 @@ class Provider(ProviderBase):
                                 recursive=True)
             if matches:
                 return sorted(matches)[-1]  # highest version / latest path
-        raise SystemExit("Could not locate the slack skill's slack.js for the slack provider.")
+        raise ProviderError("Could not locate the slack skill's slack.js for the slack provider.",
+                            kind="config")
 
     def enumerate(self, limit):
         res = run_node([self.slackjs, "--list-unread", "--json", f"--top={limit}"])
         if res.returncode != 0:
-            raise SystemExit(f"slack enumerate failed (auth/token+cookie?): {res.stderr.strip()[:300]}")
+            raise ProviderError(
+                f"slack enumerate failed (auth/token+cookie?): {res.stderr.strip()[:300]}", kind="auth")
         return json.loads(res.stdout or "[]")
 
     def stable_id(self, item):

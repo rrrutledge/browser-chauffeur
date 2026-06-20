@@ -6,8 +6,35 @@ re-surfaces any needs-you item whose worker never finished. It is the opposite o
 way that governs everything below: **it is interactive and clears nothing without Russell's review.**
 
 You are a single digest session in your own tab. Your launcher gave you the runtime facts (runtime_dir,
-repo, the seen-state helper path, the providers dir, and stale_hours). Everything you read and clear is
-under `runtime_dir`.
+repo, the seen-state helper path, the providers dir, the provider-health file, and stale_hours).
+Everything you read and clear is under `runtime_dir`.
+
+## 0. Provider health — surface any stuck source FIRST (the headless poller can't)
+
+The fast-loop poller runs headless (no console — its output is discarded), so a provider whose
+credential expired fails **silently** every cycle and would never reach Russell. This daily digest is
+the guaranteed-visible channel that closes that gap. Before anything else:
+
+- Read `<runtime_dir>/provider-health.json` (missing/empty → all providers healthy; say nothing).
+  It maps each provider to `{ consecutive_failures, last_error, last_error_kind, last_error_ts,
+  last_ok_ts }`.
+- Report **at the very top of the digest** every provider with `consecutive_failures >= 2` (one stray
+  failure is just a blip; a sustained streak means it's stuck). For each, give Russell a one-step fix:
+  - Name the provider, when it last drained (`last_ok_ts`) and how many cycles it's been failing.
+  - Quote `last_error` and read it as the action to take, keyed off `last_error_kind`:
+    - **`auth`** (transient — self-heals once creds are refreshed): name the likely credential and how
+      to refresh it. gmail → `GMAIL_APP_PASSWORD`; slack → `SLACK_BOT_TOKEN` / `SLACK_COOKIE_D`;
+      personal-outlook → re-auth the ms-graph token cache; trello → `TRELLO_API_KEY` / `TRELLO_TOKEN`.
+      All are User-scope env vars — refresh, and the next poller cycle recovers on its own.
+    - **`config`** (a helper script/util couldn't be located — won't self-heal): flag it distinctly as a
+      deploy problem, not an expired credential — the adapter can't find its `*.js`/util, likely a
+      missing or mis-pointed plugin install.
+  - Example: *"⚠️ **gmail** hasn't drained since 2026-06-19 14:05 — 38 cycles failing: `gmail enumerate
+    failed (auth/IMAP?): …`. Likely an expired GMAIL_APP_PASSWORD (User-scope env var) — refresh it and
+    the next cycle recovers."*
+
+This is informational — there's nothing to clear. It just makes a silently-dead provider impossible to
+miss. Then continue to the queue below.
 
 ## 1. Gather (deterministic — just read state)
 
@@ -23,7 +50,9 @@ under `runtime_dir`.
   writes the body alongside `items/<id>.json`) — don't summarize from the snippet alone when the full
   body is right there.
 
-If the queue is empty AND there are no stale items, tell Russell there's nothing to digest and stop.
+If the queue is empty AND there are no stale items AND no provider is stuck (step 0), tell Russell
+there's nothing to digest and stop. A stuck provider alone is still worth reporting — surface it even
+when the queue is otherwise empty.
 
 ## 2. fyi — summarize so Russell never has to open the item
 
@@ -51,8 +80,8 @@ clearing action until he chooses.
 
 ## 5. Present, then clear ONLY on Russell's review
 
-Present the whole digest in the terminal — fyi summaries, grouped junk with stop-proposals, and the
-stale list — in one readable pass. Then **wait for Russell's go-ahead.** Nothing is disposed of
+Present the whole digest in the terminal — any stuck-provider health alerts (step 0) at the very top,
+then fyi summaries, grouped junk with stop-proposals, and the stale list — in one readable pass. Then **wait for Russell's go-ahead.** Nothing is disposed of
 silently.
 
 On his OK, for **each fyi/junk item he approves clearing**:
