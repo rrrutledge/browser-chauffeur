@@ -16,4 +16,6 @@ set "WT=%LOCALAPPDATA%\Microsoft\WindowsApps\wt.exe"
 set "LAUNCHER=%USERPROFILE%\OneDrive\Claude\scripts\launch-session.ps1"
 REM -w drainer: always collect worker tabs in a single, consistently-named "drainer" window, rather
 REM than -w 0 (most-recently-used), which is unpredictable when the scheduled task creates the window.
-"%WT%" -w drainer new-tab --title "%TITLE%" --startingDirectory "%REPO%" powershell -NoExit -NoProfile -File "%LAUNCHER%" -PromptFile "%PFILE%" -Model "%MODEL%"
+REM --suppressApplicationTitle keeps the descriptive --title (the item summary) fixed so the worker's
+REM Claude/PowerShell session can't overwrite it back to something generic.
+"%WT%" -w drainer new-tab --title "%TITLE%" --suppressApplicationTitle --startingDirectory "%REPO%" powershell -NoExit -NoProfile -File "%LAUNCHER%" -PromptFile "%PFILE%" -Model "%MODEL%"
