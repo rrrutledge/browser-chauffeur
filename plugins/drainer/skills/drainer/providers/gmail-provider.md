@@ -3,7 +3,7 @@
 A provider for a **Gmail or Google Workspace** mailbox read and cleared entirely through **IMAP** with
 a 16-character **App Password** — no OAuth client, no Cloud project, no browser. All IMAP calls go
 through the **`gmail`** skill's `gmail.js` (don't reimplement IMAP here); it owns the connection and the
-`[Gmail]/Drafts` + `[Gmail]/Trash` folder mechanics. Implements `../engine/provider.md`; classify by
+`[Gmail]/Drafts` + `[Gmail]/All Mail` folder mechanics. Implements `../engine/provider.md`; classify by
 `../engine/triage.md`.
 id prefix: `gmail-`; body file: `<id>.email.md`.
 
@@ -91,7 +91,7 @@ send it themselves in Gmail. Pick the mode by who the message goes to:
   openable and editable in Gmail's compose box at the bottom of the thread. A draft made with `--draft-new`
   carries no threading headers — Gmail shows it as a floating duplicate that's awkward to open — so never
   fall back to `--draft-new` for a reply. The original must be in the inbox for `--reply` to work; if it's
-  already in Trash, restore it first (see CLEAR), reply, then re-trash.
+  already in All Mail, restore it first (see CLEAR), reply, then re-archive.
 - **Fresh 1:1 (or small-group) note** (e.g. an outreach nudge to one contact — do NOT reply-all a group
   thread to single someone out): `node gmail.js --draft-new --to="<addr>" --subject="<subj>"
   --body-file=<file> [--cc="<addrs>"]`.
