@@ -1,6 +1,6 @@
 ---
 name: gmail
-description: Read/draft/clear a personal Gmail or Google Workspace mailbox via IMAP using a Google App Password — no OAuth app, no Cloud project, no browser. Use to list the inbox, show a message, move mail to Trash, or stage reply/new drafts in the Drafts folder (never sent). For a Google account where you can mint an app password (2-Step Verification on, IMAP enabled).
+description: Read/draft/clear a personal Gmail or Google Workspace mailbox via IMAP using a Google App Password — no OAuth app, no Cloud project, no browser. Use to list the inbox, show a message, archive mail or move it to Trash, or stage reply/new drafts in the Drafts folder (never sent). For a Google account where you can mint an app password (2-Step Verification on, IMAP enabled).
 ---
 
 # Gmail — Personal/Workspace Mail via IMAP + App Password
@@ -48,6 +48,8 @@ Under `scripts/` (run with `node`):
   - Draft reply (never sends): `node gmail.js --reply --message-id=<id> --body-file=reply.html`
     (appends a threaded draft to `[Gmail]/Drafts` with In-Reply-To/References set + the quoted original)
   - Draft new (never sends): `node gmail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.html [--cc=c@z]`
+  - Archive one (reversible): `node gmail.js --archive=<message-id>` (removes from the inbox, keeps it in
+    `[Gmail]/All Mail` — no Trash purge timer; this is the "handled, out of the inbox" clear)
   - Trash one (reversible): `node gmail.js --trash=<message-id>` (moves to `[Gmail]/Trash`, never a
     permanent purge)
 
@@ -60,8 +62,8 @@ the app password is wrong/revoked or IMAP is disabled — re-mint the app passwo
 ## Notes
 
 - The load-bearing identifier is the **Message-ID header** (`id` in `--json`): pass it to `--show`,
-  `--reply`, and `--trash`. Lookups search the INBOX for that header, so it stays valid as long as the
-  message is in the inbox.
+  `--reply`, `--archive`, and `--trash`. Lookups search the INBOX for that header, so it stays valid as
+  long as the message is in the inbox.
 - Drafts (`--reply` / `--draft-new`) land in **[Gmail]/Drafts** and are never sent — the user reviews
   and sends in Gmail.
-- Gmail's special folders are addressed as `[Gmail]/Drafts` and `[Gmail]/Trash`.
+- Gmail's special folders are addressed as `[Gmail]/Drafts`, `[Gmail]/Trash`, and `[Gmail]/All Mail`.

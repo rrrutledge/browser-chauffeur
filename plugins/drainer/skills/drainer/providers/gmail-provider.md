@@ -48,16 +48,18 @@ the shape the worker can rely on:
 RFC822 Message-ID header (with angle brackets). The `url` opens the message in Gmail by that id.
 
 ## CLEAR
-`node gmail.js --trash=<messageId>` — moves the message to **[Gmail]/Trash** (reversible; narrate it).
-This is the email "gone." Never a permanent purge.
+`node gmail.js --archive=<messageId>` — removes the message from the inbox and keeps it in **[Gmail]/All
+Mail** (reversible; narrate it). This is the email "handled and out of the inbox" — it stays fully
+searchable in All Mail with no Trash purge timer. Archiving, not trashing, is the drainer's clear: a
+drained item has been dealt with, not discarded.
 
 **Order matters when you're also drafting a reply:** stage the threaded reply draft (DRAFT-MODE below)
-*before* you trash the original. `--reply` reads the original out of the inbox to thread on and quote it,
-so once the message is in Trash a reply can no longer thread. If the original was already trashed (a prior
-session cleared it, or you cleared it first), restore it from Trash back to the inbox before replying, then
-trash it again after the draft is staged:
+*before* you archive the original. `--reply` reads the original out of the inbox to thread on and quote it,
+so once the message has left the inbox a reply can no longer thread. If the original was already cleared (a
+prior session archived it, or you cleared it first), move it from All Mail back to the inbox before replying,
+then archive it again after the draft is staged:
 ```js
-// .tmp restore helper — search [Gmail]/Trash by Message-ID, messageMove(uid, 'INBOX')
+// .tmp restore helper — search [Gmail]/All Mail by Message-ID, messageMove(uid, 'INBOX')
 ```
 
 ## JUNK-LEARNING
