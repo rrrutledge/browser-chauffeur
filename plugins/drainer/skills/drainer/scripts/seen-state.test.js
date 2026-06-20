@@ -6,7 +6,7 @@ const os = require('os');
 const path = require('path');
 
 const {
-  isSeen, record, openCount, clear, queueAdd, queueList, queueClear, staleList,
+  isSeen, record, openCount, clear, queueAdd, queueList, queueClear, staleList, requeue,
 } = require('./seen-state');
 
 function tmpDir() {
@@ -124,4 +124,27 @@ test('stale-list is empty when nothing is overdue', () => {
   record(dir, 'personal-outlook', 'fresh', 'needs-you');
   writeItem(dir, 'fresh', 'personal-outlook', fresh);
   assert.deepStrictEqual(staleList(dir, 12), []);
+});
+
+test('requeue frees the slot and lets the orphaned item re-dispatch (drops its seen key)', () => {
+  const dir = tmpDir();
+  record(dir, 'trello', 'card-1', 'needs-you');
+  assert.strictEqual(openCount(dir, 'trello'), 1);
+  assert.strictEqual(isSeen(dir, 'trello', 'card-1'), true);
+
+  requeue(dir, 'trello', 'card-1');
+  assert.strictEqual(openCount(dir, 'trello'), 0);            // slot freed
+  assert.strictEqual(isSeen(dir, 'trello', 'card-1'), false); // key dropped -> re-enumerates
+
+  // Re-dispatch next cycle then orphan again: requeue stays idempotent in effect (key gone, slot free).
+  record(dir, 'trello', 'card-1', 'needs-you');
+  requeue(dir, 'trello', 'card-1');
+  assert.strictEqual(isSeen(dir, 'trello', 'card-1'), false);
+  assert.strictEqual(openCount(dir, 'trello'), 0);
+});
+
+test('requeue on an unknown id is a no-op (no throw)', () => {
+  const dir = tmpDir();
+  requeue(dir, 'trello', 'nope');
+  assert.strictEqual(isSeen(dir, 'trello', 'nope'), false);
 });

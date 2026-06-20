@@ -50,8 +50,9 @@ triage_model: claude-sonnet-4-6          # the per-cycle batched triage call (al
 
 # EOD digest (run-digest.py) — the once-a-day interactive slow loop.
 digest_model: claude-opus-4-8   # the digest session (summarize fyi, group junk, reconciliation); standard context
-stale_hours: 12                 # reconciliation: a needs-you item still dispatched-but-uncleared past this
-                                # many hours is stale-but-unfinished and gets re-surfaced in the digest.
+stale_hours: 12                 # a needs-you item still dispatched-but-uncleared past this many hours is an
+                                # orphaned worker tab (closed/hung, no .done). The poller auto-recovers it
+                                # each cycle (re-queues a fresh tab) and the digest also lists any stragglers.
 digest_time: "17:00"            # wall-clock time (HH:MM, 24h) the daily digest task fires (used by the installer).
 ---
 

@@ -41,6 +41,13 @@ context (its own tab), so context stays bounded and nothing is half-done. The wo
 by writing `items/<id>.done` and clears the source item itself. The poller runs up to `max_open_tabs`
 workers at once (it does not serialize); the cap, not a queue, bounds how many face the user.
 
+- **Orphan self-recovery:** a worker tab closed or hung without writing `.done` would hold a cap slot
+  forever. Each cycle the poller's `reconcile_stale` sweep (sibling of the `.done` reconciliation) finds
+  any needs-you item still dispatched past `stale_hours` and **re-queues** it — drops its seen key so the
+  next enumerate re-dispatches a fresh tab — freeing the slot. No retry cap: a finished item resolves by
+  the worker writing `.done`, so a re-opened tab converges, and an item no longer present in its source
+  simply doesn't re-enumerate.
+
 ## Fail-safe, never miss
 
 Every mechanism's worst case is *redundant work*, never a *dropped item*:

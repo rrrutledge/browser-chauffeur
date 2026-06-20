@@ -67,8 +67,9 @@ def read_config(repo):
         # The once-a-day digest session. It summarizes fyi, groups junk with source-stop proposals,
         # and runs the reconciliation scan — judgment-heavy, so a stronger standard-context model.
         "digest_model": scalar("digest_model", "claude-opus-4-8"),
-        # Reconciliation threshold: a needs-you item still dispatched-but-uncleared older than this
-        # many hours is stale-but-unfinished (a worker crashed or was never finished) and re-surfaced.
+        # Orphan-recovery / reconciliation threshold: a needs-you item still dispatched-but-uncleared
+        # older than this many hours is an orphaned worker tab (closed or hung, never wrote .done). The
+        # poller auto-re-queues it each cycle (reconcile_stale) and the digest also lists any stragglers.
         "stale_hours": int(scalar("stale_hours", "12")),
         # Wall-clock time (HH:MM, 24h) the daily digest task fires; consumed by the installer.
         "digest_time": scalar("digest_time", "17:00"),

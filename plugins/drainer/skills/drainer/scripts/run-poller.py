@@ -313,6 +313,30 @@ def reconcile_done(runtime_dir):
     return freed
 
 
+def reconcile_stale(runtime_dir, cfg):
+    """Self-heal orphaned worker tabs. A needs-you item still 'dispatched' past stale_hours is a worker
+    that was closed or hung without ever writing <id>.done — it holds one of the global cap slots forever.
+    Re-queue it: drop its seen key so the next enumerate re-dispatches a fresh tab, freeing the slot. No
+    retry cap — the natural resolution of a finished item is the worker writing .done, so a re-opened tab
+    converges; an item that's no longer present in its source simply doesn't re-enumerate. Sibling of
+    reconcile_done — same place in the cycle, the other half of slot bookkeeping."""
+    try:
+        stale = json.loads(seen_state("stale-list", runtime_dir, str(cfg["stale_hours"])).stdout or "[]")
+    except ValueError:
+        stale = []
+    requeued = 0
+    for r in stale:
+        iid, source = r.get("id"), r.get("source")
+        if not iid or not source:
+            continue
+        seen_state("requeue", runtime_dir, source, iid)
+        print(f"orphan {iid} ({source}, age {r.get('ageHours')}h): re-queued for a fresh tab.")
+        requeued += 1
+    if requeued:
+        print(f"orphan recovery: {requeued} re-queued.")
+    return requeued
+
+
 def collect_new(provider, cfg):
     """Enumerate a provider, stamp ids/source, drop already-seen; return (new_items, total, seen)."""
     raw = provider.enumerate(cfg["max_messages_per_cycle"])
@@ -348,6 +372,8 @@ def main():
         return
 
     reconcile_done(cfg["runtime_dir"])  # free cap slots for items whose workers finished last cycle
+    if not args.dry_run:
+        reconcile_stale(cfg["runtime_dir"], cfg)  # self-heal orphaned tabs (mutates state -> live cycles only)
 
     # --- enumerate ALL providers first, accumulate into one global list ---
     # Each provider's enumerate is isolated: a failure (expired creds, IMAP/API blip) is caught,
