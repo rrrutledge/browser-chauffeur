@@ -14,8 +14,8 @@
 // Draft new:     node gmail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.html [--cc=c@z] [--attach=a.pdf,b.png]
 //                (appends a fresh DRAFT to [Gmail]/Drafts; never sends)
 //                (--attach takes one path or a comma-separated list; files ride along on the draft)
-// Trash one:     node gmail.js --trash=<message-id>
-//                (moves the message to [Gmail]/Trash — reversible, never a permanent purge)
+// Archive one:   node gmail.js --archive=<message-id>
+//                (removes the message from the inbox but keeps it in All Mail — the way mail is cleared)
 // Auth glance:   node gmail.js --check
 //                (connects and reports the inbox count; non-zero exit on auth failure)
 
@@ -41,7 +41,7 @@ const args = Object.fromEntries(
 const USER = process.env.GMAIL_ADDRESS;
 const PASS = process.env.GMAIL_APP_PASSWORD;
 const DRAFTS = '[Gmail]/Drafts';
-const TRASH = '[Gmail]/Trash';
+const ALLMAIL = '[Gmail]/All Mail';
 
 function client() {
   if (!USER || !PASS) {
@@ -189,13 +189,15 @@ async function draftNew(c) {
   console.log(`Draft staged in [Gmail]/Drafts to ${args.to}. Review in Gmail; never sent.`);
 }
 
-async function trash(c) {
+async function archive(c) {
   const lock = await c.getMailboxLock('INBOX');
   try {
-    const uid = await findUid(c, args.trash);
+    const uid = await findUid(c, args.archive);
     if (!uid) { console.log('Message not found in inbox (already cleared?).'); return; }
-    await c.messageMove(String(uid), TRASH, { uid: true });
-    console.log(`Moved to [Gmail]/Trash (id ${stripId(args.trash).slice(0, 40)}...). Reversible from Trash.`);
+    // Moving to All Mail drops the INBOX label while keeping the message — Gmail's archive. Unlike
+    // Trash there's no 30-day purge timer; the message just leaves the inbox.
+    await c.messageMove(String(uid), ALLMAIL, { uid: true });
+    console.log(`Archived (left the inbox, kept in All Mail) id ${stripId(args.archive).slice(0, 40)}.... Find it in All Mail or search.`);
   } finally { lock.release(); }
 }
 
@@ -214,8 +216,8 @@ async function check(c) {
     if (args.show) return await show(c);
     if (args.reply) return await reply(c);
     if (args['draft-new']) return await draftNew(c);
-    if (args.trash) return await trash(c);
+    if (args.archive) return await archive(c);
     if (args.check) return await check(c);
-    throw new Error('Specify --list-inbox, --list-drafts, --show, --reply, --draft-new, --trash, or --check');
+    throw new Error('Specify --list-inbox, --list-drafts, --show, --reply, --draft-new, --archive, or --check');
   } finally { await c.logout(); }
 })().catch(e => { console.error('Error:', e.message); process.exit(1); });
