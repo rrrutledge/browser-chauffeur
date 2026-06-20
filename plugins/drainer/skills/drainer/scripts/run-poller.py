@@ -25,16 +25,18 @@ import re
 import shutil
 import subprocess
 import sys
+from datetime import datetime, timezone
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 SKILL_DIR = os.path.dirname(SCRIPT_DIR)
 PROVIDERS_DIR = os.path.join(SKILL_DIR, "providers")
 sys.path.insert(0, SCRIPT_DIR)
 import presence  # noqa: E402  (sibling module)
-from provider_base import run_node, NO_WINDOW  # noqa: E402  (shared subprocess helper + console-hide flag)
+from provider_base import run_node, NO_WINDOW, ProviderError  # noqa: E402  (subprocess helper + typed provider failure)
 from drainer_config import read_config  # noqa: E402  (shared .claude/drainer.local.md reader)
 
 SEEN_STATE = os.path.join(SCRIPT_DIR, "seen-state.js")
+HEALTH_FILE = "provider-health.json"
 
 
 # ---------------------------------------------------------------------------- generic helpers
@@ -56,17 +58,68 @@ def open_count(seen):
     return sum(1 for r in seen.values() if r.get("triage") == "needs-you" and r.get("status") == "dispatched")
 
 
+# ---------------------------------------------------------------------------- provider health (observability)
+#
+# The poller runs headless under pythonw (stdout/stderr discarded), so a provider whose credential
+# expired would fail silently every cycle and Russell would never know to refresh it. We record each
+# provider's outcome to <runtime_dir>/provider-health.json so the once-a-day digest (the visible,
+# interactive channel) can surface a stuck provider. Stdlib-only and fail-safe, like seen-state.js:
+# a missing/corrupt file reads as empty, and writes are atomic (temp + replace).
+
+def load_health(runtime_dir):
+    try:
+        with open(os.path.join(runtime_dir, HEALTH_FILE), encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def save_health(runtime_dir, health):
+    os.makedirs(runtime_dir, exist_ok=True)
+    path = os.path.join(runtime_dir, HEALTH_FILE)
+    tmp = f"{path}.tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(health, f, indent=2)
+    os.replace(tmp, path)
+
+
+def record_health_ok(health, name):
+    """A successful enumerate resets the failure streak and stamps last_ok_ts; keeps prior error fields
+    for reference (so the digest can say 'recovered at <last_ok_ts> after failing since <last_error_ts>')."""
+    h = health.setdefault(name, {})
+    h["consecutive_failures"] = 0
+    h["last_ok_ts"] = datetime.now(timezone.utc).isoformat()
+    health[name] = h
+
+
+def record_health_failure(health, name, error, kind):
+    """A failed enumerate (or adapter load) increments the streak and records a short error + its kind
+    (auth = transient/self-heals once creds refreshed; config = deploy error, won't self-heal)."""
+    h = health.setdefault(name, {})
+    h["consecutive_failures"] = h.get("consecutive_failures", 0) + 1
+    h["last_error"] = (error or "")[:300]
+    h["last_error_kind"] = kind
+    h["last_error_ts"] = datetime.now(timezone.utc).isoformat()
+    h.setdefault("last_ok_ts", None)
+    health[name] = h
+
+
 # read_config / parse_provider_names live in drainer_config.py — shared with the digest launcher so
 # the two entry points never drift on knob names or defaults (imported at the top of the file).
 
 
 # ---------------------------------------------------------------------------- provider adapters
 
-def load_providers(cfg):
+def load_providers(cfg, health):
     """Dynamically load each enabled provider's adapter from providers/<name>-adapter.py.
 
     The poller holds no provider mechanics; an adapter lives beside its prose provider doc and
     implements provider_base.ProviderBase. A provider enabled in config without an adapter is skipped.
+
+    Adapter construction (`__init__` locates its helper .js/util) can raise ProviderError(kind=config)
+    when a deploy is broken. That failure is isolated here — recorded to health and skipped — so one
+    mislocated helper never aborts the cycle for the other providers.
     """
     providers = []
     for name in cfg["providers"]:
@@ -74,12 +127,19 @@ def load_providers(cfg):
         if not os.path.exists(path):
             print(f"(skipping provider '{name}': no poller adapter at providers/{name}-adapter.py)")
             continue
-        spec = importlib.util.spec_from_file_location(f"{name.replace('-', '_')}_adapter", path)
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        prov = mod.Provider()
-        prov.configure(cfg)  # hand the adapter the parsed config (repo + knobs); no-op for inbox adapters
-        providers.append(prov)
+        try:
+            spec = importlib.util.spec_from_file_location(f"{name.replace('-', '_')}_adapter", path)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            prov = mod.Provider()
+            prov.configure(cfg)  # hand the adapter the parsed config (repo + knobs); no-op for inbox adapters
+            providers.append(prov)
+        except ProviderError as e:
+            record_health_failure(health, name, str(e), e.kind)
+            print(f"(provider '{name}' failed to load [{e.kind}]: {e})")
+        except Exception as e:  # a broken adapter import shouldn't take the whole cycle down
+            record_health_failure(health, name, f"adapter load error: {e}", "config")
+            print(f"(provider '{name}' failed to load: {e})")
     return providers
 
 
@@ -249,22 +309,42 @@ def main():
         if not present:
             return  # away/locked -> silent no-op
 
-    providers = load_providers(cfg)
+    health = load_health(cfg["runtime_dir"])
+    providers = load_providers(cfg, health)
     if not providers:
         print("No providers with a poller adapter are enabled; nothing to do.")
+        if not args.dry_run:
+            save_health(cfg["runtime_dir"], health)  # persist any config-load failures recorded above
         return
 
     reconcile_done(cfg["runtime_dir"])  # free cap slots for items whose workers finished last cycle
 
     # --- enumerate ALL providers first, accumulate into one global list ---
+    # Each provider's enumerate is isolated: a failure (expired creds, IMAP/API blip) is caught,
+    # recorded to provider-health.json, and the loop continues so the OTHER providers still drain this
+    # cycle. The daily digest reads that health file and surfaces a stuck provider for Russell to fix.
     all_new, seen_by_source, totals = [], {}, {}
     for provider in providers:
-        new, total, seen = collect_new(provider, cfg)
+        try:
+            new, total, seen = collect_new(provider, cfg)
+        except ProviderError as e:
+            record_health_failure(health, provider.name, str(e), e.kind)
+            print(f"{provider.name}: enumerate FAILED [{e.kind}] — {e}. Skipping; other providers continue.")
+            continue
+        except Exception as e:  # unexpected adapter fault — still isolate it, never abort the cycle
+            record_health_failure(health, provider.name, str(e), "unknown")
+            print(f"{provider.name}: enumerate FAILED [unknown] — {e}. Skipping; other providers continue.")
+            continue
+        record_health_ok(health, provider.name)
         seen_by_source[provider.name] = seen
         totals[provider.name] = total
         all_new.extend(new)
         if not new:
             print(f"{provider.name}: {total} enumerated, 0 new.")
+    # Dry-run is a manual diagnostic often run from a shell without the User-scope creds; persisting
+    # health then would log false failures, so only a live cycle records the outcome.
+    if not args.dry_run:
+        save_health(cfg["runtime_dir"], health)  # persist this cycle's per-provider outcomes
 
     if not all_new:
         print("0 new items across all sources. Nothing to dispatch.")

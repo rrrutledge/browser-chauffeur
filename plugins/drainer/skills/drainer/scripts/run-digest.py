@@ -50,6 +50,8 @@ def write_seed(runtime_dir, repo, cfg):
             f"- seen-state helper: `{SEEN_STATE}` (run with node).\n"
             f"- providers dir: `{PROVIDERS_DIR}` — each item's `source` names its `<source>-provider.md` "
             "(read it for CLEAR and JUNK-LEARNING).\n"
+            f"- provider-health file: `{os.path.join(runtime_dir, 'provider-health.json')}` — read it FIRST "
+            "(digest-core step 0) and surface any stuck provider; missing/empty means all healthy.\n"
             f"- stale_hours (reconciliation threshold): {cfg['stale_hours']}.\n\n"
             "Present the digest to Russell and clear NOTHING until he approves. Draft-only: never send "
             "or post. When the queue is emptied (or Russell defers) and you are done, stop.\n"
@@ -74,6 +76,19 @@ def print_brief(runtime_dir, cfg):
     except ValueError:
         s = []
     print(f"DRY-RUN digest brief for {runtime_dir}")
+    try:
+        with open(os.path.join(runtime_dir, "provider-health.json"), encoding="utf-8") as f:
+            health = json.load(f) or {}
+    except (OSError, ValueError):
+        health = {}
+    stuck = {n: h for n, h in health.items() if (h or {}).get("consecutive_failures", 0) >= 2}
+    if stuck:
+        print(f"  Provider health: {len(stuck)} stuck (>=2 consecutive failures):")
+        for n, h in stuck.items():
+            print(f"    [{h.get('last_error_kind', '?'):6}] {n}: {h.get('consecutive_failures')} cycles "
+                  f"failing since last OK {h.get('last_ok_ts')}\n        {h.get('last_error')}")
+    else:
+        print("  Provider health: all healthy (no provider with >=2 consecutive failures).")
     print(f"  Digest queue: {len(q)} item(s) -> {counts['fyi']} fyi, {counts['junk']} junk, "
           f"{counts['other']} other")
     for e in q:

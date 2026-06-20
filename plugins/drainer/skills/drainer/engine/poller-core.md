@@ -42,6 +42,15 @@ spawn, record — is code. No AI re-implements the loop.
    - **fyi / junk** → capture, add to the digest queue (`seen-state.js queue-add`), record seen.
 6. **Never clear.** Workers clear needs-you on completion; the daily digest clears fyi/junk after review.
 
+**Per-provider isolation + health.** Each provider's enumerate is wrapped: a failure (expired creds,
+IMAP/API blip, or a missing helper at adapter-load) raises a typed `ProviderError` that the poller
+catches, so one dead source never aborts the cycle — the others still drain. Every cycle records each
+provider's outcome to `<runtime_dir>/provider-health.json` (`consecutive_failures`, `last_error`,
+`last_error_kind` [`auth` = transient/self-heals, `config` = deploy error], `last_error_ts`,
+`last_ok_ts`). Because the poller is headless, this file is how a silently-dead provider becomes
+visible: the daily digest reads it and surfaces any provider with a sustained failure streak so Russell
+knows to refresh the credential. (Dry-run doesn't write it — it's often run without the live creds.)
+
 **Dry-run** (`--dry-run`) does steps 1–4 and prints a triage report (counts + per-item bucket + intended
 action, including any held at the cap), with no spawns, no queueing, no records, no clears.
 

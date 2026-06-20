@@ -14,6 +14,24 @@ import subprocess
 NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 
+class ProviderError(Exception):
+    """A provider's enumerate (or adapter load) failed for THIS provider only.
+
+    The poller catches this per-provider so one source's failure never aborts the cycle for the
+    others; it records the failure to provider-health.json so the daily digest can surface a stuck
+    provider for Russell to fix. `kind` distinguishes the two failure modes the digest reports
+    differently:
+      - "auth"   — a transient credential / network failure (expired token, IMAP blip). Expected
+                   occasionally; self-heals once the credential is refreshed.
+      - "config" — a deploy/config error (a helper .js or utility couldn't be located). Rare and
+                   loud; it won't self-heal, so the digest flags it distinctly.
+    """
+
+    def __init__(self, message, kind="auth"):
+        super().__init__(message)
+        self.kind = kind
+
+
 def run_node(args, **kw):
     return subprocess.run(["node", *args], capture_output=True, text=True,
                           encoding="utf-8", errors="replace", creationflags=NO_WINDOW, **kw)
