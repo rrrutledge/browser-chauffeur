@@ -139,6 +139,33 @@ def triage(items, repo, local_dir, model):
 
 # ---------------------------------------------------------------------------- dispatch
 
+def _worker_title(iid, json_file):
+    """A short, human-readable tab title from the captured item (source + subject + who), so worker tabs
+    are tellable apart at a glance instead of all reading `drain:<id>`. Falls back to the id on any error."""
+    labels = {"personal-outlook": "Outlook", "gmail": "Gmail", "slack": "Slack", "trello": "Trello"}
+    try:
+        with open(json_file, encoding="utf-8") as f:
+            rec = json.load(f)
+    except (OSError, ValueError):
+        return f"drain:{iid}"
+    src = rec.get("source") or ""
+    label = labels.get(src, (src.split("-")[0] or "item").capitalize())
+    subject = (rec.get("subject") or rec.get("name") or "").strip()
+    who = (rec.get("from") or "").strip()
+    if not who:
+        contacts = rec.get("contacts") or []
+        who = (contacts[0] if contacts else "") or ""
+    if "<" in who:  # "Name <addr>" -> the name (or the address if unnamed)
+        head, _, tail = who.partition("<")
+        who = head.strip().strip('"') or tail.rstrip(">").strip()
+    title = f"{label}: {subject}" if subject else label
+    if who:
+        title += f" - {who}"
+    title = re.sub(r'[&<>|%"^]', " ", title)  # neutralize cmd-breaking chars
+    title = re.sub(r"\s+", " ", title).strip()  # collapse whitespace
+    return title[:50].strip() or f"drain:{iid}"
+
+
 def spawn_worker(iid, json_file, repo, runtime_dir, worker_model):
     seeds = os.path.join(runtime_dir, "seeds")
     os.makedirs(seeds, exist_ok=True)
@@ -160,7 +187,7 @@ def spawn_worker(iid, json_file, repo, runtime_dir, worker_model):
         )
     spawn_cmd = os.path.join(SCRIPT_DIR, "spawn-tab.cmd")
     # CREATE_NO_WINDOW hides the brief cmd shim console; wt.exe opens its own (visible) worker tab.
-    subprocess.Popen(["cmd", "/c", spawn_cmd, f"drain:{iid}", repo, prompt_file, worker_model],
+    subprocess.Popen(["cmd", "/c", spawn_cmd, _worker_title(iid, json_file), repo, prompt_file, worker_model],
                      cwd=repo, creationflags=NO_WINDOW)
 
 
