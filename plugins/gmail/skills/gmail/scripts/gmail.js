@@ -9,10 +9,11 @@
 // Show one:      node gmail.js --show=<message-id>
 //                (<message-id> is the RFC822 Message-ID header, e.g. <abc@mail.gmail.com>)
 // List drafts:   node gmail.js --list-drafts [--top=30]
-// Draft a reply: node gmail.js --reply --message-id=<id> --body-file=reply.html
+// Draft a reply: node gmail.js --reply --message-id=<id> --body-file=reply.html [--attach=a.pdf,b.png]
 //                (appends a DRAFT reply in the thread to [Gmail]/Drafts; never sends)
-// Draft new:     node gmail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.html [--cc=c@z]
+// Draft new:     node gmail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.html [--cc=c@z] [--attach=a.pdf,b.png]
 //                (appends a fresh DRAFT to [Gmail]/Drafts; never sends)
+//                (--attach takes one path or a comma-separated list; files ride along on the draft)
 // Trash one:     node gmail.js --trash=<message-id>
 //                (moves the message to [Gmail]/Trash — reversible, never a permanent purge)
 // Auth glance:   node gmail.js --check
@@ -130,10 +131,19 @@ async function listDrafts(c) {
   } finally { lock.release(); }
 }
 
+function attachments() {
+  // --attach=<path> — one path or a comma-separated list. Object.fromEntries collapses a repeated
+  // flag to its last value, so the comma-separated form is the way to attach several files.
+  if (!args.attach) return undefined;
+  const paths = String(args.attach).split(',').map(s => s.trim()).filter(Boolean);
+  return paths.map(p => ({ filename: path.basename(p), path: p }));
+}
+
 async function buildMime({ to, cc, subject, html, inReplyTo, references }) {
   const mail = {
     from: USER, to, cc, subject,
     html,
+    attachments: attachments(),
     inReplyTo: inReplyTo ? `<${stripId(inReplyTo)}>` : undefined,
     references: references,
   };
