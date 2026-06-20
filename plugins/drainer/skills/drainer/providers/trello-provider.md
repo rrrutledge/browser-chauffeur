@@ -11,6 +11,10 @@ rides the single schedule with no special cadence. All Trello reads and mutation
   `{name, id}`), the same registry the `trello-outreach` skill reads. The drainer drains **every** board
   in it, so adding a board is a one-file edit. (Legacy fallback: a `providers.trello.boards` list in
   `.claude/drainer.local.md` if no registry file exists.)
+  - **Format the adapter parses:** the poller runs on bare stdlib Python (no PyYAML), so the adapter
+    extracts boards by a fixed indent convention rather than full YAML — each board is `  - name:` at
+    **two-space** indent with its `    id:` at **four-space** indent. Keep that shape. Any deeper
+    per-board fields (`purpose`, `template_cards`, …) are free-form and ignored by the drainer.
 - Drainer knobs in `.claude/drainer.local.md` → `providers.trello`:
   - `skip_lists` — terminal/parking lists to ignore (e.g. Abandoned, Finished, Adopted, Templates).
   - `label_vocab` — `{channels: [...], features: [...]}`; any label not in those is a contact name.
