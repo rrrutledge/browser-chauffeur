@@ -283,22 +283,38 @@ def _gh_api_safe(tokens):
     return True
 
 
+# gh global flags that consume the next token as their argument
+GH_GLOBAL_FLAGS_WITH_ARG = {'--repo', '-R', '--hostname', '--cwd'}
+
+
+def _gh_find_group(tokens):
+    """Return (index, group) skipping only argument-consuming global flags
+    (--repo/-R/--hostname/--cwd). Any other token — including --version or
+    a subcommand — stops the scan and is returned as the group."""
+    i = 1
+    while i < len(tokens) and tokens[i] in GH_GLOBAL_FLAGS_WITH_ARG:
+        i += 2
+    return i, tokens[i] if i < len(tokens) else None
+
+
 def is_gh_command_safe(seg):
     """gh is two-level (group action) plus the special `api`/`auth` groups, so it
     has its own handler — but it shares the AI-learn fallback of the engine."""
     tokens = shell_tokenize(seg)
     if len(tokens) < 2:
         return True
-    group = tokens[1]
+    group_idx, group = _gh_find_group(tokens)
+    if group is None:
+        return True
     if group in ('search', 'status', 'browse'):
         return True
     if group == 'auth':
-        subs = get_subcommands(seg, skip=2)
+        subs = get_subcommands(seg, skip=group_idx + 1)
         return bool(subs) and subs[0] in ('status', 'token', 'switch')
     if group == 'api':
         return _gh_api_safe(tokens)
     if group in GH_TRUSTED_SUBCOMMANDS:
-        subs = get_subcommands(seg, skip=2)
+        subs = get_subcommands(seg, skip=group_idx + 1)
         action = subs[0] if subs else ''
         if action in GH_TRUSTED_SUBCOMMANDS[group]:
             return True

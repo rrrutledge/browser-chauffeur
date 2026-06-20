@@ -49,6 +49,9 @@ CASES = [
     {"id": "gh_auth_status", "tool": "Bash", "command": "gh auth status", "expect": "ALLOW"},
     {"id": "gh_auth_switch", "tool": "Bash", "command": "gh auth switch --user rrrutledge", "expect": "ALLOW"},
     {"id": "gh_auth_token", "tool": "Bash", "command": "gh auth token", "expect": "ALLOW"},
+    {"id": "gh_repo_flag_pr_create", "tool": "Bash", "command": "gh --repo owner/repo pr create --title x --body y", "expect": "ALLOW"},
+    {"id": "gh_R_flag_pr_list", "tool": "Bash", "command": "gh -R owner/repo pr list", "expect": "ALLOW"},
+    {"id": "gh_repo_flag_issue_view", "tool": "Bash", "command": "gh --repo owner/repo issue view 5", "expect": "ALLOW"},
 
     # --- wmic (read-only get/list only) -------------------------------------
     {"id": "wmic_process_get", "tool": "Bash", "command": "wmic process where \"name='python.exe'\" get ProcessId,CommandLine", "expect": "ALLOW"},
