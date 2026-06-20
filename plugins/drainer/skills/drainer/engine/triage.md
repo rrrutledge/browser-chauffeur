@@ -9,10 +9,11 @@ each bucket (own worker vs digest) lives in the driver and SKILL.
 
 For every inbound item ask both questions before assigning a bucket:
 
-1. **"What does this want Russell to do?"** — If the answer is anything other than "nothing," there
-   is an action. An automated sender does not make something junk — read the content and ask what it
-   wants (a training deadline wants the training done; a code-scan alert wants a fix; a reminder wants
-   the thing it's reminding about). Volume is irrelevant; actionability is in the content, not the count.
+1. **"Would Russell actually do something because of this?"** — Not what the sender wants him to do,
+   but what Russell himself would decide to act on. A training deadline he'd complete is an action;
+   a security alert for a failed login he already knows about isn't — reading it changes nothing he'd
+   do. An automated sender does not make something junk — read the content and ask whether it would
+   move Russell to act. Volume is irrelevant; actionability is in Russell's response, not the sender's intent.
 
 2. **"Is there an advantage to acting NOW?"** — Even when there is an action, ask whether doing it
    immediately matters. Is someone waiting on Russell? Does it keep a conversation moving? Is there a
@@ -24,9 +25,6 @@ For every inbound item ask both questions before assigning a bucket:
 email didn't reach Russell; he may eventually want to contact that person another way, but there's no
 urgency, no one is blocked waiting for his reply, and the digest is the right venue.
 
-**Security / account-activity notifications (failed login, new device sign-in, password changed, etc.):**
-always **fyi**, never **needs-you**. If Russell triggered the event he already knows it; if he didn't,
-calling the bank can wait for the daily digest — there's no hours-matter urgency.
 
 ## The three buckets
 
