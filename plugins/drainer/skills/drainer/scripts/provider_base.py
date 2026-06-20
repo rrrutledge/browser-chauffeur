@@ -28,6 +28,11 @@ class ProviderBase:
     """The interface the poller drives. Subclasses live in providers/<name>-adapter.py."""
     name = None
 
+    def configure(self, cfg):
+        """Optional hook: receive the parsed drainer config (incl. `repo`) after construction. Adapters
+        that drain user-configured targets (e.g. trello boards) override this; inbox adapters ignore it."""
+        return None
+
     def enumerate(self, limit):
         """Return a list of candidate item dicts (newest-first, up to `limit`)."""
         raise NotImplementedError

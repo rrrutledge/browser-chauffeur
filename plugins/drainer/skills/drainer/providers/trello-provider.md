@@ -10,17 +10,20 @@ rides the single schedule with no special cadence. All Trello reads and mutation
 - `boards` — `[{name, id}]` to drain.
 - `skip_lists` — terminal/parking lists to ignore (e.g. Abandoned, Finished, Adopted, Templates).
 - `label_vocab` — `{channels: [...], features: [...]}`; any label not in those is a contact name.
-Credentials: `TRELLO_KEY` / `TRELLO_TOKEN` in the environment (used by `trello-outreach`).
+Credentials: `TRELLO_API_KEY` / `TRELLO_TOKEN` in the environment (used by `trello-outreach`).
 
 ## AUTH-GLANCE
-Confirm `TRELLO_KEY`/`TRELLO_TOKEN` are set. If not, tell the user to set them and stop.
+Confirm `TRELLO_API_KEY`/`TRELLO_TOKEN` are set. If not, tell the user to set them and stop.
 
 ## ENUMERATE
 Via `trello-outreach`, list cards across the configured boards that sit in an **active** list (not in
 `skip_lists`) and are either **due now-or-earlier** (overdue counts) **or have no due date at all** —
 undated cards are still in play and shouldn't be missed. Sort oldest-due first (undated last). Build a
-stable id: `trello-<card-name-slug>-<last6 of cardId>`. Parse each card's labels with `label_vocab`
-into channel / features / contacts so the worker knows where the conversation lives.
+stable id: `trello-<card-name-slug>-<last6 of cardId>-<dueYYYYMMDD|nodue>`. The due date is part of the
+id on purpose: a card recurs every follow-up cycle (CLEAR bumps its due date out), and seen-state keeps
+a drained id forever, so without the due stamp a card would be marked seen on its first drain and never
+resurface when its next due date arrives. Parse each card's labels with `label_vocab` into channel /
+features / contacts so the worker knows where the conversation lives.
 
 ## CAPTURE (needs-you)
 The card itself is the item, and **we own it** — unlike inbound mail/Teams, the same card recurs every
