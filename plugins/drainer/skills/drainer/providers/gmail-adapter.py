@@ -11,6 +11,7 @@ gmail.js talks IMAP to imap.gmail.com with GMAIL_ADDRESS / GMAIL_APP_PASSWORD fr
 import glob
 import json
 import os
+import re
 import sys
 import urllib.parse
 from datetime import datetime, timezone
@@ -65,6 +66,33 @@ class Provider(ProviderBase):
         if res.returncode != 0:
             raise SystemExit(f"gmail enumerate failed (auth/IMAP?): {res.stderr.strip()[:300]}")
         return json.loads(res.stdout or "[]")
+
+    def triage_text(self, item):
+        """Fetch the message body and return just the NEW content (quoted reply chain stripped), so the
+        triage step sees what the message actually says instead of only its subject line. The IMAP
+        envelope listing carries no preview, so without this triage would classify a Gmail thread purely
+        on sender + subject. Falls back to the (usually empty) preview if the body can't be fetched."""
+        message_id = item.get("id")
+        if not message_id:
+            return item.get("preview") or ""
+        show = run_node([self.gmailjs, f"--show={message_id}"])
+        if show.returncode != 0:
+            return item.get("preview") or ""
+        return self._new_message_excerpt(show.stdout)
+
+    @staticmethod
+    def _new_message_excerpt(raw, limit=1500):
+        """From a `gmail.js --show` dump (Subject/From/To/Cc/Date header lines, then the body), keep the
+        header lines and the new message text, dropping the quoted reply chain. The To/Cc lines are kept
+        on purpose — they're how triage tells a message aimed at Russell from one where he's only a CC.
+        The quote chain begins at the first `On <date> … wrote:` attribution or the first `>`-quoted line."""
+        kept = []
+        for line in (raw or "").splitlines():
+            s = line.strip()
+            if s.startswith(">") or re.match(r"^On .*wrote:\s*$", s):
+                break
+            kept.append(line)
+        return "\n".join(kept).strip()[:limit]
 
     def stable_id(self, item):
         # Timestamp to the second so two messages from the same sender with the same opening subject in

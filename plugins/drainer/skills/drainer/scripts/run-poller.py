@@ -104,13 +104,21 @@ def _read(path):
         return ""
 
 
-def triage(items, repo, local_dir, model):
+def triage(items, repo, local_dir, model, providers_by_name):
     claude = shutil.which("claude") or "claude"
     rubric = _read(os.path.join(SCRIPT_DIR, "..", "engine", "triage.md"))  # embed -> self-contained
     context = _read(os.path.join(local_dir, "context.md"))
+
+    def preview(it):
+        # The owning adapter supplies the text triage sees: its `triage_text` returns the new message
+        # body (quote-stripped) rather than just the subject. Adapters whose enumerate carries no preview
+        # (gmail) override it to fetch the body for these new items; the default just returns `preview`.
+        p = providers_by_name.get(it["_source"])
+        return p.triage_text(it) if p else (it.get("preview") or "")
+
     payload = [{"id": it["_id"], "source": it["_source"], "from": it.get("from"),
                 "subject": it.get("subject"), "received": it.get("received"),
-                "isRead": it.get("isRead"), "preview": it.get("preview")} for it in items]
+                "isRead": it.get("isRead"), "preview": preview(it)} for it in items]
     prompt = (
         f"{TRIAGE_INSTRUCTIONS}\n\n## Rubric (engine/triage.md)\n{rubric}\n\n"
         f"## World-knowledge (drainer context.md)\n{context}\n\n"
@@ -263,7 +271,8 @@ def main():
         return
 
     # --- one combined triage call over all sources ---
-    verdicts = triage(all_new, repo, cfg["local_dir"], cfg["triage_model"])
+    prov = {p.name: p for p in providers}  # name -> adapter (also used below for cross-source dispatch)
+    verdicts = triage(all_new, repo, cfg["local_dir"], cfg["triage_model"], prov)
     for it in all_new:
         v = verdicts.get(it["_id"], {"bucket": "needs-you", "kind": "reply"})  # unjudged -> act (fail-safe)
         it["_bucket"], it["_kind"] = v.get("bucket", "needs-you"), v.get("kind")
@@ -279,8 +288,6 @@ def main():
         reverse=True,  # newest first; items missing received sort last via ""
     )
     others = [it for it in all_new if it["_bucket"] != "needs-you"]
-
-    prov = {p.name: p for p in providers}  # name -> adapter for cross-source dispatch
 
     if args.dry_run:
         counts = {b: sum(1 for it in all_new if it["_bucket"] == b) for b in ("needs-you", "fyi", "junk")}
