@@ -244,19 +244,19 @@ def _worker_title(iid, json_file):
 
 def _worker_summary(json_file):
     """A one-line item summary that LEADS the worker's seed prompt. Claude names the tab off its first
-    message, so leading with this makes the tab self-title descriptively (e.g. "Handle Gmail security
-    message") while keeping its attention star — no --suppressApplicationTitle needed. '' on error."""
-    nouns = {"Outlook": "Outlook email", "Gmail": "Gmail email", "Slack": "Slack message",
-             "Trello": "Trello outreach card"}
-    label, subject, who = _item_bits(json_file)
-    if not label:
+    message, so leading with this makes the tab self-title descriptively while keeping its attention star
+    (no --suppressApplicationTitle needed). Lead with the CONTENT — the subject/card and who it's from —
+    since that's what matters at a glance; the source (Gmail/Slack/Trello/…) is incidental and is NOT
+    forced into the title. '' when there's nothing to say."""
+    _label, subject, who = _item_bits(json_file)
+    if not subject and not who:
         return ""
-    s = f"You are handling a {nouns.get(label, label + ' item')}"
+    s = "You are handling this for Russell"
     if subject:
         s += f': "{subject}"'
     if who:
-        s += f" (contact: {who})" if label == "Trello" else f", from {who}"
-    return s + ", for Russell."
+        s += f", from {who}"
+    return s + "."
 
 
 def spawn_worker(iid, json_file, repo, runtime_dir, worker_model):
