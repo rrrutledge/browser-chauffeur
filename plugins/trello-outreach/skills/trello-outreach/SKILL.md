@@ -1,10 +1,12 @@
 ---
 skill: trello-outreach
-description: Create and update Trello cards, labels, and checklists for outreach tracking boards. Board IDs and configuration come from CLAUDE.local.md — check there first.
+description: Create and update Trello cards, labels, and checklists for outreach tracking boards. Board IDs and per-board configuration come from the project's trello-boards.yaml registry — check there first.
 instructions: |-
   ## Trello Outreach Skill
 
-  Board configuration (IDs, lists, labels) lives in CLAUDE.local.md. Read it first.
+  Board configuration — board names, IDs, purposes, per-board lists/labels, and template-card notes —
+  lives in the project's `trello-boards.yaml` registry (the single source of truth, shared with the
+  drainer's trello provider). Read it first.
 
   ---
 
@@ -61,7 +63,7 @@ instructions: |-
   in Trello. This skill only knows how to *apply* a template.
 
   Which boards have templates, the template card names, and when to apply each one
-  are board-specific — read CLAUDE.local.md.
+  are board-specific — read `trello-boards.yaml`.
 
   To create a new card from a template, copying its checklists:
 
