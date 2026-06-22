@@ -43,15 +43,7 @@ def read_config(repo):
 
     def scalar(key, default):
         m = re.search(rf"^\s*{re.escape(key)}\s*:\s*(.+?)\s*$", text, re.MULTILINE)
-        if not m:
-            return default
-        val = m.group(1).strip()
-        # Strip trailing inline comment (" # ...") so the shipped example config's commented
-        # model lines (e.g. `triage_model: claude-sonnet-4-6   # the per-cycle call`) don't get
-        # passed verbatim as model ids. Leave a '#' inside a quoted value alone.
-        if not (val.startswith('"') or val.startswith("'")):
-            val = re.sub(r"\s+#.*$", "", val).strip()
-        return val.strip('"|\'')
+        return m.group(1).strip().strip('"\'') if m else default
 
     runtime_dir = scalar("runtime_dir", ".tmp/drainer")
     if not os.path.isabs(runtime_dir):
