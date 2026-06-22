@@ -1,68 +1,76 @@
-# teams provider — Microsoft Teams on the web (browser)
+# teams provider — Microsoft Teams via the internal REST services
 
-A provider for Microsoft Teams on the web (`https://teams.microsoft.com/`) — you sign in as yourself,
-no tenant baked in. No config. Implements `../engine/provider.md`; classify by
-`../engine/triage.md`. Use the **browser-chauffeur** skill for all browser work. id prefix: `teams-`;
-body file: `<id>.msg.md`.
+A provider for Microsoft Teams read through the **Teams internal REST services** (the same services
+Teams web uses) — fast, no DOM hydration. All reads go through the **`teams`** skill's `teams-chat.js`
+(don't reimplement the API here); it owns the sniffed ic3 + aggregator tokens, the authoritative
+`isRead` unread detection, the watched-team channel scoping, and the `messages` read. Implements
+`../engine/provider.md`; classify by `../engine/triage.md`.
+id prefix: `teams-`; body file: `<id>.msg.md`.
+
+> Two-file provider: the **reading** mechanics (enumerate, stable id, capture-writing) live in the
+> sibling **`teams-adapter.py`** that the poller drives. This doc is the **worker-facing** prose —
+> AUTH-GLANCE, the captured item shape, CLEAR, JUNK-LEARNING, DRAFT-MODE.
+
+> Reads are REST (fast, browser-free once the token is cached); **CLEAR and DRAFT stay browser-driven**
+> because Teams' authoritative `isRead` flips only on a real conversation open, and Teams has no draft API.
+
+## Config (in `.claude/drainer.local.md` → `providers.teams`)
+No config block — `teams: {}`. Behavior is tuned by environment variables read by the `teams` skill:
+`DRAINER_TEAMS_WATCHED_TEAM_ID` / `DRAINER_TEAMS_WATCHED_TEAM_NAME` (only this team's channels surface)
+and `DRAINER_SELF_NAME` (labels 1:1/group chats by the other member[s]). Tokens are sniffed from the
+live Teams web session and cached at `~/.claude/drainer/teams-ic3-token.json`; the one-time sniff needs
+`playwright` (resolved from the home repo's `node_modules`).
+
+The `teams` `teams-chat.js` lives at `<teams-skill>/scripts/teams-chat.js` — run it with `node`.
 
 ## Teams footguns (IRREVERSIBLE — never violate)
-- **Enter SENDS** in a Teams composer. Triage/capture only READ — never type into a composer here.
-  All composing happens later in the worker via the `message-draft` skill (`teams` mode), which owns
-  the footguns (identity-gate the chat, target the visible composer, Shift+Enter for newlines, never
-  press a bare Enter).
-- **Heavy iframes:** keep to ONE browser-driving context; don't open many tabs.
+- **Enter SENDS** in a Teams composer. Reads are REST and never type into a composer. All composing
+  happens later in the worker via the `message-draft` skill (`teams` mode), which owns the footguns
+  (identity-gate the chat, target the visible composer, Shift+Enter for newlines, never a bare Enter).
+- **Heavy iframes (browser path only):** for CLEAR/DRAFT keep to ONE browser-driving context.
 
 ## AUTH-GLANCE
-Open `https://teams.microsoft.com/`. Decide ONLY: SIGNED IN (chat/activity list visible) or NOT (a
-Microsoft/SSO sign-in, "Pick an account", or password screen). If NOT signed in, surface a sign-in
-prompt to the user (leave the tab open) and stop reading Teams until they confirm.
-
-## ENUMERATE
-Click the **Unread** filter, then list unread DMs (1:1), group chats, and channels you're a member of
-— most-recent-activity first. Some builds show conversation NAMES ONLY (no previews in the rail), so
-you may have to OPEN each unread to read it (opening MARKS IT READ — accepted). Click the EXACT
-conversation row, **anchored on its name** (rail groups nest child names, so a loose substring match
-hits the parent; match `^<name>$`). Identity-confirm the open chat (header name matches the row).
-Build a stable id: `teams-<YYYYMMDD-HHMM of latest msg>-<sender-or-chat-slug>-<first-3-msg-words-slug>`
-(lowercase, non-alphanumerics → single dashes; ≤52 chars).
+Run `node <teams>/teams-chat.js token`. `Tokens OK ✅` means both tokens are valid (cached or freshly
+sniffed) and the channel is ready. If it errors with "Missing token(s)", Teams web isn't open/signed in
+in the CDP browser: open `https://teams.microsoft.com/`, confirm signed in, and stop reading Teams until
+the token sniffs clean. Never surface a raw auth error to the user.
 
 ## MEETING RECORDING MESSAGES
-A meeting-recording notification (recording/transcript link or "Meeting ended" summary) is a
-container — see `../engine/triage.md § Containers that hold action items`. Open the meeting's AI notes
-and look for action items assigned to **you**; each one becomes its own needs-you item (capture
-separately, `whatsAsked` = the action item text). If AI notes exist but none are yours, it's fyi. If
-no AI notes exist, the notification is fyi.
+A meeting-recording notification (recording/transcript link or "Meeting ended" summary) is a container —
+see `../engine/triage.md § Containers that hold action items`. Open the meeting's AI notes (via
+browser-chauffeur) and look for action items assigned to **you**; each becomes its own needs-you item
+(`whatsAsked` = the action-item text). If AI notes exist but none are yours, it's fyi. If no AI notes
+exist, fyi.
 
 ## CAPTURE (needs-you)
-- **Deep link** (see below) — the real per-message/chat link as `url`.
-- Write `items/<id>.msg.md` — header block (Chat/From, Type [dm|group|channel], Latest, Link) + the
-  recent messages.
-- Write `items/<id>.json`:
+The adapter writes these; documented here so the worker can rely on the shape:
+- `items/<id>.msg.md` — header block (Chat/From, Type [dm|group|channel|meeting], Latest, Link=`deepLink`)
+  + the recent messages.
+- `items/<id>.json`:
   `{ "id","source":"teams","triage":"needs-you","kind":"reply|work|work-then-reply","from":"<person`
-  `or chat name>","chatType":"dm|group|channel","received","snippet","whatsAsked":"<1-2 lines>",`
-  `"url":"<deep link>","msgFile":"<abs path to .msg.md>","ts":"<ISO now>" }`
+  `or chat label>","subject":"<chat label>","chatType":"dm|group|channel|meeting","received","snippet",`
+  `"url":"<conversation deep link>","messageId":"<IC3 conv id>","convId":"<IC3 conv id>",`
+  `"msgFile":"<abs path to .msg.md>","ts":"<ISO now>" }`
 
-### Deep-link capture (real link, graceful fallback)
-Build `url` from the open conversation, best-effort, in order:
-1. **Message link** —
-   `https://teams.microsoft.com/l/message/<chatId>/<messageId>?context=%7B%22contextType%22%3A%22chat%22%7D`
-   - `chatId`: the selected conversation's DOM node `[id^="chat-list-item_"]` → strip the
-     `chat-list-item_` prefix (e.g. `19:...@thread.v2`).
-   - `messageId`: the latest message node's id — try `data-mid`, then `data-message-id`, then a
-     numeric id on the message container (ms-epoch). Best-effort.
-2. **Chat link** (no messageId) — `https://teams.microsoft.com/l/chat/<chatId>/conversations`.
-3. **Base URL** fallback — `https://teams.microsoft.com/`.
-Selectors are last-known-good (Teams web, 2026-06) — expect drift; if they don't resolve, screenshot
-→ inspect the live DOM to rediscover the id-bearing node, then fall back down the chain. A "Copy link"
-item in a message's `…` overflow menu is an alternate source if the DOM ids move.
+  `convId` (= `messageId`) is the IC3 conversation id — CLEAR needs it to identify the conversation.
 
 ## CLEAR
-MARK the conversation READ in the browser (Teams has no delete/trash; mark-read is the "gone," and
-reversible — just narrate it). Opening it in triage already marks it read.
+**Browser-driven (via `browser-chauffeur`), not REST.** Teams' authoritative `isRead` is not driven by
+any replayable HTTP call (the consumptionhorizon PUTs return 200 but don't flip `isRead`); opening the
+conversation in Teams web flips it within ~5 s via a trouter/websocket signal. So mark-read = **open the
+conversation in Teams web**: navigate the CDP browser to `https://teams.cloud.microsoft/v2/?ctx=chat`,
+wait for the rail, and click the conversation's row (match its visible `label`; `getByText`, first
+match). Verify by re-running `node teams-chat.js enumerate --unread` — the item drops out of unread.
+Teams has no delete/trash; mark-read is the "gone," and it is reversible. Narrate each clear with a
+one-line reason.
+
+If the underlying WORK isn't finished (you only drafted a reply), do NOT clear — leave the conversation
+unread and write a "paused" note instead.
 
 ## JUNK-LEARNING
-None. Teams junk is just cleared (marked read) — you manage your own Teams mutes; don't propose mutes
-or rules.
+None. Teams junk is just cleared (marked read) — the user manages their own Teams mutes; don't propose
+mutes or rules.
 
 ## DRAFT-MODE
-`message-draft` skill, `teams` mode.
+`message-draft` skill, `teams` mode (browser composer — owns the voice + composer mechanics + the
+footgun rules). Only the read mechanics use the REST script; drafting stays in the browser.

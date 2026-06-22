@@ -56,16 +56,19 @@ Classification is NOT a provider concern — every item is judged by `engine/tri
 
 ## Worked examples — the shipped providers
 Each is a complete implementation to copy from:
-- **`outlook-provider.md`** — a browser provider (Outlook web via browser-chauffeur): list-view
-  enumerate, open-on-needs-you capture, delete-to-clear, Outlook-rule junk-learning.
-- **`personal-outlook-provider.md`** + **`personal-outlook-adapter.py`** — the **complete two-file
-  example** (an API provider: personal Outlook.com via the Microsoft Graph API through the `ms-graph`
-  skill). Adapter: `mail.js --list-inbox --json` enumerate, the Graph id scheme, `--show` capture. Prose:
-  `--delete` (move to Deleted Items) clear, `--reply` draft, unsubscribe/rule junk-learning. Copy this
-  pair when wrapping any API/MCP source through a sibling skill — it's the only provider wired into the
-  poller today; the browser/delegating docs below are prose-only until they get an adapter.
-- **`teams-provider.md`** — a browser provider with the Teams footguns, deep-link capture, mark-read
-  clear, and the meeting-recording container case.
+- **`outlook-rest-provider.md`** + **`outlook-rest-adapter.py`** — a **REST two-file example** for an
+  Outlook mailbox via the `ms-rest` skill's `outlook-mail.js` (token sniffed from the live Outlook web
+  session; reads whatever account is signed in). Adapter: `enumerate` / `get` reads; prose: `delete`
+  clear, Outlook-rule junk-learning, `message-draft` `outlook` mode. Copy this when the sibling skill
+  needs a one-time browser sniff but reads run REST.
+- **`personal-outlook-provider.md`** + **`personal-outlook-adapter.py`** — the **API two-file example**
+  (personal Outlook.com via the Microsoft Graph API through the `ms-graph` skill). Adapter:
+  `mail.js --list-inbox --json` enumerate, the Graph id scheme, `--show` capture. Prose: `--delete` clear,
+  `--reply` draft, unsubscribe/rule junk-learning. Copy this when wrapping any pure-API/MCP source.
+- **`teams-provider.md`** + **`teams-adapter.py`** — a **REST-read / browser-clear two-file example** via
+  the `teams` skill's `teams-chat.js`: REST `enumerate`/`messages` reads, but mark-read CLEAR and reply
+  DRAFT stay browser-driven (Teams' `isRead` flips only on a real open; no draft API). Includes the Teams
+  footguns and the meeting-recording container case.
 - **`trello-provider.md`** — a config-driven provider that delegates all reads/mutations to the
   `trello-outreach` skill (due-date source: returns due-now-or-earlier cards, plus cards with no due
   date; usually little).
