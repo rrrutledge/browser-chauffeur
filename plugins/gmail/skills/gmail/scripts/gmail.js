@@ -180,14 +180,18 @@ async function reply(c) {
     throw new Error('--reply requires --message-id and --body-file');
   }
   const html = fs.readFileSync(args['body-file'], 'utf8');
-  const lock = await c.getMailboxLock('INBOX');
   let orig;
-  try {
-    const uid = await findUid(c, args['message-id']);
-    if (!uid) throw new Error('Original message not found in inbox.');
-    const msg = await c.fetchOne(String(uid), { source: true }, { uid: true });
-    orig = await simpleParser(msg.source);
-  } finally { lock.release(); }
+  for (const mailbox of ['INBOX', ALLMAIL]) {
+    const lock = await c.getMailboxLock(mailbox);
+    try {
+      const uid = await findUid(c, args['message-id']);
+      if (!uid) continue;
+      const msg = await c.fetchOne(String(uid), { source: true }, { uid: true });
+      orig = await simpleParser(msg.source);
+      break;
+    } finally { lock.release(); }
+  }
+  if (!orig) throw new Error('Original message not found in inbox or All Mail.');
 
   const when = orig.date ? orig.date.toUTCString() : '';
   const quoted = `<br><br>On ${when}, ${orig.from ? orig.from.text : ''} wrote:<br>` +
