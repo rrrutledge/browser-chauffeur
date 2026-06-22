@@ -54,6 +54,18 @@ The adapter writes these; documented here so the worker can rely on the shape:
 
   `convId` (= `messageId`) is the IC3 conversation id — CLEAR needs it to identify the conversation.
 
+## MULTI-MESSAGE THREADS (group and meeting chats)
+
+When `chatType` is `meeting` or `group`, the captured thread may contain multiple recent messages with
+distinct action items. The trigger message (latest/snippet) is not necessarily the only one requiring
+action. Before drafting any reply, scan **all recent messages** in the `.msg.md` for:
+- Direct questions or requests addressed to Russell by name
+- Messages Russell has not yet replied to
+
+Treat each as a separate action item and handle all before clearing. Do not let a lower-stakes trigger
+message (e.g., a simple acknowledgment) cause you to overlook an earlier unanswered direct question in
+the same thread.
+
 ## CLEAR
 **Browser-driven (via `browser-chauffeur`), not REST.** Teams' authoritative `isRead` is not driven by
 any replayable HTTP call (the consumptionhorizon PUTs return 200 but don't flip `isRead`); opening the
