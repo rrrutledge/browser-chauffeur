@@ -87,9 +87,10 @@ draft with `gmail.js` — **never sent** from inside the worker. Show the draft 
 user reviews it and either edits + sends in Gmail himself, or — back in the top-level interactive session
 — tells Claude to send it, which promotes that exact draft via `gmail.js --send-draft` (see the `gmail`
 skill's **Sending** section). A worker never sends; it only stages. Pick the mode by who the message goes to:
-- **Reply on the thread** (responding to inbound mail): always use `node gmail.js --reply
-  --message-id=<messageId> --body-file=<file>` — it sets In-Reply-To/References and appends the quoted
-  original, so the draft lands *inside* the conversation in [Gmail]/Drafts. This is what makes the draft
+- **Reply-all on the thread** (responding to inbound mail): always use `node gmail.js --reply
+  --message-id=<messageId> --body-file=<file>` — it sets In-Reply-To/References, appends the quoted
+  original, and automatically CCs all original To+CC recipients (reply-all), so the draft lands *inside*
+  the conversation in [Gmail]/Drafts and preserves every recipient. This is what makes the draft
   openable and editable in Gmail's compose box at the bottom of the thread. A draft made with `--draft-new`
   carries no threading headers — Gmail shows it as a floating duplicate that's awkward to open — so never
   fall back to `--draft-new` for a reply. The original must be in the inbox for `--reply` to work; if it's
