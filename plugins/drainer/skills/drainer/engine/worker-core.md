@@ -5,6 +5,8 @@ worker prompt should point here and supply only its **source-specific bits** (wh
 and how to ADVANCE it). Everything below is identical across sources.
 
 You are working ONE item to completion in your own context. **Draft-only outbound; never send/post.**
+(Sending a reviewed draft is a separate, interactive-only step the user triggers later in the top-level
+session on an explicit per-message instruction — it never happens inside a worker or an autonomous drain.)
 Read the shared brain → situational-check → DO the action → contact the person in the user's voice →
 learn from the send → advance the item.
 
