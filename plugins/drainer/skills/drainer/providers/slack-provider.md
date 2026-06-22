@@ -75,17 +75,24 @@ then records it in the digest's "Auto-handled" section. Each rule below names it
 action; act only when an item plainly matches one. Anything that doesn't match a rule here is NOT
 auto-handle — it falls back to the normal needs-you/fyi/junk triage.
 
-1. **Workspace invite request** — when the **`@Slack`** bot DMs Russell with a request to invite a *new
-   person to the workspace*, carrying a **"Send Invitation"** button. Russell always approves these.
+1. **Workspace invite request → approve** — when the **`@Slack`** bot DMs Russell with a request to
+   invite a *new person to the workspace*, carrying a **"Send Invitation"** button. Russell always
+   approves these.
    - **Action:** drive **browser-chauffeur** to the message permalink (`url` in the captured item) and
      click **"Send Invitation"**.
    - **Digest note:** "Auto-approved workspace invite: *[invitee email]* (requested by *[requester]*)."
    - **Then** CLEAR the item (mark read) and write `.done` immediately.
-   - **Does NOT apply to a Slack Connect channel join.** A message that says **"Request to join a Slack
-     Connect channel"** (connecting an *external* workspace/channel, not adding a person to this
-     workspace) is a real decision Russell makes himself — triage it **needs-you**, never auto-approve.
-     The signal is the wording: "invite [person] to [workspace]" = auto-handle; "join a Slack Connect
-     channel" = needs-you.
+   - This rule is for *adding a person to the workspace* only — distinguished from a Slack Connect join
+     by the wording: "invite [person] to [workspace]" = this rule (approve); "join a Slack Connect
+     channel" = rule 2 below (reject).
+
+2. **Slack Connect channel/workspace connect request → reject** — a message that says **"Request to join
+   a Slack Connect channel"** or otherwise asks to *connect an external workspace/channel* (linking a
+   different org, not adding a person to this workspace). Russell always declines these.
+   - **Action:** drive **browser-chauffeur** to the message permalink (`url` in the captured item) and
+     click **"Decline"** (the reject/ignore action on the request — not "Accept").
+   - **Digest note:** "Auto-rejected Slack Connect request: *[channel/org]* (requested by *[requester]*)."
+   - **Then** CLEAR the item (mark read) and write `.done` immediately.
 
 ## JUNK-LEARNING
 Stop this noise arriving again, in **priority order** (best outcome = it never pings) — propose, never

@@ -313,7 +313,11 @@ def spawn_worker(iid, json_file, repo, runtime_dir, worker_model):
             "immediately, since they never opened for the user's attention.)\n"
             "If the item's `triage` field is `auto-handle`, follow worker-core's auto-handle BRANCH "
             "instead: execute the standing rule autonomously, CLEAR the source, queue a digest entry, "
-            "and write .done IMMEDIATELY — no presentation, no wait.\n"
+            "and write .done IMMEDIATELY — no presentation, no wait. Then CLOSE THIS TAB as your very "
+            f"last step: read the hosting PID from `{prompt_file}.hostpid` and run "
+            f"`taskkill /PID <pid> /T /F` (PowerShell) to terminate this session and close the tab, so a "
+            "self-resolved item never lingers as a finished tab you must check. Do this ONLY for "
+            "auto-handle — needs-you items always stay open and wait for the user.\n"
         )
     # A one-line summary leads the seed so the worker's Claude session self-titles the tab descriptively
     # while keeping its attention star (the launcher prepends this; see launch-session.ps1 -SummaryFile).

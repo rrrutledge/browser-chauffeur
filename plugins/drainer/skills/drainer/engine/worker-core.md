@@ -32,6 +32,13 @@ Russell decided in advance — do the action without presenting or waiting, then
    "auto-handled: approved workspace invite for <email>"). There is **no presentation and no
    wait-for-acknowledgment**, because nothing was put in front of Russell — the digest is how he learns
    it happened. (This is the same "silent resolution writes `.done` at once" rule as §6's exception.)
+6. **Close this tab** as your very last step. An auto-handle item has no one to wait for, so a tab left
+   open would just sit there reading "finished" until Russell checks it by hand — exactly the
+   interruption auto-handle exists to avoid. So terminate the session and close the tab: your launcher
+   wrote the hosting terminal's PID to `<your-prompt-file>.hostpid` (the seed names the path); read it
+   and run `taskkill /PID <pid> /T /F`, which kills the session and its tab together. If that file is
+   missing (an older launcher that didn't record it), just stop normally — don't hunt for the process.
+   This step is **auto-handle only** — needs-you items always stay open for the user.
 
 Everything below (steps 0–7) is the **needs-you** flow — follow it for every item that is NOT auto-handle.
 
