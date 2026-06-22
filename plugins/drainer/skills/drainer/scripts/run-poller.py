@@ -247,14 +247,24 @@ def _worker_summary(json_file):
     """A one-line item summary that LEADS the worker's seed prompt. Claude names the tab off its first
     message, so leading with this makes the tab self-title descriptively while keeping its attention star
     (no --suppressApplicationTitle needed). Lead with the CONTENT — the subject/card and who it's from —
-    since that's what matters at a glance; the source (Gmail/Slack/Trello/…) is incidental and is NOT
-    forced into the title. '' when there's nothing to say."""
+    since that's what matters at a glance; the source is incidental and is NOT forced into the title.
+
+    MUST stay free of characters that break PowerShell 5.1 native-arg passing when launch-session.ps1
+    hands the seed to `claude`: an embedded double quote (or `;`) truncates the ENTIRE seed mid-word,
+    silently dropping the 'Read the file …' pointer so the worker never learns what item it's on. So the
+    subject is NOT wrapped in quotes and any quotes/semicolons/newlines in it are stripped. '' when there's
+    nothing to say."""
     _label, subject, who = _item_bits(json_file)
+
+    def safe(x):  # strip seed-breaking chars (quotes, semicolons) and collapse whitespace to one line
+        return re.sub(r"\s+", " ", re.sub(r'["“”;]', "", x or "")).strip()
+
+    subject, who = safe(subject), safe(who)
     if not subject and not who:
         return ""
     s = "You are handling this"
     if subject:
-        s += f': "{subject}"'
+        s += f": {subject}"
     if who:
         s += f", from {who}"
     return s + "."
