@@ -111,7 +111,8 @@ class Provider(ProviderBase):
         msg_file = os.path.join(items_dir, f"{iid}.msg.md")
         conv_id = item["id"]  # IC3 conversation id (messages/CLEAR handle)
         lm = item.get("lastMessage") or {}
-        # Pull recent messages for context (covers multi-message unread threads); fall back to preview.
+        # Pull recent messages; teams-chat.js now tags each with unread:true/false using the IC3
+        # consumptionhorizon so we can separate new messages from context-only ones.
         show = run_node([self.teamsjs, "messages", conv_id, "--top", "20"], **self._node_kw())
         msgs = []
         if show.returncode == 0:
@@ -122,17 +123,29 @@ class Provider(ProviderBase):
         header = (f"# {item.get('label')}\n\nChat/From: {item.get('label')}\n"
                   f"Type: {item.get('type')}\nLatest: {lm.get('time')}\nLink: {item.get('deepLink')}\n\n---\n\n")
         if msgs:
-            body = "\n\n".join(f"**{m.get('from')}** ({m.get('time')}):\n{m.get('text')}" for m in reversed(msgs))
+            # Reverse so oldest-first; determine whether horizon data is available.
+            ordered = list(reversed(msgs))
+            horizon_known = any(m.get("unread") is not None for m in ordered)
+            def fmt_msg(m):
+                if horizon_known:
+                    tag = "[NEW] " if m.get("unread") else "[context] "
+                else:
+                    tag = ""
+                return f"**{tag}{m.get('from')}** ({m.get('time')}):\n{m.get('text')}"
+            body = "\n\n".join(fmt_msg(m) for m in ordered)
         else:
             body = lm.get("preview") or "(could not load messages)"
         with open(msg_file, "w", encoding="utf-8") as f:
             f.write(header + body + "\n")
+        # Record the first unread message id so the worker knows the exact boundary.
+        first_unread_id = next((m["id"] for m in reversed(msgs) if m.get("unread")), None)
         record = {
             "id": iid, "source": self.name, "triage": item["_bucket"], "kind": item.get("_kind"),
             "from": lm.get("from") or item.get("label"), "subject": item.get("label"),
             "chatType": item.get("type"), "received": lm.get("time"),
             "snippet": lm.get("preview"), "url": item.get("deepLink"),
             "messageId": conv_id, "convId": conv_id,
+            "firstUnreadMessageId": first_unread_id,
             "msgFile": msg_file, "ts": datetime.now(timezone.utc).isoformat(),
         }
         json_file = os.path.join(items_dir, f"{iid}.json")

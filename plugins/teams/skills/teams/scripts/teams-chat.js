@@ -274,10 +274,26 @@ async function cmdEnumerate(top, unreadOnly) {
 }
 
 async function cmdMessages(convId, top) {
-  const res = await call('ic3', 'GET', `/v1/users/ME/conversations/${enc(convId)}/messages?view=msnp24Equivalent&pageSize=${top}`);
-  if (res.status !== 200) throw new Error(`messages HTTP ${res.status}: ${res.body.slice(0, 400)}`);
-  const value = JSON.parse(res.body).messages || [];
+  // Fetch messages and the conversation's IC3 consumptionhorizon in parallel so we can tag each
+  // message as unread (id > lastReadId) or context-only (id <= lastReadId).
+  const [msgRes, convRes] = await Promise.all([
+    call('ic3', 'GET', `/v1/users/ME/conversations/${enc(convId)}/messages?view=msnp24Equivalent&pageSize=${top}`),
+    call('ic3', 'GET', `/v1/users/ME/conversations/${enc(convId)}?view=msnp24Equivalent`),
+  ]);
+  if (msgRes.status !== 200) throw new Error(`messages HTTP ${msgRes.status}: ${msgRes.body.slice(0, 400)}`);
+  const value = JSON.parse(msgRes.body).messages || [];
   const kind = (convId.includes('@thread.skype') || convId.includes('@thread.tacv2')) ? 'channel' : 'chat';
+
+  // Parse the read watermark: consumptionhorizon is "<messageId>;<timestamp>;..." — take the first segment.
+  let lastReadId = null;
+  if (convRes.status === 200) {
+    try {
+      const props = JSON.parse(convRes.body).properties || {};
+      const horizon = props.consumptionhorizon || props.consumptionHorizon || '';
+      if (horizon) lastReadId = horizon.split(';')[0];
+    } catch {}
+  }
+
   const out = value
     .filter(m => (m.messagetype && m.messagetype.startsWith('RichText')) || m.messagetype === 'Text')
     .map(m => ({
@@ -288,6 +304,8 @@ async function cmdMessages(convId, top) {
       text: htmlToText(m.content || ''),
       html: m.content || '',
       deepLink: messageDeepLink(convId, m.id, kind),
+      // unread=true when this message's id is numerically after the last-read watermark.
+      unread: lastReadId ? Number(m.id) > Number(lastReadId) : null,
     }));
   process.stdout.write(JSON.stringify(out, null, 2) + '\n');
 }

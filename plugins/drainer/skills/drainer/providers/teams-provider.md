@@ -54,6 +54,21 @@ The adapter writes these; documented here so the worker can rely on the shape:
 
   `convId` (= `messageId`) is the IC3 conversation id — CLEAR needs it to identify the conversation.
 
+## MULTI-MESSAGE THREADS (group and meeting chats)
+
+The `.msg.md` file tags each message with `[NEW]` (unread, after the IC3 consumption horizon) or
+`[context]` (already seen). When tags are present:
+
+- **Treat every `[NEW]` message as a potential action item.** Scan all of them for direct questions or
+  requests addressed to Russell by name — do not stop at the latest one.
+- **Use `[context]` messages for background only.** They are included so you can understand what the
+  `[NEW]` messages are responding to; they do not require action.
+- **If tags are absent** (horizon unavailable), scan all recent messages for unanswered direct questions
+  or requests addressed to Russell by name before clearing.
+
+Do not let a lower-stakes `[NEW]` message (e.g., a simple acknowledgment) cause you to overlook an
+earlier `[NEW]` message that contains a direct question.
+
 ## CLEAR
 **Browser-driven (via `browser-chauffeur`), not REST.** Teams' authoritative `isRead` is not driven by
 any replayable HTTP call (the consumptionhorizon PUTs return 200 but don't flip `isRead`); opening the
