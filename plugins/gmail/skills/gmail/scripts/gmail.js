@@ -171,8 +171,16 @@ async function reply(c) {
     `${orig.html || (orig.text || '').replace(/\n/g, '<br>')}</blockquote>`;
   const refs = [orig.references, orig.messageId].flat().filter(Boolean).join(' ');
   const subject = /^re:/i.test(orig.subject || '') ? orig.subject : `Re: ${orig.subject || ''}`;
+  // Reply-all: To = original sender; CC = all original To+CC recipients except the sending address
+  const allRecips = [
+    ...(orig.to ? orig.to.addresses : []),
+    ...(orig.cc ? orig.cc.addresses : []),
+  ].map(a => a.address).filter(a => a && a.toLowerCase() !== USER.toLowerCase());
+  const ccList = args.cc
+    ? [...new Set([args.cc, ...allRecips])].join(', ')
+    : allRecips.join(', ');
   const raw = await buildMime({
-    to: orig.from ? orig.from.text : '', subject, html: html + quoted,
+    to: orig.from ? orig.from.text : '', cc: ccList || undefined, subject, html: html + quoted,
     inReplyTo: orig.messageId, references: refs,
   });
   await c.append(DRAFTS, raw, ['\\Draft']);

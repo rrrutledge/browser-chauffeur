@@ -83,13 +83,14 @@ Then write the message text in that voice. The voice loop in the document-author
 diff sent-vs-draft after each send and append a lesson. Write the body as HTML to a file, then create the
 draft with `gmail.js` — **never sent**. Show the draft text in the terminal and tell the user to edit +
 send it themselves in Gmail. Pick the mode by who the message goes to:
-- **Reply on the thread** (responding to inbound mail): always use `node gmail.js --reply
-  --message-id=<messageId> --body-file=<file>` — it sets In-Reply-To/References and appends the quoted
-  original, so the draft lands *inside* the conversation in [Gmail]/Drafts. This is what makes the draft
-  openable and editable in Gmail's compose box at the bottom of the thread. A draft made with `--draft-new`
-  carries no threading headers — Gmail shows it as a floating duplicate that's awkward to open — so never
-  fall back to `--draft-new` for a reply. The original must be in the inbox for `--reply` to work; if it's
-  already in Trash, restore it first (see CLEAR), reply, then re-trash.
+- **Reply-all on the thread** (responding to inbound mail): always use `node gmail.js --reply
+  --message-id=<messageId> --body-file=<file>` — it sets In-Reply-To/References, appends the quoted
+  original, and automatically CCs all original To+CC recipients (reply-all), so the draft lands *inside*
+  the conversation in [Gmail]/Drafts and preserves every recipient. This is what makes the draft openable
+  and editable in Gmail's compose box at the bottom of the thread. A draft made with `--draft-new` carries
+  no threading headers — Gmail shows it as a floating duplicate that's awkward to open — so never fall back
+  to `--draft-new` for a reply. The original must be in the inbox for `--reply` to work; if it's already in
+  All Mail, restore it first (see CLEAR), reply, then re-archive.
 - **Fresh 1:1 (or small-group) note** (e.g. an outreach nudge to one contact — do NOT reply-all a group
   thread to single someone out): `node gmail.js --draft-new --to="<addr>" --subject="<subj>"
   --body-file=<file> [--cc="<addrs>"]`.
