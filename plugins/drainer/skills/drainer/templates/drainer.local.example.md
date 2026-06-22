@@ -6,7 +6,7 @@
 # plugin's providers/ dir). All sources are harvested every run on one schedule.
 providers:
   outlook: {}                    # work Outlook on the web (browser) — no config, just sign in
-  personal-outlook: {}           # personal Outlook.com via the Microsoft Graph API (ms-graph; no browser)
+  outlook-graph: {}           # personal Outlook.com via the Microsoft Graph API (ms-graph; no browser)
   teams: {}                      # Microsoft Teams on the web (browser) — no config, just sign in
   trello:                        # outreach boards (via the trello-outreach skill)
     boards:

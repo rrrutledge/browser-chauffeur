@@ -11,7 +11,7 @@ id prefix: `outlook-rest-`; body file: `<id>.email.md`.
 > sibling **`outlook-rest-adapter.py`** that the poller drives. This doc is the **worker-facing** prose —
 > AUTH-GLANCE, the captured item shape, CLEAR, JUNK-LEARNING, DRAFT-MODE.
 
-> This is the **REST-transport** counterpart to the Graph-transport `personal-outlook-provider.md`:
+> This is the **REST-transport** counterpart to the Graph-transport `outlook-graph-provider.md`:
 > same operations, the Outlook REST v2.0 transport with a session-sniffed token instead of
 > ms-graph/MSAL. It reads whatever account is signed into Outlook web (so it suits a work mailbox that
 > has no personal Graph app).

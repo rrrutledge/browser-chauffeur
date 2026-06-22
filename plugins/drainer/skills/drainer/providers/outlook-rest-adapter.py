@@ -5,7 +5,7 @@ locating ms-rest's outlook-mail.js, the `enumerate` read, the Outlook REST id sc
 item shape. The poller (`scripts/run-poller.py`) loads this adapter dynamically and drives it through
 the `ProviderBase` interface — it contains no Outlook specifics.
 
-This is the REST-transport sibling of the Graph-transport `personal-outlook-adapter.py`: same
+This is the REST-transport sibling of the Graph-transport `outlook-graph-adapter.py`: same
 operations, a different transport (the ms-rest plugin's Outlook REST v2.0 path with a bearer token
 sniffed from the live Outlook web session, rather than ms-graph/MSAL). It reads whatever Outlook
 account is signed into Outlook web, so it suits a work mailbox with no personal Graph app. The

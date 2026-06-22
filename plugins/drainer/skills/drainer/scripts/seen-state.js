@@ -106,7 +106,7 @@ function queueClear(runtimeDir, id) {
 }
 
 // Parse the YYYYMMDD-HHMMSS timestamp embedded in a stable id (e.g.
-// personal-outlook-20260618-152426-...) as a fallback when items/<id>.json has no ts.
+// outlook-graph-20260618-152426-...) as a fallback when items/<id>.json has no ts.
 function parseIdTs(id) {
   const m = /(\d{8})-(\d{6})/.exec(id || '');
   if (!m) return null;

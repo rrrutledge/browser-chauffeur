@@ -27,7 +27,7 @@ spawn, record — is code. No AI re-implements the loop.
 1. **Presence-gate** (`scripts/presence.py`) — away/locked → exit silently (skipped under `--dry-run`).
 2. **Read config** from `<project>/.claude/drainer.local.md`: enabled providers, `runtime_dir`,
    `max_open_tabs` (default 3), `max_messages_per_cycle` (default 50), `idle_threshold_seconds`.
-3. **Per provider — enumerate the new:** call the provider's enumerate (for personal-outlook,
+3. **Per provider — enumerate the new:** call the provider's enumerate (for outlook-graph,
    `mail.js --list-inbox --json --top=<max_messages_per_cycle>` — read+unread, newest-first, **no time
    window**: the keeper drains the whole inbox a batch at a time across cycles). Compute each item's
    stable id, drop any already in seen-state (`scripts/seen-state.js`), and keep up to
@@ -72,7 +72,7 @@ action, including any held at the cap), with no spawns, no queueing, no records,
 `run-poller.py` reads which providers are enabled from `drainer.local.md` and **dynamically loads each
 one's adapter** from `providers/<name>-adapter.py` (beside its prose `providers/<name>-provider.md`).
 An adapter implements `provider_base.ProviderBase` — `enumerate` / `stable_id` / `capture` — and is the
-only place a source's mechanics live (for personal-outlook: `mail.js`, the Graph id scheme, the captured
+only place a source's mechanics live (for outlook-graph: `mail.js`, the Graph id scheme, the captured
 item shape). The poller's loop (drop-seen, cap, triage, dispatch, record) holds no source or tool name;
 a provider enabled in config without an adapter file is skipped with a note. New sources (Gmail, Trello,
 …) plug in by adding an adapter; the triage rubric, seen-state, cap, and worker flow are unchanged.

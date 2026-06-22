@@ -5,7 +5,7 @@ the `--list-inbox --json` enumerate, the Message-ID id scheme, and the captured 
 (`scripts/run-poller.py`) loads this adapter dynamically and drives it through the `ProviderBase`
 interface — it contains no Gmail specifics.
 
-This is the IMAP sibling of `personal-outlook-adapter.py` (Graph). Same operations, different transport:
+This is the IMAP sibling of `outlook-graph-adapter.py` (Graph). Same operations, different transport:
 gmail.js talks IMAP to imap.gmail.com with GMAIL_ADDRESS / GMAIL_APP_PASSWORD from the environment.
 """
 import glob
@@ -98,7 +98,7 @@ class Provider(ProviderBase):
 
     def stable_id(self, item):
         # Timestamp to the second so two messages from the same sender with the same opening subject in
-        # the same minute don't collide and silently drop one. Mirrors the personal-outlook scheme.
+        # the same minute don't collide and silently drop one. Mirrors the outlook-graph scheme.
         digits = "".join(c for c in (item.get("received") or "") if c.isdigit())
         recv = f"{digits[:8]}-{digits[8:14]}"  # YYYYMMDD-HHMMSS
         sender = slug((item.get("fromAddress") or item.get("from") or "").split("@")[0])

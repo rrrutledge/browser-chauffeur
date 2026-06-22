@@ -11,7 +11,7 @@ id prefix: `gmail-`; body file: `<id>.email.md`.
 > sibling **`gmail-adapter.py`** that the poller drives. This doc is the **worker-facing** prose —
 > AUTH-GLANCE, the captured item shape, CLEAR, JUNK-LEARNING, DRAFT-MODE.
 
-> This is the IMAP counterpart to the Graph-based `personal-outlook-provider.md`. Use it for a Google
+> This is the IMAP counterpart to the Graph-based `outlook-graph-provider.md`. Use it for a Google
 > account where you can mint an app password (2-Step Verification on, IMAP enabled).
 
 ## Config (in `.claude/drainer.local.md` → `providers.gmail`)
