@@ -173,8 +173,8 @@ async function reply(c) {
   const subject = /^re:/i.test(orig.subject || '') ? orig.subject : `Re: ${orig.subject || ''}`;
   // Reply-all: To = original sender; CC = all original To+CC recipients except the sending address
   const allRecips = [
-    ...(orig.to ? orig.to.addresses : []),
-    ...(orig.cc ? orig.cc.addresses : []),
+    ...(orig.to ? orig.to.value : []),
+    ...(orig.cc ? orig.cc.value : []),
   ].map(a => a.address).filter(a => a && a.toLowerCase() !== USER.toLowerCase());
   const ccList = args.cc
     ? [...new Set([args.cc, ...allRecips])].join(', ')
