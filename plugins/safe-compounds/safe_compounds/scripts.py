@@ -74,6 +74,9 @@ def extract_script_filename(segment, command):
             if token in ('-r', '--require', '--loader', '--import'):
                 skip_next = True
             continue
+        if ('node_modules/.bin/' in token.replace('\\', '/') or
+                'node_modules\\.bin\\' in token):
+            continue
         if (token.endswith('.js') or token.endswith('.py') or token.endswith('.mjs')
                 or token.endswith('.ts') or '/' in token or '\\' in token):
             return token
