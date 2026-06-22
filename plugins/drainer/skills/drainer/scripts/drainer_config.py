@@ -19,7 +19,7 @@ def _read_local(repo):
 
 
 def parse_provider_names(text):
-    """The immediate child keys under the `providers:` block (e.g. personal-outlook, trello)."""
+    """The immediate child keys under the `providers:` block (e.g. outlook-graph, trello)."""
     names, in_block = [], False
     for line in text.splitlines():
         if re.match(r"^\s*providers\s*:\s*$", line):

@@ -24,7 +24,7 @@ the guaranteed-visible channel that closes that gap. Before anything else:
   - Quote `last_error` and read it as the action to take, keyed off `last_error_kind`:
     - **`auth`** (transient — self-heals once creds are refreshed): name the likely credential and how
       to refresh it. gmail → `GMAIL_APP_PASSWORD`; slack → `SLACK_BOT_TOKEN` / `SLACK_COOKIE_D`;
-      personal-outlook → re-auth the ms-graph token cache; trello → `TRELLO_API_KEY` / `TRELLO_TOKEN`.
+      outlook-graph → re-auth the ms-graph token cache; trello → `TRELLO_API_KEY` / `TRELLO_TOKEN`.
       All are User-scope env vars — refresh, and the next poller cycle recovers on its own.
     - **`config`** (a helper script/util couldn't be located — won't self-heal): flag it distinctly as a
       deploy problem, not an expired credential — the adapter can't find its `*.js`/util, likely a

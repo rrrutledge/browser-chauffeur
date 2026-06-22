@@ -61,7 +61,7 @@ Each is a complete implementation to copy from:
   session; reads whatever account is signed in). Adapter: `enumerate` / `get` reads; prose: `delete`
   clear, Outlook-rule junk-learning, `message-draft` `outlook` mode. Copy this when the sibling skill
   needs a one-time browser sniff but reads run REST.
-- **`personal-outlook-provider.md`** + **`personal-outlook-adapter.py`** — the **API two-file example**
+- **`outlook-graph-provider.md`** + **`outlook-graph-adapter.py`** — the **API two-file example**
   (personal Outlook.com via the Microsoft Graph API through the `ms-graph` skill). Adapter:
   `mail.js --list-inbox --json` enumerate, the Graph id scheme, `--show` capture. Prose: `--delete` clear,
   `--reply` draft, unsubscribe/rule junk-learning. Copy this when wrapping any pure-API/MCP source.

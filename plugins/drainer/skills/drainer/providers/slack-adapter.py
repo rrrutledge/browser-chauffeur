@@ -5,7 +5,7 @@ the `--list-unread --json` enumerate, the `<channel>:<ts>` id scheme, and the ca
 poller (`scripts/run-poller.py`) loads this adapter dynamically and drives it through the `ProviderBase`
 interface — it contains no Slack specifics.
 
-This is the API sibling of `gmail-adapter.py` / `personal-outlook-adapter.py`: same operations, a
+This is the API sibling of `gmail-adapter.py` / `outlook-graph-adapter.py`: same operations, a
 different transport. slack.js talks the Slack Web API with a personal xoxc token + xoxd `d` cookie from
 the environment (SLACK_BOT_TOKEN / SLACK_COOKIE_D / SLACK_TEAM_ID).
 """

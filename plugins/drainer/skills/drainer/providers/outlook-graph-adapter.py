@@ -1,7 +1,7 @@
-"""personal-outlook poller adapter — Microsoft Graph mail via the ms-graph skill's mail.js.
+"""outlook-graph poller adapter — Microsoft Graph mail via the ms-graph skill's mail.js.
 
-All personal-outlook mechanics live HERE, alongside the prose contract in
-`personal-outlook-provider.md`: locating mail.js, the `--list-inbox --json` enumerate, the Graph id
+All outlook-graph mechanics live HERE, alongside the prose contract in
+`outlook-graph-provider.md`: locating mail.js, the `--list-inbox --json` enumerate, the Graph id
 scheme, and the captured item shape. The poller (`scripts/run-poller.py`) loads this adapter
 dynamically and drives it through the `ProviderBase` interface — it contains no Outlook specifics.
 """
@@ -19,7 +19,7 @@ from provider_base import ProviderBase, ProviderError, run_node, slug  # noqa: E
 
 
 class Provider(ProviderBase):
-    name = "personal-outlook"
+    name = "outlook-graph"
 
     def __init__(self):
         self.mailjs = self._find_mail_js()
@@ -48,12 +48,12 @@ class Provider(ProviderBase):
                                 recursive=True)
             if matches:
                 return sorted(matches)[-1]  # highest version / latest path
-        raise ProviderError("Could not locate ms-graph mail.js for personal-outlook.", kind="config")
+        raise ProviderError("Could not locate ms-graph mail.js for outlook-graph.", kind="config")
 
     def enumerate(self, limit):
         res = run_node([self.mailjs, "--list-inbox", "--json", f"--top={limit}"])
         if res.returncode != 0:
-            raise ProviderError(f"personal-outlook enumerate failed (auth?): {res.stderr.strip()[:300]}",
+            raise ProviderError(f"outlook-graph enumerate failed (auth?): {res.stderr.strip()[:300]}",
                                 kind="auth")
         return json.loads(res.stdout or "[]")
 
