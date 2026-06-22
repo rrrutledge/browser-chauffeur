@@ -148,11 +148,14 @@ def load_providers(cfg, health):
 
 TRIAGE_INSTRUCTIONS = (
     "You are the drainer poller's triage step. Classify each item per the rubric below, applied with "
-    "the world-knowledge below. For EACH item decide its bucket; for needs-you also give "
-    "kind = reply | work | work-then-reply (else null) and complexity = simple | complex (simple = a "
-    "quick reply or a trivial action; complex = multi-step work, research, code, or a delicate / "
-    "high-stakes message — these get a stronger model). Return ONLY a JSON array, one object per input "
-    'id: [{"id": "...", "bucket": "needs-you|fyi|junk", "kind": "reply|work|work-then-reply|null", '
+    "the world-knowledge below. For EACH item decide its bucket; for needs-you (and auto-handle) also "
+    "give kind = reply | work | work-then-reply (else null) and complexity = simple | complex (simple = "
+    "a quick reply or a trivial action; complex = multi-step work, research, code, or a delicate / "
+    "high-stakes message — these get a stronger model). Use bucket = auto-handle ONLY when a provider "
+    "AUTO-HANDLE rule (in the world-knowledge / provider docs) plainly matches — a standing decision with "
+    "no judgment left; when in doubt use needs-you. Return ONLY a JSON array, one object per input "
+    'id: [{"id": "...", "bucket": "needs-you|auto-handle|fyi|junk", '
+    '"kind": "reply|work|work-then-reply|null", '
     '"complexity": "simple|complex", "reason": "<short>"}] — no prose, no code fence.'
 )
 
@@ -165,10 +168,25 @@ def _read(path):
         return ""
 
 
+def _auto_handle_rules(providers_by_name):
+    """Concatenate each enabled provider's AUTO-HANDLE section so the triage model can recognize an
+    auto-handle item. The rules live in providers/<name>-provider.md (worker-facing), but classification
+    happens here at triage time, so the relevant sections are surfaced to the model. A provider with no
+    AUTO-HANDLE section contributes nothing. New providers add rules just by writing the section."""
+    out = []
+    for name in sorted(providers_by_name):
+        doc = _read(os.path.join(PROVIDERS_DIR, f"{name}-provider.md"))
+        m = re.search(r"^##\s+AUTO-HANDLE\b.*?(?=^##\s|\Z)", doc, re.DOTALL | re.MULTILINE)
+        if m:
+            out.append(f"### {name}\n{m.group(0).strip()}")
+    return "\n\n".join(out)
+
+
 def triage(items, repo, local_dir, model, providers_by_name):
     claude = shutil.which("claude") or "claude"
     rubric = _read(os.path.join(SCRIPT_DIR, "..", "engine", "triage.md"))  # embed -> self-contained
     context = _read(os.path.join(local_dir, "context.md"))
+    auto_rules = _auto_handle_rules(providers_by_name)
 
     def preview(it):
         # The owning adapter supplies the text triage sees: its `triage_text` returns the new message
@@ -180,8 +198,13 @@ def triage(items, repo, local_dir, model, providers_by_name):
     payload = [{"id": it["_id"], "source": it["_source"], "from": it.get("from"),
                 "subject": it.get("subject"), "received": it.get("received"),
                 "isRead": it.get("isRead"), "preview": preview(it)} for it in items]
+    auto_block = (
+        f"## Auto-handle rules (per provider — use bucket=auto-handle only when one plainly matches)\n"
+        f"{auto_rules}\n\n" if auto_rules else ""
+    )
     prompt = (
         f"{TRIAGE_INSTRUCTIONS}\n\n## Rubric (engine/triage.md)\n{rubric}\n\n"
+        f"{auto_block}"
         f"## World-knowledge (drainer context.md)\n{context}\n\n"
         f"## New items to triage (JSON)\n{json.dumps(payload, indent=2)}\n"
     )
@@ -288,6 +311,9 @@ def spawn_worker(iid, json_file, repo, runtime_dir, worker_model):
             "tabs from piling up faster than they can be handled. (Items you resolve WITHOUT surfacing "
             "to the user — junk routed to the digest, or a situational no-op close — get .done "
             "immediately, since they never opened for the user's attention.)\n"
+            "If the item's `triage` field is `auto-handle`, follow worker-core's auto-handle BRANCH "
+            "instead: execute the standing rule autonomously, CLEAR the source, queue a digest entry, "
+            "and write .done IMMEDIATELY — no presentation, no wait.\n"
         )
     # A one-line summary leads the seed so the worker's Claude session self-titles the tab descriptively
     # while keeping its attention star (the launcher prepends this; see launch-session.ps1 -SummaryFile).
@@ -478,20 +504,33 @@ def main():
     # --- global open count across ALL sources ---
     global_oc = sum(open_count(s) for s in seen_by_source.values())
 
-    # --- split: needs-you (newest-first globally) vs others ---
+    # --- split: needs-you (newest-first globally), auto-handle (own worker, no cap), others (digest) ---
     needs = sorted(
         (it for it in all_new if it["_bucket"] == "needs-you"),
         key=lambda it: it.get("received") or "",
         reverse=True,  # newest first; items missing received sort last via ""
     )
-    others = [it for it in all_new if it["_bucket"] != "needs-you"]
+    # auto-handle items get a worker tab too (they need a browser to act), but the worker executes
+    # autonomously and writes .done immediately — so they self-clear fast and are NOT counted against the
+    # needs-you cap (open_count only counts needs-you), letting a standing-rule action run without waiting
+    # behind tabs parked for Russell's attention.
+    auto = [it for it in all_new if it["_bucket"] == "auto-handle"]
+    others = [it for it in all_new if it["_bucket"] not in ("needs-you", "auto-handle")]
 
     if args.dry_run:
-        counts = {b: sum(1 for it in all_new if it["_bucket"] == b) for b in ("needs-you", "fyi", "junk")}
+        counts = {b: sum(1 for it in all_new if it["_bucket"] == b)
+                  for b in ("needs-you", "auto-handle", "fyi", "junk")}
         total_all = sum(totals.values())
         print(f"DRY-RUN — {len(all_new)} new of {total_all} across {len(providers)} source(s) | "
-              f"{counts['needs-you']} needs-you, {counts['fyi']} fyi, {counts['junk']} junk | "
+              f"{counts['needs-you']} needs-you, {counts['auto-handle']} auto-handle, "
+              f"{counts['fyi']} fyi, {counts['junk']} junk | "
               f"global cap {cfg['max_open_tabs']}, currently open {global_oc}")
+        if auto:
+            print("  auto-handle (autonomous worker, not capped):")
+            for it in auto:
+                model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
+                print(f"    [{it['_source']:20}] {it['_id']}  ->  spawn auto-worker [{it['_complexity']} -> {model}]\n"
+                      f"        {it.get('received')} | {it.get('from')} | {it.get('subject')}")
         print("  needs-you (newest-first globally):")
         oc = global_oc
         for it in needs:
@@ -509,7 +548,18 @@ def main():
                       f"        {it.get('from')} | {it.get('subject')}")
         return
 
-    dispatched, held, queued = 0, 0, 0
+    dispatched, auto_dispatched, held, queued = 0, 0, 0, 0
+    # auto-handle first: a worker that executes a standing rule and self-clears immediately. Not capped
+    # (open_count tracks only needs-you), recorded with its own triage so capture stamps the json and the
+    # worker takes worker-core's auto-handle branch (act -> CLEAR -> queue digest -> .done now).
+    for it in auto:
+        provider = prov[it["_source"]]
+        iid = it["_id"]
+        model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
+        json_file = provider.capture(it, iid, cfg["runtime_dir"])
+        spawn_worker(iid, json_file, repo, cfg["runtime_dir"], model)
+        seen_state("record", cfg["runtime_dir"], it["_source"], iid, "auto-handle")
+        auto_dispatched += 1
     for it in needs:
         provider = prov[it["_source"]]
         iid = it["_id"]
@@ -530,8 +580,9 @@ def main():
         seen_state("record", cfg["runtime_dir"], it["_source"], iid, it["_bucket"])
         queued += 1
 
-    print(f"dispatched {dispatched} worker tab(s), queued {queued} for digest, "
-          f"held {held} at global cap of {cfg['max_open_tabs']}. Poller never clears.")
+    print(f"dispatched {dispatched} worker tab(s), {auto_dispatched} auto-handle worker(s), "
+          f"queued {queued} for digest, held {held} at global cap of {cfg['max_open_tabs']}. "
+          f"Poller never clears.")
 
 
 if __name__ == "__main__":

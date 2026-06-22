@@ -8,6 +8,33 @@ You are working ONE item to completion in your own context. **Draft-only outboun
 Read the shared brain → situational-check → DO the action → contact the person in the user's voice →
 learn from the send → advance the item.
 
+## Branch on triage: `auto-handle` items run autonomously and never wait
+Check your item's `triage` field first. If it is **`auto-handle`**, you are executing a **standing rule**
+Russell decided in advance — do the action without presenting or waiting, then record it for the digest:
+
+1. **Read the shared brain (step 0)** and your item's data, then **situational-check (step 2)** — confirm
+   the action is still pending and the rule still applies (e.g. the button is still there, not already
+   approved). If it's already handled, skip the action and go straight to step 3 below.
+2. **Confirm the rule matches.** Re-read your source's **AUTO-HANDLE** section in
+   `providers/<source>-provider.md` and verify this item meets the named condition exactly. If anything is
+   off — the item looks like a near-miss the rule explicitly excludes, or you're not sure — **do NOT act
+   autonomously**: treat it as needs-you instead (present to Russell and wait, per the normal flow below).
+3. **Execute the action** autonomously (reversible/safe by definition of the rule — e.g. click the
+   approve button). Then **CLEAR the source item** per your provider's CLEAR op (mark read / advance), so
+   it doesn't resurface.
+4. **Queue a digest entry** describing what you did, so the daily digest shows it under "Auto-handled":
+   `node <skill>/scripts/seen-state.js queue-add <runtime_dir> <source> <id> <path to items/<id>.json>`
+   (same helper as §2b; `<runtime_dir>` is the parent of the `items/` folder). The captured `items/<id>.json`
+   already carries `triage: "auto-handle"`, which is how the digest files it in the Auto-handled section.
+   If the action revealed a detail worth recording (the invitee, the requester), note it in a sibling
+   `items/<id>.done`-adjacent line or rely on the captured body — keep the digest entry self-explanatory.
+5. **Write `.done` immediately** — `items/<id>.done` with a one-line result (e.g.
+   "auto-handled: approved workspace invite for <email>"). There is **no presentation and no
+   wait-for-acknowledgment**, because nothing was put in front of Russell — the digest is how he learns
+   it happened. (This is the same "silent resolution writes `.done` at once" rule as §6's exception.)
+
+Everything below (steps 0–7) is the **needs-you** flow — follow it for every item that is NOT auto-handle.
+
 ## 0. Read first (shared brain)
 - your machine's local **`context.md`** — the user's world, the systems they act in, where things
   live, and standing behavioral rules (draft immediately; delete/archive freely — reversible, no need

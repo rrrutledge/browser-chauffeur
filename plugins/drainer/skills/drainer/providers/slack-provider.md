@@ -68,6 +68,25 @@ or a newer message re-surfaces it). Narrate it. Never delete messages.
 - **Thread item** — `node slack.js --mark --channel=<channel> --ts=<ts> --thread-ts=<threadTs>`
   (`subscriptions.thread.mark`) — advances the thread's own read cursor.
 
+## AUTO-HANDLE
+Standing rules where Russell has decided the answer in advance, so the poller triages the item
+**`auto-handle`** (per `../engine/triage.md`) and the worker executes it autonomously — no tab, no wait —
+then records it in the digest's "Auto-handled" section. Each rule below names its exact condition and
+action; act only when an item plainly matches one. Anything that doesn't match a rule here is NOT
+auto-handle — it falls back to the normal needs-you/fyi/junk triage.
+
+1. **Workspace invite request** — when the **`@Slack`** bot DMs Russell with a request to invite a *new
+   person to the workspace*, carrying a **"Send Invitation"** button. Russell always approves these.
+   - **Action:** drive **browser-chauffeur** to the message permalink (`url` in the captured item) and
+     click **"Send Invitation"**.
+   - **Digest note:** "Auto-approved workspace invite: *[invitee email]* (requested by *[requester]*)."
+   - **Then** CLEAR the item (mark read) and write `.done` immediately.
+   - **Does NOT apply to a Slack Connect channel join.** A message that says **"Request to join a Slack
+     Connect channel"** (connecting an *external* workspace/channel, not adding a person to this
+     workspace) is a real decision Russell makes himself — triage it **needs-you**, never auto-approve.
+     The signal is the wording: "invite [person] to [workspace]" = auto-handle; "join a Slack Connect
+     channel" = needs-you.
+
 ## JUNK-LEARNING
 Stop this noise arriving again, in **priority order** (best outcome = it never pings) — propose, never
 apply without the user's OK:
