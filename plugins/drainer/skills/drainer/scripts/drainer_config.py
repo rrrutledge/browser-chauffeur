@@ -19,7 +19,7 @@ def _read_local(repo):
 
 
 def parse_provider_names(text):
-    """The immediate child keys under the `providers:` block (e.g. personal-outlook, trello)."""
+    """The immediate child keys under the `providers:` block (e.g. outlook-graph, trello)."""
     names, in_block = [], False
     for line in text.splitlines():
         if re.match(r"^\s*providers\s*:\s*$", line):
@@ -67,9 +67,14 @@ def read_config(repo):
         # The once-a-day digest session. It summarizes fyi, groups junk with source-stop proposals,
         # and runs the reconciliation scan — judgment-heavy, so a stronger standard-context model.
         "digest_model": scalar("digest_model", "claude-opus-4-8"),
-        # Reconciliation threshold: a needs-you item still dispatched-but-uncleared older than this
-        # many hours is stale-but-unfinished (a worker crashed or was never finished) and re-surfaced.
+        # Digest-only informational threshold: the EOD digest lists any needs-you item still
+        # dispatched-but-uncleared past this many hours. The poller's own orphan recovery is purely
+        # liveness-based (a closed worker tab, detected via its session process) and uses no timeout.
         "stale_hours": int(scalar("stale_hours", "12")),
+        # Orphan-recovery grace: a worker tab whose claude --session-id process is gone is treated as
+        # closed and recovered, but only once it's been launched at least this many minutes — so a
+        # just-dispatched tab whose process hasn't appeared yet isn't misread as dead.
+        "orphan_grace_minutes": int(scalar("orphan_grace_minutes", "15")),
         # Wall-clock time (HH:MM, 24h) the daily digest task fires; consumed by the installer.
         "digest_time": scalar("digest_time", "17:00"),
     }

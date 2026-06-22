@@ -1,6 +1,6 @@
 ---
 name: gmail
-description: Read/draft/clear a personal Gmail or Google Workspace mailbox via IMAP using a Google App Password — no OAuth app, no Cloud project, no browser. Use to list the inbox, show a message, move mail to Trash, or stage reply/new drafts in the Drafts folder (never sent). For a Google account where you can mint an app password (2-Step Verification on, IMAP enabled).
+description: Read/draft/clear a personal Gmail or Google Workspace mailbox via IMAP using a Google App Password — no OAuth app, no Cloud project, no browser. Use to list the inbox, show a message, archive mail, or stage reply/new drafts in the Drafts folder. Staging is draft-only; a reviewed draft is sent only on Russ's explicit per-message say-so via --send-draft. For a Google account where you can mint an app password (2-Step Verification on, IMAP enabled).
 ---
 
 # Gmail — Personal/Workspace Mail via IMAP + App Password
@@ -13,7 +13,7 @@ App Password** — no OAuth client, no Google Cloud project, no browser automati
 - **`nodemailer`** (MailComposer) — builds RFC822 drafts (reply and new) that are appended to Drafts.
 
 **Why an app password, not OAuth:** the Gmail REST API requires registering an OAuth client inside a
-Google Cloud project. IMAP needs only an app password, which everything the drainer does (list, trash,
+Google Cloud project. IMAP needs only an app password, which everything the drainer does (list, archive,
 stage drafts) flows through. Simpler to set up and headless-safe (no token to refresh).
 
 ## Setup (per machine)
@@ -48,8 +48,32 @@ Under `scripts/` (run with `node`):
   - Draft reply (never sends): `node gmail.js --reply --message-id=<id> --body-file=reply.html`
     (appends a threaded draft to `[Gmail]/Drafts` with In-Reply-To/References set + the quoted original)
   - Draft new (never sends): `node gmail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.html [--cc=c@z]`
-  - Trash one (reversible): `node gmail.js --trash=<message-id>` (moves to `[Gmail]/Trash`, never a
-    permanent purge)
+    (`--reply` and `--draft-new` each print a `draft-id:` line — the staged draft's Message-ID. That id
+    is what `--send-draft` takes. `--reply` also replaces any prior draft on the same thread, so a thread
+    never carries more than one draft.)
+  - Send a staged draft (REAL SEND): `node gmail.js --send-draft --draft-id=<draft-message-id>`
+    (transmits that one draft's exact bytes via SMTP, removes it from Drafts; Gmail files the copy in
+    `[Gmail]/Sent`). See **Sending** below — this runs only on Russ's explicit per-message say-so.
+  - Archive one (reversible): `node gmail.js --archive=<message-id>` (removes from the inbox, keeps it in
+    `[Gmail]/All Mail` — the way mail is cleared: handled and out of the inbox, never discarded)
+
+## Sending
+
+Staging is the default and stays draft-only. A staged draft becomes a real send **only** when Russ
+gives an explicit per-message instruction to send (e.g. "send it") **after** he has reviewed that exact
+draft in this turn. When that happens:
+
+1. Re-show (or confirm he just saw) the exact draft text that will go out.
+2. Run `node gmail.js --send-draft --draft-id=<the draft-id printed when it was staged>`.
+
+Hold the line on these — they are what keep send safe:
+
+- Default, silence, or ambiguous phrasing mean draft-only. Never infer a send from anything but a
+  clear, explicit instruction to send this message.
+- Send only the draft Russ reviewed this turn. Because `--reply` replaces prior drafts on the thread,
+  the `draft-id` you just staged is the one he saw — send that id, never an older one.
+- An autonomous or `auto-handle` drain never sends. `--send-draft` is human-in-the-loop only; in any
+  non-interactive run, stop at the staged draft.
 
 ## Auth-error handling
 
@@ -60,8 +84,8 @@ the app password is wrong/revoked or IMAP is disabled — re-mint the app passwo
 ## Notes
 
 - The load-bearing identifier is the **Message-ID header** (`id` in `--json`): pass it to `--show`,
-  `--reply`, and `--trash`. Lookups search the INBOX for that header, so it stays valid as long as the
-  message is in the inbox.
-- Drafts (`--reply` / `--draft-new`) land in **[Gmail]/Drafts** and are never sent — the user reviews
-  and sends in Gmail.
-- Gmail's special folders are addressed as `[Gmail]/Drafts` and `[Gmail]/Trash`.
+  `--reply`, and `--archive`. Lookups search the INBOX for that header, so it stays valid as
+  long as the message is in the inbox.
+- Drafts (`--reply` / `--draft-new`) land in **[Gmail]/Drafts**. They go out only via `--send-draft` on
+  Russ's explicit say-so (see **Sending**); otherwise he reviews and sends in Gmail himself.
+- Gmail's special folders are addressed as `[Gmail]/Drafts` and `[Gmail]/All Mail`.

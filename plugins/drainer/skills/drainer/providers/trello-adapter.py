@@ -6,9 +6,12 @@ due-date-as-queue enumerate, the `trello-<slug>-<last6>` id scheme, and the capt
 poller (`scripts/run-poller.py`) loads this adapter dynamically and drives it through the
 `ProviderBase` interface — it contains no Trello specifics.
 
-Unlike the gmail/slack/outlook adapters (which enumerate a single inbox), Trello drains several boards
-that the user configures, so this adapter takes a `configure(cfg)` pass from the poller to learn the
-repo, then reads its `boards` / `skip_lists` / `label_vocab` from that repo's drainer.local.md.
+Unlike the gmail/slack/outlook adapters (which enumerate a single inbox), Trello drains several boards,
+so this adapter takes a `configure(cfg)` pass from the poller to learn the repo. The board list is the
+single source of truth shared with the `trello-outreach` skill: `<repo>/trello-boards.yaml` (name + id
+per board). The drainer drains EVERY board in that registry. Per-drainer knobs (`skip_lists` /
+`label_vocab`) stay in that repo's drainer.local.md. If no registry file is present, it falls back to a
+legacy `providers.trello.boards` block in drainer.local.md.
 
 The card's **due date IS the queue**: enumerate returns cards in active lists that are due now-or-earlier
 or have no due date, oldest-due first (undated last). Credentials are TRELLO_API_KEY / TRELLO_TOKEN in
@@ -25,7 +28,7 @@ from datetime import datetime, timezone
 _SCRIPTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts")
 if _SCRIPTS not in sys.path:
     sys.path.insert(0, _SCRIPTS)
-from provider_base import ProviderBase, slug  # noqa: E402
+from provider_base import ProviderBase, ProviderError, slug  # noqa: E402
 
 
 class Provider(ProviderBase):
@@ -73,7 +76,9 @@ class Provider(ProviderBase):
                 if matches:
                     path = sorted(matches)[-1]
         if not path:
-            raise SystemExit("Could not locate trello-outreach's trello_utils.py for the trello provider.")
+            raise ProviderError(
+                "Could not locate trello-outreach's trello_utils.py for the trello provider.",
+                kind="config")
         import importlib.util
         spec = importlib.util.spec_from_file_location("trello_utils", path)
         mod = importlib.util.module_from_spec(spec)
@@ -88,32 +93,63 @@ class Provider(ProviderBase):
 
     # --------------------------------------------------------------- config (boards/skip/label vocab)
     def configure(self, cfg):
-        """Read providers.trello (boards / skip_lists / label_vocab) out of the repo's drainer.local.md.
+        """Learn the boards to drain + the drainer knobs from the repo.
 
-        The shared config reader (drainer_config.py) only surfaces scalar knobs + provider names, so the
-        nested Trello block is parsed here. Called by the poller after construction; a no-op contract
-        on ProviderBase means gmail/slack ignore it.
+        Boards come from the shared registry `<repo>/trello-boards.yaml` (the same file the
+        trello-outreach skill reads) — the drainer drains every board in it. `skip_lists` / `label_vocab`
+        are drainer-specific and stay in `.claude/drainer.local.md`'s `providers.trello` block. If the
+        registry file is absent, boards fall back to a legacy `boards:` list in that same block.
+
+        Called by the poller after construction; a no-op contract on ProviderBase means gmail/slack
+        ignore it.
         """
         repo = cfg.get("repo")
         if not repo:
             return
-        local = os.path.join(repo, ".claude", "drainer.local.md")
+        # Drainer knobs (skip_lists / label_vocab) — and legacy boards fallback — from drainer.local.md.
+        block = ""
         try:
-            with open(local, encoding="utf-8") as f:
-                text = f.read()
+            with open(os.path.join(repo, ".claude", "drainer.local.md"), encoding="utf-8") as f:
+                block = self._slice_trello_block(f.read())
         except OSError:
-            return
-        block = self._slice_trello_block(text)
-        if not block:
-            return
-        boards = self._parse_boards(block)
+            pass
+        if block:
+            skip = self._parse_inline_list(block, "skip_lists")
+            if skip:
+                self.skip_lists = {s.lower() for s in skip}
+            self.channels = self._parse_inline_list(block, "channels")
+            self.features = self._parse_inline_list(block, "features")
+        # Boards: the shared registry is authoritative; drainer.local.md's boards block is the fallback.
+        boards = []
+        try:
+            with open(os.path.join(repo, "trello-boards.yaml"), encoding="utf-8") as f:
+                boards = self._parse_registry(f.read())
+        except OSError:
+            pass
+        if not boards and block:
+            boards = self._parse_boards(block)
         if boards:
             self.boards = boards
-        skip = self._parse_inline_list(block, "skip_lists")
-        if skip:
-            self.skip_lists = {s.lower() for s in skip}
-        self.channels = self._parse_inline_list(block, "channels")
-        self.features = self._parse_inline_list(block, "features")
+
+    @staticmethod
+    def _parse_registry(text):
+        """Parse `<repo>/trello-boards.yaml` — a `boards:` list of board items, each a `- name:` at
+        two-space indent with an `id:` field at four-space indent. Anchoring on those exact indents
+        keeps the parse robust against deeper nested fields (per-board `purpose`, `template_cards`, …)
+        without needing a full YAML library (none ships with the poller's stdlib runtime)."""
+        boards, cur = [], None
+        for line in text.splitlines():
+            m_name = re.match(r"^  -\s*name\s*:\s*(.+?)\s*$", line)
+            m_id = re.match(r"^    id\s*:\s*(.+?)\s*$", line)
+            if m_name:
+                if cur:
+                    boards.append(cur)
+                cur = {"name": m_name.group(1).strip().strip('"\'')}
+            elif m_id and cur is not None and "id" not in cur:
+                cur["id"] = m_id.group(1).strip().strip('"\'')
+        if cur:
+            boards.append(cur)
+        return [b for b in boards if b.get("id")]
 
     @staticmethod
     def _slice_trello_block(text):
@@ -190,6 +226,17 @@ class Provider(ProviderBase):
     def enumerate(self, limit):
         if not self.boards:
             return []
+        try:
+            return self._enumerate(limit)
+        except ProviderError:
+            raise  # already typed (kind preserved) — don't re-wrap as auth
+        except Exception as e:
+            # The board/list/card fetches hit the Trello REST API with TRELLO_API_KEY / TRELLO_TOKEN;
+            # a bad/expired token or network error surfaces here. Raise the typed error so the poller
+            # isolates trello and records it to provider-health instead of aborting the whole cycle.
+            raise ProviderError(f"trello enumerate failed (auth/API?): {e}", kind="auth")
+
+    def _enumerate(self, limit):
         now = datetime.now(timezone.utc)
         items = []
         for board in self.boards:

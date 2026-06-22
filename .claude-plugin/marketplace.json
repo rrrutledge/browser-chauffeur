@@ -69,6 +69,11 @@
       "name": "ms-rest",
       "source": "./plugins/ms-rest",
       "description": "Read, delete, and compose Outlook mail and calendar events for a WORK Microsoft account via the Outlook REST API — no browser needed after a one-time sign-in (token sniffed from the live Outlook web session)."
+    },
+    {
+      "name": "teams",
+      "source": "./plugins/teams",
+      "description": "Read Microsoft Teams chats and watched-team channels via the Teams internal REST services with tokens sniffed from the live Teams web session. List unread DMs, group chats, meeting chats, and watched-team channels, and read a conversation's messages — no DOM hydration. Mark-read and reply drafting are browser-driven (drainer worker + message-draft skill)."
     }
   ]
 }

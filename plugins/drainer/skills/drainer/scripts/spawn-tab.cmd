@@ -1,19 +1,26 @@
 @echo off
 REM spawn-tab.cmd - open ONE Windows Terminal tab running a fresh interactive Claude worker session.
-REM Called from run-poller.py via:  subprocess.Popen(["cmd","/c", spawn-tab.cmd, TITLE, REPO, PROMPTFILE])
+REM Called from run-poller.py via:  subprocess.Popen(["cmd","/c", spawn-tab.cmd, TITLE, REPO, PROMPTFILE, MODEL, SUMMARYFILE])
 REM A .cmd shim is used (not a direct Popen of wt.exe) because wt.exe tokenization breaks on quoted
 REM paths passed through a Python subprocess; cmd escaping handles it reliably.
 REM
-REM   %1 TITLE       tab title (e.g. drain:<id>)
-REM   %2 REPO        starting directory (the drainer project)
-REM   %3 PROMPTFILE  file holding the worker's full instructions (launch-session.ps1 -PromptFile)
-REM   %4 MODEL       explicit model id for the worker (so it doesn't inherit the session default)
+REM   %1 TITLE        initial tab title (the worker's Claude session renames the tab itself once it starts)
+REM   %2 REPO         starting directory (the drainer project)
+REM   %3 PROMPTFILE   file holding the worker's full instructions (launch-session.ps1 -PromptFile)
+REM   %4 MODEL        explicit model id for the worker (so it doesn't inherit the session default)
+REM   %5 SUMMARYFILE  file with a one-line item summary; launch-session.ps1 leads the seed with it so the
+REM                   worker's Claude session names the tab descriptively (and keeps its attention star)
 set "TITLE=%~1"
 set "REPO=%~2"
 set "PFILE=%~3"
 set "MODEL=%~4"
+set "SFILE=%~5"
 set "WT=%LOCALAPPDATA%\Microsoft\WindowsApps\wt.exe"
 set "LAUNCHER=%USERPROFILE%\OneDrive\Claude\scripts\launch-session.ps1"
 REM -w drainer: always collect worker tabs in a single, consistently-named "drainer" window, rather
 REM than -w 0 (most-recently-used), which is unpredictable when the scheduled task creates the window.
-"%WT%" -w drainer new-tab --title "%TITLE%" --startingDirectory "%REPO%" powershell -NoExit -NoProfile -File "%LAUNCHER%" -PromptFile "%PFILE%" -Model "%MODEL%"
+REM No --suppressApplicationTitle: the worker's Claude session sets the tab title itself, which is what
+REM shows its "needs attention" star when it yields to Russell. We steer that self-chosen title to be
+REM descriptive by leading the seed with the item summary (launch-session.ps1 -SummaryFile) — so the tab
+REM reads e.g. "Handle Gmail security message" WITH the star, instead of a generic "Claude Code".
+"%WT%" -w drainer new-tab --title "%TITLE%" --startingDirectory "%REPO%" powershell -NoExit -NoProfile -File "%LAUNCHER%" -PromptFile "%PFILE%" -Model "%MODEL%" -SummaryFile "%SFILE%"

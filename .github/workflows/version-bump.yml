@@ -2,8 +2,11 @@ name: Version bump guardrail
 
 on:
   pull_request:
-    paths:
-      - 'plugins/**'
+  workflow_dispatch:
+
+concurrency:
+  group: version-bump-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   check-version-bump:

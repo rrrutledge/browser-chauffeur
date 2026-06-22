@@ -21,6 +21,11 @@ Implementation by format:
 - **Teams / Slack**: use the link dialog (Ctrl+K) to anchor the URL to text
 - **Word / email / Markdown / PRs**: anchor the link to natural words
 
+**When previewing a draft for approval, show where each link lands.** A rendered preview hides which
+words carry a link, so the reviewer can't tell what's anchored. Spell it out — show the URL next to its
+anchor text, e.g. "right on my calendar (links to https://calendly.com/russell-rutledge)" — so the
+reviewer sees exactly which words are clickable before approving.
+
 ---
 
 ## Asks
@@ -62,7 +67,7 @@ Use for: self-evaluations, quarterly/weekly R&D reviews, stakeholder and status 
 
 ### Draft first, then send
 
-Any message that leaves Russell's hands — a Jira/Request Center comment, an email, a Teams post — is drafted for his approval before it's sent. He sends it himself.
+Any message that leaves Russell's hands — a Jira/Request Center comment, an email, a Teams post — is drafted for his approval before it's sent. By default he sends it himself. The one exception: when a channel has a programmatic send path and Russell, having reviewed the exact draft this turn, gives an explicit per-message instruction to send it, you may send that reviewed text for him (today only personal Gmail has this, via the `gmail` skill's `--send-draft`). Default, silence, and any autonomous run still mean draft-only — never infer a send.
 
 **Draft it in the app where it will be sent.** The ideal is to put the text into the real UI — the Request Center comment box, the Teams compose box, the email reply — via `browser-chauffeur`, so Russell sees exactly how it will look in context, edits it inline if he wants, and clicks the app's own Send button. Drafting in-place (never auto-sending) is the preferred approach whenever the UI can be opened.
 

@@ -202,16 +202,31 @@ def detect_cd_cwd_prefix(command):
 
 
 def detect_cd_compound(command):
-    """Return the cd target if the command starts with `cd <dir> && <more>` or
-    `cd <dir>; <more>` and the target differs from the current working directory."""
+    """Return the cd target if the command starts with `cd <dir>` followed by more
+    commands (via &&, ;, or newline) and the target differs from the current working directory.
+
+    This function receives the FULL command string before split_segments() splits it.
+    Newlines are preserved in the string, so we need to detect both inline compound forms
+    (cd && cmd, cd ; cmd) and newline-separated forms (cd\\ncmd).
+    """
     cwd = os.environ.get('CLAUDE_CWD', os.getcwd())
-    m = re.match(r'^cd\s+("([^"]+)"|\'([^\']+)\'|(\S+))\s*(?:&&|;)', command.strip())
-    if not m:
-        return None
-    target = m.group(2) or m.group(3) or m.group(4)
-    if os.path.normpath(os.path.expanduser(target)).lower() == os.path.normpath(cwd).lower():
-        return None
-    return target
+
+    # Match: cd <dir> followed by &&, ;, or newline, then more content
+    # Using re.MULTILINE so we can match newlines properly
+    m = re.match(
+        r'^cd\s+("([^"]+)"|\'([^\']+)\'|(\S+))(?:\s*(?:&&|;)|\s*$)',
+        command.strip(),
+        re.MULTILINE
+    )
+    if m:
+        target = m.group(2) or m.group(3) or m.group(4)
+        # Check if there's actual content after the cd line
+        rest = command.strip()[m.end():].strip()
+        if rest:  # More commands follow
+            if os.path.normpath(os.path.expanduser(target)).lower() != os.path.normpath(cwd).lower():
+                return target
+
+    return None
 
 
 def detect_variable_assignment(command):
@@ -368,10 +383,19 @@ def enforce_bash(command):
 
     cd_target = detect_cd_compound(command)
     if cd_target:
-        return (f'BLOCKED: "cd {cd_target}" followed by more commands cannot be safely validated because '
-                'the hook cannot resolve relative file paths in the trailing command without knowing the '
-                'new working directory. Use an absolute path in the command directly, or split into '
-                'two separate Bash tool calls: first "cd {cd_target}", then the command on its own.')
+        return (f'BLOCKED: "cd {cd_target}" followed by more commands. The hook cannot validate scripts or '
+                'file operations in another directory — it needs to inspect files relative to the current '
+                'working directory.\n\n'
+                'NEVER prepend "cd <dir>" to Bash commands (with &&, ;, or newlines).\n\n'
+                'Instead:\n\n'
+                '  • For scripts: Use absolute or relative paths from the current directory:\n'
+                f'      python {cd_target}/script.py\n'
+                f'      bash {cd_target}/script.sh\n\n'
+                '  • For git: Use -C to specify the repository:\n'
+                f'      git -C {cd_target} status\n'
+                f'      git -C {cd_target} checkout origin/main -- path/to/file\n\n'
+                '  • For file operations: Use paths relative to the current directory.\n\n'
+                'The Bash tool\'s working directory is already set correctly. Just run commands directly.')
 
     assigned = detect_variable_assignment(command)
     if assigned:

@@ -25,16 +25,19 @@ import re
 import shutil
 import subprocess
 import sys
+import time
+from datetime import datetime, timezone
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 SKILL_DIR = os.path.dirname(SCRIPT_DIR)
 PROVIDERS_DIR = os.path.join(SKILL_DIR, "providers")
 sys.path.insert(0, SCRIPT_DIR)
 import presence  # noqa: E402  (sibling module)
-from provider_base import run_node, NO_WINDOW  # noqa: E402  (shared subprocess helper + console-hide flag)
+from provider_base import run_node, NO_WINDOW, ProviderError  # noqa: E402  (subprocess helper + typed provider failure)
 from drainer_config import read_config  # noqa: E402  (shared .claude/drainer.local.md reader)
 
 SEEN_STATE = os.path.join(SCRIPT_DIR, "seen-state.js")
+HEALTH_FILE = "provider-health.json"
 
 
 # ---------------------------------------------------------------------------- generic helpers
@@ -56,17 +59,68 @@ def open_count(seen):
     return sum(1 for r in seen.values() if r.get("triage") == "needs-you" and r.get("status") == "dispatched")
 
 
+# ---------------------------------------------------------------------------- provider health (observability)
+#
+# The poller runs headless under pythonw (stdout/stderr discarded), so a provider whose credential
+# expired would fail silently every cycle and Russell would never know to refresh it. We record each
+# provider's outcome to <runtime_dir>/provider-health.json so the once-a-day digest (the visible,
+# interactive channel) can surface a stuck provider. Stdlib-only and fail-safe, like seen-state.js:
+# a missing/corrupt file reads as empty, and writes are atomic (temp + replace).
+
+def load_health(runtime_dir):
+    try:
+        with open(os.path.join(runtime_dir, HEALTH_FILE), encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def save_health(runtime_dir, health):
+    os.makedirs(runtime_dir, exist_ok=True)
+    path = os.path.join(runtime_dir, HEALTH_FILE)
+    tmp = f"{path}.tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(health, f, indent=2)
+    os.replace(tmp, path)
+
+
+def record_health_ok(health, name):
+    """A successful enumerate resets the failure streak and stamps last_ok_ts; keeps prior error fields
+    for reference (so the digest can say 'recovered at <last_ok_ts> after failing since <last_error_ts>')."""
+    h = health.setdefault(name, {})
+    h["consecutive_failures"] = 0
+    h["last_ok_ts"] = datetime.now(timezone.utc).isoformat()
+    health[name] = h
+
+
+def record_health_failure(health, name, error, kind):
+    """A failed enumerate (or adapter load) increments the streak and records a short error + its kind
+    (auth = transient/self-heals once creds refreshed; config = deploy error, won't self-heal)."""
+    h = health.setdefault(name, {})
+    h["consecutive_failures"] = h.get("consecutive_failures", 0) + 1
+    h["last_error"] = (error or "")[:300]
+    h["last_error_kind"] = kind
+    h["last_error_ts"] = datetime.now(timezone.utc).isoformat()
+    h.setdefault("last_ok_ts", None)
+    health[name] = h
+
+
 # read_config / parse_provider_names live in drainer_config.py — shared with the digest launcher so
 # the two entry points never drift on knob names or defaults (imported at the top of the file).
 
 
 # ---------------------------------------------------------------------------- provider adapters
 
-def load_providers(cfg):
+def load_providers(cfg, health):
     """Dynamically load each enabled provider's adapter from providers/<name>-adapter.py.
 
     The poller holds no provider mechanics; an adapter lives beside its prose provider doc and
     implements provider_base.ProviderBase. A provider enabled in config without an adapter is skipped.
+
+    Adapter construction (`__init__` locates its helper .js/util) can raise ProviderError(kind=config)
+    when a deploy is broken. That failure is isolated here — recorded to health and skipped — so one
+    mislocated helper never aborts the cycle for the other providers.
     """
     providers = []
     for name in cfg["providers"]:
@@ -74,12 +128,19 @@ def load_providers(cfg):
         if not os.path.exists(path):
             print(f"(skipping provider '{name}': no poller adapter at providers/{name}-adapter.py)")
             continue
-        spec = importlib.util.spec_from_file_location(f"{name.replace('-', '_')}_adapter", path)
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        prov = mod.Provider()
-        prov.configure(cfg)  # hand the adapter the parsed config (repo + knobs); no-op for inbox adapters
-        providers.append(prov)
+        try:
+            spec = importlib.util.spec_from_file_location(f"{name.replace('-', '_')}_adapter", path)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            prov = mod.Provider()
+            prov.configure(cfg)  # hand the adapter the parsed config (repo + knobs); no-op for inbox adapters
+            providers.append(prov)
+        except ProviderError as e:
+            record_health_failure(health, name, str(e), e.kind)
+            print(f"(provider '{name}' failed to load [{e.kind}]: {e})")
+        except Exception as e:  # a broken adapter import shouldn't take the whole cycle down
+            record_health_failure(health, name, f"adapter load error: {e}", "config")
+            print(f"(provider '{name}' failed to load: {e})")
     return providers
 
 
@@ -87,11 +148,14 @@ def load_providers(cfg):
 
 TRIAGE_INSTRUCTIONS = (
     "You are the drainer poller's triage step. Classify each item per the rubric below, applied with "
-    "the world-knowledge below. For EACH item decide its bucket; for needs-you also give "
-    "kind = reply | work | work-then-reply (else null) and complexity = simple | complex (simple = a "
-    "quick reply or a trivial action; complex = multi-step work, research, code, or a delicate / "
-    "high-stakes message — these get a stronger model). Return ONLY a JSON array, one object per input "
-    'id: [{"id": "...", "bucket": "needs-you|fyi|junk", "kind": "reply|work|work-then-reply|null", '
+    "the world-knowledge below. For EACH item decide its bucket; for needs-you (and auto-handle) also "
+    "give kind = reply | work | work-then-reply (else null) and complexity = simple | complex (simple = "
+    "a quick reply or a trivial action; complex = multi-step work, research, code, or a delicate / "
+    "high-stakes message — these get a stronger model). Use bucket = auto-handle ONLY when a provider "
+    "AUTO-HANDLE rule (in the world-knowledge / provider docs) plainly matches — a standing decision with "
+    "no judgment left; when in doubt use needs-you. Return ONLY a JSON array, one object per input "
+    'id: [{"id": "...", "bucket": "needs-you|auto-handle|fyi|junk", '
+    '"kind": "reply|work|work-then-reply|null", '
     '"complexity": "simple|complex", "reason": "<short>"}] — no prose, no code fence.'
 )
 
@@ -104,15 +168,43 @@ def _read(path):
         return ""
 
 
-def triage(items, repo, local_dir, model):
+def _auto_handle_rules(providers_by_name):
+    """Concatenate each enabled provider's AUTO-HANDLE section so the triage model can recognize an
+    auto-handle item. The rules live in providers/<name>-provider.md (worker-facing), but classification
+    happens here at triage time, so the relevant sections are surfaced to the model. A provider with no
+    AUTO-HANDLE section contributes nothing. New providers add rules just by writing the section."""
+    out = []
+    for name in sorted(providers_by_name):
+        doc = _read(os.path.join(PROVIDERS_DIR, f"{name}-provider.md"))
+        m = re.search(r"^##\s+AUTO-HANDLE\b.*?(?=^##\s|\Z)", doc, re.DOTALL | re.MULTILINE)
+        if m:
+            out.append(f"### {name}\n{m.group(0).strip()}")
+    return "\n\n".join(out)
+
+
+def triage(items, repo, local_dir, model, providers_by_name):
     claude = shutil.which("claude") or "claude"
     rubric = _read(os.path.join(SCRIPT_DIR, "..", "engine", "triage.md"))  # embed -> self-contained
     context = _read(os.path.join(local_dir, "context.md"))
+    auto_rules = _auto_handle_rules(providers_by_name)
+
+    def preview(it):
+        # The owning adapter supplies the text triage sees: its `triage_text` returns the new message
+        # body (quote-stripped) rather than just the subject. Adapters whose enumerate carries no preview
+        # (gmail) override it to fetch the body for these new items; the default just returns `preview`.
+        p = providers_by_name.get(it["_source"])
+        return p.triage_text(it) if p else (it.get("preview") or "")
+
     payload = [{"id": it["_id"], "source": it["_source"], "from": it.get("from"),
                 "subject": it.get("subject"), "received": it.get("received"),
-                "isRead": it.get("isRead"), "preview": it.get("preview")} for it in items]
+                "isRead": it.get("isRead"), "preview": preview(it)} for it in items]
+    auto_block = (
+        f"## Auto-handle rules (per provider — use bucket=auto-handle only when one plainly matches)\n"
+        f"{auto_rules}\n\n" if auto_rules else ""
+    )
     prompt = (
         f"{TRIAGE_INSTRUCTIONS}\n\n## Rubric (engine/triage.md)\n{rubric}\n\n"
+        f"{auto_block}"
         f"## World-knowledge (drainer context.md)\n{context}\n\n"
         f"## New items to triage (JSON)\n{json.dumps(payload, indent=2)}\n"
     )
@@ -139,6 +231,68 @@ def triage(items, repo, local_dir, model):
 
 # ---------------------------------------------------------------------------- dispatch
 
+def _item_bits(json_file):
+    """(display-label, subject/name, who) parsed from a captured item json; ('', '', '') on error."""
+    labels = {"outlook-graph": "Outlook", "gmail": "Gmail", "slack": "Slack", "trello": "Trello"}
+    try:
+        with open(json_file, encoding="utf-8") as f:
+            rec = json.load(f)
+    except (OSError, ValueError):
+        return "", "", ""
+    src = rec.get("source") or ""
+    label = labels.get(src, (src.split("-")[0] or "item").capitalize())
+    subject = (rec.get("subject") or rec.get("name") or "").strip()
+    who = (rec.get("from") or "").strip()
+    if not who:
+        contacts = rec.get("contacts") or []
+        who = (contacts[0] if contacts else "") or ""
+    if "<" in who:  # "Name <addr>" -> the name (or the address if unnamed)
+        head, _, tail = who.partition("<")
+        who = head.strip().strip('"') or tail.rstrip(">").strip()
+    return label, subject, who
+
+
+def _worker_title(iid, json_file):
+    """The INITIAL tab title (shown for the ~1s before the worker's Claude session renames the tab
+    itself). Short and human-readable; falls back to the id on any error."""
+    label, subject, who = _item_bits(json_file)
+    if not label:
+        return f"drain:{iid}"
+    title = f"{label}: {subject}" if subject else label
+    if who:
+        title += f" - {who}"
+    title = re.sub(r'[&<>|%"^]', " ", title)  # neutralize cmd-breaking chars
+    title = re.sub(r"\s+", " ", title).strip()  # collapse whitespace
+    return title[:50].strip() or f"drain:{iid}"
+
+
+def _worker_summary(json_file):
+    """A one-line item summary that LEADS the worker's seed prompt. Claude names the tab off its first
+    message, so leading with this makes the tab self-title descriptively while keeping its attention star
+    (no --suppressApplicationTitle needed). Lead with the CONTENT — the subject/card and who it's from —
+    since that's what matters at a glance; the source is incidental and is NOT forced into the title.
+
+    MUST stay free of characters that break PowerShell 5.1 native-arg passing when launch-session.ps1
+    hands the seed to `claude`: an embedded double quote (or `;`) truncates the ENTIRE seed mid-word,
+    silently dropping the 'Read the file …' pointer so the worker never learns what item it's on. So the
+    subject is NOT wrapped in quotes and any quotes/semicolons/newlines in it are stripped. '' when there's
+    nothing to say."""
+    _label, subject, who = _item_bits(json_file)
+
+    def safe(x):  # strip seed-breaking chars (quotes, semicolons) and collapse whitespace to one line
+        return re.sub(r"\s+", " ", re.sub(r'["“”;]', "", x or "")).strip()
+
+    subject, who = safe(subject), safe(who)
+    if not subject and not who:
+        return ""
+    s = "You are handling this"
+    if subject:
+        s += f": {subject}"
+    if who:
+        s += f", from {who}"
+    return s + "."
+
+
 def spawn_worker(iid, json_file, repo, runtime_dir, worker_model):
     seeds = os.path.join(runtime_dir, "seeds")
     os.makedirs(seeds, exist_ok=True)
@@ -157,11 +311,23 @@ def spawn_worker(iid, json_file, repo, runtime_dir, worker_model):
             "tabs from piling up faster than they can be handled. (Items you resolve WITHOUT surfacing "
             "to the user — junk routed to the digest, or a situational no-op close — get .done "
             "immediately, since they never opened for the user's attention.)\n"
+            "If the item's `triage` field is `auto-handle`, follow worker-core's auto-handle BRANCH "
+            "instead: execute the standing rule autonomously, CLEAR the source, queue a digest entry, "
+            "and write .done IMMEDIATELY — no presentation, no wait. Then CLOSE THIS TAB as your very "
+            f"last step: read the hosting PID from `{prompt_file}.hostpid` and run "
+            f"`taskkill /PID <pid> /T /F` (PowerShell) to terminate this session and close the tab, so a "
+            "self-resolved item never lingers as a finished tab you must check. Do this ONLY for "
+            "auto-handle — needs-you items always stay open and wait for the user.\n"
         )
+    # A one-line summary leads the seed so the worker's Claude session self-titles the tab descriptively
+    # while keeping its attention star (the launcher prepends this; see launch-session.ps1 -SummaryFile).
+    summary_file = os.path.join(seeds, f"{iid}.summary.txt")
+    with open(summary_file, "w", encoding="utf-8") as f:
+        f.write(_worker_summary(json_file))
     spawn_cmd = os.path.join(SCRIPT_DIR, "spawn-tab.cmd")
     # CREATE_NO_WINDOW hides the brief cmd shim console; wt.exe opens its own (visible) worker tab.
-    subprocess.Popen(["cmd", "/c", spawn_cmd, f"drain:{iid}", repo, prompt_file, worker_model],
-                     cwd=repo, creationflags=NO_WINDOW)
+    subprocess.Popen(["cmd", "/c", spawn_cmd, _worker_title(iid, json_file), repo, prompt_file,
+                      worker_model, summary_file], cwd=repo, creationflags=NO_WINDOW)
 
 
 # ---------------------------------------------------------------------------- the cycle
@@ -186,6 +352,80 @@ def reconcile_done(runtime_dir):
             seen_state("clear", runtime_dir, source, iid)
             freed += 1
     return freed
+
+
+def live_session_ids():
+    """The set of session guids that currently have a running `claude --session-id <guid>` process.
+    Worker tabs launch claude with --session-id on the command line (launch-session.ps1), so a tab that
+    was closed (or whose claude exited) drops out of this set. That distinguishes 'tab closed' (process
+    gone — never going to finish) from 'parked, waiting for Russell' (process alive, just idle), which a
+    transcript-activity check cannot. One CIM query per cycle.
+
+    Returns None if the scan can't be run/parsed — the caller then SKIPS the liveness fast-path this cycle
+    (the time-based backstop still applies), so an inability to see processes never reaps a live tab."""
+    ps = (r"Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'session-id' } | "
+          r"ForEach-Object { $_.CommandLine }")
+    try:
+        out = subprocess.run(["powershell", "-NoProfile", "-Command", ps],
+                             capture_output=True, text=True, timeout=30,
+                             creationflags=NO_WINDOW).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return set(re.findall(r"session-id\s+([0-9a-fA-F-]{36})", out))
+
+
+def _session_guid(runtime_dir, iid):
+    """(guid, mtime) from the worker's seeds/<id>.prompt.txt.session, or (None, None). mtime ~ launch
+    time, used to give a freshly-launched tab a grace period before liveness can reap it."""
+    p = os.path.join(runtime_dir, "seeds", f"{iid}.prompt.txt.session")
+    try:
+        with open(p, encoding="utf-8") as f:
+            return f.read().strip(), os.path.getmtime(p)
+    except OSError:
+        return None, None
+
+
+def reconcile_orphans(runtime_dir, cfg):
+    """Self-heal orphaned worker tabs that would hold a global cap slot forever. A worker launches
+    `claude --session-id <guid>` (guid recorded in seeds/<id>.prompt.txt.session); if that process is gone
+    the tab was CLOSED and can never write <id>.done. Re-queue such an item — drop its seen key so the
+    next enumerate re-dispatches a fresh tab, freeing the slot.
+
+    Recovery is purely LIVENESS-based: a tab whose process is still running is left alone no matter how
+    long it's been open — it's either being worked or parked waiting for the user, both of which resolve
+    on their own. So there is no time-based timeout; closed-tab detection is the whole signal. A grace
+    window (orphan_grace_minutes) keeps a just-launched tab — whose process / .session file may not be up
+    yet — from being misread as dead. No retry cap: a finished item resolves by the worker writing .done.
+    Sibling of reconcile_done — same place in the cycle, the other half of slot bookkeeping."""
+    live = live_session_ids()
+    if live is None:
+        return 0  # can't see processes this cycle -> reap nothing (fail-safe); recover next cycle instead
+    try:  # stale-list with 0 hours returns EVERY dispatched needs-you item (with ages), the full slate
+        dispatched = json.loads(seen_state("stale-list", runtime_dir, "0").stdout or "[]")
+    except ValueError:
+        dispatched = []
+    grace_s = cfg["orphan_grace_minutes"] * 60
+    now = time.time()
+    requeued = 0
+    for r in dispatched:
+        iid, source = r.get("id"), r.get("source")
+        if not iid or not source:
+            continue
+        guid, smtime = _session_guid(runtime_dir, iid)
+        if guid and guid in live:
+            continue  # process alive -> being worked or parked for the user; never reap an open tab
+        # Not alive (process exited, or the launch left no trackable session). Only reap once it's clearly
+        # past the launch grace, so a tab still spinning up isn't killed. Grace is measured from the
+        # .session file's mtime (launch time) when present, else from the item's dispatch age.
+        age_h = r.get("ageHours")
+        launched_ago = (now - smtime) if smtime is not None else (age_h * 3600 if age_h is not None else None)
+        if launched_ago is None or launched_ago >= grace_s:
+            seen_state("requeue", runtime_dir, source, iid)
+            print(f"orphan {iid} ({source}): worker tab closed -> re-queued for a fresh tab.")
+            requeued += 1
+    if requeued:
+        print(f"orphan recovery: {requeued} re-queued.")
+    return requeued
 
 
 def collect_new(provider, cfg):
@@ -214,29 +454,52 @@ def main():
         if not present:
             return  # away/locked -> silent no-op
 
-    providers = load_providers(cfg)
+    health = load_health(cfg["runtime_dir"])
+    providers = load_providers(cfg, health)
     if not providers:
         print("No providers with a poller adapter are enabled; nothing to do.")
+        if not args.dry_run:
+            save_health(cfg["runtime_dir"], health)  # persist any config-load failures recorded above
         return
 
     reconcile_done(cfg["runtime_dir"])  # free cap slots for items whose workers finished last cycle
+    if not args.dry_run:
+        reconcile_orphans(cfg["runtime_dir"], cfg)  # self-heal closed worker tabs (mutates -> live cycles only)
 
     # --- enumerate ALL providers first, accumulate into one global list ---
+    # Each provider's enumerate is isolated: a failure (expired creds, IMAP/API blip) is caught,
+    # recorded to provider-health.json, and the loop continues so the OTHER providers still drain this
+    # cycle. The daily digest reads that health file and surfaces a stuck provider for Russell to fix.
     all_new, seen_by_source, totals = [], {}, {}
     for provider in providers:
-        new, total, seen = collect_new(provider, cfg)
+        try:
+            new, total, seen = collect_new(provider, cfg)
+        except ProviderError as e:
+            record_health_failure(health, provider.name, str(e), e.kind)
+            print(f"{provider.name}: enumerate FAILED [{e.kind}] — {e}. Skipping; other providers continue.")
+            continue
+        except Exception as e:  # unexpected adapter fault — still isolate it, never abort the cycle
+            record_health_failure(health, provider.name, str(e), "unknown")
+            print(f"{provider.name}: enumerate FAILED [unknown] — {e}. Skipping; other providers continue.")
+            continue
+        record_health_ok(health, provider.name)
         seen_by_source[provider.name] = seen
         totals[provider.name] = total
         all_new.extend(new)
         if not new:
             print(f"{provider.name}: {total} enumerated, 0 new.")
+    # Dry-run is a manual diagnostic often run from a shell without the User-scope creds; persisting
+    # health then would log false failures, so only a live cycle records the outcome.
+    if not args.dry_run:
+        save_health(cfg["runtime_dir"], health)  # persist this cycle's per-provider outcomes
 
     if not all_new:
         print("0 new items across all sources. Nothing to dispatch.")
         return
 
     # --- one combined triage call over all sources ---
-    verdicts = triage(all_new, repo, cfg["local_dir"], cfg["triage_model"])
+    prov = {p.name: p for p in providers}  # name -> adapter (also used below for cross-source dispatch)
+    verdicts = triage(all_new, repo, cfg["local_dir"], cfg["triage_model"], prov)
     for it in all_new:
         v = verdicts.get(it["_id"], {"bucket": "needs-you", "kind": "reply"})  # unjudged -> act (fail-safe)
         it["_bucket"], it["_kind"] = v.get("bucket", "needs-you"), v.get("kind")
@@ -245,22 +508,33 @@ def main():
     # --- global open count across ALL sources ---
     global_oc = sum(open_count(s) for s in seen_by_source.values())
 
-    # --- split: needs-you (newest-first globally) vs others ---
+    # --- split: needs-you (newest-first globally), auto-handle (own worker, no cap), others (digest) ---
     needs = sorted(
         (it for it in all_new if it["_bucket"] == "needs-you"),
         key=lambda it: it.get("received") or "",
         reverse=True,  # newest first; items missing received sort last via ""
     )
-    others = [it for it in all_new if it["_bucket"] != "needs-you"]
-
-    prov = {p.name: p for p in providers}  # name -> adapter for cross-source dispatch
+    # auto-handle items get a worker tab too (they need a browser to act), but the worker executes
+    # autonomously and writes .done immediately — so they self-clear fast and are NOT counted against the
+    # needs-you cap (open_count only counts needs-you), letting a standing-rule action run without waiting
+    # behind tabs parked for Russell's attention.
+    auto = [it for it in all_new if it["_bucket"] == "auto-handle"]
+    others = [it for it in all_new if it["_bucket"] not in ("needs-you", "auto-handle")]
 
     if args.dry_run:
-        counts = {b: sum(1 for it in all_new if it["_bucket"] == b) for b in ("needs-you", "fyi", "junk")}
+        counts = {b: sum(1 for it in all_new if it["_bucket"] == b)
+                  for b in ("needs-you", "auto-handle", "fyi", "junk")}
         total_all = sum(totals.values())
         print(f"DRY-RUN — {len(all_new)} new of {total_all} across {len(providers)} source(s) | "
-              f"{counts['needs-you']} needs-you, {counts['fyi']} fyi, {counts['junk']} junk | "
+              f"{counts['needs-you']} needs-you, {counts['auto-handle']} auto-handle, "
+              f"{counts['fyi']} fyi, {counts['junk']} junk | "
               f"global cap {cfg['max_open_tabs']}, currently open {global_oc}")
+        if auto:
+            print("  auto-handle (autonomous worker, not capped):")
+            for it in auto:
+                model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
+                print(f"    [{it['_source']:20}] {it['_id']}  ->  spawn auto-worker [{it['_complexity']} -> {model}]\n"
+                      f"        {it.get('received')} | {it.get('from')} | {it.get('subject')}")
         print("  needs-you (newest-first globally):")
         oc = global_oc
         for it in needs:
@@ -278,7 +552,18 @@ def main():
                       f"        {it.get('from')} | {it.get('subject')}")
         return
 
-    dispatched, held, queued = 0, 0, 0
+    dispatched, auto_dispatched, held, queued = 0, 0, 0, 0
+    # auto-handle first: a worker that executes a standing rule and self-clears immediately. Not capped
+    # (open_count tracks only needs-you), recorded with its own triage so capture stamps the json and the
+    # worker takes worker-core's auto-handle branch (act -> CLEAR -> queue digest -> .done now).
+    for it in auto:
+        provider = prov[it["_source"]]
+        iid = it["_id"]
+        model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
+        json_file = provider.capture(it, iid, cfg["runtime_dir"])
+        spawn_worker(iid, json_file, repo, cfg["runtime_dir"], model)
+        seen_state("record", cfg["runtime_dir"], it["_source"], iid, "auto-handle")
+        auto_dispatched += 1
     for it in needs:
         provider = prov[it["_source"]]
         iid = it["_id"]
@@ -299,8 +584,9 @@ def main():
         seen_state("record", cfg["runtime_dir"], it["_source"], iid, it["_bucket"])
         queued += 1
 
-    print(f"dispatched {dispatched} worker tab(s), queued {queued} for digest, "
-          f"held {held} at global cap of {cfg['max_open_tabs']}. Poller never clears.")
+    print(f"dispatched {dispatched} worker tab(s), {auto_dispatched} auto-handle worker(s), "
+          f"queued {queued} for digest, held {held} at global cap of {cfg['max_open_tabs']}. "
+          f"Poller never clears.")
 
 
 if __name__ == "__main__":

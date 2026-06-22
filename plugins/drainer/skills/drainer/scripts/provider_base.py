@@ -14,6 +14,24 @@ import subprocess
 NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 
+class ProviderError(Exception):
+    """A provider's enumerate (or adapter load) failed for THIS provider only.
+
+    The poller catches this per-provider so one source's failure never aborts the cycle for the
+    others; it records the failure to provider-health.json so the daily digest can surface a stuck
+    provider for Russell to fix. `kind` distinguishes the two failure modes the digest reports
+    differently:
+      - "auth"   — a transient credential / network failure (expired token, IMAP blip). Expected
+                   occasionally; self-heals once the credential is refreshed.
+      - "config" — a deploy/config error (a helper .js or utility couldn't be located). Rare and
+                   loud; it won't self-heal, so the digest flags it distinctly.
+    """
+
+    def __init__(self, message, kind="auth"):
+        super().__init__(message)
+        self.kind = kind
+
+
 def run_node(args, **kw):
     return subprocess.run(["node", *args], capture_output=True, text=True,
                           encoding="utf-8", errors="replace", creationflags=NO_WINDOW, **kw)
@@ -36,6 +54,14 @@ class ProviderBase:
     def enumerate(self, limit):
         """Return a list of candidate item dicts (newest-first, up to `limit`)."""
         raise NotImplementedError
+
+    def triage_text(self, item):
+        """The body text the triage step shows the model for this item. Default: the light `preview`
+        that `enumerate` already attached. Adapters whose `enumerate` returns no usable body (e.g. the
+        gmail adapter, where the IMAP envelope listing carries no preview) override this to fetch a
+        quote-stripped excerpt of the new message — so triage classifies on real content, not just the
+        subject line. Called only for the NEW items being triaged, so a per-item fetch here stays cheap."""
+        return item.get("preview") or ""
 
     def stable_id(self, item):
         """A deterministic id for an item (stable across cycles), used for seen-state."""

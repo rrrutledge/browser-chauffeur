@@ -6,7 +6,7 @@ const os = require('os');
 const path = require('path');
 
 const {
-  isSeen, record, openCount, clear, queueAdd, queueList, queueClear, staleList,
+  isSeen, record, openCount, clear, queueAdd, queueList, queueClear, staleList, requeue,
 } = require('./seen-state');
 
 function tmpDir() {
@@ -15,60 +15,60 @@ function tmpDir() {
 
 test('record then isSeen returns true', () => {
   const dir = tmpDir();
-  record(dir, 'personal-outlook', 'id-1', 'needs-you');
-  assert.strictEqual(isSeen(dir, 'personal-outlook', 'id-1'), true);
+  record(dir, 'outlook-graph', 'id-1', 'needs-you');
+  assert.strictEqual(isSeen(dir, 'outlook-graph', 'id-1'), true);
 });
 
 test('unknown id returns false', () => {
   const dir = tmpDir();
-  assert.strictEqual(isSeen(dir, 'personal-outlook', 'nope'), false);
+  assert.strictEqual(isSeen(dir, 'outlook-graph', 'nope'), false);
 });
 
 test('record is idempotent', () => {
   const dir = tmpDir();
-  record(dir, 'personal-outlook', 'id-1', 'needs-you');
-  record(dir, 'personal-outlook', 'id-1', 'needs-you');
-  assert.strictEqual(openCount(dir, 'personal-outlook'), 1);
+  record(dir, 'outlook-graph', 'id-1', 'needs-you');
+  record(dir, 'outlook-graph', 'id-1', 'needs-you');
+  assert.strictEqual(openCount(dir, 'outlook-graph'), 1);
 });
 
 test('corrupt seen file is treated as nothing seen (no throw)', () => {
   const dir = tmpDir();
   fs.writeFileSync(path.join(dir, 'seen.json'), '{ this is not json');
-  assert.strictEqual(isSeen(dir, 'personal-outlook', 'id-1'), false);
+  assert.strictEqual(isSeen(dir, 'outlook-graph', 'id-1'), false);
 });
 
 test('missing runtime dir is treated as nothing seen (no throw)', () => {
   const dir = path.join(tmpDir(), 'does-not-exist-yet');
-  assert.strictEqual(isSeen(dir, 'personal-outlook', 'id-1'), false);
-  assert.strictEqual(openCount(dir, 'personal-outlook'), 0);
+  assert.strictEqual(isSeen(dir, 'outlook-graph', 'id-1'), false);
+  assert.strictEqual(openCount(dir, 'outlook-graph'), 0);
 });
 
 test('open-count reflects needs-you records minus cleared', () => {
   const dir = tmpDir();
-  record(dir, 'personal-outlook', 'a', 'needs-you');
-  record(dir, 'personal-outlook', 'b', 'needs-you');
-  record(dir, 'personal-outlook', 'c', 'fyi'); // fyi is not a worker tab
-  assert.strictEqual(openCount(dir, 'personal-outlook'), 2);
-  clear(dir, 'personal-outlook', 'a');
-  assert.strictEqual(openCount(dir, 'personal-outlook'), 1);
+  record(dir, 'outlook-graph', 'a', 'needs-you');
+  record(dir, 'outlook-graph', 'b', 'needs-you');
+  record(dir, 'outlook-graph', 'c', 'fyi'); // fyi is not a worker tab
+  assert.strictEqual(openCount(dir, 'outlook-graph'), 2);
+  clear(dir, 'outlook-graph', 'a');
+  assert.strictEqual(openCount(dir, 'outlook-graph'), 1);
 });
 
 test('open-count is per-source', () => {
   const dir = tmpDir();
-  record(dir, 'personal-outlook', 'a', 'needs-you');
+  record(dir, 'outlook-graph', 'a', 'needs-you');
   record(dir, 'gmail', 'b', 'needs-you');
-  assert.strictEqual(openCount(dir, 'personal-outlook'), 1);
+  assert.strictEqual(openCount(dir, 'outlook-graph'), 1);
   assert.strictEqual(openCount(dir, 'gmail'), 1);
 });
 
 test('digest queue add / list / clear round-trips', () => {
   const dir = tmpDir();
-  queueAdd(dir, 'personal-outlook', 'q1', { subject: 'Sale!', triage: 'junk' });
-  queueAdd(dir, 'personal-outlook', 'q2', { subject: 'FYI memo', triage: 'fyi' });
+  queueAdd(dir, 'outlook-graph', 'q1', { subject: 'Sale!', triage: 'junk' });
+  queueAdd(dir, 'outlook-graph', 'q2', { subject: 'FYI memo', triage: 'fyi' });
   let q = queueList(dir);
   assert.strictEqual(q.length, 2);
   assert.strictEqual(q[0].id, 'q1');
-  assert.strictEqual(q[0].source, 'personal-outlook');
+  assert.strictEqual(q[0].source, 'outlook-graph');
   assert.strictEqual(q[0].item.subject, 'Sale!');
   queueClear(dir, 'q1');
   q = queueList(dir);
@@ -93,14 +93,14 @@ test('stale-list surfaces only dispatched needs-you older than the threshold', (
   const dir = tmpDir();
   const old = new Date(Date.now() - 30 * 3600 * 1000).toISOString();   // 30h ago
   const fresh = new Date(Date.now() - 2 * 3600 * 1000).toISOString();  // 2h ago
-  record(dir, 'personal-outlook', 'stale-old', 'needs-you');
-  writeItem(dir, 'stale-old', 'personal-outlook', old, { subject: 'old ask' });
-  record(dir, 'personal-outlook', 'fresh-one', 'needs-you');
-  writeItem(dir, 'fresh-one', 'personal-outlook', fresh);
-  record(dir, 'personal-outlook', 'done-one', 'needs-you');
-  writeItem(dir, 'done-one', 'personal-outlook', old);
-  clear(dir, 'personal-outlook', 'done-one');                          // cleared -> excluded
-  record(dir, 'personal-outlook', 'fyi-one', 'fyi');                   // not needs-you -> excluded
+  record(dir, 'outlook-graph', 'stale-old', 'needs-you');
+  writeItem(dir, 'stale-old', 'outlook-graph', old, { subject: 'old ask' });
+  record(dir, 'outlook-graph', 'fresh-one', 'needs-you');
+  writeItem(dir, 'fresh-one', 'outlook-graph', fresh);
+  record(dir, 'outlook-graph', 'done-one', 'needs-you');
+  writeItem(dir, 'done-one', 'outlook-graph', old);
+  clear(dir, 'outlook-graph', 'done-one');                          // cleared -> excluded
+  record(dir, 'outlook-graph', 'fyi-one', 'fyi');                   // not needs-you -> excluded
 
   const stale = staleList(dir, 12);
   assert.strictEqual(stale.length, 1);
@@ -111,7 +111,7 @@ test('stale-list surfaces only dispatched needs-you older than the threshold', (
 
 test('stale-list ages off the id timestamp when items json is missing', () => {
   const dir = tmpDir();
-  record(dir, 'personal-outlook', 'personal-outlook-20200101-000000-x', 'needs-you');
+  record(dir, 'outlook-graph', 'outlook-graph-20200101-000000-x', 'needs-you');
   const stale = staleList(dir, 12);                                    // year 2020 -> very stale
   assert.strictEqual(stale.length, 1);
   assert.strictEqual(stale[0].item, null);
@@ -121,7 +121,30 @@ test('stale-list ages off the id timestamp when items json is missing', () => {
 test('stale-list is empty when nothing is overdue', () => {
   const dir = tmpDir();
   const fresh = new Date(Date.now() - 1 * 3600 * 1000).toISOString();
-  record(dir, 'personal-outlook', 'fresh', 'needs-you');
-  writeItem(dir, 'fresh', 'personal-outlook', fresh);
+  record(dir, 'outlook-graph', 'fresh', 'needs-you');
+  writeItem(dir, 'fresh', 'outlook-graph', fresh);
   assert.deepStrictEqual(staleList(dir, 12), []);
+});
+
+test('requeue frees the slot and lets the orphaned item re-dispatch (drops its seen key)', () => {
+  const dir = tmpDir();
+  record(dir, 'trello', 'card-1', 'needs-you');
+  assert.strictEqual(openCount(dir, 'trello'), 1);
+  assert.strictEqual(isSeen(dir, 'trello', 'card-1'), true);
+
+  requeue(dir, 'trello', 'card-1');
+  assert.strictEqual(openCount(dir, 'trello'), 0);            // slot freed
+  assert.strictEqual(isSeen(dir, 'trello', 'card-1'), false); // key dropped -> re-enumerates
+
+  // Re-dispatch next cycle then orphan again: requeue stays idempotent in effect (key gone, slot free).
+  record(dir, 'trello', 'card-1', 'needs-you');
+  requeue(dir, 'trello', 'card-1');
+  assert.strictEqual(isSeen(dir, 'trello', 'card-1'), false);
+  assert.strictEqual(openCount(dir, 'trello'), 0);
+});
+
+test('requeue on an unknown id is a no-op (no throw)', () => {
+  const dir = tmpDir();
+  requeue(dir, 'trello', 'nope');
+  assert.strictEqual(isSeen(dir, 'trello', 'nope'), false);
 });

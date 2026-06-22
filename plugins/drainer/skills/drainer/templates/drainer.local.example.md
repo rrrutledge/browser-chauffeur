@@ -6,7 +6,7 @@
 # plugin's providers/ dir). All sources are harvested every run on one schedule.
 providers:
   outlook: {}                    # work Outlook on the web (browser) — no config, just sign in
-  personal-outlook: {}           # personal Outlook.com via the Microsoft Graph API (ms-graph; no browser)
+  outlook-graph: {}           # personal Outlook.com via the Microsoft Graph API (ms-graph; no browser)
   teams: {}                      # Microsoft Teams on the web (browser) — no config, just sign in
   trello:                        # outreach boards (via the trello-outreach skill)
     boards:
@@ -50,8 +50,12 @@ triage_model: claude-sonnet-4-6          # the per-cycle batched triage call (al
 
 # EOD digest (run-digest.py) — the once-a-day interactive slow loop.
 digest_model: claude-opus-4-8   # the digest session (summarize fyi, group junk, reconciliation); standard context
-stale_hours: 12                 # reconciliation: a needs-you item still dispatched-but-uncleared past this
-                                # many hours is stale-but-unfinished and gets re-surfaced in the digest.
+stale_hours: 12                 # DIGEST-ONLY: the EOD digest lists any needs-you item still dispatched past
+                                # this many hours. The poller's orphan recovery uses no timeout (see below).
+orphan_grace_minutes: 15        # orphan recovery is purely liveness-based: a worker tab whose claude
+                                # process is gone is treated as closed and re-queued the next cycle — no
+                                # time limit on open tabs. This grace only stops a just-spawned tab (process
+                                # not up yet) from being misread as dead.
 digest_time: "17:00"            # wall-clock time (HH:MM, 24h) the daily digest task fires (used by the installer).
 ---
 
