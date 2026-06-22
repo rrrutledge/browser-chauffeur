@@ -13,7 +13,7 @@ from safe_compounds.shell import (  # noqa: E402
 from safe_compounds import config  # noqa: E402
 from safe_compounds.commands import is_git_command_safe, is_curl_safe, is_sed_command_safe  # noqa: E402
 from safe_compounds.mcp import classify_mcp_tool  # noqa: E402
-from safe_compounds.enforce import detect_complex_bash, detect_simple_expansion, enforce_bash  # noqa: E402
+from safe_compounds.enforce import detect_complex_bash, detect_simple_expansion, detect_cd_compound, enforce_bash  # noqa: E402
 from safe_compounds.scripts import check_node_segment  # noqa: E402
 
 
@@ -230,3 +230,124 @@ class TestCheckNodeSegment:
     def test_check_flag_with_extra_spacing(self):
         set_config()
         assert check_node_segment("node  --check  foo.mjs") is True
+
+
+class TestCdCompoundDetection:
+    """Test cd followed by more commands in various formats."""
+
+    def test_cd_with_ampersand_other_dir(self, tmp_path):
+        """cd /other && cmd should be detected when target != cwd."""
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        target = detect_cd_compound("cd /other/dir && git status")
+        assert target == "/other/dir"
+
+    def test_cd_with_semicolon_other_dir(self, tmp_path):
+        """cd /other ; cmd should be detected."""
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        target = detect_cd_compound("cd /other/dir; git status")
+        assert target == "/other/dir"
+
+    def test_cd_with_newline_other_dir(self, tmp_path):
+        """cd /other\\ncmd should be detected (the new case!)."""
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        target = detect_cd_compound("cd /other/dir\ngit status")
+        assert target == "/other/dir"
+
+    def test_cd_with_newline_multiline_other_dir(self, tmp_path):
+        """cd /other\\ncmd1\\ncmd2 should be detected."""
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        cmd = """cd /other/dir
+echo "test"
+git status
+git commit"""
+        target = detect_cd_compound(cmd)
+        assert target == "/other/dir"
+
+    def test_cd_to_same_dir_not_detected(self, tmp_path):
+        """cd <cwd> && cmd should return None (handled by detect_cd_cwd_prefix)."""
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        target = detect_cd_compound(f"cd {tmp_path} && git status")
+        assert target is None
+
+    def test_cd_alone_not_detected(self, tmp_path):
+        """Just 'cd /other' with no following commands should return None."""
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        target = detect_cd_compound("cd /other/dir")
+        assert target is None
+
+    def test_cd_with_only_whitespace_after_not_detected(self, tmp_path):
+        """cd /other\\n\\n (only whitespace after) should return None."""
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        target = detect_cd_compound("cd /other/dir\n  \n\t\n")
+        assert target is None
+
+    def test_cd_quoted_path_with_ampersand(self, tmp_path):
+        """cd "/path with spaces" && cmd should work."""
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        target = detect_cd_compound('cd "/other/path with spaces" && ls')
+        assert target == "/other/path with spaces"
+
+    def test_cd_quoted_path_with_newline(self, tmp_path):
+        """cd "/path with spaces"\\ncmd should work."""
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        target = detect_cd_compound('cd "/other/path with spaces"\nls')
+        assert target == "/other/path with spaces"
+
+    def test_original_reported_command(self, tmp_path):
+        """The actual command that wasn't blocked but should have been."""
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        cmd = """cd ~/Dev/rrrutledge/rrrutledge-claude-code-plugins
+echo "=== 1. restore drainer_config.py to main ==="; git checkout origin/main -- plugins/drainer/providers/drainer_config.py && echo "restored"
+echo "=== 2. rename ==="; git mv plugins/drainer/providers/outlook-adapter.py plugins/drainer/providers/outlook-rest-adapter.py"""
+        target = detect_cd_compound(cmd)
+        assert target == "~/Dev/rrrutledge/rrrutledge-claude-code-plugins"
+
+
+class TestCdCompoundBlocking:
+    """Test that enforce_bash blocks cd compound patterns with correct message."""
+
+    def test_block_cd_ampersand(self, tmp_path):
+        """cd && cmd should be blocked with helpful message."""
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        reason = enforce_bash("cd /other/dir && git status")
+        assert reason is not None
+        assert "BLOCKED" in reason
+        assert "cd /other/dir" in reason
+        assert "NEVER" in reason
+        assert "git -C /other/dir" in reason
+
+    def test_block_cd_newline(self, tmp_path):
+        """cd\\ncmd should be blocked with helpful message."""
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        reason = enforce_bash("cd /other/dir\ngit status")
+        assert reason is not None
+        assert "BLOCKED" in reason
+        assert "cd /other/dir" in reason
+        assert "NEVER" in reason
+
+    def test_block_message_has_script_examples(self, tmp_path):
+        """Block message should show how to run scripts from current dir."""
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        reason = enforce_bash("cd /other && python script.py")
+        assert "python /other/script.py" in reason
+        assert "bash /other/script.sh" in reason
+
+    def test_block_message_has_git_c_flag(self, tmp_path):
+        """Block message should show git -C alternative."""
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        reason = enforce_bash("cd /repo && git status")
+        assert "git -C /repo status" in reason
+        assert "git -C /repo checkout" in reason
+
+    def test_no_block_message_about_splitting_bash_calls(self, tmp_path):
+        """Block message should NOT suggest splitting into two Bash calls (that doesn't work)."""
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        reason = enforce_bash("cd /other && git status")
+        assert "split into" not in reason.lower()
+        assert "two separate Bash tool calls" not in reason
+
+    def test_no_block_cd_alone(self, tmp_path):
+        """Just 'cd /other' should not be blocked."""
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        reason = enforce_bash("cd /other/dir")
+        assert reason is None
