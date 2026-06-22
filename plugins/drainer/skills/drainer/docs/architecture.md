@@ -20,6 +20,10 @@ minutes (a ~5-min cron) and holds each source at **zero un-started actionable it
 - **needs-you →** the poller immediately spawns a **worker tab** (up to `max_open_tabs` concurrent,
   default 3), so the user starts acting right away. Beyond the cap, items are held and picked up on a
   later cycle.
+- **auto-handle →** a standing-rule item the user decided in advance (per a provider's AUTO-HANDLE
+  section). The poller spawns a worker that performs the action autonomously, clears the source, queues a
+  digest entry, and finishes immediately — never interrupting the user. Not counted against the
+  needs-you cap (it self-clears fast). The daily digest reports what was done under "Auto-handled."
 - **fyi / junk →** captured to a **digest queue** for a once-a-day readout; nothing is disposed of
   silently in the fast loop.
 - **The poller never clears.** The source item is cleared in exactly one place: the worker tab on
@@ -77,10 +81,12 @@ The plugin never contains anything that identifies the user or their organizatio
 
 ## Triage (the one rubric, shared)
 
-Classify every item by asking **"What does this want the user to do?"** into three buckets — the only
-three; full rubric in `engine/triage.md`:
+Classify every item by asking **"What does this want the user to do?"** into four buckets;
+full rubric in `engine/triage.md`:
 
 - **needs-you** → its **own worker tab** (up to `max_open_tabs` concurrent).
+- **auto-handle** → a worker tab too, but it runs a standing rule autonomously and self-clears (no
+  decision asked of the user); reported in the next digest under "Auto-handled".
 - **fyi / junk** → **never** a worker each; captured to the digest queue and read out once a day
   (the EOD digest), nothing disposed of silently. Every **junk** item is a signal to stop it at the
   source — propose, in priority order, an **unsubscribe**, then the source app's **notification

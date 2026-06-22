@@ -26,8 +26,16 @@ email didn't reach Russell; he may eventually want to contact that person anothe
 urgency, no one is blocked waiting for his reply, and the digest is the right venue.
 
 
-## The three buckets
+## The four buckets
 
+- **auto-handle** — there is an action to take, but it is **fully determined by a standing rule** with
+  **no judgment call left for Russell**: the same answer every time, decided in advance. Claude can do
+  the action autonomously and tell Russell afterward in the digest, rather than opening a tab to ask.
+  Use this **only** when a provider's **AUTO-HANDLE** section names a rule that plainly matches this item
+  (the rule says exactly what to do and under what condition). The bar is high: if there's any genuine
+  decision — *should* this be approved, *how* to word a reply, *whether* it's the right move — it is
+  **needs-you**, not auto-handle. No matching standing rule → it is not auto-handle. (The worker still
+  performs the action; it just never interrupts Russell, and the digest records what was done.)
 - **needs-you** — there is something to DO: a reply, a piece of work to kick off (code, a doc, a
   ticket, a lookup, a system update…), a decision, a check, or delegating it to the team — or BOTH
   (often: do the work, then reply about the outcome). This is ONE bucket on purpose; don't try to
@@ -55,6 +63,9 @@ action item and capture it separately, read and answer the DM, …). Only when t
 plainly carries the whole story and asks nothing (e.g. a recording notice with no notes) is it **fyi**.
 
 ## Tie-breakers
+- **auto-handle** is never a tie-breaker default: pick it ONLY when a provider AUTO-HANDLE rule clearly
+  matches. Any doubt that the rule applies → fall back to **needs-you** (let Russell decide). Better to
+  ask once than to auto-act on something that wasn't actually a standing decision.
 - Unsure between **needs-you** and **fyi** → **needs-you** (prefer acting).
 - Unsure between **fyi** and **junk** → **fyi** (prefer keeping eyes on it).
 - Reserve **needs-you** for genuine asks directed at Russell **or personal messages owed a human

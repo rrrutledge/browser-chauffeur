@@ -38,10 +38,11 @@ miss. Then continue to the queue below.
 
 ## 1. Gather (deterministic — just read state)
 
-- **The fyi/junk queue:** `node <seen-state.js> queue-list <runtime_dir>` → a JSON array of
-  `{ id, source, item }`. Each `item` carries at least `triage` (`fyi` | `junk`), `from`, `subject`,
-  and `snippet`, plus whatever else that provider's capture recorded (e.g. a `url` and the ids its
-  CLEAR needs). Split it into **fyi** and **junk** by `item.triage`.
+- **The digest queue:** `node <seen-state.js> queue-list <runtime_dir>` → a JSON array of
+  `{ id, source, item }`. Each `item` carries at least `triage` (`fyi` | `junk` | `auto-handle`), `from`,
+  `subject`, and `snippet`, plus whatever else that provider's capture recorded (e.g. a `url` and the ids
+  its CLEAR needs). Split it by `item.triage` into **fyi**, **junk**, and **auto-handle** (the last is
+  what a worker already did on its own — see step 2b).
 - **The stale needs-you items:** `node <seen-state.js> stale-list <runtime_dir> <stale_hours>` → a JSON
   array of `{ id, source, ts, ageHours, item }` for every needs-you item still `dispatched` (never
   cleared) and older than `stale_hours`. These are the reconciliation cases — a worker crashed or was
@@ -53,6 +54,17 @@ miss. Then continue to the queue below.
 If the queue is empty AND there are no stale items AND no provider is stuck (step 0), tell Russell
 there's nothing to digest and stop. A stuck provider alone is still worth reporting — surface it even
 when the queue is otherwise empty.
+
+## 2b. Auto-handled — report what Claude already did (no decision needed)
+
+Items a worker resolved autonomously under a provider **AUTO-HANDLE** rule (e.g. an approved Slack
+workspace invite). The action and the source-clear are **already done** — this section is purely so
+Russell *sees* what happened, never to ask him to act. Present it as a distinct **"Auto-handled"**
+section (separate from fyi), one line each: what was done and the key detail (e.g. "Approved workspace
+invite for *jane@acme.com* (requested by Bob)"). Order most-notable first. On Russell's review these need
+**no provider CLEAR** (the worker already cleared the source) — just `queue-clear` them like the rest
+(step 5). If something here looks wrong — a rule fired when it shouldn't have — flag it so the AUTO-HANDLE
+rule can be tightened; that's the one case where an auto-handled item needs follow-up.
 
 ## 2. fyi — summarize so Russell never has to open the item
 
@@ -81,8 +93,12 @@ clearing action until he chooses.
 ## 5. Present, then clear ONLY on Russell's review
 
 Present the whole digest in the terminal — any stuck-provider health alerts (step 0) at the very top,
-then fyi summaries, grouped junk with stop-proposals, and the stale list — in one readable pass. Then **wait for Russell's go-ahead.** Nothing is disposed of
+then the **Auto-handled** section (step 2b), fyi summaries, grouped junk with stop-proposals, and the
+stale list — in one readable pass. Then **wait for Russell's go-ahead.** Nothing is disposed of
 silently.
+
+For **each auto-handled item** (already actioned + source-cleared by its worker), on his OK just remove
+it from the queue: `node <seen-state.js> queue-clear <runtime_dir> <id>` — no provider CLEAR.
 
 On his OK, for **each fyi/junk item he approves clearing**:
 1. Read the item's `source` and ids from its `items/<id>.json` (or the queue entry).
