@@ -17,6 +17,7 @@
 //   node seen-state.js queue-list  <runtimeDir>                          -> prints the queue as JSON
 //   node seen-state.js queue-clear <runtimeDir> <id>                     -> removes one item from the queue
 //   node seen-state.js stale-list  <runtimeDir> <staleHours>             -> prints needs-you items dispatched-but-uncleared older than staleHours (reconciliation)
+//   node seen-state.js requeue     <runtimeDir> <source> <id>            -> orphan recovery: drop the seen key so the item re-enumerates and re-dispatches a fresh tab
 
 const fs = require('fs');
 const path = require('path');
@@ -150,7 +151,23 @@ function staleList(runtimeDir, staleHours) {
   return out;
 }
 
-module.exports = { isSeen, record, openCount, clear, queueAdd, queueList, queueClear, staleList };
+// Orphan recovery: a worker tab closed or hung without writing <id>.done leaves its item 'dispatched'
+// forever, holding a cap slot. requeue() frees the slot and lets the item re-dispatch fresh by DELETING
+// its seen key, so the next enumerate no longer drops it as already-seen. No retry cap: the natural
+// resolution of a finished item is the worker writing .done, so a re-opened tab converges rather than
+// looping. (A still-relevant source item re-enumerates and re-dispatches; one that's no longer present
+// simply doesn't come back.)
+function requeue(runtimeDir, source, id) {
+  const seen = loadSeen(runtimeDir);
+  if (seen[source] && seen[source][id]) {
+    delete seen[source][id];
+    writeJsonAtomic(seenPath(runtimeDir), seen);
+  }
+}
+
+module.exports = {
+  isSeen, record, openCount, clear, queueAdd, queueList, queueClear, staleList, requeue,
+};
 
 if (require.main === module) {
   const [cmd, ...rest] = process.argv.slice(2);
@@ -187,8 +204,12 @@ if (require.main === module) {
       case 'stale-list':
         console.log(JSON.stringify(staleList(rest[0], rest[1] || 12), null, 2));
         break;
+      case 'requeue':
+        requeue(rest[0], rest[1], rest[2]);
+        console.log(`requeued ${rest[2]}`);
+        break;
       default:
-        throw new Error('Usage: seen-state.js <seen|record|open-count|clear|queue-add|queue-list|queue-clear|stale-list> ...');
+        throw new Error('Usage: seen-state.js <seen|record|open-count|clear|queue-add|queue-list|queue-clear|stale-list|requeue> ...');
     }
   } catch (e) {
     console.error('Error:', e.message);
