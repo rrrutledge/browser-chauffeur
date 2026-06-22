@@ -268,6 +268,7 @@ async function cmdEnumerate(top, unreadOnly) {
   // teams' channels are ignored as noise.
   const [chats, channels] = await Promise.all([fetchChats(top), fetchWatchedChannels(top)]);
   let out = [...chats, ...channels];
+  out = out.filter(c => !c.muted);
   if (unreadOnly) out = out.filter(c => c.unread);
   out.sort((a, b) => String(b.lastMessage.time || '').localeCompare(String(a.lastMessage.time || '')));
   process.stdout.write(JSON.stringify(out, null, 2) + '\n');
