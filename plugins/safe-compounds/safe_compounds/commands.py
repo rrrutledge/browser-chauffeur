@@ -224,7 +224,7 @@ YARN_TRUSTED_SUBCOMMANDS = {
 PIP_TRUSTED_SUBCOMMANDS = {'2>&1', 'check', 'freeze', 'install', 'list', 'show', 'uninstall'}
 PNPM_TRUSTED_SUBCOMMANDS = {'install', 'add', 'update', 'remove', 'list', 'outdated', 'prune'}
 BUN_TRUSTED_SUBCOMMANDS = {'install', 'add', 'update', 'remove', 'test'}
-SCHTASKS_TRUSTED_SUBCOMMANDS = {'/query', '//query'}
+SCHTASKS_TRUSTED_SUBCOMMANDS = {'/query', '//query', '/change', '//change', '/disable', '//disable', '/enable', '//enable', '/delete', '//delete'}
 
 
 # ------------------------------------------------------------------ gh --------
