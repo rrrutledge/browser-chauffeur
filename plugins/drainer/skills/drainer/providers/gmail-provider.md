@@ -83,8 +83,10 @@ rules ban. This read is a gate: it happens before drafting, not as an after-the-
 
 Then write the message text in that voice. The voice loop in the document-authoring skill still applies —
 diff sent-vs-draft after each send and append a lesson. Write the body as HTML to a file, then create the
-draft with `gmail.js` — **never sent**. Show the draft text in the terminal and tell the user to edit +
-send it themselves in Gmail. Pick the mode by who the message goes to:
+draft with `gmail.js` — **never sent** from inside the worker. Show the draft text in the terminal. The
+user reviews it and either edits + sends in Gmail himself, or — back in the top-level interactive session
+— tells Claude to send it, which promotes that exact draft via `gmail.js --send-draft` (see the `gmail`
+skill's **Sending** section). A worker never sends; it only stages. Pick the mode by who the message goes to:
 - **Reply on the thread** (responding to inbound mail): always use `node gmail.js --reply
   --message-id=<messageId> --body-file=<file>` — it sets In-Reply-To/References and appends the quoted
   original, so the draft lands *inside* the conversation in [Gmail]/Drafts. This is what makes the draft

@@ -10,10 +10,16 @@
 //                (<message-id> is the RFC822 Message-ID header, e.g. <abc@mail.gmail.com>)
 // List drafts:   node gmail.js --list-drafts [--top=30]
 // Draft a reply: node gmail.js --reply --message-id=<id> --body-file=reply.html [--attach=a.pdf,b.png]
-//                (appends a DRAFT reply in the thread to [Gmail]/Drafts; never sends)
+//                (appends a DRAFT reply in the thread to [Gmail]/Drafts; never sends; replaces any
+//                 prior draft on the same thread; prints a draft-id for --send-draft)
 // Draft new:     node gmail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.html [--cc=c@z] [--attach=a.pdf,b.png]
-//                (appends a fresh DRAFT to [Gmail]/Drafts; never sends)
+//                (appends a fresh DRAFT to [Gmail]/Drafts; never sends; prints a draft-id)
 //                (--attach takes one path or a comma-separated list; files ride along on the draft)
+// Send a draft:  node gmail.js --send-draft --draft-id=<draft-message-id>
+//                (promotes one already-staged draft: transmits its exact bytes via SMTP, then removes
+//                 it from Drafts — Gmail files the sent copy in Sent. The <draft-message-id> is the
+//                 Message-ID that --reply / --draft-new printed when it staged the draft. SENDS REAL MAIL —
+//                 only invoke on Russ's explicit per-message say-so after he has reviewed that exact draft.)
 // Archive one:   node gmail.js --archive=<message-id>
 //                (removes the message from the inbox but keeps it in All Mail — the way mail is cleared)
 // Auth glance:   node gmail.js --check
@@ -29,6 +35,7 @@ module.paths.push(path.join(os.homedir(), '.claude', 'gmail', 'node_modules'));
 
 const { ImapFlow } = require('imapflow');
 const { simpleParser } = require('mailparser');
+const nodemailer = require('nodemailer');
 const MailComposer = require('nodemailer/lib/mail-composer');
 
 const args = Object.fromEntries(
@@ -148,7 +155,24 @@ async function buildMime({ to, cc, subject, html, inReplyTo, references }) {
     references: references,
   };
   const built = await new MailComposer(mail).compile().build();
-  return built;
+  const m = built.toString('utf8', 0, 4096).match(/^Message-ID:\s*(<[^>]+>)/mi);
+  return { raw: built, messageId: m ? m[1] : null };
+}
+
+async function dropDraftsInThread(c, originalMessageId) {
+  // Before staging a fresh reply, remove any prior \Draft on the same thread so only one draft per
+  // thread ever exists — kills the "opened the wrong (stale) draft" hazard. Matched by the In-Reply-To
+  // header, which every reply draft we build carries (= the original message's Message-ID).
+  const id = stripId(originalMessageId);
+  const lock = await c.getMailboxLock(DRAFTS);
+  try {
+    const uids = await c.search({ header: { 'in-reply-to': id } }, { uid: true });
+    if (uids && uids.length) {
+      await c.messageDelete(uids, { uid: true });
+      return uids.length;
+    }
+    return 0;
+  } finally { lock.release(); }
 }
 
 async function reply(c) {
@@ -171,12 +195,15 @@ async function reply(c) {
     `${orig.html || (orig.text || '').replace(/\n/g, '<br>')}</blockquote>`;
   const refs = [orig.references, orig.messageId].flat().filter(Boolean).join(' ');
   const subject = /^re:/i.test(orig.subject || '') ? orig.subject : `Re: ${orig.subject || ''}`;
-  const raw = await buildMime({
+  const dropped = await dropDraftsInThread(c, orig.messageId);
+  const { raw, messageId } = await buildMime({
     to: orig.from ? orig.from.text : '', subject, html: html + quoted,
     inReplyTo: orig.messageId, references: refs,
   });
   await c.append(DRAFTS, raw, ['\\Draft']);
-  console.log(`Draft reply staged in [Gmail]/Drafts (re: "${clean(subject).slice(0, 60)}"). Review in Gmail; never sent.`);
+  const note = dropped ? ` (replaced ${dropped} prior draft on this thread)` : '';
+  console.log(`Draft reply staged in [Gmail]/Drafts (re: "${clean(subject).slice(0, 60)}")${note}. Review in Gmail; never sent.`);
+  if (messageId) console.log(`draft-id: ${messageId}`);
 }
 
 async function draftNew(c) {
@@ -184,9 +211,42 @@ async function draftNew(c) {
     throw new Error('--draft-new requires --to, --subject, and --body-file');
   }
   const html = fs.readFileSync(args['body-file'], 'utf8');
-  const raw = await buildMime({ to: args.to, cc: args.cc || undefined, subject: args.subject, html });
+  const { raw, messageId } = await buildMime({ to: args.to, cc: args.cc || undefined, subject: args.subject, html });
   await c.append(DRAFTS, raw, ['\\Draft']);
   console.log(`Draft staged in [Gmail]/Drafts to ${args.to}. Review in Gmail; never sent.`);
+  if (messageId) console.log(`draft-id: ${messageId}`);
+}
+
+async function sendDraft(c) {
+  // Promote ONE staged draft to a real send. Transmits the draft's exact bytes via Gmail SMTP, then
+  // removes it from Drafts (Gmail auto-files the sent copy in Sent). This is the only path that emits
+  // real mail — gated upstream on Russ's explicit per-message instruction after he reviewed this draft.
+  if (!args['draft-id']) throw new Error('--send-draft requires --draft-id (the Message-ID printed when the draft was staged)');
+  const id = stripId(args['draft-id']);
+  const lock = await c.getMailboxLock(DRAFTS);
+  let source, uid, parsed;
+  try {
+    const uids = await c.search({ header: { 'message-id': id } }, { uid: true });
+    if (!uids || !uids.length) throw new Error(`No draft with Message-ID <${id}> in [Gmail]/Drafts. Re-stage the draft and use the draft-id it prints.`);
+    uid = uids[uids.length - 1];
+    const msg = await c.fetchOne(String(uid), { source: true }, { uid: true });
+    source = msg.source;
+    parsed = await simpleParser(source);
+  } finally { lock.release(); }
+
+  const rcpt = [...(parsed.to ? parsed.to.value : []), ...(parsed.cc ? parsed.cc.value : [])]
+    .map(a => a.address).filter(Boolean);
+  if (!rcpt.length) throw new Error('Draft has no recipients; refusing to send.');
+
+  const transport = nodemailer.createTransport({
+    host: 'smtp.gmail.com', port: 587, secure: false,
+    auth: { user: USER, pass: PASS },
+  });
+  await transport.sendMail({ envelope: { from: USER, to: rcpt }, raw: source });
+
+  const dlock = await c.getMailboxLock(DRAFTS);
+  try { await c.messageDelete([uid], { uid: true }); } finally { dlock.release(); }
+  console.log(`Sent to ${rcpt.join(', ')} (subject: "${clean(parsed.subject || '').slice(0, 60)}"). Draft removed; copy is in [Gmail]/Sent.`);
 }
 
 async function archive(c) {
@@ -216,8 +276,9 @@ async function check(c) {
     if (args.show) return await show(c);
     if (args.reply) return await reply(c);
     if (args['draft-new']) return await draftNew(c);
+    if (args['send-draft']) return await sendDraft(c);
     if (args.archive) return await archive(c);
     if (args.check) return await check(c);
-    throw new Error('Specify --list-inbox, --list-drafts, --show, --reply, --draft-new, --archive, or --check');
+    throw new Error('Specify --list-inbox, --list-drafts, --show, --reply, --draft-new, --send-draft, --archive, or --check');
   } finally { await c.logout(); }
 })().catch(e => { console.error('Error:', e.message); process.exit(1); });
