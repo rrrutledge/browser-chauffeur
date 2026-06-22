@@ -56,15 +56,18 @@ The adapter writes these; documented here so the worker can rely on the shape:
 
 ## MULTI-MESSAGE THREADS (group and meeting chats)
 
-When `chatType` is `meeting` or `group`, the captured thread may contain multiple recent messages with
-distinct action items. The trigger message (latest/snippet) is not necessarily the only one requiring
-action. Before drafting any reply, scan **all recent messages** in the `.msg.md` for:
-- Direct questions or requests addressed to Russell by name
-- Messages Russell has not yet replied to
+The `.msg.md` file tags each message with `[NEW]` (unread, after the IC3 consumption horizon) or
+`[context]` (already seen). When tags are present:
 
-Treat each as a separate action item and handle all before clearing. Do not let a lower-stakes trigger
-message (e.g., a simple acknowledgment) cause you to overlook an earlier unanswered direct question in
-the same thread.
+- **Treat every `[NEW]` message as a potential action item.** Scan all of them for direct questions or
+  requests addressed to Russell by name — do not stop at the latest one.
+- **Use `[context]` messages for background only.** They are included so you can understand what the
+  `[NEW]` messages are responding to; they do not require action.
+- **If tags are absent** (horizon unavailable), scan all recent messages for unanswered direct questions
+  or requests addressed to Russell by name before clearing.
+
+Do not let a lower-stakes `[NEW]` message (e.g., a simple acknowledgment) cause you to overlook an
+earlier `[NEW]` message that contains a direct question.
 
 ## CLEAR
 **Browser-driven (via `browser-chauffeur`), not REST.** Teams' authoritative `isRead` is not driven by
