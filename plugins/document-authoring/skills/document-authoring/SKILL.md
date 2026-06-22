@@ -21,6 +21,11 @@ Implementation by format:
 - **Teams / Slack**: use the link dialog (Ctrl+K) to anchor the URL to text
 - **Word / email / Markdown / PRs**: anchor the link to natural words
 
+**When previewing a draft for approval, show where each link lands.** A rendered preview hides which
+words carry a link, so the reviewer can't tell what's anchored. Spell it out — show the URL next to its
+anchor text, e.g. "right on my calendar (links to https://calendly.com/russell-rutledge)" — so the
+reviewer sees exactly which words are clickable before approving.
+
 ---
 
 ## Asks
