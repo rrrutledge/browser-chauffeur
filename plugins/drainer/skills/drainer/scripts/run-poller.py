@@ -345,25 +345,25 @@ def _session_guid(runtime_dir, iid):
         return None, None
 
 
-def reconcile_stale(runtime_dir, cfg):
-    """Self-heal orphaned worker tabs that hold a global cap slot forever (closed or hung, never wrote
-    <id>.done). Two signals, both re-queue the item (drop its seen key so the next enumerate re-dispatches
-    a fresh tab, freeing the slot):
+def reconcile_orphans(runtime_dir, cfg):
+    """Self-heal orphaned worker tabs that would hold a global cap slot forever. A worker launches
+    `claude --session-id <guid>` (guid recorded in seeds/<id>.prompt.txt.session); if that process is gone
+    the tab was CLOSED and can never write <id>.done. Re-queue such an item — drop its seen key so the
+    next enumerate re-dispatches a fresh tab, freeing the slot.
 
-      * tab CLOSED (fast) — the worker's claude --session-id process is gone, so it can never finish.
-        Recovered the very next cycle (~one cadence) instead of waiting out the timeout. Guarded by
-        orphan_grace_minutes so a just-launched tab whose process isn't up yet isn't misread as dead.
-      * tab HUNG (backstop) — still dispatched past stale_hours. Catches an open-but-stuck tab that
-        liveness can't (its process is alive, just doing nothing).
-
-    No retry cap — a finished item resolves by the worker writing .done, so a re-opened tab converges; an
-    item no longer present in its source simply doesn't re-enumerate. Sibling of reconcile_done — same
-    place in the cycle, the other half of slot bookkeeping."""
-    try:  # stale-list with 0 hours returns EVERY dispatched needs-you item (with ages), not just old ones
+    Recovery is purely LIVENESS-based: a tab whose process is still running is left alone no matter how
+    long it's been open — it's either being worked or parked waiting for the user, both of which resolve
+    on their own. So there is no time-based timeout; closed-tab detection is the whole signal. A grace
+    window (orphan_grace_minutes) keeps a just-launched tab — whose process / .session file may not be up
+    yet — from being misread as dead. No retry cap: a finished item resolves by the worker writing .done.
+    Sibling of reconcile_done — same place in the cycle, the other half of slot bookkeeping."""
+    live = live_session_ids()
+    if live is None:
+        return 0  # can't see processes this cycle -> reap nothing (fail-safe); recover next cycle instead
+    try:  # stale-list with 0 hours returns EVERY dispatched needs-you item (with ages), the full slate
         dispatched = json.loads(seen_state("stale-list", runtime_dir, "0").stdout or "[]")
     except ValueError:
         dispatched = []
-    live = live_session_ids()  # None -> scan unavailable, skip the liveness fast-path (time-based only)
     grace_s = cfg["orphan_grace_minutes"] * 60
     now = time.time()
     requeued = 0
@@ -371,17 +371,17 @@ def reconcile_stale(runtime_dir, cfg):
         iid, source = r.get("id"), r.get("source")
         if not iid or not source:
             continue
+        guid, smtime = _session_guid(runtime_dir, iid)
+        if guid and guid in live:
+            continue  # process alive -> being worked or parked for the user; never reap an open tab
+        # Not alive (process exited, or the launch left no trackable session). Only reap once it's clearly
+        # past the launch grace, so a tab still spinning up isn't killed. Grace is measured from the
+        # .session file's mtime (launch time) when present, else from the item's dispatch age.
         age_h = r.get("ageHours")
-        timed_out = age_h is None or age_h >= cfg["stale_hours"]
-        dead_tab = False
-        if not timed_out and live is not None:
-            guid, smtime = _session_guid(runtime_dir, iid)
-            if guid and guid not in live and smtime is not None and (now - smtime) >= grace_s:
-                dead_tab = True  # launched > grace ago, process now gone -> the tab was closed
-        if timed_out or dead_tab:
+        launched_ago = (now - smtime) if smtime is not None else (age_h * 3600 if age_h is not None else None)
+        if launched_ago is None or launched_ago >= grace_s:
             seen_state("requeue", runtime_dir, source, iid)
-            why = "timed out" if timed_out else "tab closed"
-            print(f"orphan {iid} ({source}, age {age_h}h, {why}): re-queued for a fresh tab.")
+            print(f"orphan {iid} ({source}): worker tab closed -> re-queued for a fresh tab.")
             requeued += 1
     if requeued:
         print(f"orphan recovery: {requeued} re-queued.")
@@ -424,7 +424,7 @@ def main():
 
     reconcile_done(cfg["runtime_dir"])  # free cap slots for items whose workers finished last cycle
     if not args.dry_run:
-        reconcile_stale(cfg["runtime_dir"], cfg)  # self-heal orphaned tabs (mutates state -> live cycles only)
+        reconcile_orphans(cfg["runtime_dir"], cfg)  # self-heal closed worker tabs (mutates -> live cycles only)
 
     # --- enumerate ALL providers first, accumulate into one global list ---
     # Each provider's enumerate is isolated: a failure (expired creds, IMAP/API blip) is caught,

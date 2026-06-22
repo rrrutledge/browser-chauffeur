@@ -41,21 +41,17 @@ context (its own tab), so context stays bounded and nothing is half-done. The wo
 by writing `items/<id>.done` and clears the source item itself. The poller runs up to `max_open_tabs`
 workers at once (it does not serialize); the cap, not a queue, bounds how many face the user.
 
-- **Orphan self-recovery:** a worker tab closed or hung without writing `.done` would hold a cap slot
-  forever. Each cycle the poller's `reconcile_stale` sweep (sibling of the `.done` reconciliation)
-  **re-queues** such an item — drops its seen key so the next enumerate re-dispatches a fresh tab,
-  freeing the slot — on either of two signals:
-  - **Tab closed (fast):** the worker's `claude --session-id <guid>` process is gone (the guid is written
-    to `seeds/<id>.prompt.txt.session` at launch; the sweep checks it against running processes). A closed
-    tab can never finish, so it's recovered the next cycle rather than waiting out the timeout. A
-    `orphan_grace_minutes` window keeps a just-launched tab whose process isn't up yet from being misread
-    as dead, and if the process scan can't run, the fast-path is skipped (never reaps a live tab on a
-    blind cycle). This is what distinguishes *closed* from *parked waiting for the user* (process alive).
-  - **Tab hung (backstop):** still dispatched past `stale_hours` — catches an open-but-stuck tab whose
-    process is alive but idle, which liveness can't see.
-
-  No retry cap: a finished item resolves by the worker writing `.done`, so a re-opened tab converges, and
-  an item no longer present in its source simply doesn't re-enumerate.
+- **Orphan self-recovery:** a worker tab closed without writing `.done` would hold a cap slot forever.
+  Each cycle the poller's `reconcile_orphans` sweep (sibling of the `.done` reconciliation) detects this
+  by **liveness**: each worker runs `claude --session-id <guid>` (guid written to
+  `seeds/<id>.prompt.txt.session` at launch), so if no running process carries that guid the tab was
+  closed and can never finish. The sweep **re-queues** it — drops its seen key so the next enumerate
+  re-dispatches a fresh tab, freeing the slot. There is **no time-based timeout**: an open tab (process
+  alive) is left alone however long it's been up, because it's either being worked or parked waiting for
+  the user — both resolve on their own. An `orphan_grace_minutes` window keeps a just-launched tab whose
+  process isn't up yet from being misread as dead, and if the process scan can't run the sweep reaps
+  nothing that cycle (never kills a possibly-live tab on a blind cycle). No retry cap: a finished item
+  resolves by the worker writing `.done`, so a re-opened tab converges.
 
 ## Fail-safe, never miss
 
