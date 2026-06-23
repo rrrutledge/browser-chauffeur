@@ -33,7 +33,7 @@ Russell decided in advance — do the action without presenting or waiting, then
 5. **Write `.done` immediately** — `items/<id>.done` with a one-line result (e.g.
    "auto-handled: approved workspace invite for <email>"). There is **no presentation and no
    wait-for-acknowledgment**, because nothing was put in front of Russell — the digest is how he learns
-   it happened. (This is the same "silent resolution writes `.done` at once" rule as §6's exception.)
+   it happened. (Same "silent resolution writes `.done` at once" rule as §6.)
 6. **Close this tab** as your very last step. An auto-handle item has no one to wait for, so a tab left
    open would just sit there reading "finished" until Russell checks it by hand — exactly the
    interruption auto-handle exists to avoid. So terminate the session and close the tab: your launcher
@@ -141,23 +141,22 @@ date / clear without surfacing a tab or beep.
   to lose track. Create a follow-up tracker card (the user's board, per `context.md`) before marking
   done, so it stays visible instead of relying on memory.
 
-Then **present your result to the user and WAIT** — give the final briefing (per §1: restate the
-incoming item, what you did, and any draft you staged) and **yield**. Do NOT write `.done` in that same
-turn. Only after the user has responded — acknowledged they've seen it, given direction, said they sent
-the draft, or told you to drop it — write a one-line result to `items/<id>.done` (e.g. "completed: filed
-ticket #1234 and replied", "skipped: <reason>") as your final step.
+Then **present your result to the user** — give the final briefing (per §1: restate the incoming item,
+what you did, and any draft you staged). **Write `items/<id>.done` proactively as soon as you judge the
+work complete** — the same turn you present is fine; you need not wait for the user to acknowledge. Use a
+one-line result (e.g. "completed: filed ticket #1234 and replied", "skipped: <reason>").
 
 `.done` is your **completion signal**: the keeper reads it next cycle to mark the item cleared in
-seen-state, which **frees a slot under the concurrency cap** so a new needs-you tab can open. Writing it
-only *after* the user engages is deliberate — it means a fresh tab opens once the user has actually dealt
-with this one, not the instant a draft was staged, so tabs never pile up faster than they can be handled.
-(Tab-close can't be detected reliably, so this acknowledged-then-written marker is the advance signal.)
+seen-state, which **frees a slot under the concurrency cap** so a new needs-you tab can open. Free that
+slot early — it costs nothing. Your session stays open after `.done`, so when the user replies with new
+direction you keep working in the same session and update the source/card again as needed; re-writing
+`.done` afterward is harmless. The goal is to keep the queue moving, so a fresh tab can open the moment
+the work looks done rather than waiting on acknowledgment. (Tab-close can't be detected reliably, so
+`.done` is the advance signal.)
 
-**Exception — silent resolutions write `.done` immediately.** An item you resolve WITHOUT surfacing it
-for the user's attention — a pointer you re-triaged to fyi/junk and routed to the digest (§2b), or a
-situational no-op close (nothing to do right now) — needs no acknowledgment: write `.done` at once so it
-doesn't hold a slot. The wait-for-acknowledgment gate applies only when you've genuinely put something in
-front of the user.
+Items you resolve WITHOUT surfacing them for the user's attention — a pointer you re-triaged to fyi/junk
+and routed to the digest (§2b), or a situational no-op close (nothing to do right now) — likewise write
+`.done` at once.
 
 ## 7. Improve the source (don't just hoard facts)
 If the user had to tell you something you could have known, don't just note it — figure out *where it

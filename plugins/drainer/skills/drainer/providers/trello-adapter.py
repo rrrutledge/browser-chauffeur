@@ -275,8 +275,10 @@ class Provider(ProviderBase):
                     "preview": f"[{bname} / {list_name}] {(card.get('desc') or '').strip()[:200]}",
                     "_due_sort": due_dt,
                 })
-        # Oldest-due first; undated last (None sorts after any real datetime).
-        items.sort(key=lambda it: (it["_due_sort"] is None, it["_due_sort"] or now))
+        # Undated first (highest priority — no deadline holding the card back), then dated cards
+        # most-recently-due first. This is also the truncation order: when more than `limit` cards are in
+        # play the lowest-priority (oldest-due) ones are dropped, and they resurface on a later cycle.
+        items.sort(key=lambda it: (it["_due_sort"] is None, it["_due_sort"] or now), reverse=True)
         return items[:limit]
 
     def stable_id(self, item):
