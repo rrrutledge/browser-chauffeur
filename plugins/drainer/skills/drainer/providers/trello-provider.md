@@ -40,7 +40,10 @@ structured comments FIRST; act on that before re-discovering anything. Write `it
 `{ "id","source":"trello","triage":"needs-you","kind":"reply|work","cardId","board","list","name",`
 `"due","url","contacts":[...],"channelLabel":"<Email|Teams|Slack|...>","ts":"<ISO now>" }`
 Then find the relevant **thread** (email / Teams / Slack) for the contact + channel and read it to
-decide the move.
+decide the move. For **email** threads: follow the SITUATIONAL-CHECK guidance in
+`outlook-rest-provider.md` — in particular, search inbox + Archive + **Deleted Items** (paginated),
+because the poller's CLEAR moves handled messages to Deleted Items, so a recent reply may only exist
+there.
 
 **Cache back to the card.** Anything you learn that the next pass would otherwise re-derive — the
 thread deep link, the contact's role/handle, where they are in the outreach, the last message
