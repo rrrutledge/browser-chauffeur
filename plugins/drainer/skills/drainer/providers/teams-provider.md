@@ -35,6 +35,20 @@ sniffed) and the channel is ready. If it errors with "Missing token(s)", Teams w
 in the CDP browser: open `https://teams.microsoft.com/`, confirm signed in, and stop reading Teams until
 the token sniffs clean. Never surface a raw auth error to the user.
 
+## UNRENDERABLE CARDS ("go.skype.com/cards.unsupported")
+When a captured message body is `Card - access it on https://go.skype.com/cards.unsupported`, the
+message is an adaptive card the drainer's REST API cannot render as text. **Do not treat this as
+the content.** Go read the actual card in Teams web:
+
+1. Find the already-open Teams tab (`teams.cloud.microsoft`) in the CDP browser — do NOT open the
+   deep link in a new tab (it lands on a "download the app" wall).
+2. In that tab, click the conversation's name in the left chat list (e.g. "Workday").
+3. Screenshot the conversation — Teams web renders the card visually.
+4. Read the screenshot and triage based on what the card actually says.
+
+Common Workday cards seen this way: time-off approvals (FYI — no action needed), time-off request
+confirmations, manager-approval tasks. Re-triage after reading: most are FYI → route to digest.
+
 ## MEETING RECORDING MESSAGES
 A meeting-recording notification (recording/transcript link or "Meeting ended" summary) is a container —
 see `../engine/triage.md § Containers that hold action items`. Open the meeting's AI notes (via
