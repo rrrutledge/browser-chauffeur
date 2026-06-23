@@ -74,6 +74,16 @@ Russell never needs to open the item itself**: who/what, the substance (not just
 date or number that matters. Link the source with descriptive text per the `document-authoring` voice,
 never a bare URL. Order by what's most worth knowing first.
 
+**Before framing any item as still needing Russell** — an open ask, an awaited reply, anything that
+implies he still owes a response — run that provider's **SITUATIONAL-CHECK** first (search Sent +
+Drafts; read `<providers_dir>/<source>-provider.md` → SITUATIONAL-CHECK). The captured snippet is the
+*original inbound* message, and the conversation has usually moved on. If Russell (or a teammate on his
+behalf) already replied after the captured message, present it as **✅ already handled** or drop it from
+the summary entirely — never list it as a to-do. Summarize as actionable only what the situational
+check confirms is still open. Do not append a speculative "things still to do" list assembled from
+unverified captured snippets — that is exactly how an already-answered thread gets re-surfaced as if it
+needs attention.
+
 ## 3. junk — group by source, each with a source-stop proposal
 
 Group junk by sender/source. For each group, propose **how to stop it arriving again**, following that
