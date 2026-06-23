@@ -51,10 +51,24 @@ designing — see the project's Trello-caching follow-up.)
 
 ## CLEAR (advance the card)
 Only **after** the user confirms they sent/handled the message, advance the card via `trello-outreach`:
-- **nudge** — bump the due date out N days (they haven't replied; follow up later).
+- **nudge** — bump the due date out N days (they haven't replied; follow up later). Use the cadence below.
 - **advance** — move to a later stage + set the next due date (it progressed).
 - **stop** — move to Abandoned + clear the due date (not pursuing).
 Each advance also posts a dated comment recording what happened, so the board reflects reality.
+
+### Nudge cadence
+
+Pick the tier based on how closely the user works with the contact:
+
+**Frequent collaborator** — someone the user works with regularly who would treat this as a normal part of their day:
+- After sending → bump **3 business days**
+- After 1st follow-up (no reply) → bump **1 week**
+
+**Infrequent contact** — someone outside the user's regular workflow, or where this ask isn't part of their day job:
+- After sending → bump **1 week**
+- After 1st follow-up (no reply) → bump **2 weeks**
+
+When unsure, default to infrequent.
 
 If the situational check finds **nothing to do right now** (it's not yet time to follow up, or they
 replied and the user already answered), silently bump the due date and finish — surface no tab.
