@@ -51,10 +51,25 @@ confirmations, manager-approval tasks. Re-triage after reading: most are FYI →
 
 ## MEETING RECORDING MESSAGES
 A meeting-recording notification (recording/transcript link or "Meeting ended" summary) is a container —
-see `../engine/triage.md § Containers that hold action items`. Open the meeting's AI notes (via
-browser-chauffeur) and look for action items assigned to **you**; each becomes its own needs-you item
-(`whatsAsked` = the action-item text). If AI notes exist but none are yours, it's fyi. If no AI notes
-exist, fyi.
+see `../engine/triage.md § Containers that hold action items`. Classify as **needs-you (work)** and follow
+these steps in order:
+
+1. **Open AI notes.** Open the meeting's AI notes via `browser-chauffeur`.
+
+2. **Share notes if Russell is the organizer.** Check the meeting details or recording attribution — if
+   Russell organized the meeting, copy the full AI summary content (summary and action items) and use the
+   `message-draft` skill (`teams` mode) to draft a message into the meeting chat: "Hey everyone, here are
+   the notes from the meeting." then paste the AI notes verbatim — nothing else after. Stage as a draft
+   for Russell's review (standard needs-you draft flow, worker-core step 4).
+
+3. **Extract Russell's action items.** Regardless of who organized, scan the AI notes for action items
+   assigned to Russell. Each action item becomes a separate needs-you item: write a new
+   `items/<recording-id>-ai<N>.json` + `items/<recording-id>-ai<N>.msg.md` for each (using the meeting
+   name + action-item text as subject/body, `source: "teams"`, `triage: "needs-you"`, `kind: "work"`).
+   The poller's next cycle picks these up and spawns worker tabs for them.
+
+4. **No notes or no action items.** If AI notes don't exist or none are assigned to Russell (and Russell
+   is not the organizer), the recording is **fyi** — route to the digest queue and write `.done`.
 
 ## WEEK-IN-REVIEW ANNOUNCEMENTS
 A "WellSky R&D Community" Week-in-Review post (the weekly announcement linking to that week's R&D Weekly
