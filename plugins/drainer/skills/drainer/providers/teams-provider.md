@@ -56,6 +56,12 @@ browser-chauffeur) and look for action items assigned to **you**; each becomes i
 (`whatsAsked` = the action-item text). If AI notes exist but none are yours, it's fyi. If no AI notes
 exist, fyi.
 
+## WEEK-IN-REVIEW ANNOUNCEMENTS
+A "WellSky R&D Community" Week-in-Review post (the weekly announcement linking to that week's R&D Weekly
+Confluence page) is a container pointing to a report worth analyzing — **needs-you (work)**. The work:
+run the `week-in-review-analyzer` skill on the linked Confluence page and present its SkyStage-opportunity
+table. The worker opens the linked doc, runs the analyzer, and surfaces the result; there's no reply to send.
+
 ## CAPTURE (needs-you)
 The adapter writes these; documented here so the worker can rely on the shape:
 - `items/<id>.msg.md` — header block (Chat/From, Type [dm|group|channel|meeting], Latest, Link=`deepLink`)

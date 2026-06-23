@@ -17,9 +17,12 @@ For every inbound item ask both questions before assigning a bucket:
 
 2. **"Is there an advantage to acting NOW?"** — Even when there is an action, ask whether doing it
    immediately matters. Is someone waiting on Russell? Does it keep a conversation moving? Is there a
-   deadline in the next day or two? If yes → **needs-you** (open a worker tab). If the action could
-   wait a day with no consequence to anyone → **fyi** (let the digest surface it). The worker tab is
-   for items where timing matters; the digest handles everything else.
+   deadline in the next day or two — or has a due date Russell owns already arrived or passed (a tracker
+   card, an outreach card, any dated to-do), making this the moment it was queued for? If yes →
+   **needs-you** (open a worker tab). If the action could wait a day with no consequence to anyone →
+   **fyi** (let the digest surface it). The worker tab is for items where timing matters; the digest
+   handles everything else. An owned, now-or-past due date is itself that act-now signal across every
+   source — the due date IS the queue, so a due item is needs-you, not fyi.
 
 **Delivery-failure bounces (MAILER-DAEMON / Postmaster):** always **fyi**. They report that someone's
 email didn't reach Russell; he may eventually want to contact that person another way, but there's no
