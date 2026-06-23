@@ -231,6 +231,7 @@ TRUSTED_SCRIPT_DIRS = [
     '.tmp/', '/.tmp/', '\\.tmp\\',
     '.claude/',
     'plugins/',
+    'scripts/',
 ]
 
 
