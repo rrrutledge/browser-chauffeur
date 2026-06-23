@@ -26,17 +26,16 @@ Run `node mail.js --list-unread --top=1`. If it prints messages (or "No unread m
 signed in. If it errors with "Not signed in" or an auth error, do the `ms-graph` one-time sign-in
 (`node scripts/auth.js` via browser-chauffeur), then retry — never surface the token error to the user.
 
-## SITUATIONAL-CHECK (do this BEFORE drafting any reply)
-The captured item is the original inbound message; the conversation may have moved on since. Read the
-whole thread first: `node mail.js --search="<subject>"` lists every message in the thread newest-first,
-including your own sent replies. Read your latest sent message on the thread and reply only to what is
-still open. If the newest message in the thread is already yours, the ball is in their court — close the
-item with no new draft. This catches the common case where you (or a prior session) already answered.
+## SITUATIONAL-CHECK
+Before drafting anything, read the full thread to see if the conversation has already moved. The
+inbox is drained and emptied by the poller, so recent replies live in **Deleted Items** (where CLEAR
+moves handled messages), not the inbox or Archive. Search all three folders — inbox, Archive, Deleted
+Items — covering both directions (messages from the contact AND your own sent replies), and **paginate
+each fully**; a reply swept since the last drain cycle will only exist in Deleted Items. If the most
+recent message in the thread is already yours, the item is done — close it without a new draft.
 
-**Include Deleted Items in the search.** CLEAR moves handled messages to Deleted Items, so a reply that
-arrived after the item was captured and was subsequently cleared will only exist there. `--search`
-queries the whole mailbox including Deleted Items — confirm the search covers that folder and paginate
-all results; do not stop at the first page.
+*Tool:* `node mail.js --search="<subject>"` — verify this covers Deleted Items and paginate all
+results; do not stop at the first page.
 
 ## CAPTURE (the item shape the worker reads)
 The adapter writes these two files for each dispatched item (`outlook-graph-adapter.py` → `capture`);

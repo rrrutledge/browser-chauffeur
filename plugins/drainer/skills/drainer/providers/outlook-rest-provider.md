@@ -46,11 +46,14 @@ The adapter writes these; documented here so the worker can rely on the shape:
 Before drafting anything, read the full thread to see if the conversation has already moved. The
 inbox is drained and emptied by the poller, so recent replies live in **Deleted Items** (where CLEAR
 moves handled messages), not the inbox or Archive. Search all three folders — inbox, Archive, Deleted
-Items — and **paginate each one** (follow `@odata.nextLink`); a reply swept since the last drain cycle
-will only exist in Deleted Items. Use the `ms-rest` skill's `outlook-core.js` `apiCall` helper to
-query `/me/mailfolders/<folder>/messages` filtered by `receivedDateTime ge <cutoff>`, ordered newest-
-first, and match against the contact's name/address and the thread subject. If the most recent message
-in the thread is already a reply from the user, the item is done — close it without a new draft.
+Items — covering both directions (messages from the contact AND your own sent replies), and **paginate
+each fully** (follow `@odata.nextLink`); a reply swept since the last drain cycle will only exist in
+Deleted Items. If the most recent message in the thread is already yours, the item is done — close it
+without a new draft.
+
+*Tool:* use the `ms-rest` skill's `outlook-core.js` `apiCall` helper to query
+`/me/mailfolders/<folder>/messages` filtered by `receivedDateTime ge <cutoff>`, ordered newest-first,
+matching on the contact's name/address and thread subject.
 
 ## CLEAR
 Run `node <ms-rest>/outlook-mail.js delete <messageId>` (the Outlook REST id from `<id>.json`). Moves
