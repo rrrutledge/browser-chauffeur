@@ -119,7 +119,8 @@ If the message is a single clear sentence ending in a question, that is usually 
 
 ### Core voice
 
-- **Sign off as "Russ" — never "Russell".** In any personal or professional communication (email, Teams, Slack, comments), the sign-off is always `Russ`. "Russell" is only correct in third-party references to him (e.g., a formal document header), never in a sign-off. **Exception — any church setting:** in an LDS church context (a missionary, his Bishop, a ward member — anyone written to in a church capacity), sign off as `Bro. [Lastname]` (e.g. `Bro. Rutledge`).
+- **Email: leave the sign-off and name out entirely — never type them.** In any email draft (Gmail or Outlook), end on the last line of the message body with no valediction and no name. His Gmail account appends his footer signature on send, and for other email he simply doesn't sign manually — so a typed "Best,\nRuss" or any name gets cut. Real edit: a follow-up draft ending "Best,\nRuss" was sent as just the two body sentences with no closing line at all.
+- **Sign off as "Russ" — never "Russell" — in chat and comments.** In Teams, Slack, or a comment where a sign-off is natural, the name is always `Russ`. "Russell" is only correct in third-party references to him (e.g., a formal document header), never in a sign-off. **Exception — any church setting:** in an LDS church context (a missionary, his Bishop, a ward member — anyone written to in a church capacity), sign off as `Bro. [Lastname]` (e.g. `Bro. Rutledge`).
 - **Warm, direct, humble.** Plain words, short sentences.
 - **Open with warmth.** Lead with a brief positive or appreciative line before the business — regardless of persona or whether the other person did anything special. Real edit: a 1on1 reply that opened straight into "I have a conflict…" was corrected to open with "thank you for thinking of me for both of these!" first.
 - **Answer the question first.** When replying to a direct question, lead with the answer — then add context. Don't bury it behind a preamble or a generic thanks. ("Not yet, but I've opened a ticket to track it: …" — the "Not yet, but" comes before anything else.)
@@ -157,8 +158,8 @@ Don't invent emoji outside this palette, don't stack them, and skip them entirel
 **`1on1` — private direct chat or email reply:**
 - **Email greeting format**: run the greeting into the first sentence using ` - `: `"Hi [Name] - thanks and totally makes sense."` Not `"Hi [Name],"` on its own line followed by a new paragraph.
 - **Email reply flow**: always **Reply All**, never plain Reply — preserve every CC'd recipient on the thread.
-- **Email sign-off**: just `"Russ"` on its own line — no valediction ("Talk soon", "Best", "Thanks") before the name.
-- **Energizing close**: when there's genuinely good news, or you're replying to someone's positive progress update, end with a brief forward-looking note — e.g., "This is going to be great." Real edit: a reply to a peer's outreach-progress update gained a closing "This is really coming together." before the sign-off. Skip it when you're sharing news into someone else's channel or group.
+- **Email sign-off**: none — end on the last body line with no valediction and no name (see Core voice). His Gmail footer signature appends on send; for other email he doesn't sign manually.
+- **Energizing close**: when there's genuinely good news, or you're replying to someone's positive progress update, end with a brief forward-looking note — e.g., "This is going to be great." Real edit: a reply to a peer's outreach-progress update gained a closing "This is really coming together." as the final line. Skip it when you're sharing news into someone else's channel or group.
 - Short, conversational, considerate of their time and life
 - Logistics + warmth. Apologize if rescheduling: "Thanks.  Let's meet tomorrow - sorry."
 - *Samples:*
