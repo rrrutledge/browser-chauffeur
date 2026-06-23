@@ -304,13 +304,15 @@ def spawn_worker(iid, json_file, repo, runtime_dir, worker_model):
             f"drainer worker procedure at `{worker_core}` for the single captured item at\n"
             f"`{json_file}`.\nThe item's `source` field names the provider — read "
             f"`{PROVIDERS_DIR}/<source>-provider.md` for its CLEAR and DRAFT-MODE and use them. "
-            "Draft-only: never send or post. When the work is complete, present your result to the "
-            "user and WAIT for their acknowledgment (they've seen it and replied) before you write "
-            f"`{json_file[:-5]}.done` last and stop — do NOT write it in the same turn you present. "
-            "Writing .done frees a concurrency slot, so deferring it until the user engages keeps new "
-            "tabs from piling up faster than they can be handled. (Items you resolve WITHOUT surfacing "
-            "to the user — junk routed to the digest, or a situational no-op close — get .done "
-            "immediately, since they never opened for the user's attention.)\n"
+            "Draft-only: never send or post. When you judge the item's work complete, present your "
+            "result to the user and write "
+            f"`{json_file[:-5]}.done` proactively in that same turn — write it as soon as you think "
+            "you're done, without waiting for the user to acknowledge. Freeing the concurrency slot "
+            "early costs nothing: this session stays open after .done, so if the user replies with new "
+            "direction (a changed decision, a draft rewrite, more work) you just keep going and update "
+            "the source again as needed — re-writing .done later is harmless. (Items you resolve "
+            "WITHOUT surfacing to the user — junk routed to the digest, or a situational no-op close — "
+            "get .done immediately too.)\n"
             "If the item's `triage` field is `auto-handle`, follow worker-core's auto-handle BRANCH "
             "instead: execute the standing rule autonomously, CLEAR the source, queue a digest entry, "
             "and write .done IMMEDIATELY — no presentation, no wait. Then CLOSE THIS TAB as your very "
@@ -497,22 +499,49 @@ def main():
         print("0 new items across all sources. Nothing to dispatch.")
         return
 
-    # --- one combined triage call over all sources ---
-    prov = {p.name: p for p in providers}  # name -> adapter (also used below for cross-source dispatch)
-    verdicts = triage(all_new, repo, cfg["local_dir"], cfg["triage_model"], prov)
+    # --- deterministic pre-triage: Trello cards with a due date are always needs-you ---
+    # The adapter only enumerates cards due now-or-earlier, so a non-null due means the card's
+    # moment has arrived — the triage rubric says "the due date IS the queue."  Skip the AI call
+    # for these; it's a tautology that the model sometimes gets wrong.
+    pre_triaged = []
+    ai_triage = []
     for it in all_new:
+        if it["_source"] == "trello" and it.get("due"):
+            it["_bucket"], it["_kind"] = "needs-you", "work"
+            it["_complexity"] = "simple"
+            pre_triaged.append(it)
+        else:
+            ai_triage.append(it)
+
+    # --- one combined triage call over all sources (remaining items) ---
+    prov = {p.name: p for p in providers}  # name -> adapter (also used below for cross-source dispatch)
+    if ai_triage:
+        verdicts = triage(ai_triage, repo, cfg["local_dir"], cfg["triage_model"], prov)
+    else:
+        verdicts = {}
+    for it in ai_triage:
         v = verdicts.get(it["_id"], {"bucket": "needs-you", "kind": "reply"})  # unjudged -> act (fail-safe)
         it["_bucket"], it["_kind"] = v.get("bucket", "needs-you"), v.get("kind")
         it["_complexity"] = v.get("complexity", "simple")
+    if pre_triaged:
+        print(f"  {len(pre_triaged)} trello card(s) with due date -> needs-you (deterministic, skipped AI)")
 
     # --- global open count across ALL sources ---
     global_oc = sum(open_count(s) for s in seen_by_source.values())
 
-    # --- split: needs-you (newest-first globally), auto-handle (own worker, no cap), others (digest) ---
+    # --- split: needs-you (globally ordered), auto-handle (own worker, no cap), others (digest) ---
+    # Ordering across ALL sources: an undated Trello card is the highest priority of all (it has no
+    # deadline holding it back, so it should be worked first), ranking above every email / Slack / dated
+    # card. Everything else then sorts by its date, most-recent first — newest email / most-recently-due
+    # card leads. The two-part key with reverse=True puts undated-Trello (True) ahead of the rest (False),
+    # then orders each group by `received` descending.
+    def _needs_key(it):
+        undated_trello = it.get("_source") == "trello" and not it.get("due")
+        return (undated_trello, it.get("received") or "")
     needs = sorted(
         (it for it in all_new if it["_bucket"] == "needs-you"),
-        key=lambda it: it.get("received") or "",
-        reverse=True,  # newest first; items missing received sort last via ""
+        key=_needs_key,
+        reverse=True,
     )
     # auto-handle items get a worker tab too (they need a browser to act), but the worker executes
     # autonomously and writes .done immediately — so they self-clear fast and are NOT counted against the
