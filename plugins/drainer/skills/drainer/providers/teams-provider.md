@@ -58,10 +58,9 @@ these steps in order:
 
 2. **Share notes if Russell is the organizer.** Check the meeting details or recording attribution — if
    Russell organized the meeting, copy the full AI summary content (summary and action items) and use the
-   `message-draft` skill (`teams` mode) to draft a message into the meeting chat with this intro:
-   "Hey everyone, here are the notes from the meeting. This includes the AI summary content and the AI
-   action items." followed by the copied content. Stage as a draft for Russell's review (standard
-   needs-you draft flow, worker-core step 4).
+   `message-draft` skill (`teams` mode) to draft a message into the meeting chat: "Hey everyone, here are
+   the notes from the meeting." then paste the AI notes verbatim — nothing else after. Stage as a draft
+   for Russell's review (standard needs-you draft flow, worker-core step 4).
 
 3. **Extract Russell's action items.** Regardless of who organized, scan the AI notes for action items
    assigned to Russell. Each action item becomes a separate needs-you item: write a new
