@@ -40,7 +40,13 @@ structured comments FIRST; act on that before re-discovering anything. Write `it
 `{ "id","source":"trello","triage":"needs-you","kind":"reply|work","cardId","board","list","name",`
 `"due","url","contacts":[...],"channelLabel":"<Email|Teams|Slack|...>","ts":"<ISO now>" }`
 Then find the relevant **thread** (email / Teams / Slack) for the contact + channel and read it to
-decide the move.
+decide the move. For **email** threads, follow the SITUATIONAL-CHECK guidance in the matching
+provider doc and search the whole mailbox in both directions (incoming from the contact AND your sent
+replies) — recent messages may have been swept out of the inbox by a prior drain cycle:
+- **outlook-rest / outlook-graph**: search inbox + Archive + **Deleted Items** (paginated) — CLEAR
+  moves handled messages to Deleted Items.
+- **gmail**: search All Mail with no `in:` filter — CLEAR archives (not trashes), so everything is
+  in All Mail.
 
 **Cache back to the card.** Anything you learn that the next pass would otherwise re-derive — the
 thread deep link, the contact's role/handle, where they are in the outreach, the last message
