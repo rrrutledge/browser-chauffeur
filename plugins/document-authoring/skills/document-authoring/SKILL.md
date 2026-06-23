@@ -34,6 +34,7 @@ reviewer sees exactly which words are clickable before approving.
 
 - **Name the concrete need, not the options.** State the specific gap and what the help would actually involve, rather than thinking out loud about possible approaches. Real edit: a draft offering "two directions we're considering: live sessions or recorded reruns…" plus a 3-part numbered question list was cut to one question ("who could help facilitate these sessions?") and one ask ("Can you share your feedback and help us with finding a facilitator?").
 - If you genuinely have options to resolve, pick the one you'd recommend and ask about that — let the reader counter if they disagree, rather than handing them the whole menu.
+- **Flag a request buried after a lot of content with a light lead-in.** When the ask comes at the end of a long, information-dense message, prefix it with a short humble flag so it doesn't get lost — Russell's go-to is "One small ask - ". Real edit: a compliance email closing that read "Could you restore our wire and ACH access…" was sent as "One small ask - could you restore our wire and ACH access…".
 
 ---
 

@@ -111,10 +111,16 @@ full rubric in `engine/triage.md`:
 - **Presence-gated** — away/locked → exit cheaply, do nothing (`scripts/presence.py`).
 - **Idle runs make no window and no noise** — a surface appears only for an item to handle or a sign-in.
 - **One interval** for all sources, set for the fastest-arriving one; cheap sources ride along.
-- Registered once via `scripts/install-schedule.ps1` (a Scheduled Task running `run-poller.py`).
+- Registered once via `scripts/install-schedule.ps1` (a Scheduled Task running the poller).
 - **The slow loop is a second task** — `scripts/install-digest-schedule.ps1` registers a once-a-day
-  task running `scripts/run-digest.py`, which opens one **interactive** digest tab
+  task running the digest, which opens one **interactive** digest tab
   (`engine/digest-core.md`). Unlike the silent poller, the digest is visible and clears nothing until
   the user reviews it. It also runs the **reconciliation sweep**: any needs-you item still
   dispatched-but-uncleared past `stale_hours` is re-surfaced so a crashed or abandoned worker doesn't
   fall through the cracks.
+- **Version-independent** — both installers copy `scripts/launch-drainer.py` to a stable path
+  (`~/.claude/drainer/`) and register the tasks against that launcher rather than the versioned cache
+  script. At each run the launcher resolves the installed drainer version (from
+  `installed_plugins.json`, falling back to the highest semver in the cache) and execs that version's
+  `run-poller.py` / `run-digest.py`. A routine `claude plugin update` is picked up automatically — the
+  tasks are only re-registered if the launcher itself changes.
