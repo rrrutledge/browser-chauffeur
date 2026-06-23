@@ -16,6 +16,10 @@ id prefix: `outlook-rest-`; body file: `<id>.email.md`.
 > ms-graph/MSAL. It reads whatever account is signed into Outlook web (so it suits a work mailbox that
 > has no personal Graph app).
 
+**Shared email rules:** See `email-provider.md` for CAPTURE shape, SITUATIONAL-CHECK decision logic,
+DRAFT-MODE voice rules, and JUNK-LEARNING priority order. This file covers only the REST-specific
+mechanisms.
+
 ## Config (in `.claude/drainer.local.md` → `providers.outlook-rest`)
 No config — `outlook-rest: {}`. Auth is a bearer token the `ms-rest` skill sniffs from the live Outlook
 web session (signed in as yourself; no tenant baked in) and caches at `~/.claude/drainer/.tmp/outlook-token.json`.
@@ -31,29 +35,33 @@ needs a signed-in tab to sniff from: open `https://outlook.office.com/mail/` (or
 `https://outlook.cloud.microsoft/mail/`) in the browser-chauffeur browser, confirm signed in, and
 stop reading mail until the token sniffs clean. Never surface a raw auth error to the user.
 
-## CAPTURE (needs-you)
-The adapter writes these; documented here so the worker can rely on the shape:
-- `items/<id>.email.md` — header block (From, Received, Link=`webLink`, MessageId) + the full body.
-- `items/<id>.json`:
-  `{ "id","source":"outlook-rest","triage":"needs-you","kind":"reply|work|work-then-reply","from",`
-  `"subject","received","snippet","url":"<webLink>","messageId":"<Outlook REST id>",`
-  `"emailFile":"<abs path to .email.md>","ts":"<ISO now>" }`
+## SITUATIONAL-CHECK mechanism
+The inbox is drained and emptied by the poller, so recent replies live in **Deleted Items** (where CLEAR
+moves handled messages), not the inbox or Archive. Search all three folders — inbox, Archive, Deleted
+Items — covering both directions and **paginating each fully** (follow `@odata.nextLink`). Use the
+`ms-rest` skill's `outlook-core.js` `apiCall` helper to query
+`/me/mailfolders/<folder>/messages` filtered by `receivedDateTime ge <cutoff>`, ordered newest-first,
+matching on the contact's name/address and thread subject.
 
-  `messageId` is the Outlook REST id — CLEAR and `get` need it. (`id` is the stable slug; `messageId`
-  is the API handle. Both are persisted.)
+## CAPTURE
+See `email-provider.md` for the shared two-file shape. REST-specific: `messageId` is the Outlook REST
+id (opaque API handle). Both `id` (stable slug) and `messageId` (API handle) are persisted in the JSON.
 
 ## CLEAR
-Run `node <ms-rest>/outlook-mail.js delete <messageId>` (the Outlook REST id from `<id>.json`). Moves
-the message to Deleted Items (reversible). Narrate each deletion with a one-line reason. Used by the
-worker's ADVANCE step and the digest's dispose step.
+`node <ms-rest>/outlook-mail.js delete <messageId>` — moves the message to **Deleted Items**
+(reversible; narrate it). Never a permanent purge.
 
-## JUNK-LEARNING
-Propose an **Outlook rule** (a sender/subject/body match that files or deletes the class going forward)
-so this junk stops arriving. Prefer extending an existing rule bucket over a new standalone rule.
-Propose, never apply without the user's OK. (The live rule list is the Outlook Rules UI, not this file.)
+## JUNK-LEARNING (step 3 — Outlook work mailbox-specific)
+After exhausting unsubscribe and source-app options (see `email-provider.md`): propose an **Outlook
+rule** (a sender/subject/body match that files or deletes the class going forward). Prefer extending an
+existing rule bucket over a new standalone rule. Describe the rule for the user to add via the Outlook
+Rules UI.
 
-## DRAFT-MODE
-`message-draft` skill, `outlook` mode — which composes via `ms-rest`'s `create-reply` / `create-draft`
-(same REST token as read/delete). The draft lands un-sent in **Drafts** with clickable links and the
-quoted original below the new text; the user reviews and sends. Apply the `document-authoring` voice to
-the body before creating the draft. Never auto-send (`send-draft` is gated behind an explicit OK).
+## DRAFT-MODE CLI commands
+Follow all voice and reply-vs-fresh rules in `email-provider.md`, then use these `ms-rest` REST commands:
+
+- **Reply-all on the thread:** `node <ms-rest>/outlook-mail.js create-reply <messageId> --json <path>`
+  — creates the reply draft in **Drafts** with the quoted original below the new text and all To+CC
+  recipients preserved. Thread off the most recent message (see `email-provider.md`). JSON: `{ "comment": "<p>HTML body</p>" }`.
+- **Fresh note:** `node <ms-rest>/outlook-mail.js create-draft --json <path>` — JSON:
+  `{ "subject", "body": "<p>HTML</p>", "to": ["addr"], "cc": [], "bodyType": "HTML" }`.
