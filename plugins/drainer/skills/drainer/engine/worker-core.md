@@ -71,7 +71,10 @@ names one) before asking the user directly.
 The captured item is the inbound message, but the user may have replied after it was captured. If
 the user's most recent message on the thread is already a reply to this sender, the item is done —
 close it without a new draft. Each provider's SITUATIONAL-CHECK describes how to pull the full
-thread for that source.
+thread for that source. **When you DO draft (a reply or a follow-up nudge), thread it off the most
+recent message in the thread — even when that latest message is one the user sent.** A follow-up
+answers where the conversation actually stands, so quote and thread on the newest message, not an
+older inbound one; provider DRAFT-MODE notes how to target a sent message.
 
 ## 2b. If the item is a pointer, open the real content yourself
 If your item is a **notification that points to content living elsewhere** — a LinkedIn/Facebook

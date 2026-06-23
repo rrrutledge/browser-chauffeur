@@ -11,7 +11,9 @@
 // List drafts:   node gmail.js --list-drafts [--top=30]
 // Draft a reply: node gmail.js --reply --message-id=<id> --body-file=reply.html [--attach=a.pdf,b.png]
 //                (appends a DRAFT reply in the thread to [Gmail]/Drafts; never sends; replaces any
-//                 prior draft on the same thread; prints a draft-id for --send-draft)
+//                 prior draft on the same thread; prints a draft-id for --send-draft. <id> is looked up
+//                 in the inbox and All Mail — pass the most recent message in the thread, even one the
+//                 user sent; a reply to the user's own message keeps its recipients instead of self.)
 // Draft new:     node gmail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.html [--cc=c@z] [--attach=a.pdf,b.png]
 //                (appends a fresh DRAFT to [Gmail]/Drafts; never sends; prints a draft-id)
 //                (--attach takes one path or a comma-separated list; files ride along on the draft)
@@ -159,17 +161,23 @@ async function buildMime({ to, cc, subject, html, inReplyTo, references }) {
   return { raw: built, messageId: m ? m[1] : null };
 }
 
-async function dropDraftsInThread(c, originalMessageId) {
+async function dropDraftsInThread(c, threadIds) {
   // Before staging a fresh reply, remove any prior \Draft on the same thread so only one draft per
-  // thread ever exists — kills the "opened the wrong (stale) draft" hazard. Matched by the In-Reply-To
-  // header, which every reply draft we build carries (= the original message's Message-ID).
-  const id = stripId(originalMessageId);
+  // thread ever exists — kills the "opened the wrong (stale) draft" hazard. A reply draft's In-Reply-To
+  // is the message it answers, so match against EVERY message-id in the thread (the full references
+  // chain) — that way switching which message we reply to still clears an earlier draft on the thread.
+  const ids = (Array.isArray(threadIds) ? threadIds : [threadIds]).map(stripId).filter(Boolean);
   const lock = await c.getMailboxLock(DRAFTS);
   try {
-    const uids = await c.search({ header: { 'in-reply-to': id } }, { uid: true });
-    if (uids && uids.length) {
-      await c.messageDelete(uids, { uid: true });
-      return uids.length;
+    const found = new Set();
+    for (const id of ids) {
+      const uids = await c.search({ header: { 'in-reply-to': id } }, { uid: true });
+      (uids || []).forEach(u => found.add(u));
+    }
+    if (found.size) {
+      const arr = [...found];
+      await c.messageDelete(arr, { uid: true });
+      return arr.length;
     }
     return 0;
   } finally { lock.release(); }
@@ -199,17 +207,26 @@ async function reply(c) {
     `${orig.html || (orig.text || '').replace(/\n/g, '<br>')}</blockquote>`;
   const refs = [orig.references, orig.messageId].flat().filter(Boolean).join(' ');
   const subject = /^re:/i.test(orig.subject || '') ? orig.subject : `Re: ${orig.subject || ''}`;
-  const dropped = await dropDraftsInThread(c, orig.messageId);
-  // Reply-all: To = original sender; CC = all original To+CC recipients except the sending address
-  const allRecips = [
-    ...(orig.to ? orig.to.value : []),
-    ...(orig.cc ? orig.cc.value : []),
-  ].map(a => a.address).filter(a => a && a.toLowerCase() !== USER.toLowerCase());
+  const dropped = await dropDraftsInThread(c, refs.split(/\s+/));
+  // Pick recipients by who wrote the message we're answering:
+  // - normal reply (someone else's message): To = its sender; CC = its other To+CC recipients.
+  // - follow-up to our OWN sent message (the most-recent message is ours): keep its recipients, so the
+  //   nudge goes to the people we wrote to (To/CC) rather than back to ourselves.
+  const fromSelf = orig.from && orig.from.value.some(
+    a => a.address && a.address.toLowerCase() === USER.toLowerCase());
+  const to = fromSelf
+    ? (orig.to ? fromList(orig.to.value) : '')
+    : (orig.from ? orig.from.text : '');
+  const ccSource = fromSelf
+    ? (orig.cc ? orig.cc.value : [])
+    : [...(orig.to ? orig.to.value : []), ...(orig.cc ? orig.cc.value : [])];
+  const allRecips = ccSource
+    .map(a => a.address).filter(a => a && a.toLowerCase() !== USER.toLowerCase());
   const ccList = args.cc
     ? [...new Set([args.cc, ...allRecips])].join(', ')
     : allRecips.join(', ');
   const { raw, messageId } = await buildMime({
-    to: orig.from ? orig.from.text : '', cc: ccList || undefined, subject, html: html + quoted,
+    to, cc: ccList || undefined, subject, html: html + quoted,
     inReplyTo: orig.messageId, references: refs,
   });
   await c.append(DRAFTS, raw, ['\\Draft']);

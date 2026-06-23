@@ -46,7 +46,10 @@ Under `scripts/` (run with `node`):
     angle brackets, e.g. `<abc@mail.gmail.com>`)
   - List drafts: `node gmail.js --list-drafts [--top=30]`
   - Draft reply (never sends): `node gmail.js --reply --message-id=<id> --body-file=reply.html`
-    (appends a threaded draft to `[Gmail]/Drafts` with In-Reply-To/References set + the quoted original)
+    (appends a threaded draft to `[Gmail]/Drafts` with In-Reply-To/References set + the quoted original).
+    `<id>` is looked up in both the **inbox and All Mail**, so pass the **most recent** message in the
+    thread to thread off — even one the user sent. When that message is the user's own, the reply keeps its recipients (To/CC)
+    instead of addressing back to the user; otherwise it's a reply-all to the sender + other recipients.
   - Draft new (never sends): `node gmail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.html [--cc=c@z]`
     (`--reply` and `--draft-new` each print a `draft-id:` line — the staged draft's Message-ID. That id
     is what `--send-draft` takes. `--reply` also replaces any prior draft on the same thread, so a thread
@@ -84,8 +87,9 @@ the app password is wrong/revoked or IMAP is disabled — re-mint the app passwo
 ## Notes
 
 - The load-bearing identifier is the **Message-ID header** (`id` in `--json`): pass it to `--show`,
-  `--reply`, and `--archive`. Lookups search the INBOX for that header, so it stays valid as
-  long as the message is in the inbox.
+  `--reply`, and `--archive`. `--show` and `--archive` look the header up in the **INBOX** (valid while
+  the message is in the inbox); `--reply` looks it up in the **inbox and All Mail**, so it can thread off
+  any message in the thread — inbox, archived, or sent.
 - Drafts (`--reply` / `--draft-new`) land in **[Gmail]/Drafts**. They go out only via `--send-draft` on
   Russ's explicit say-so (see **Sending**); otherwise he reviews and sends in Gmail himself.
 - Gmail's special folders are addressed as `[Gmail]/Drafts` and `[Gmail]/All Mail`.
