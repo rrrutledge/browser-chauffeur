@@ -97,6 +97,8 @@ If the message is a single clear sentence ending in a question, that is usually 
 
 - **Name the specific thing, not the category.** Replace vague nouns with the concrete one: "token cost" not just "cost", "the deploy" not just "it". Real edit: draft said "having the cost front and center" → sent said "having the token cost front and center."
 
+- **First-touch outreach: keep the ask to one low-commitment thing, and warm the reference to their past work.** When re-opening contact after a long gap, ask for a single easy yes rather than stacking asks, and affirm that their earlier contribution still matters rather than just name-checking it. Real edits (a cold-ish Summit sponsorship email to a past speaker): "interested in attending and/or speaking?" → "interested in attending?" (dropped the heavier speaking ask); after referencing his old community-call talk, he added "It is still a topic that comes up in the community."
+
 ### Never do these (AI-tells that break the voice)
 
 - No corporate/AI filler: "I hope this message finds you well", "I wanted to reach out", "Please don't hesitate to", "As per", "Kindly", "Furthermore", "Moreover", "delve", "leverage" (as a verb), "streamline", "I'm excited to share"
