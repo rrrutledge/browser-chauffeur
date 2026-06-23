@@ -33,6 +33,11 @@ including your own sent replies. Read your latest sent message on the thread and
 still open. If the newest message in the thread is already yours, the ball is in their court — close the
 item with no new draft. This catches the common case where you (or a prior session) already answered.
 
+**Include Deleted Items in the search.** CLEAR moves handled messages to Deleted Items, so a reply that
+arrived after the item was captured and was subsequently cleared will only exist there. `--search`
+queries the whole mailbox including Deleted Items — confirm the search covers that folder and paginate
+all results; do not stop at the first page.
+
 ## CAPTURE (the item shape the worker reads)
 The adapter writes these two files for each dispatched item (`outlook-graph-adapter.py` → `capture`);
 this is the shape the worker can rely on:
