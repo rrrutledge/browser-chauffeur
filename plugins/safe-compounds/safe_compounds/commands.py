@@ -168,7 +168,7 @@ GIT_TRUSTED_SUBCOMMANDS = {
     'check-ignore', 'check-attr', 'check-ref-format', 'check-mailmap',
     'range-diff', 'patch-id', 'var', 'help', 'interpret-trailers', 'index-pack',
     # reversible writes (the effect can be undone)
-    'add', 'commit', 'rm', 'stash', 'fetch', 'pull', 'merge', 'rebase', 'revert', 'cherry-pick',
+    'add', 'commit', 'mv', 'rm', 'stash', 'fetch', 'pull', 'merge', 'rebase', 'revert', 'cherry-pick',
     'worktree', 'config', 'init', 'clone', 'update-ref',
 }
 
