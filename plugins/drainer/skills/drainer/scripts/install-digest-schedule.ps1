@@ -36,7 +36,10 @@ if (-not (Test-Path $stableDir)) { New-Item -ItemType Directory -Path $stableDir
 $launcher = Join-Path $stableDir 'launch-drainer.py'
 Copy-Item -Path (Join-Path $scriptDir 'launch-drainer.py') -Destination $launcher -Force
 
-$action = New-ScheduledTaskAction -Execute 'python' `
+# Find python.exe with full path (Task Scheduler doesn't inherit user PATH)
+$python = & (Join-Path $scriptDir 'Find-Python.ps1') -Executable 'python'
+
+$action = New-ScheduledTaskAction -Execute $python `
     -Argument ('"' + $launcher + '" --mode digest --repo "' + $RepoDir + '"')
 
 $trigger = New-ScheduledTaskTrigger -Daily -At $At
