@@ -186,6 +186,7 @@ Don't invent emoji outside this palette, don't stack them, and skip them entirel
 
 **`announcement` — broad post to a group or channel:**
 - Open with "Hey folks/everyone/guys"
+- **When sharing news or status, open with the candid first-person account — what happened and how you found it — not a packaged framing line.** Lead with the honest story, then the facts; skip "I'd rather you hear it from me" / "wanted to give you a heads-up" editorializing. Real edit (a compliance update to the board): a draft opening "Hey everyone, Wanted to give you a heads-up on a few compliance items I've been working through… I'd rather you hear the full picture from me" was sent as "Hey everyone - in the past few days by surprise I became aware of a number of compliance issues for the InnerSource Commons. I found one and as I followed the trail and investigated I found more and more. I think I've set in motion recovery for all of them, but I want you to have visibility to our current state. This report is informational-only - I don't have a specific ask at this point." The greeting also runs into the first sentence with " - ".
 - State what you did or want, then a tight bulleted list of specifics if needed, then a low-pressure call for feedback
 - End with what happens next + "let me know"
 - *Samples:*
