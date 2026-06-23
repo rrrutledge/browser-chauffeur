@@ -25,12 +25,19 @@ if ($Remove) {
 }
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$poller = Join-Path $scriptDir 'run-poller.py'
 
-# pythonw (no console) so the recurring cycle runs silently in the background — no black window flash
+# Install the version-independent launcher to a STABLE path outside the versioned
+# plugin cache, then point the task at it. The launcher resolves whichever drainer
+# version is installed at run time, so routine plugin updates need no re-registration.
+$stableDir = Join-Path $env:USERPROFILE '.claude\drainer'
+if (-not (Test-Path $stableDir)) { New-Item -ItemType Directory -Path $stableDir -Force | Out-Null }
+$launcher = Join-Path $stableDir 'launch-drainer.py'
+Copy-Item -Path (Join-Path $scriptDir 'launch-drainer.py') -Destination $launcher -Force
+
+# pythonw (no console) so the recurring cycle runs silently in the background -- no black window flash
 # every interval. The visible worker tabs come from wt.exe and are unaffected.
 $action = New-ScheduledTaskAction -Execute 'pythonw' `
-    -Argument ('"' + $poller + '" --repo "' + $RepoDir + '"')
+    -Argument ('"' + $launcher + '" --mode poller --repo "' + $RepoDir + '"')
 
 $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) `
     -RepetitionInterval (New-TimeSpan -Minutes $IntervalMinutes)
