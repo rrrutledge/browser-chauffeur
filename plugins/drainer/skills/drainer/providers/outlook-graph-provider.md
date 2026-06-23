@@ -13,72 +13,47 @@ id prefix: `outlook-graph-`; body file: `<id>.email.md`.
 > This is the API counterpart to the browser `outlook-provider.md` (which is for **enterprise** Outlook
 > on the web). Use this one for a personal Microsoft account: it's cheaper, faster, and browser-free.
 
+**Shared email rules:** See `email-provider.md` for CAPTURE shape, SITUATIONAL-CHECK decision logic,
+DRAFT-MODE voice rules, and JUNK-LEARNING priority order. This file covers only the Graph-specific
+mechanisms.
+
 ## Config (in `.claude/drainer.local.md` → `providers.outlook-graph`)
 No config — you sign in once via `ms-graph`. Credentials: `GRAPH_CLIENT_ID` / `GRAPH_CLIENT_SECRET` in
 the environment (used by `ms-graph`); the MSAL token cache is machine-local at
 `~/.claude/ms-graph/token-cache.json`.
 
-The `ms-graph` `mail.js` lives at
-`<ms-graph-skill>/scripts/mail.js` — run it with `node`.
+The `ms-graph` `mail.js` lives at `<ms-graph-skill>/scripts/mail.js` — run it with `node`.
 
 ## AUTH-GLANCE
 Run `node mail.js --list-unread --top=1`. If it prints messages (or "No unread messages."), you're
 signed in. If it errors with "Not signed in" or an auth error, do the `ms-graph` one-time sign-in
 (`node scripts/auth.js` via browser-chauffeur), then retry — never surface the token error to the user.
 
-## SITUATIONAL-CHECK
-Before drafting anything, read the full thread to see if the conversation has already moved. The
-inbox is drained and emptied by the poller, so recent replies live in **Deleted Items** (where CLEAR
+## SITUATIONAL-CHECK mechanism
+The inbox is drained and emptied by the poller, so recent replies live in **Deleted Items** (where CLEAR
 moves handled messages), not the inbox or Archive. Search all three folders — inbox, Archive, Deleted
-Items — covering both directions (messages from the contact AND your own sent replies), and **paginate
-each fully**; a reply swept since the last drain cycle will only exist in Deleted Items. If the most
-recent message in the thread is already yours, the item is done — close it without a new draft.
+Items — covering both directions and **paginating each fully**. Use `node mail.js --search="<subject>"`
+— verify it covers Deleted Items and do not stop at the first page.
 
-*Tool:* `node mail.js --search="<subject>"` — verify this covers Deleted Items and paginate all
-results; do not stop at the first page.
-
-## CAPTURE (the item shape the worker reads)
-The adapter writes these two files for each dispatched item (`outlook-graph-adapter.py` → `capture`);
-this is the shape the worker can rely on:
-- `items/<id>.email.md` — header block (From, Received, Link, MessageId) + the full body text (from
-  `mail.js --show=<messageId>`).
-- `items/<id>.json` — `{ "id","source":"outlook-graph","triage","kind","from","subject","received",`
-  `"snippet","url":"<webLink>","messageId":"<Graph id>","emailFile":"<abs path>","ts" }`.
-
-`messageId` is the load-bearing field — the worker needs it for the reply draft and for CLEAR.
+## CAPTURE
+See `email-provider.md` for the shared two-file shape. Graph-specific: `messageId` is the opaque Graph
+message id.
 
 ## CLEAR
 `node mail.js --delete=<messageId>` — moves the message to **Deleted Items** (reversible; narrate it).
-This is the email "gone." Never a permanent purge.
+Never a permanent purge.
 
-## JUNK-LEARNING
-Stop this junk arriving again, in **priority order** (best outcome = never received) — propose, never
-apply without the user's OK:
-1. **Unsubscribe** — if the message carries an unsubscribe link (a `List-Unsubscribe` header or a footer
-   link), propose using it. This is the cleanest stop.
-2. **Turn it off at the source app** — if there's no unsubscribe but the sender is an app whose
-   notifications the user controls (GitHub notification settings, LinkedIn email preferences, …),
-   propose adjusting that app's settings so the email is never sent.
-3. **Outlook.com inbox rule** — only when neither above applies, fall back to a rule (Settings → Rules:
-   a sender/subject match that deletes or files the sender going forward). Graph can create rules via
-   `/me/mailFolders/inbox/messageRules`; until that's wired into `mail.js`, describe the rule for the
-   user to add.
+## JUNK-LEARNING (step 3 — Outlook.com-specific)
+After exhausting unsubscribe and source-app options (see `email-provider.md`): propose an **Outlook.com
+inbox rule** (Settings → Rules: a sender/subject match that deletes or files the sender going forward).
+Graph can create rules via `/me/mailFolders/inbox/messageRules`; until that's wired into `mail.js`,
+describe the rule for the user to add.
 
-## DRAFT-MODE
-**First, before writing a single word of the body: invoke the `document-authoring` skill (call the Skill
-tool to load it) and read its Conversational writing + "Never do these" sections. Compose the draft
-against what you just read — do not write from memory.** The skill is the single source of truth for
-Russell's voice and its hard rules; a draft composed from memory reliably leaks the very tokens those
-rules ban. This read is a gate: it happens before drafting, not as an after-the-fact check.
+## DRAFT-MODE CLI commands
+Follow all voice and reply-vs-fresh rules in `email-provider.md`, then use these Graph commands:
 
-Then write the message text in that voice. The voice loop in the document-authoring skill still applies —
-diff sent-vs-draft after each send and append a lesson. Write the body as HTML to a file, then create the
-draft with `mail.js` — **never sent**. Show
-the draft text in the terminal and tell the user to edit + send it themselves. Pick the mode by who the
-message goes to:
-- **Reply on the thread** (responding to inbound mail): `node mail.js --reply --message-id=<messageId>
-  --body-file=<file>` — a reply-all draft in the thread. Include the quoted original per
-  `~/.claude/CLAUDE.md` (Graph's reply-all keeps the thread quote below your text automatically).
-- **Fresh 1:1 (or small-group) note** (e.g. an outreach nudge to one contact — do NOT reply-all a group
-  thread to single someone out): `node mail.js --draft-new --to="<addr>" --subject="<subj>"
-  --body-file=<file> [--cc="<addrs>"]`.
+- **Reply-all on the thread:** `node mail.js --reply --message-id=<messageId> --body-file=<file>`
+  — Graph's reply-all keeps the thread quote below your text automatically and preserves all To+CC
+  recipients. Thread off the most recent message (see `email-provider.md`).
+- **Fresh note:** `node mail.js --draft-new --to="<addr>" --subject="<subj>" --body-file=<file>
+  [--cc="<addrs>"]`
