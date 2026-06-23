@@ -53,14 +53,9 @@ Mail** (reversible; narrate it). This is the email "handled and out of the inbox
 searchable in All Mail with no Trash purge timer. Archiving, not trashing, is the drainer's clear: a
 drained item has been dealt with, not discarded.
 
-**Order matters when you're also drafting a reply:** stage the threaded reply draft (DRAFT-MODE below)
-*before* you archive the original. `--reply` reads the original out of the inbox to thread on and quote it,
-so once the message has left the inbox a reply can no longer thread. If the original was already cleared (a
-prior session archived it, or you cleared it first), move it from All Mail back to the inbox before replying,
-then archive it again after the draft is staged:
-```js
-// .tmp restore helper — search [Gmail]/All Mail by Message-ID, messageMove(uid, 'INBOX')
-```
+`--reply` looks the original up in both the **inbox and All Mail**, so it can thread and quote whether the
+message is still in the inbox or has already been archived — archive order relative to drafting no longer
+matters, and an already-cleared original needs no inbox restore.
 
 ## JUNK-LEARNING
 Stop this junk arriving again, in **priority order** (best outcome = never received) — propose, never
@@ -93,8 +88,14 @@ skill's **Sending** section). A worker never sends; it only stages. Pick the mod
   the conversation in [Gmail]/Drafts and preserves every recipient. This is what makes the draft
   openable and editable in Gmail's compose box at the bottom of the thread. A draft made with `--draft-new`
   carries no threading headers — Gmail shows it as a floating duplicate that's awkward to open — so never
-  fall back to `--draft-new` for a reply. The original must be in the inbox for `--reply` to work; if it's
-  already in All Mail, restore it first (see CLEAR), reply, then re-archive.
+  fall back to `--draft-new` for a reply.
+  - **Thread off the MOST RECENT message in the thread — pass *its* `messageId`, even when that last
+    message is one the user sent.** A follow-up/nudge answers where the conversation actually stands, so
+    quote and thread on the latest message, not the older inbound one. `--reply` searches **All Mail**, so
+    a sent message is a valid `--message-id`; when the original was authored by the user it keeps the same
+    recipients (To/CC) instead of addressing the reply back to the user. (Get the latest message-id from the
+    sent-thread search in SITUATIONAL-CHECK.) Because `--reply` reads from All Mail, the original needs no
+    inbox restore — reply directly whether it sits in the inbox or has already been archived.
 - **Fresh 1:1 (or small-group) note** (e.g. an outreach nudge to one contact — do NOT reply-all a group
   thread to single someone out): `node gmail.js --draft-new --to="<addr>" --subject="<subj>"
   --body-file=<file> [--cc="<addrs>"]`.
