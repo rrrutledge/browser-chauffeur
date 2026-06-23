@@ -34,9 +34,12 @@ if (-not (Test-Path $stableDir)) { New-Item -ItemType Directory -Path $stableDir
 $launcher = Join-Path $stableDir 'launch-drainer.py'
 Copy-Item -Path (Join-Path $scriptDir 'launch-drainer.py') -Destination $launcher -Force
 
+# Find pythonw.exe with full path (Task Scheduler doesn't inherit user PATH)
+$pythonw = & (Join-Path $scriptDir 'Find-Python.ps1') -Executable 'pythonw'
+
 # pythonw (no console) so the recurring cycle runs silently in the background -- no black window flash
 # every interval. The visible worker tabs come from wt.exe and are unaffected.
-$action = New-ScheduledTaskAction -Execute 'pythonw' `
+$action = New-ScheduledTaskAction -Execute $pythonw `
     -Argument ('"' + $launcher + '" --mode poller --repo "' + $RepoDir + '"')
 
 $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) `
