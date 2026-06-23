@@ -497,13 +497,32 @@ def main():
         print("0 new items across all sources. Nothing to dispatch.")
         return
 
-    # --- one combined triage call over all sources ---
-    prov = {p.name: p for p in providers}  # name -> adapter (also used below for cross-source dispatch)
-    verdicts = triage(all_new, repo, cfg["local_dir"], cfg["triage_model"], prov)
+    # --- deterministic pre-triage: Trello cards with a due date are always needs-you ---
+    # The adapter only enumerates cards due now-or-earlier, so a non-null due means the card's
+    # moment has arrived — the triage rubric says "the due date IS the queue."  Skip the AI call
+    # for these; it's a tautology that the model sometimes gets wrong.
+    pre_triaged = []
+    ai_triage = []
     for it in all_new:
+        if it["_source"] == "trello" and it.get("due"):
+            it["_bucket"], it["_kind"] = "needs-you", "work"
+            it["_complexity"] = "simple"
+            pre_triaged.append(it)
+        else:
+            ai_triage.append(it)
+
+    # --- one combined triage call over all sources (remaining items) ---
+    prov = {p.name: p for p in providers}  # name -> adapter (also used below for cross-source dispatch)
+    if ai_triage:
+        verdicts = triage(ai_triage, repo, cfg["local_dir"], cfg["triage_model"], prov)
+    else:
+        verdicts = {}
+    for it in ai_triage:
         v = verdicts.get(it["_id"], {"bucket": "needs-you", "kind": "reply"})  # unjudged -> act (fail-safe)
         it["_bucket"], it["_kind"] = v.get("bucket", "needs-you"), v.get("kind")
         it["_complexity"] = v.get("complexity", "simple")
+    if pre_triaged:
+        print(f"  {len(pre_triaged)} trello card(s) with due date -> needs-you (deterministic, skipped AI)")
 
     # --- global open count across ALL sources ---
     global_oc = sum(open_count(s) for s in seen_by_source.values())
