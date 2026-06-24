@@ -499,14 +499,16 @@ def main():
         print("0 new items across all sources. Nothing to dispatch.")
         return
 
-    # --- deterministic pre-triage: Trello cards with a due date are always needs-you ---
-    # The adapter only enumerates cards due now-or-earlier, so a non-null due means the card's
-    # moment has arrived — the triage rubric says "the due date IS the queue."  Skip the AI call
-    # for these; it's a tautology that the model sometimes gets wrong.
+    # --- deterministic pre-triage: every active Trello card is always needs-you ---
+    # The adapter only enumerates cards in play — due now-or-earlier, or with no due date at all. A
+    # due card's moment has arrived ("the due date IS the queue"); an undated card is on the board
+    # precisely because it needs a look — at minimum to give it a date — so it must not be sidelined
+    # to the digest. Either way the answer is needs-you, so skip the AI call: it's a tautology the
+    # model sometimes gets wrong (it mis-filed undated cards to fyi).
     pre_triaged = []
     ai_triage = []
     for it in all_new:
-        if it["_source"] == "trello" and it.get("due"):
+        if it["_source"] == "trello":
             it["_bucket"], it["_kind"] = "needs-you", "work"
             it["_complexity"] = "simple"
             pre_triaged.append(it)
@@ -524,7 +526,7 @@ def main():
         it["_bucket"], it["_kind"] = v.get("bucket", "needs-you"), v.get("kind")
         it["_complexity"] = v.get("complexity", "simple")
     if pre_triaged:
-        print(f"  {len(pre_triaged)} trello card(s) with due date -> needs-you (deterministic, skipped AI)")
+        print(f"  {len(pre_triaged)} trello card(s) -> needs-you (deterministic, skipped AI)")
 
     # --- global open count across ALL sources ---
     global_oc = sum(open_count(s) for s in seen_by_source.values())
