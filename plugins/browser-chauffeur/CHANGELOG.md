@@ -34,7 +34,7 @@ Makes `connectOverCDP` reliable on the persistent profile by addressing the root
 ### Changed
 - SKILL.md prerequisite check replaced with `node setup.js` — self-healing, no manual `npm install` needed.
 - README prerequisite section corrected: removed the incorrect "Requires the playwright MCP plugin" instruction. `playwright-core` is handled automatically.
-- HELPERS.md setup section rewritten: removed the hardcoded `npm link` and WellSky-specific path instructions; describes the auto-install mechanism instead.
+- HELPERS.md setup section rewritten: removed the hardcoded `npm link` and environment-specific path instructions; describes the auto-install mechanism instead.
 
 ## [1.6.0] - 2026-05-28
 
