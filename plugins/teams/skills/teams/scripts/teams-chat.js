@@ -63,8 +63,8 @@ const SELF_NAME = process.env.DRAINER_SELF_NAME || 'Russell Rutledge';
 // Every other team's channels are intentionally ignored (the rest are noise). Channels within this
 // team are matched by their parent-team space id (threadProperties.spaceId), or the General channel
 // which IS the team space id itself. Overridable via env for other setups.
-const WATCHED_TEAM_SPACE = process.env.DRAINER_TEAMS_WATCHED_TEAM_ID || '19:c261eaa13f5f4e1f9cae87078e4a046a@thread.skype';
-const WATCHED_TEAM_NAME = process.env.DRAINER_TEAMS_WATCHED_TEAM_NAME || 'WellSky R&D Community';
+const WATCHED_TEAM_SPACE = process.env.DRAINER_TEAMS_WATCHED_TEAM_ID || '';
+const WATCHED_TEAM_NAME = process.env.DRAINER_TEAMS_WATCHED_TEAM_NAME || 'R&D Community';
 
 function decodeJwt(tok) {
   try { return JSON.parse(Buffer.from(tok.split('.')[1], 'base64').toString('utf8')); }
