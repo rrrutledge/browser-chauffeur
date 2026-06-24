@@ -66,7 +66,7 @@ designing — see the project's Trello-caching follow-up.)
 
 ## INITIATIVE-LOOKUP
 Many outreach cards share one program — the user is following up with many people to onboard them to
-the same initiative — so a card like "Okta / Brett Wessling" carries no per-card context of its own.
+the same initiative — so a card like "Acme Corp / Jane Doe" carries no per-card context of its own.
 The initiative supplies the **content** (what the program is, why it matters, the ask); the generic
 STAGE-PLAYBOOK below supplies the **activity** for the card's current column. Resolve and load once,
 before drafting:
@@ -106,8 +106,8 @@ not in any initiative doc. Map the card's list onto a phase and use that intent;
   `skip_lists`; only surfaces if not skipped.)
 - **Abandoned** — not pursuing; no outreach.
 
-A board whose column names don't match these maps onto the nearest phase by intent (e.g. Russell's
-Tracker "Awareness Scheduled" → the awareness/informing phase). When a card's phase implies "nothing to
+A board whose column names don't match these maps onto the nearest phase by intent (e.g. an
+"Awareness Scheduled" column → the awareness/informing phase). When a card's phase implies "nothing to
 send right now," follow the silent-bump guidance in CLEAR rather than surfacing a tab.
 
 ## CLEAR (advance the card)
