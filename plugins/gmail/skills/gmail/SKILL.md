@@ -50,6 +50,8 @@ Under `scripts/` (run with `node`):
     `<id>` is looked up in both the **inbox and All Mail**, so pass the **most recent** message in the
     thread to thread off — even one the user sent. When that message is the user's own, the reply keeps its recipients (To/CC)
     instead of addressing back to the user; otherwise it's a reply-all to the sender + other recipients.
+  - **The `--body-file` is HTML** — both `--reply` and `--draft-new` insert it into the message's HTML body
+    verbatim, so write it as HTML, not plain text.
   - Draft new (never sends): `node gmail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.html [--cc=c@z]`
     (`--reply` and `--draft-new` each print a `draft-id:` line — the staged draft's Message-ID. That id
     is what `--send-draft` takes. `--reply` also replaces any prior draft on the same thread, so a thread
