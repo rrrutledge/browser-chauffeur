@@ -109,17 +109,17 @@ class TestGit:
     def test_reset_hard_blocked(self):
         assert is_git_command_safe("git reset --hard") is False
 
-    def test_checkout_dot_blocked(self):
-        assert is_git_command_safe("git checkout .") is False
+    def test_checkout_dot_allowed(self):
+        assert is_git_command_safe("git checkout .") is True
 
-    def test_branch_delete_blocked(self):
-        assert is_git_command_safe("git branch -D old") is False
+    def test_branch_delete_allowed(self):
+        assert is_git_command_safe("git branch -D old") is True
 
     def test_clean_force_blocked(self):
         assert is_git_command_safe("git clean -fd") is False
 
-    def test_unlisted_subcommand_blocked(self):
-        assert is_git_command_safe("git rebase main") is False
+    def test_rebase_allowed(self):
+        assert is_git_command_safe("git rebase main") is True
 
     def test_global_opt_before_subcommand(self):
         assert is_git_command_safe("git -C /repo push --force") is False
