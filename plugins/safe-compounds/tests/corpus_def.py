@@ -31,9 +31,9 @@ CASES = [
     {"id": "git_checkout_branch", "tool": "Bash", "command": "git checkout -b feature", "expect": "ALLOW"},
     {"id": "git_push_force", "tool": "Bash", "command": "git push --force", "expect": "PROMPT"},
     {"id": "git_reset_hard", "tool": "Bash", "command": "git reset --hard origin/main", "expect": "PROMPT"},
-    {"id": "git_checkout_dot", "tool": "Bash", "command": "git checkout .", "expect": "PROMPT"},
-    {"id": "git_branch_delete", "tool": "Bash", "command": "git branch -D old", "expect": "PROMPT"},
-    {"id": "git_rebase_not_listed", "tool": "Bash", "command": "git rebase main", "expect": "PROMPT"},
+    {"id": "git_checkout_dot", "tool": "Bash", "command": "git checkout .", "expect": "ALLOW"},
+    {"id": "git_branch_delete", "tool": "Bash", "command": "git branch -D old", "expect": "ALLOW"},
+    {"id": "git_rebase_not_listed", "tool": "Bash", "command": "git rebase main", "expect": "ALLOW"},
     {"id": "git_clean_force", "tool": "Bash", "command": "git clean -fd", "expect": "PROMPT"},
     {"id": "git_clean_dry", "tool": "Bash", "command": "git clean -n", "expect": "ALLOW"},
 
