@@ -44,9 +44,6 @@ class Provider(ProviderBase):
         self.skip_lists = {"abandoned", "finished", "adopted", "templates"}
         self.channels = []
         self.features = []
-        # A Trello label in this color (hardcoded yellow) marks the card's initiative — its name
-        # → slug → an initiatives/<slug>.md doc the worker reads.
-        self.initiative_color = "yellow"
         # Board name → default initiative slug (from a board's `initiative:` field in the registry);
         # applies to every card on that board when no per-card initiative label is present.
         self.board_initiatives = {}
@@ -220,12 +217,12 @@ class Provider(ProviderBase):
     def _classify_labels(self, card):
         """Split a card's labels into (channelLabel, features, contacts, initiativeLabel).
 
-        A label whose COLOR is the configured initiative color is the card's initiative (its name is
-        returned as initiativeLabel and held out of contacts, so an initiative label is never mistaken
-        for a contact name). Remaining labels classify by the label_vocab as before."""
+        A yellow label is the card's initiative (its name is returned as initiativeLabel and held out
+        of contacts, so an initiative label is never mistaken for a contact name). Remaining labels
+        classify by the label_vocab as before."""
         labels = card.get("labels", [])
         initiative = next((l.get("name") for l in labels
-                           if (l.get("color") or "").lower() == self.initiative_color and l.get("name")),
+                           if (l.get("color") or "").lower() == "yellow" and l.get("name")),
                           None)
         names = [l.get("name") for l in labels if l.get("name") and l.get("name") != initiative]
         channel = next((n for n in names if n in self.channels), None)
