@@ -5,13 +5,39 @@ Each source the poller drives ships a `providers/<name>-adapter.py` next to its 
 `stable_id` + `capture`. `run-poller.py` loads these dynamically — no provider mechanics live in the
 poller itself. This module is the small shared surface (subprocess + slug helpers + the interface).
 """
+import ctypes
 import re
 import subprocess
+import threading
 
 # Suppress the brief console window each child process would otherwise flash when the poller runs
 # under pythonw (no parent console). 0 on non-Windows. The visible worker tabs are spawned via wt.exe
 # separately and are unaffected.
 NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
+
+def spawn_tab(args, cwd):
+    """Open a Windows Terminal tab (via spawn-tab.cmd) without stealing focus.
+
+    Windows Terminal claims focus asynchronously after the process starts, so we save the current
+    foreground window before the Popen and restore it ~800 ms later in a background thread — long
+    enough for WT to finish activating, short enough to feel instant.
+    """
+    try:
+        user32 = ctypes.windll.user32
+        prev = user32.GetForegroundWindow()
+    except AttributeError:
+        prev = None
+    subprocess.Popen(["cmd", "/c", *args], cwd=cwd, creationflags=NO_WINDOW)
+    if prev:
+        def _restore():
+            import time
+            time.sleep(0.8)
+            try:
+                ctypes.windll.user32.SetForegroundWindow(prev)
+            except Exception:
+                pass
+        threading.Thread(target=_restore, daemon=True).start()
 
 
 class ProviderError(Exception):

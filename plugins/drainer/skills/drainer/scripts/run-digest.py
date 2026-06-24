@@ -24,7 +24,7 @@ SKILL_DIR = os.path.dirname(SCRIPT_DIR)
 PROVIDERS_DIR = os.path.join(SKILL_DIR, "providers")
 sys.path.insert(0, SCRIPT_DIR)
 from drainer_config import read_config  # noqa: E402  (shared .claude/drainer.local.md reader)
-from provider_base import run_node, NO_WINDOW  # noqa: E402  (shared subprocess helper + console-hide flag)
+from provider_base import run_node, NO_WINDOW, spawn_tab  # noqa: E402  (shared subprocess helper + console-hide flag)
 
 SEEN_STATE = os.path.join(SCRIPT_DIR, "seen-state.js")
 
@@ -119,9 +119,7 @@ def main():
 
     prompt_file = write_seed(runtime_dir, repo, cfg)
     spawn_cmd = os.path.join(SCRIPT_DIR, "spawn-tab.cmd")
-    # Same spawn path as a worker tab: a visible wt.exe tab; CREATE_NO_WINDOW only hides the cmd shim.
-    subprocess.Popen(["cmd", "/c", spawn_cmd, "drain:digest", repo, prompt_file, cfg["digest_model"]],
-                     cwd=repo, creationflags=NO_WINDOW)
+    spawn_tab([spawn_cmd, "drain:digest", repo, prompt_file, cfg["digest_model"]], cwd=repo)
     print(f"Opened digest tab (model {cfg['digest_model']}) for {runtime_dir}.")
 
 
