@@ -44,6 +44,13 @@ class Provider(ProviderBase):
         self.skip_lists = {"abandoned", "finished", "adopted", "templates"}
         self.channels = []
         self.features = []
+        # A label in this Trello color marks the card's initiative (its name → slug → an
+        # initiatives/<slug>.md doc the worker reads). Overridable via drainer.local.md
+        # providers.trello.initiative_label_color. Stored lowercased.
+        self.initiative_color = "yellow"
+        # Board name → default initiative slug (from a board's `initiative:` field in the registry);
+        # applies to every card on that board when no per-card initiative label is present.
+        self.board_initiatives = {}
 
     # --------------------------------------------------------------- locate the trello-outreach helper
     @staticmethod
@@ -119,6 +126,9 @@ class Provider(ProviderBase):
                 self.skip_lists = {s.lower() for s in skip}
             self.channels = self._parse_inline_list(block, "channels")
             self.features = self._parse_inline_list(block, "features")
+            color = self._parse_scalar(block, "initiative_label_color")
+            if color:
+                self.initiative_color = color.lower()
         # Boards: the shared registry is authoritative; drainer.local.md's boards block is the fallback.
         boards = []
         try:
@@ -130,23 +140,29 @@ class Provider(ProviderBase):
             boards = self._parse_boards(block)
         if boards:
             self.boards = boards
+            self.board_initiatives = {
+                b["name"]: b["initiative"] for b in boards if b.get("initiative")}
 
     @staticmethod
     def _parse_registry(text):
         """Parse `<repo>/trello-boards.yaml` — a `boards:` list of board items, each a `- name:` at
         two-space indent with an `id:` field at four-space indent. Anchoring on those exact indents
         keeps the parse robust against deeper nested fields (per-board `purpose`, `template_cards`, …)
-        without needing a full YAML library (none ships with the poller's stdlib runtime)."""
+        without needing a full YAML library (none ships with the poller's stdlib runtime). The
+        optional four-space `initiative:` field is captured as a board's default initiative slug."""
         boards, cur = [], None
         for line in text.splitlines():
             m_name = re.match(r"^  -\s*name\s*:\s*(.+?)\s*$", line)
             m_id = re.match(r"^    id\s*:\s*(.+?)\s*$", line)
+            m_init = re.match(r"^    initiative\s*:\s*(.+?)\s*$", line)
             if m_name:
                 if cur:
                     boards.append(cur)
                 cur = {"name": m_name.group(1).strip().strip('"\'')}
             elif m_id and cur is not None and "id" not in cur:
                 cur["id"] = m_id.group(1).strip().strip('"\'')
+            elif m_init and cur is not None and "initiative" not in cur:
+                cur["initiative"] = m_init.group(1).strip().strip('"\'')
         if cur:
             boards.append(cur)
         return [b for b in boards if b.get("id")]
@@ -204,14 +220,30 @@ class Provider(ProviderBase):
             return []
         return [x.strip().strip('"\'') for x in inner.split(",") if x.strip()]
 
+    @staticmethod
+    def _parse_scalar(block, key):
+        """Parse a scalar `key: value` from the block (returns None if absent/empty)."""
+        m = re.search(rf"^\s*{re.escape(key)}\s*:\s*(.+?)\s*$", block, re.MULTILINE)
+        if not m:
+            return None
+        return m.group(1).strip().strip('"\'') or None
+
     # --------------------------------------------------------------- label classification
     def _classify_labels(self, card):
-        """Split a card's labels into (channelLabel, features, contacts) using the label_vocab."""
-        names = [l.get("name") for l in card.get("labels", []) if l.get("name")]
+        """Split a card's labels into (channelLabel, features, contacts, initiativeLabel).
+
+        A label whose COLOR is the configured initiative color is the card's initiative (its name is
+        returned as initiativeLabel and held out of contacts, so an initiative label is never mistaken
+        for a contact name). Remaining labels classify by the label_vocab as before."""
+        labels = card.get("labels", [])
+        initiative = next((l.get("name") for l in labels
+                           if (l.get("color") or "").lower() == self.initiative_color and l.get("name")),
+                          None)
+        names = [l.get("name") for l in labels if l.get("name") and l.get("name") != initiative]
         channel = next((n for n in names if n in self.channels), None)
         feats = [n for n in names if n in self.features]
         contacts = [n for n in names if n not in self.channels and n not in self.features]
-        return channel, feats, contacts
+        return channel, feats, contacts, initiative
 
     @staticmethod
     def _due_dt(due):
@@ -255,7 +287,12 @@ class Provider(ProviderBase):
                 # In play: due now-or-earlier (overdue counts) OR no due date at all.
                 if due_dt is not None and due_dt > now:
                     continue
-                channel, feats, contacts = self._classify_labels(card)
+                channel, feats, contacts, initiative_label = self._classify_labels(card)
+                # A per-card initiative label wins over the board's default initiative. The slug is the
+                # initiative label's name slugified (→ initiatives/<slug>.md); board defaults are already
+                # slugs in the registry.
+                initiative = slug(initiative_label, 60) if initiative_label \
+                    else self.board_initiatives.get(bname)
                 who = ", ".join(contacts) if contacts else bname
                 items.append({
                     "cardId": card["id"],
@@ -268,6 +305,7 @@ class Provider(ProviderBase):
                     "channelLabel": channel,
                     "features": feats,
                     "contacts": contacts,
+                    "initiative": initiative,
                     # Triage payload fields (mirror the inbox adapters):
                     "from": who,
                     "subject": card.get("name", ""),
@@ -303,6 +341,7 @@ class Provider(ProviderBase):
                     f"Due: {item.get('due') or '(none)'}\n"
                     f"Channel: {item.get('channelLabel') or '(none)'}\n"
                     f"Contacts: {', '.join(item.get('contacts') or []) or '(none)'}\n"
+                    f"Initiative: {item.get('initiative') or '(none)'}\n"
                     f"Link: {item.get('url')}\nCardId: {item['cardId']}\n\n"
                     f"## Description\n\n{item.get('desc') or '(empty)'}\n\n## Comments\n\n{comments}\n")
         record = {
@@ -310,7 +349,8 @@ class Provider(ProviderBase):
             "kind": item.get("_kind"), "cardId": item["cardId"], "board": item.get("board"),
             "list": item.get("list"), "name": item.get("name"), "due": item.get("due"),
             "url": item.get("url"), "contacts": item.get("contacts") or [],
-            "channelLabel": item.get("channelLabel"), "bodyFile": body_file,
+            "channelLabel": item.get("channelLabel"), "initiative": item.get("initiative"),
+            "bodyFile": body_file,
             "ts": datetime.now(timezone.utc).isoformat(),
         }
         json_file = os.path.join(items_dir, f"{iid}.json")

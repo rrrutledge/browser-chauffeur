@@ -15,17 +15,24 @@ rides the single schedule with no special cadence. All Trello reads and mutation
     extracts boards by a fixed indent convention rather than full YAML — each board is `  - name:` at
     **two-space** indent with its `    id:` at **four-space** indent. Keep that shape. Any deeper
     per-board fields (`purpose`, `template_cards`, …) are free-form and ignored by the drainer.
-- **Initiatives** — an optional `initiatives:` block in the same `trello-boards.yaml` maps an
-  initiative slug → a `label` plus a `source` (one pointer — a URL *or* a repo-relative markdown path)
-  and an optional inline `summary:`. A card belongs to an initiative two ways (a card tag wins over the board default): a board-level `initiative: <slug>` field
-  (every card on that board inherits it — best when the whole board is one program), or a per-card
-  Trello label whose name matches an initiative `label` (best for mixed boards). See INITIATIVE-LOOKUP
-  for how the worker loads the content, and STAGE-PLAYBOOK for the generic per-stage activity. This
-  block is read by the worker, not the poller adapter — keep its shape free of a four-space `id:` line
-  so the board parser ignores it.
+- **Initiatives** — shared outreach programs many cards belong to. The **registry is the
+  `initiatives/` folder** in the repo: one `initiatives/<slug>.md` per program (a file existing ⇒ the
+  initiative exists — no central list to maintain). The file either holds the content inline or, via a
+  `source:` frontmatter pointer, redirects to where the content lives (a Confluence/other URL). See
+  `initiatives/_TEMPLATE.md` for the shape. A card is tagged with an initiative two ways (a per-card
+  tag wins over the board default):
+  - **Per-card** — a Trello **label in the initiative color** (`initiative_label_color`, default
+    `yellow`). The adapter resolves it: label name → slug → `initiatives/<slug>.md`. The colored label
+    is held out of contact classification, so it's never mistaken for a contact name.
+  - **Board default** — an `initiative: <slug>` field on a board entry in `trello-boards.yaml` (every
+    card on that board inherits it — best when the whole board is one program). The four-space
+    `initiative:` field is parsed by the adapter alongside `id`.
+  The adapter writes the resolved slug as `initiative` on the item. See INITIATIVE-LOOKUP for loading
+  the content and STAGE-PLAYBOOK for the generic per-stage activity.
 - Drainer knobs in `.claude/drainer.local.md` → `providers.trello`:
   - `skip_lists` — terminal/parking lists to ignore (e.g. Abandoned, Finished, Adopted, Templates).
   - `label_vocab` — `{channels: [...], features: [...]}`; any label not in those is a contact name.
+  - `initiative_label_color` — the Trello label color that marks a card's initiative (default `yellow`).
 Credentials: `TRELLO_API_KEY` / `TRELLO_TOKEN` in the environment (used by `trello-outreach`).
 
 ## AUTH-GLANCE
@@ -39,7 +46,8 @@ stable id: `trello-<card-name-slug>-<last6 of cardId>-<dueYYYYMMDD|nodue>`. The 
 id on purpose: a card recurs every follow-up cycle (CLEAR bumps its due date out), and seen-state keeps
 a drained id forever, so without the due stamp a card would be marked seen on its first drain and never
 resurface when its next due date arrives. Parse each card's labels with `label_vocab` into channel /
-features / contacts so the worker knows where the conversation lives.
+features / contacts so the worker knows where the conversation lives, and resolve the card's
+`initiative` (the initiative-colored label's slug, else the board default).
 
 ## CAPTURE (needs-you)
 The card itself is the item, and **we own it** — unlike inbound mail/Teams, the same card recurs every
@@ -47,7 +55,7 @@ follow-up, so the card is a durable cache for everything needed to act. Read its
 structured comments FIRST; then run INITIATIVE-LOOKUP for program context; act on that before
 re-discovering anything. Write `items/<id>.json`:
 `{ "id","source":"trello","triage":"needs-you","kind":"reply|work","cardId","board","list","name",`
-`"due","url","contacts":[...],"channelLabel":"<Email|Teams|Slack|...>","ts":"<ISO now>" }`
+`"due","url","contacts":[...],"channelLabel":"<Email|Teams|Slack|...>","initiative":"<slug|null>","ts":"<ISO now>" }`
 Then find the relevant **thread** (email / Teams / Slack) for the contact + channel and read it to
 decide the move. For **email** threads, follow the SITUATIONAL-CHECK guidance in the matching
 provider doc and search the whole mailbox in both directions (incoming from the contact AND your sent
@@ -68,24 +76,24 @@ designing — see the project's Trello-caching follow-up.)
 Many outreach cards share one program — the user is following up with many people to onboard them to
 the same initiative — so a card like "Acme Corp / Jane Doe" carries no per-card context of its own.
 The initiative supplies the **content** (what the program is, why it matters, the ask); the generic
-STAGE-PLAYBOOK below supplies the **activity** for the card's current column. Resolve and load once,
-before drafting:
-1. **Find the initiative slug.** First a card label whose name matches an `initiatives[].label` in
-   `trello-boards.yaml`; if none, the `initiative:` field on the card's board entry. No match → no
-   initiative (proceed as a plain card — draft from the card/thread alone, ask the user if blank).
-2. **Load the content.** Look up the slug in the `initiatives:` block and read its `source` by shape
-   (fall back to `summary` if there's no source):
-   - an **http(s) URL** → fetch it: a Confluence page (`*.atlassian.net/wiki`) via Atlassian MCP or the
+STAGE-PLAYBOOK below supplies the **activity** for the card's current column. Load once, before
+drafting:
+1. **Take the resolved slug.** The item's `initiative` field (set by the adapter from the
+   initiative-colored label, else the board default). Empty → no initiative; proceed as a plain card
+   (draft from the card/thread alone, ask the user if blank).
+2. **Open `initiatives/<slug>.md`** from the repo and read its content. If it carries a `source:`
+   frontmatter pointer, the content lives there instead — fetch it by shape:
+   - an **http(s) URL** → a Confluence page (`*.atlassian.net/wiki`) via Atlassian MCP or the
      `confluence-investigator` skill (extract the numeric page id from the URL when one is needed); any
      other URL via plain web fetch.
-   - a **repo-relative path** (e.g. `initiatives/<slug>.md`) → read that markdown file (portable; the
-     only option when there's no Confluence, e.g. personal pods).
+   - otherwise the file body itself is the content.
    You want: what the program is, why it matters to the contact, the ask, and any role
-   (e.g. Producer/Consumer) the card's labels imply.
+   (e.g. Producer/Consumer) the card's labels imply. (If the file is missing, the slug is still a
+   useful hint — note the gap and draft from the card/thread.)
 3. **Draft from content + playbook.** Combine the initiative content with the STAGE-PLAYBOOK intent for
    the card's column to ground a meaningful message — no need to ask the user what the outreach is
-   about. If the content source genuinely lacks something the message needs, that's a gap to fix in the
-   source doc, not a question to bounce to the user every cycle.
+   about. If the content genuinely lacks something the message needs, that's a gap to fix in the
+   initiative doc, not a question to bounce to the user every cycle.
 
 ## STAGE-PLAYBOOK (generic outreach intent per funnel phase)
 Outreach boards share one awareness→adoption funnel; only the column **names** differ per board, and
