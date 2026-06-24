@@ -86,9 +86,9 @@ drafting:
      `confluence-investigator` skill (extract the numeric page id from the URL when one is needed); any
      other URL via plain web fetch.
    - otherwise the file body itself is the content.
-   You want: what the program is, why it matters to the contact, the ask, and any role
-   (e.g. Producer/Consumer) the card's labels imply. (If the file is missing, the slug is still a
-   useful hint — note the gap and draft from the card/thread.)
+   You want: what the program is, why it matters to the contact, the ask, and any role the contact
+   plays if the initiative defines roles. (If the file is missing, the slug is still a useful hint —
+   note the gap and draft from the card/thread.)
 3. **Draft from content + playbook.** Combine the initiative content with the STAGE-PLAYBOOK intent for
    the card's column to ground a meaningful message — no need to ask the user what the outreach is
    about. If the content genuinely lacks something the message needs, that's a gap to fix in the
@@ -96,28 +96,28 @@ drafting:
 
 ## STAGE-PLAYBOOK (how to advance a card to the next phase)
 A card's column is a starting point, not something to describe back. For each phase the goal is to move
-the contact to the **next** phase: situation-check first (did they reply? did the planned step happen?
-is a date set?), then take or draft the action that drives progression. Outreach boards share one
-awareness→adoption funnel and this advance logic is the same regardless of initiative, so it lives here
-once; the initiative content (INITIATIVE-LOOKUP) supplies the specifics, and a board's differing column
-names map onto the nearest phase by intent.
+the contact to the **next** phase: situation-check first (did they reply? did the planned step happen?),
+then take or draft the action that drives progression. Every outreach board is some version of the same
+awareness→commitment→done funnel, so this advance logic lives here once and stays **generic**; the
+initiative content (INITIATIVE-LOOKUP) supplies what any given step actually involves for that program.
 
-- **Unaware / Identified → Informed.** They don't know about it. Action: send the first-contact intro —
-  what the initiative is, why it matters to them, an invite to talk. (Sending it advances the card.)
-- **Awareness Scheduled → Informed.** A first touch is already booked; don't pre-empt it. Once it has
-  happened, capture the outcome and advance.
-- **Informed → Interested.** They've heard of it. Action: follow up to land a yes — answer questions,
-  surface the benefit to them, ask for their use case / confirmation they want in.
-- **Interested → Values Mapped / Scheduled.** They're in. Action: confirm their use case and role
-  (e.g. Producer/Consumer) and book the concrete next working session.
-- **Values Mapped → Scheduled.** Mapping's done. Action: get the migration/adoption work onto a
-  calendar — propose or confirm a date.
-- **Scheduled → In Progress.** A date exists. Action: confirm it still holds and that they've started;
-  nudge to re-confirm if it has slipped.
-- **In Progress → Adopted / Finished.** They're working on it. Action: check for blockers, offer help,
-  push toward done.
-- **Adopted / Finished.** Terminal — close the loop and thank them. (Usually a `skip_lists` list.)
+Map the card's column onto the nearest phase by intent — boards name and sub-divide these differently:
+
+- **Not yet aware → aware.** They don't know about it. Action: send the first-contact intro — what it
+  is, why it matters to them, an invite to talk. (Sending it advances the card.)
+- **Aware → interested.** They've heard of it. Action: follow up to land a yes — answer questions,
+  surface the benefit, ask what they need to move forward.
+- **Interested → committed.** They want in. Action: nail down the concrete next step, and if the work
+  needs scheduling, get it on a calendar.
+- **Committed / scheduled → in progress.** A plan or date exists. Action: confirm it still holds and
+  that they've started; nudge to re-confirm if it has slipped.
+- **In progress → done.** They're working on it. Action: check for blockers, offer help, push toward
+  completion.
+- **Done.** Terminal — close the loop and thank them. (Usually a `skip_lists` list.)
 - **Abandoned.** Terminal — not pursuing; no action.
+
+Some boards insert their own steps between these (e.g. a reconciliation or review stage); treat such a
+column as the nearest generic phase and let the initiative doc say what that step requires.
 
 Always situation-check before acting: if they've already replied or the step already happened, the move
 is usually to **advance** the card (CLEAR) rather than send again; if it's simply not yet time to follow
