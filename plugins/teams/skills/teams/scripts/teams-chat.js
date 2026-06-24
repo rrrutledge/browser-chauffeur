@@ -39,6 +39,7 @@
 // Usage:
 //   node teams-chat.js enumerate [--top 40] [--unread]  -> JSON array of conversations, newest-first
 //   node teams-chat.js messages <convId> [--top 20]     -> recent messages (newest-first)
+//   node teams-chat.js mark-unread --conversation-id <id> --message-id <id>  -> mark message (and after) unread
 //   node teams-chat.js token [--force]                  -> ensure/refresh cached tokens, print status
 
 const fs = require('fs');
@@ -318,6 +319,23 @@ async function cmdMessages(convId, top) {
 // opens the conversation in Teams web via browser-chauffeur (see teams-provider.md § CLEAR), which
 // marks it read exactly as a human would. Verify by re-running `enumerate` — the item leaves unread.
 
+// Mark a specific message (and implicitly all subsequent messages) as unread by setting the IC3
+// lastMarkedUnreadMessageId property on the conversation. This is the same call Teams web makes when
+// the user right-clicks → Mark as unread. The aggregator's isRead flips to false within ~5s via the
+// same trouter/websocket signal that mark-read uses — so this is the REST-accessible inverse.
+async function cmdMarkUnread(convId, messageId) {
+  if (!convId || !messageId) throw new Error('mark-unread requires --conversation-id and --message-id');
+  const res = await call(
+    'ic3', 'PUT',
+    `/v1/users/ME/conversations/${enc(convId)}/properties/lastmarkedunreadmessageid`,
+    { lastmarkedunreadmessageid: messageId },
+  );
+  if (res.status !== 200 && res.status !== 204) {
+    throw new Error(`mark-unread HTTP ${res.status}: ${res.body.slice(0, 400)}`);
+  }
+  process.stdout.write(`Marked unread from message ${messageId} in ${convId}\n`);
+}
+
 async function cmdToken(force) {
   const meta = await getTokens(force);
   process.stdout.write(`Tokens OK ✅  ic3 exp=${meta.ic3.expISO}  agg exp=${meta.agg.expISO}\n`);
@@ -333,9 +351,10 @@ async function cmdToken(force) {
     switch (cmd) {
       case 'enumerate': await cmdEnumerate(parseInt(flag('--top') || '40', 10), has('--unread')); break;
       case 'messages': await cmdMessages(positional[0], parseInt(flag('--top') || '20', 10)); break;
+      case 'mark-unread': await cmdMarkUnread(flag('--conversation-id'), flag('--message-id')); break;
       case 'token': await cmdToken(has('--force')); break;
       default:
-        process.stderr.write('Usage: teams-chat.js <enumerate [--unread]|messages <convId>|token> [--top N] [--force]\n');
+        process.stderr.write('Usage: teams-chat.js <enumerate [--unread]|messages <convId>|mark-unread --conversation-id <id> --message-id <id>|token> [--top N] [--force]\n');
         process.exit(1);
     }
   } catch (e) {
