@@ -21,9 +21,9 @@ rides the single schedule with no special cadence. All Trello reads and mutation
   `source:` frontmatter pointer, redirects to where the content lives (a Confluence/other URL). See
   `initiatives/_TEMPLATE.md` for the shape. A card is tagged with an initiative two ways (a per-card
   tag wins over the board default):
-  - **Per-card** — a Trello **label in the initiative color** (`initiative_label_color`, default
-    `yellow`). The adapter resolves it: label name → slug → `initiatives/<slug>.md`. The colored label
-    is held out of contact classification, so it's never mistaken for a contact name.
+  - **Per-card** — a Trello **yellow label** (yellow is the initiative color). The adapter resolves it:
+    label name → slug → `initiatives/<slug>.md`. The yellow label is held out of contact
+    classification, so it's never mistaken for a contact name.
   - **Board default** — an `initiative: <slug>` field on a board entry in `trello-boards.yaml` (every
     card on that board inherits it — best when the whole board is one program). The four-space
     `initiative:` field is parsed by the adapter alongside `id`.
@@ -32,7 +32,6 @@ rides the single schedule with no special cadence. All Trello reads and mutation
 - Drainer knobs in `.claude/drainer.local.md` → `providers.trello`:
   - `skip_lists` — terminal/parking lists to ignore (e.g. Abandoned, Finished, Adopted, Templates).
   - `label_vocab` — `{channels: [...], features: [...]}`; any label not in those is a contact name.
-  - `initiative_label_color` — the Trello label color that marks a card's initiative (default `yellow`).
 Credentials: `TRELLO_API_KEY` / `TRELLO_TOKEN` in the environment (used by `trello-outreach`).
 
 ## AUTH-GLANCE
@@ -95,28 +94,34 @@ drafting:
    about. If the content genuinely lacks something the message needs, that's a gap to fix in the
    initiative doc, not a question to bounce to the user every cycle.
 
-## STAGE-PLAYBOOK (generic outreach intent per funnel phase)
-Outreach boards share one awareness→adoption funnel; only the column **names** differ per board, and
-the outreach **activity** at each phase is the same regardless of initiative — so it lives here once,
-not in any initiative doc. Map the card's list onto a phase and use that intent; the initiative content
-(INITIATIVE-LOOKUP) fills in the specifics.
+## STAGE-PLAYBOOK (how to advance a card to the next phase)
+A card's column is a starting point, not something to describe back. For each phase the goal is to move
+the contact to the **next** phase: situation-check first (did they reply? did the planned step happen?
+is a date set?), then take or draft the action that drives progression. Outreach boards share one
+awareness→adoption funnel and this advance logic is the same regardless of initiative, so it lives here
+once; the initiative content (INITIATIVE-LOOKUP) supplies the specifics, and a board's differing column
+names map onto the nearest phase by intent.
 
-- **Unaware / Identified** — internal only; the contact doesn't know yet. No outreach.
-- **Awareness Scheduled** — a touch is already planned; don't pre-empt it. Usually nothing to send.
-- **Informed** — first contact: introduce what the initiative is and why it matters to them; invite
-  interest and a brief conversation.
-- **Interested** — they're in: confirm their specific use case and which role they'd play, and propose
-  the concrete next step.
-- **Values Mapped / Scheduled** — line up or confirm the working session / migration date; if a date
-  has slipped, nudge to re-confirm it.
-- **In Progress** — check on blockers, offer help, keep momentum.
-- **Finished / Adopted** — close the loop and thank them. (Typically a terminal list — see
-  `skip_lists`; only surfaces if not skipped.)
-- **Abandoned** — not pursuing; no outreach.
+- **Unaware / Identified → Informed.** They don't know about it. Action: send the first-contact intro —
+  what the initiative is, why it matters to them, an invite to talk. (Sending it advances the card.)
+- **Awareness Scheduled → Informed.** A first touch is already booked; don't pre-empt it. Once it has
+  happened, capture the outcome and advance.
+- **Informed → Interested.** They've heard of it. Action: follow up to land a yes — answer questions,
+  surface the benefit to them, ask for their use case / confirmation they want in.
+- **Interested → Values Mapped / Scheduled.** They're in. Action: confirm their use case and role
+  (e.g. Producer/Consumer) and book the concrete next working session.
+- **Values Mapped → Scheduled.** Mapping's done. Action: get the migration/adoption work onto a
+  calendar — propose or confirm a date.
+- **Scheduled → In Progress.** A date exists. Action: confirm it still holds and that they've started;
+  nudge to re-confirm if it has slipped.
+- **In Progress → Adopted / Finished.** They're working on it. Action: check for blockers, offer help,
+  push toward done.
+- **Adopted / Finished.** Terminal — close the loop and thank them. (Usually a `skip_lists` list.)
+- **Abandoned.** Terminal — not pursuing; no action.
 
-A board whose column names don't match these maps onto the nearest phase by intent (e.g. an
-"Awareness Scheduled" column → the awareness/informing phase). When a card's phase implies "nothing to
-send right now," follow the silent-bump guidance in CLEAR rather than surfacing a tab.
+Always situation-check before acting: if they've already replied or the step already happened, the move
+is usually to **advance** the card (CLEAR) rather than send again; if it's simply not yet time to follow
+up, silently bump the due date (CLEAR) and surface no tab.
 
 ## CLEAR (advance the card)
 Only **after** the user confirms they sent/handled the message, advance the card via `trello-outreach`:

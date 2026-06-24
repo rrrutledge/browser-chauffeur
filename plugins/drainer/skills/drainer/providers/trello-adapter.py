@@ -44,9 +44,8 @@ class Provider(ProviderBase):
         self.skip_lists = {"abandoned", "finished", "adopted", "templates"}
         self.channels = []
         self.features = []
-        # A label in this Trello color marks the card's initiative (its name → slug → an
-        # initiatives/<slug>.md doc the worker reads). Overridable via drainer.local.md
-        # providers.trello.initiative_label_color. Stored lowercased.
+        # A Trello label in this color (hardcoded yellow) marks the card's initiative — its name
+        # → slug → an initiatives/<slug>.md doc the worker reads.
         self.initiative_color = "yellow"
         # Board name → default initiative slug (from a board's `initiative:` field in the registry);
         # applies to every card on that board when no per-card initiative label is present.
@@ -126,9 +125,6 @@ class Provider(ProviderBase):
                 self.skip_lists = {s.lower() for s in skip}
             self.channels = self._parse_inline_list(block, "channels")
             self.features = self._parse_inline_list(block, "features")
-            color = self._parse_scalar(block, "initiative_label_color")
-            if color:
-                self.initiative_color = color.lower()
         # Boards: the shared registry is authoritative; drainer.local.md's boards block is the fallback.
         boards = []
         try:
@@ -219,14 +215,6 @@ class Provider(ProviderBase):
         if not inner:
             return []
         return [x.strip().strip('"\'') for x in inner.split(",") if x.strip()]
-
-    @staticmethod
-    def _parse_scalar(block, key):
-        """Parse a scalar `key: value` from the block (returns None if absent/empty)."""
-        m = re.search(rf"^\s*{re.escape(key)}\s*:\s*(.+?)\s*$", block, re.MULTILINE)
-        if not m:
-            return None
-        return m.group(1).strip().strip('"\'') or None
 
     # --------------------------------------------------------------- label classification
     def _classify_labels(self, card):
