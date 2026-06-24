@@ -114,6 +114,21 @@ match). Verify by re-running `node teams-chat.js enumerate --unread` — the ite
 Teams has no delete/trash; mark-read is the "gone," and it is reversible. Narrate each clear with a
 one-line reason.
 
+**Guard against silently clearing newer messages.** Opening the conversation marks ALL messages read —
+including any that arrived after the worker started. Before clicking the conversation, check for messages
+newer than `firstUnreadMessageId` (present in `items/<id>.json`):
+
+1. Run `node teams-chat.js messages <convId> --top 20` and parse the JSON output.
+2. Compare each message `id` (numeric string) against `firstUnreadMessageId`: collect any with a higher
+   numeric value.
+3. Open the conversation in Teams web (marks all read as above).
+4. For each newer message id collected in step 2, run:
+   `node teams-chat.js mark-unread --conversation-id <convId> --message-id <msgId>`
+   (use the **smallest / earliest** newer id — this re-flags that message and everything after it as
+   unread so the next poller cycle picks them up as a fresh item).
+
+Skip step 4 if no newer messages were found — the clear was clean.
+
 If the underlying WORK isn't finished (you only drafted a reply), do NOT clear — leave the conversation
 unread and write a "paused" note instead.
 
