@@ -29,7 +29,7 @@ REM tokenizer, leaving a dangling "-SummaryFile" with no value, which makes laun
 REM "Missing an argument for parameter 'SummaryFile'". The digest spawns with no summary, so it must omit
 REM the flag entirely rather than pass it empty.
 if "%SFILE%"=="" (
-  "%WT%" --no-focus -w drainer new-tab --title "%TITLE%" --startingDirectory "%REPO%" powershell -NoExit -NoProfile -File "%LAUNCHER%" -PromptFile "%PFILE%" -Model "%MODEL%"
+  "%WT%" -w drainer new-tab --title "%TITLE%" --startingDirectory "%REPO%" powershell -NoExit -NoProfile -File "%LAUNCHER%" -PromptFile "%PFILE%" -Model "%MODEL%"
 ) else (
-  "%WT%" --no-focus -w drainer new-tab --title "%TITLE%" --startingDirectory "%REPO%" powershell -NoExit -NoProfile -File "%LAUNCHER%" -PromptFile "%PFILE%" -Model "%MODEL%" -SummaryFile "%SFILE%"
+  "%WT%" -w drainer new-tab --title "%TITLE%" --startingDirectory "%REPO%" powershell -NoExit -NoProfile -File "%LAUNCHER%" -PromptFile "%PFILE%" -Model "%MODEL%" -SummaryFile "%SFILE%"
 )
