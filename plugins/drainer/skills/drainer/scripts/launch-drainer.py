@@ -64,30 +64,6 @@ def resolve_install_path():
     return _from_registry() or _from_cache_scan()
 
 
-def _auto_update():
-    """Pull the latest published drainer version before resolving which one to run.
-
-    Runs silently -- a failed update is not fatal; the launcher falls back to
-    whatever is already installed.  Only updates the user scope (the one the
-    scheduled tasks use); a local-scope pin is left alone.
-    """
-    claude = os.path.join(
-        HOME, "AppData", "Local", "Programs", "claude", "claude.exe"
-    )
-    if not os.path.isfile(claude):
-        import shutil
-        claude = shutil.which("claude") or claude
-    try:
-        subprocess.run(
-            [claude, "plugin", "update", PLUGIN_KEY, "--scope", "user"],
-            timeout=30,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-    except Exception:
-        pass  # never block the poller/digest over a failed update check
-
-
 def main():
     ap = argparse.ArgumentParser(description="Version-independent drainer task launcher.")
     ap.add_argument("--mode", required=True, choices=["digest", "poller"])
@@ -96,7 +72,6 @@ def main():
                     help="Print the resolved script path and exit (no launch).")
     args, passthrough = ap.parse_known_args()
 
-    _auto_update()
     install_path = resolve_install_path()
     if not install_path:
         sys.stderr.write("drainer launcher: could not resolve an installed drainer version\n")
