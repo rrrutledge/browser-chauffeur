@@ -16,12 +16,13 @@ rides the single schedule with no special cadence. All Trello reads and mutation
     **two-space** indent with its `    id:` at **four-space** indent. Keep that shape. Any deeper
     per-board fields (`purpose`, `template_cards`, …) are free-form and ignored by the drainer.
 - **Initiatives** — an optional `initiatives:` block in the same `trello-boards.yaml` maps an
-  initiative slug → `{label, confluence_url, page_id, summary}`. A card belongs to an initiative two
-  ways (a card tag wins over the board default): a board-level `initiative: <slug>` field (every card
-  on that board inherits it — best when the whole board is one program), or a per-card Trello label
-  whose name matches an initiative `label` (best for mixed boards). See INITIATIVE-LOOKUP. This block
-  is read by the worker, not the poller adapter — keep its shape free of a four-space `id:` line so the
-  board parser ignores it.
+  initiative slug → a `label` plus a `source` (one pointer — a URL *or* a repo-relative markdown path)
+  and an optional inline `summary:`. A card belongs to an initiative two ways (a card tag wins over the board default): a board-level `initiative: <slug>` field
+  (every card on that board inherits it — best when the whole board is one program), or a per-card
+  Trello label whose name matches an initiative `label` (best for mixed boards). See INITIATIVE-LOOKUP
+  for how the worker loads the content, and STAGE-PLAYBOOK for the generic per-stage activity. This
+  block is read by the worker, not the poller adapter — keep its shape free of a four-space `id:` line
+  so the board parser ignores it.
 - Drainer knobs in `.claude/drainer.local.md` → `providers.trello`:
   - `skip_lists` — terminal/parking lists to ignore (e.g. Abandoned, Finished, Adopted, Templates).
   - `label_vocab` — `{channels: [...], features: [...]}`; any label not in those is a contact name.
@@ -64,21 +65,50 @@ enough that a follow-up needs almost no re-discovery. (A dedicated card schema f
 designing — see the project's Trello-caching follow-up.)
 
 ## INITIATIVE-LOOKUP
-Many outreach cards share one program — Russell is following up with many people to onboard them to
+Many outreach cards share one program — the user is following up with many people to onboard them to
 the same initiative — so a card like "Okta / Brett Wessling" carries no per-card context of its own.
-Resolve the card's initiative and load the program once, before drafting:
+The initiative supplies the **content** (what the program is, why it matters, the ask); the generic
+STAGE-PLAYBOOK below supplies the **activity** for the card's current column. Resolve and load once,
+before drafting:
 1. **Find the initiative slug.** First a card label whose name matches an `initiatives[].label` in
    `trello-boards.yaml`; if none, the `initiative:` field on the card's board entry. No match → no
-   initiative (proceed as a plain card — draft from the card/thread alone, ask Russell if blank).
-2. **Load the program context.** Look up that slug in the `initiatives:` block. Read its `summary` for a
-   fast orientation, then fetch the `confluence_url` / `page_id` (Atlassian MCP or the
-   `confluence-investigator` skill) for the full picture: what the program is, the outreach goal (what
-   we're asking the contact to do), the lifecycle stage the card's list maps to, and any role
-   (Producer/Consumer) the card's labels imply.
-3. **Draft from that context.** Use the program + the card's stage/contact to ground a meaningful
-   message — no need to ask Russell what the outreach is about. The Confluence page is the source of
-   truth; if it lacks the specific ask for this stage, that's a gap to flag (improve the page), not a
-   question to bounce to Russell every cycle.
+   initiative (proceed as a plain card — draft from the card/thread alone, ask the user if blank).
+2. **Load the content.** Look up the slug in the `initiatives:` block and read its `source` by shape
+   (fall back to `summary` if there's no source):
+   - an **http(s) URL** → fetch it: a Confluence page (`*.atlassian.net/wiki`) via Atlassian MCP or the
+     `confluence-investigator` skill (extract the numeric page id from the URL when one is needed); any
+     other URL via plain web fetch.
+   - a **repo-relative path** (e.g. `initiatives/<slug>.md`) → read that markdown file (portable; the
+     only option when there's no Confluence, e.g. personal pods).
+   You want: what the program is, why it matters to the contact, the ask, and any role
+   (e.g. Producer/Consumer) the card's labels imply.
+3. **Draft from content + playbook.** Combine the initiative content with the STAGE-PLAYBOOK intent for
+   the card's column to ground a meaningful message — no need to ask the user what the outreach is
+   about. If the content source genuinely lacks something the message needs, that's a gap to fix in the
+   source doc, not a question to bounce to the user every cycle.
+
+## STAGE-PLAYBOOK (generic outreach intent per funnel phase)
+Outreach boards share one awareness→adoption funnel; only the column **names** differ per board, and
+the outreach **activity** at each phase is the same regardless of initiative — so it lives here once,
+not in any initiative doc. Map the card's list onto a phase and use that intent; the initiative content
+(INITIATIVE-LOOKUP) fills in the specifics.
+
+- **Unaware / Identified** — internal only; the contact doesn't know yet. No outreach.
+- **Awareness Scheduled** — a touch is already planned; don't pre-empt it. Usually nothing to send.
+- **Informed** — first contact: introduce what the initiative is and why it matters to them; invite
+  interest and a brief conversation.
+- **Interested** — they're in: confirm their specific use case and which role they'd play, and propose
+  the concrete next step.
+- **Values Mapped / Scheduled** — line up or confirm the working session / migration date; if a date
+  has slipped, nudge to re-confirm it.
+- **In Progress** — check on blockers, offer help, keep momentum.
+- **Finished / Adopted** — close the loop and thank them. (Typically a terminal list — see
+  `skip_lists`; only surfaces if not skipped.)
+- **Abandoned** — not pursuing; no outreach.
+
+A board whose column names don't match these maps onto the nearest phase by intent (e.g. Russell's
+Tracker "Awareness Scheduled" → the awareness/informing phase). When a card's phase implies "nothing to
+send right now," follow the silent-bump guidance in CLEAR rather than surfacing a tab.
 
 ## CLEAR (advance the card)
 Only **after** the user confirms they sent/handled the message, advance the card via `trello-outreach`:
