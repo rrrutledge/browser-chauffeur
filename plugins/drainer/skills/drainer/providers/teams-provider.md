@@ -72,9 +72,9 @@ these steps in order:
    is not the organizer), the recording is **fyi** — route to the digest queue and write `.done`.
 
 ## WEEK-IN-REVIEW ANNOUNCEMENTS
-A "WellSky R&D Community" Week-in-Review post (the weekly announcement linking to that week's R&D Weekly
+A team Week-in-Review announcement post (the weekly post linking to that week's R&D Weekly
 Confluence page) is a container pointing to a report worth analyzing — **needs-you (work)**. The work:
-run the `week-in-review-analyzer` skill on the linked Confluence page and present its SkyStage-opportunity
+run the `week-in-review-analyzer` skill on the linked Confluence page and present its opportunity
 table. The worker opens the linked doc, runs the analyzer, and surfaces the result; there's no reply to send.
 
 ## CAPTURE (needs-you)

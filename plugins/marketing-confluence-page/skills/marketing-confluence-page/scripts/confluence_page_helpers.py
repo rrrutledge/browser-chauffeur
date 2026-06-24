@@ -8,7 +8,7 @@ import json
 import base64
 import os
 
-BASE = "https://wellsky.atlassian.net/wiki"
+BASE = os.environ.get("CONFLUENCE_BASE_URL", "https://your-org.atlassian.net/wiki")
 
 HR = '<ac:layout-section ac:type="fixed-width" ac:breakout-mode="default"><ac:layout-cell><hr /></ac:layout-cell></ac:layout-section>'
 
