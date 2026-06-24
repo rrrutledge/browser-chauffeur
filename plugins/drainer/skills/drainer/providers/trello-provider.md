@@ -19,7 +19,8 @@ rides the single schedule with no special cadence. All Trello reads and mutation
   `initiatives/` folder** in the repo: one `initiatives/<slug>.md` per program (a file existing ⇒ the
   initiative exists — no central list to maintain). The file either holds the content inline or, via a
   `source:` frontmatter pointer, redirects to where the content lives (a Confluence/other URL). See
-  `initiatives/_TEMPLATE.md` for the shape. A card is tagged with an initiative two ways (a per-card
+  `initiative-doc-template.md` (in this skill) for the two shapes — source-stub vs inline-content. A
+  card is tagged with an initiative two ways (a per-card
   tag wins over the board default):
   - **Per-card** — a Trello **yellow label** (yellow is the initiative color). The adapter resolves it:
     label name → slug → `initiatives/<slug>.md`. The yellow label is held out of contact
