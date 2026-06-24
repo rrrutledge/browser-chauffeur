@@ -74,6 +74,8 @@ Any message that leaves Russell's hands — a Jira comment, an email, a Teams po
 
 **Draft it in the app where it will be sent.** The ideal is to put the text into the real UI — the ticket comment box, the Teams compose box, the email reply — via `browser-chauffeur`, so Russell sees exactly how it will look in context, edits it inline if he wants, and clicks the app's own Send button. Drafting in-place (never auto-sending) is the preferred approach whenever the UI can be opened.
 
+**Thread off the related message.** When the draft responds to or references a specific prior message — in Teams or in email — anchor it to that message rather than composing fresh. In Teams, use the Reply feature on the specific message; in email, reply to the specific email thread the message belongs to. This gives readers the context they need without you having to restate it. Real example: a bug-report message in a group chat was sent as a reply to Patrick's original error post rather than as a new message, so the connection was immediately clear.
+
 If the target UI genuinely can't be driven, fall back to showing the proposed text in chat for approval, then send only once he says to. This mirrors the discipline the conversational tools already follow (Teams drafts are typed into the compose box, never auto-sent).
 
 After he sends, run the **Voice learning loop** below — diff what he actually sent against your draft and update this guidance if the voice changed.
@@ -156,7 +158,7 @@ Don't invent emoji outside this palette, don't stack them, and skip them entirel
 
 **`1on1` — private direct chat or email reply:**
 - **Email greeting format**: run the greeting into the first sentence using ` - `: `"Hi [Name] - thanks and totally makes sense."` Not `"Hi [Name],"` on its own line followed by a new paragraph.
-- **Email reply flow**: always **Reply All**, never plain Reply — preserve every CC'd recipient on the thread.
+- **Email reply flow**: always **Reply All**, never plain Reply — preserve every CC'd recipient on the thread. When replying on a related topic (not a direct response to the latest message), reply to the specific email in the thread that the message relates to, not the most recent one — this threads context correctly and avoids an out-of-sequence reply.
 - **Email sign-off**: just `"Russ"` on its own line — no valediction ("Talk soon", "Best", "Thanks") before the name.
 - **Energizing close**: when there's genuinely good news, or you're replying to someone's positive progress update, end with a brief forward-looking note — e.g., "This is going to be great." Real edit: a reply to a peer's outreach-progress update gained a closing "This is really coming together." before the sign-off. Skip it when you're sharing news into someone else's channel or group.
 - Short, conversational, considerate of their time and life
