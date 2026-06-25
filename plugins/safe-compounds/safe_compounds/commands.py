@@ -169,7 +169,7 @@ GIT_TRUSTED_SUBCOMMANDS = {
     'range-diff', 'patch-id', 'var', 'help', 'interpret-trailers', 'index-pack',
     # reversible writes (the effect can be undone)
     'add', 'branch', 'commit', 'mv', 'rm', 'stash', 'fetch', 'pull', 'merge', 'rebase', 'revert', 'cherry-pick',
-    'worktree', 'config', 'init', 'clone', 'update-ref',
+    'worktree', 'config', 'init', 'clone', 'update-ref', 'restore',
 }
 
 GIT_CONDITIONAL_SUBCOMMANDS = {
