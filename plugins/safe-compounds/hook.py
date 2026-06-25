@@ -109,6 +109,14 @@ def main():
         log_debug("DECISION: Deny (PowerShell tool)")
         deny(POWERSHELL_TOOL_REASON)
 
+    if tool == 'Read':
+        file_path = tool_input.get('file_path', '')
+        import re
+        if re.search(r'(^|[/\\])\.claude[/\\]', file_path.replace('\\', '/')):
+            log_debug(f"DECISION: Allow Read from .claude/: {file_path[:100]}")
+            allow()
+        defer()
+
     if tool in ('Write', 'Edit'):
         file_path = tool_input.get('file_path', '')
         decision, reason = decide_write_edit(file_path)

@@ -134,6 +134,13 @@ CASES = [
     {"id": "mcp_blanket_configured", "tool": "mcp__myserver__whatever", "expect": "ALLOW"},
     {"id": "mcp_unknown_verb", "tool": "mcp__server__frobnicate_thing", "expect": "PROMPT"},
 
+    # --- Read ---------------------------------------------------------------
+    {"id": "read_claude_rules", "tool": "Read", "file_path": "{CWD}/.claude/rules/architecture.md", "expect": "ALLOW"},
+    {"id": "read_claude_teams", "tool": "Read", "file_path": "{CWD}/.claude/teams/bugfix-squad/agent-04b.md", "expect": "ALLOW"},
+    {"id": "read_home_claude", "tool": "Read", "file_path": "{HOME}/.claude/CLAUDE.md", "expect": "ALLOW"},
+    {"id": "read_home_claude_skills", "tool": "Read", "file_path": "{HOME}/.claude/skills/foo.md", "expect": "ALLOW"},
+    {"id": "read_non_claude", "tool": "Read", "file_path": "{CWD}/src/index.ts", "expect": "PROMPT"},
+
     # --- Write / Edit -------------------------------------------------------
     {"id": "write_tmp", "tool": "Write", "file_path": "{CWD}/.tmp/note.txt", "expect": "ALLOW"},
     {"id": "write_temp_name", "tool": "Write", "file_path": "{CWD}/commit_tmp.txt", "expect": "ALLOW"},
