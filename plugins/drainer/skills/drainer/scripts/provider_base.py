@@ -9,6 +9,7 @@ import ctypes
 import re
 import subprocess
 import threading
+import time
 
 # Suppress the brief console window each child process would otherwise flash when the poller runs
 # under pythonw (no parent console). 0 on non-Windows. The visible worker tabs are spawned via wt.exe
@@ -17,11 +18,11 @@ NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 
 def spawn_tab(args, cwd):
-    """Open a Windows Terminal tab (via spawn-tab.cmd) without stealing focus.
+    """Open a Windows Terminal tab (via spawn-tab.cmd) without leaving focus on it.
 
-    Windows Terminal claims focus asynchronously after the process starts, so we save the current
-    foreground window before the Popen and restore it ~800 ms later in a background thread — long
-    enough for WT to finish activating, short enough to feel instant.
+    Adding a tab to the existing 'drainer' window always activates that window — wt.exe's --no-focus
+    governs only NEW-window creation, not a tab added to a window that already exists (verified on
+    WT 1.24). So we save the foreground window before the Popen and restore it once WT has activated.
     """
     try:
         user32 = ctypes.windll.user32
@@ -30,14 +31,35 @@ def spawn_tab(args, cwd):
         prev = None
     subprocess.Popen(["cmd", "/c", *args], cwd=cwd, creationflags=NO_WINDOW)
     if prev:
-        def _restore():
-            import time
-            time.sleep(0.8)
-            try:
-                ctypes.windll.user32.SetForegroundWindow(prev)
-            except Exception:
-                pass
-        threading.Thread(target=_restore, daemon=True).start()
+        threading.Thread(target=_restore_foreground, args=(prev,), daemon=True).start()
+
+
+def _restore_foreground(hwnd):
+    """Return the OS foreground to `hwnd` after Windows Terminal grabs it. Runs in a daemon thread.
+
+    A bare SetForegroundWindow from this headless (pythonw, scheduled-task) process is silently
+    ignored by Windows' foreground lock — the call returns but focus does not move. To defeat the
+    lock we tap ALT (which clears it for the calling thread) and AttachThreadInput to the current
+    foreground thread before setting focus, retrying until it sticks. WT claims focus in stages, so
+    we wait briefly first and then reclaim in a short retry loop.
+    """
+    user32 = ctypes.windll.user32
+    kernel32 = ctypes.windll.kernel32
+    time.sleep(0.4)  # let WT finish its (staged) activation before we reclaim
+    for _ in range(15):
+        if user32.GetForegroundWindow() == hwnd:
+            return
+        try:
+            user32.keybd_event(0x12, 0, 0, 0)   # ALT down — clears the foreground lock
+            user32.keybd_event(0x12, 0, 2, 0)   # ALT up
+            fg_thread = user32.GetWindowThreadProcessId(user32.GetForegroundWindow(), None)
+            cur_thread = kernel32.GetCurrentThreadId()
+            user32.AttachThreadInput(fg_thread, cur_thread, True)
+            user32.SetForegroundWindow(hwnd)
+            user32.AttachThreadInput(fg_thread, cur_thread, False)
+        except Exception:
+            pass
+        time.sleep(0.05)
 
 
 class ProviderError(Exception):
