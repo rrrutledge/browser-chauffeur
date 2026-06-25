@@ -37,19 +37,23 @@ All under `scripts/`:
 - **`graph-client.js`** — shared module: `getGraphClient()` (official client, silent-auth) and `getToken()`. Not run directly.
 - **`auth.js`** — one-time / ~90-day interactive sign-in (authorization-code flow). Run via browser-chauffeur.
 - **`calendar.js`**
-  - List: `node calendar.js --days=14`
+  - List upcoming: `node calendar.js --days=14`
+  - List calendars: `node calendar.js --list-calendars` (prints `name<TAB>id`)
+  - List a named calendar over a date range: `node calendar.js --list --calendar="InnerSource Commons" --start=2026-05-01 --end=2026-05-31 [--tz=] [--json]` (`calendarView` expands recurrences and paginates; `--json` emits a structured array for scripts)
   - Create: `node calendar.js --create --subject="Dentist" --start="2026-06-20T15:00:00" --end="2026-06-20T16:00:00" [--location=] [--body=] [--attendees=a@x,b@y] [--reminder=N]`
   - Update reminder: `node calendar.js --update --subject="Dentist" --reminder=off`
   - Times are `--tz` (default `America/Chicago`). Events have **no** reminder unless `--reminder=N` (minutes before; 0 = at start).
+  - Reusable from other scripts: `require('<…>/calendar.js')` exports `getCalendars()`, `getEvents({calendar,start,end,tz})`, `resolveCalendarId()` (CLI is `require.main`-guarded, so requiring it is side-effect-free).
 - **`mail.js`**
   - List unread: `node mail.js --list-unread [--top=30]` (inbox unread, newest-first; one block per message with id + webLink)
   - List inbox (read+unread): `node mail.js --list-inbox [--top=50] [--json]` (inbox items regardless of read state, newest-first, count-capped by `--top`; `--json` emits a structured array for scripts)
   - Search: `node mail.js --search="Griffiths" [--top=10]`
   - Show one: `node mail.js --show=<messageId>`
   - Draft reply-all (never sends): `node mail.js --reply --message-id=<id> --body-file=reply.html`
-  - Draft new to recipients (never sends): `node mail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.html [--cc=c@z]`
+  - Draft new to recipients (never sends): `node mail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.html [--cc=c@z] [--attach=file1.pdf,file2.png] [--replace] [--text]` (`--attach` adds file attachments; `--replace` deletes any existing drafts with the same subject first, so re-runs don't pile up duplicates; `--text` treats the body-file as plain text instead of HTML)
   - Send to self: `node mail.js --send-self --subject="..." --body-file=note.txt`
   - Delete one (reversible): `node mail.js --delete=<messageId>` (moves to Deleted Items, never a permanent purge)
+  - Reusable from other scripts: `require('<…>/mail.js')` exports `createDraft(client, {to, subject, body, cc, attach, replace, contentType})` (CLI is `require.main`-guarded).
 
 ## Auth-error handling (do without being asked)
 
