@@ -14,7 +14,8 @@ per board). The drainer drains EVERY board in that registry. Per-drainer knobs (
 legacy `providers.trello.boards` block in drainer.local.md.
 
 The card's **due date IS the queue**: enumerate returns cards in active lists that are due now-or-earlier
-or have no due date, oldest-due first (undated last). Credentials are TRELLO_API_KEY / TRELLO_TOKEN in
+or have no due date. Dated cards are ranked by due date, most recent first; undated cards are ranked by
+their creation date, decoded from the card's ObjectId. Credentials are TRELLO_API_KEY / TRELLO_TOKEN in
 the environment (read by trello_utils.get_trello_session).
 """
 import glob
@@ -239,6 +240,16 @@ class Provider(ProviderBase):
         except ValueError:
             return None
 
+    @staticmethod
+    def _created_dt(card_id):
+        """Decode a card's creation time from its id: a Trello card id is a Mongo ObjectId whose first
+        8 hex chars are the creation Unix timestamp. Used as the sort rank for undated cards, so a blank
+        ranks by its age."""
+        try:
+            return datetime.fromtimestamp(int(card_id[:8], 16), timezone.utc)
+        except (ValueError, TypeError):
+            return None
+
     # --------------------------------------------------------------- the ProviderBase contract
     def enumerate(self, limit):
         if not self.boards:
@@ -272,6 +283,9 @@ class Provider(ProviderBase):
                 # In play: due now-or-earlier (overdue counts) OR no due date at all.
                 if due_dt is not None and due_dt > now:
                     continue
+                # Sort rank: a dated card ranks by its due date; an undated card ranks by its creation
+                # date (always in the past).
+                sort_dt = due_dt if due_dt is not None else self._created_dt(card["id"])
                 channel, feats, contacts, initiative_label = self._classify_labels(card)
                 # A per-card initiative label wins over the board's default initiative. The slug is the
                 # initiative label's name slugified (→ initiatives/<slug>.md); board defaults are already
@@ -296,12 +310,13 @@ class Provider(ProviderBase):
                     "subject": card.get("name", ""),
                     "received": card.get("due") or "(no due date)",
                     "preview": f"[{bname} / {list_name}] {(card.get('desc') or '').strip()[:200]}",
-                    "_due_sort": due_dt,
+                    "_due_sort": sort_dt,
                 })
-        # Undated first (highest priority — no deadline holding the card back), then dated cards
-        # most-recently-due first. This is also the truncation order: when more than `limit` cards are in
-        # play the lowest-priority (oldest-due) ones are dropped, and they resurface on a later cycle.
-        items.sort(key=lambda it: (it["_due_sort"] is None, it["_due_sort"] or now), reverse=True)
+        # Ranked by sort date, most recent first (an undated card sorts by its creation date, set above).
+        # This is also the truncation order: when more than `limit` cards are in play the oldest ones are
+        # dropped and resurface on a later cycle. A card whose sort date couldn't be derived falls back to
+        # `now`, ranking it at the top.
+        items.sort(key=lambda it: it["_due_sort"] or now, reverse=True)
         return items[:limit]
 
     def stable_id(self, item):
