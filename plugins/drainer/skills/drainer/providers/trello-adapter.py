@@ -308,7 +308,9 @@ class Provider(ProviderBase):
                     # Triage payload fields (mirror the inbox adapters):
                     "from": who,
                     "subject": card.get("name", ""),
-                    "received": card.get("due") or "(no due date)",
+                    # `received` carries the card's date for the cross-source ordering; an undated card
+                    # uses its creation date, so it sorts by age alongside email/Slack and dated cards.
+                    "received": card.get("due") or (sort_dt.isoformat() if sort_dt else "(no due date)"),
                     "preview": f"[{bname} / {list_name}] {(card.get('desc') or '').strip()[:200]}",
                     "_due_sort": sort_dt,
                 })
