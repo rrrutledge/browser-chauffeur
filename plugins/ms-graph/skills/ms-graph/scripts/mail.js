@@ -12,10 +12,11 @@
 // Draft a reply: node mail.js --reply --message-id=<id> --body-file=reply.html
 //                (creates a DRAFT reply-all in the thread; never sends)
 // Draft new:     node mail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.html \
-//                  [--cc=c@z] [--attach=file1.pdf,file2.png] [--replace]
+//                  [--cc=c@z] [--attach=file1.pdf,file2.png] [--replace] [--text]
 //                (creates a fresh DRAFT to specific recipients; never sends. --attach adds file
 //                 attachments; --replace first deletes any existing drafts with the same subject
-//                 so re-runs don't pile up duplicates.)
+//                 so re-runs don't pile up duplicates; --text treats the body-file as plain text
+//                 instead of HTML.)
 // Send to self:  node mail.js --send-self --subject="..." --body-file=note.txt
 //                (sends a plain-text mail to your own inbox; handy for phone copy-paste)
 // Delete one:    node mail.js --delete=<messageId>
@@ -182,7 +183,7 @@ async function draftNew(client) {
   const body = fs.readFileSync(args['body-file'], 'utf8');
   const draft = await createDraft(client, {
     to: args.to, subject: args.subject, body, cc: args.cc,
-    attach: args.attach, replace: !!args.replace, contentType: 'html',
+    attach: args.attach, replace: !!args.replace, contentType: args.text ? 'text' : 'html',
   });
   const extra = args.attach ? ' with attachment' : '';
   console.log(`Draft created to ${args.to} (id ${draft.id.slice(0, 20)}...)${extra}. Review in Outlook Drafts; never sent.`);
