@@ -285,12 +285,12 @@ def _worker_summary(json_file):
     subject, who = safe(subject), safe(who)
     if not subject and not who:
         return ""
-    s = "You are handling this"
-    if subject:
-        s += f": {subject}"
-    if who:
-        s += f", from {who}"
-    return s + "."
+    # Produce a terse title-like string: Claude names the tab off its first message, so the
+    # shorter and more content-forward this is, the better the tab name. Skip `who` when it's
+    # already in the subject (e.g. "DM from John" doesn't need "from John" appended again).
+    if who and subject and who.lower() not in subject.lower():
+        return f"{subject} from {who}"
+    return subject or f"from {who}"
 
 
 def spawn_worker(iid, json_file, repo, runtime_dir, worker_model):
