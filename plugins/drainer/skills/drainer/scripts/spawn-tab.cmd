@@ -20,6 +20,10 @@ set "WT=%LOCALAPPDATA%\Microsoft\WindowsApps\wt.exe"
 set "LAUNCHER=%USERPROFILE%\OneDrive\Claude\scripts\launch-session.ps1"
 REM -w drainer: always collect worker tabs in a single, consistently-named "drainer" window, rather
 REM than -w 0 (most-recently-used), which is unpredictable when the scheduled task creates the window.
+REM No --no-focus here: it governs only NEW-window creation, not a tab added to an existing window, so
+REM it can't stop WT from activating the drainer window on each spawn (verified on WT 1.24). Worse, when
+REM it precedes -w it makes WT 1.24 reject the whole command and swallow the tab. Focus is handled after
+REM the spawn instead, by provider_base.spawn_tab restoring the prior foreground window.
 REM No --suppressApplicationTitle: the worker's Claude session sets the tab title itself, which is what
 REM shows its "needs attention" star when it yields to Russell. We steer that self-chosen title to be
 REM descriptive by leading the seed with the item summary (launch-session.ps1 -SummaryFile).
@@ -29,7 +33,7 @@ REM tokenizer, leaving a dangling "-SummaryFile" with no value, which makes laun
 REM "Missing an argument for parameter 'SummaryFile'". The digest spawns with no summary, so it must omit
 REM the flag entirely rather than pass it empty.
 if "%SFILE%"=="" (
-  "%WT%" --no-focus -w drainer new-tab --title "%TITLE%" --startingDirectory "%REPO%" powershell -NoExit -NoProfile -File "%LAUNCHER%" -PromptFile "%PFILE%" -Model "%MODEL%"
+  "%WT%" -w drainer new-tab --title "%TITLE%" --startingDirectory "%REPO%" powershell -NoExit -NoProfile -File "%LAUNCHER%" -PromptFile "%PFILE%" -Model "%MODEL%"
 ) else (
-  "%WT%" --no-focus -w drainer new-tab --title "%TITLE%" --startingDirectory "%REPO%" powershell -NoExit -NoProfile -File "%LAUNCHER%" -PromptFile "%PFILE%" -Model "%MODEL%" -SummaryFile "%SFILE%"
+  "%WT%" -w drainer new-tab --title "%TITLE%" --startingDirectory "%REPO%" powershell -NoExit -NoProfile -File "%LAUNCHER%" -PromptFile "%PFILE%" -Model "%MODEL%" -SummaryFile "%SFILE%"
 )
