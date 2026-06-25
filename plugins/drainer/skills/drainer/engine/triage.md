@@ -48,7 +48,10 @@ urgency, no one is blocked waiting for his reply, and the digest is the right ve
   **needs-you (reply)** even when it asks nothing explicitly: replying at a human level *is* the action.
   The personal tone is the signal; the warmth of what they shared is the reason to write back.
 - **fyi** — **impersonal** information: the user may want to know but nothing is asked and no human reply
-  is owed (a report, an automated heads-up, a decision someone else made, a mass/corporate announcement).
+  is owed (a report, an automated heads-up, a decision someone else made, a mass/corporate announcement
+  that asks him to do nothing). A mass/corporate announcement that *does* ask him to do something —
+  nominate, submit, enroll, RSVP, complete by a date — is **needs-you**, because what counts is the ask
+  (Question 1), not how many people it was sent to.
 - **junk** — no information value AND no action: automated noise, newsletters, pure marketing,
   CI/build notifications, duplicate status churn, chatter not aimed at the user. Junk is also a signal
   to stop it arriving again; *how* to stop it is provider mechanics — each provider's **JUNK-LEARNING**
