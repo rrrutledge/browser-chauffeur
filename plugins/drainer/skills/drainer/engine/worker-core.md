@@ -116,6 +116,16 @@ user to edit + send it themselves and come back when they have.
 
 If no message is needed (automated reminder, pure action item), skip to step 6.
 
+**Deeply personal messages: don't draft — surface them for the user to write.** When the message is
+genuinely personal — a friend venting about their job or boss, a hard life update, grief, family or
+relationship matters, anything where the right words depend on shared history you don't have — a staged
+draft just gets in the way, because there's no way to know exactly what to say. Skip step 4's draft:
+present the item with a tight briefing (who, what they said, any question), do any factual legwork they'd
+need (look up the answer to a concrete question they asked), and hand it to the user to compose. You can
+ask the user what they'd like to say and offer your read if it helps, but the user writes the message.
+Logistical or transactional personal notes (scheduling, a quick info request, a thanks) still get a draft
+as usual.
+
 ## 5. Learn from the send
 When the user says they sent it: fetch the sent version, diff it against your draft, and append a
 concrete, actionable lesson to the **document-authoring skill's Voice learning loop**. Briefly tell
