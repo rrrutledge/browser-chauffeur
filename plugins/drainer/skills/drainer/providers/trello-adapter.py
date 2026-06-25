@@ -48,6 +48,8 @@ class Provider(ProviderBase):
         # Board name → default initiative slug (from a board's `initiative:` field in the registry);
         # applies to every card on that board when no per-card initiative label is present.
         self.board_initiatives = {}
+        # Resolved lazily on first enumerate; used to skip cards assigned to someone else.
+        self._my_member_id = None
 
     # --------------------------------------------------------------- locate the trello-outreach helper
     @staticmethod
@@ -264,8 +266,17 @@ class Provider(ProviderBase):
             # isolates trello and records it to provider-health instead of aborting the whole cycle.
             raise ProviderError(f"trello enumerate failed (auth/API?): {e}", kind="auth")
 
+    def _my_id(self):
+        """Return the authenticated member's Trello ID, fetched once and cached."""
+        if self._my_member_id is None:
+            me = self._utils.trello_request("GET", "/members/me", self.session,
+                                            params={"fields": "id"})
+            self._my_member_id = me.get("id") if isinstance(me, dict) else None
+        return self._my_member_id
+
     def _enumerate(self, limit):
         now = datetime.now(timezone.utc)
+        my_id = self._my_id()
         items = []
         for board in self.boards:
             bid, bname = board["id"], board.get("name", board["id"])
@@ -278,6 +289,10 @@ class Provider(ProviderBase):
                     continue
                 ln = list_name.lower()
                 if any(tok in ln for tok in self.skip_lists):
+                    continue
+                # Skip cards assigned to someone else; unassigned cards are always Russell's.
+                assigned = card.get("idMembers") or []
+                if assigned and my_id not in assigned:
                     continue
                 due_dt = self._due_dt(card.get("due"))
                 # In play: due now-or-earlier (overdue counts) OR no due date at all.
