@@ -33,7 +33,7 @@ SKILL_DIR = os.path.dirname(SCRIPT_DIR)
 PROVIDERS_DIR = os.path.join(SKILL_DIR, "providers")
 sys.path.insert(0, SCRIPT_DIR)
 import presence  # noqa: E402  (sibling module)
-from provider_base import run_node, NO_WINDOW, ProviderError  # noqa: E402  (subprocess helper + typed provider failure)
+from provider_base import run_node, NO_WINDOW, ProviderError, spawn_tab  # noqa: E402  (subprocess helper + typed provider failure)
 from drainer_config import read_config  # noqa: E402  (shared .claude/drainer.local.md reader)
 
 SEEN_STATE = os.path.join(SCRIPT_DIR, "seen-state.js")
@@ -327,9 +327,8 @@ def spawn_worker(iid, json_file, repo, runtime_dir, worker_model):
     with open(summary_file, "w", encoding="utf-8") as f:
         f.write(_worker_summary(json_file))
     spawn_cmd = os.path.join(SCRIPT_DIR, "spawn-tab.cmd")
-    # CREATE_NO_WINDOW hides the brief cmd shim console; wt.exe opens its own (visible) worker tab.
-    subprocess.Popen(["cmd", "/c", spawn_cmd, _worker_title(iid, json_file), repo, prompt_file,
-                      worker_model, summary_file], cwd=repo, creationflags=NO_WINDOW)
+    spawn_tab([spawn_cmd, _worker_title(iid, json_file), repo, prompt_file, worker_model, summary_file],
+              cwd=repo)
 
 
 # ---------------------------------------------------------------------------- the cycle
