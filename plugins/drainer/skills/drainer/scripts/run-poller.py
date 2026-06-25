@@ -531,17 +531,13 @@ def main():
     global_oc = sum(open_count(s) for s in seen_by_source.values())
 
     # --- split: needs-you (globally ordered), auto-handle (own worker, no cap), others (digest) ---
-    # Ordering across ALL sources: an undated Trello card is the highest priority of all (it has no
-    # deadline holding it back, so it should be worked first), ranking above every email / Slack / dated
-    # card. Everything else then sorts by its date, most-recent first — newest email / most-recently-due
-    # card leads. The two-part key with reverse=True puts undated-Trello (True) ahead of the rest (False),
-    # then orders each group by `received` descending.
-    def _needs_key(it):
-        undated_trello = it.get("_source") == "trello" and not it.get("due")
-        return (undated_trello, it.get("received") or "")
+    # Ordering across ALL sources is by date, most-recent first: the newest email / Slack message or
+    # most-recently-due card leads. Each item carries its date in `received` — an inbox message's arrival
+    # time, a dated card's due date, or an undated card's creation date (the trello adapter stamps that),
+    # so undated cards sort by age alongside everything else.
     needs = sorted(
         (it for it in all_new if it["_bucket"] == "needs-you"),
-        key=_needs_key,
+        key=lambda it: it.get("received") or "",
         reverse=True,
     )
     # auto-handle items get a worker tab too (they need a browser to act), but the worker executes
