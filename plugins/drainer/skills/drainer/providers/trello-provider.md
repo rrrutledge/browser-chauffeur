@@ -41,7 +41,8 @@ Confirm `TRELLO_API_KEY`/`TRELLO_TOKEN` are set. If not, tell the user to set th
 ## ENUMERATE
 Via `trello-outreach`, list cards across the configured boards that sit in an **active** list (not in
 `skip_lists`) and are either **due now-or-earlier** (overdue counts) **or have no due date at all** —
-undated cards are still in play and shouldn't be missed. Sort oldest-due first (undated last). Build a
+undated cards are still in play. Rank dated cards by due date (most recent first) and undated cards by
+their **creation date** (decoded from the card's ObjectId). Build a
 stable id: `trello-<card-name-slug>-<last6 of cardId>-<dueYYYYMMDD|nodue>`. The due date is part of the
 id on purpose: a card recurs every follow-up cycle (CLEAR bumps its due date out), and seen-state keeps
 a drained id forever, so without the due stamp a card would be marked seen on its first drain and never

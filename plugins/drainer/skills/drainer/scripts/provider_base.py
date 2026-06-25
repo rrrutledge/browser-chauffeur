@@ -16,49 +16,66 @@ import time
 # separately and are unaffected.
 NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
+# Windows Terminal's top-level window class. Used to tell "Russell is working in a terminal" (let the
+# new worker tab surface and take focus, so he sees it and starts on it) from "Russell is in something
+# else — a browser, slides" (keep the drainer window minimized so it never covers what he's doing).
+WT_WINDOW_CLASS = "CASCADIA_HOSTING_WINDOW_CLASS"
+SW_MINIMIZE = 6
+
+
+def _window_class(hwnd):
+    """Win32 class name of a window handle, or '' if it can't be read."""
+    try:
+        buf = ctypes.create_unicode_buffer(256)
+        ctypes.windll.user32.GetClassNameW(hwnd, buf, 256)
+        return buf.value
+    except Exception:
+        return ""
+
 
 def spawn_tab(args, cwd):
-    """Open a Windows Terminal tab (via spawn-tab.cmd) without leaving focus on it.
+    """Open a Windows Terminal worker tab (via spawn-tab.cmd) with focus-aware placement.
 
     Adding a tab to the existing 'drainer' window always activates that window — wt.exe's --no-focus
     governs only NEW-window creation, not a tab added to a window that already exists (verified on
-    WT 1.24). So we save the foreground window before the Popen and restore it once WT has activated.
+    WT 1.24). So we read the foreground window BEFORE the Popen and branch on it:
+
+      - foreground IS a terminal  -> Russell is working in the terminal; let the new tab surface and
+        take focus normally so he sees it and starts on it. Do nothing.
+      - foreground is anything else (browser, PowerPoint, ...) -> don't interrupt him: once WT grabs
+        focus, minimize the drainer window. Minimizing the grabber returns activation to whatever he
+        was using, and (unlike SetForegroundWindow from a headless process) is not blocked by the
+        Windows foreground lock.
     """
     try:
-        user32 = ctypes.windll.user32
-        prev = user32.GetForegroundWindow()
+        prev = ctypes.windll.user32.GetForegroundWindow()
+        prev_is_terminal = _window_class(prev) == WT_WINDOW_CLASS if prev else False
     except AttributeError:
-        prev = None
+        prev, prev_is_terminal = None, False
     subprocess.Popen(["cmd", "/c", *args], cwd=cwd, creationflags=NO_WINDOW)
-    if prev:
-        threading.Thread(target=_restore_foreground, args=(prev,), daemon=True).start()
+    if prev and not prev_is_terminal:
+        threading.Thread(target=_minimize_terminal_on_grab, args=(prev,), daemon=True).start()
 
 
-def _restore_foreground(hwnd):
-    """Return the OS foreground to `hwnd` after Windows Terminal grabs it. Runs in a daemon thread.
+def _minimize_terminal_on_grab(prev):
+    """Minimize the drainer window once it steals focus from `prev`. Runs in a daemon thread.
 
-    A bare SetForegroundWindow from this headless (pythonw, scheduled-task) process is silently
-    ignored by Windows' foreground lock — the call returns but focus does not move. To defeat the
-    lock we tap ALT (which clears it for the calling thread) and AttachThreadInput to the current
-    foreground thread before setting focus, retrying until it sticks. WT claims focus in stages, so
-    we wait briefly first and then reclaim in a short retry loop.
+    WT claims focus in stages, so we wait briefly, then watch the foreground: if it never leaves
+    `prev`, there is nothing to do; if a terminal window grabs it, minimize that window — which slides
+    it off-screen and hands activation back to `prev` without fighting the foreground lock.
     """
     user32 = ctypes.windll.user32
-    kernel32 = ctypes.windll.kernel32
-    time.sleep(0.4)  # let WT finish its (staged) activation before we reclaim
+    time.sleep(0.4)  # let WT finish its (staged) activation
     for _ in range(15):
-        if user32.GetForegroundWindow() == hwnd:
+        fg = user32.GetForegroundWindow()
+        if fg == prev:
+            return  # focus never left Russell's window
+        if _window_class(fg) == WT_WINDOW_CLASS:
+            try:
+                user32.ShowWindow(fg, SW_MINIMIZE)
+            except Exception:
+                pass
             return
-        try:
-            user32.keybd_event(0x12, 0, 0, 0)   # ALT down — clears the foreground lock
-            user32.keybd_event(0x12, 0, 2, 0)   # ALT up
-            fg_thread = user32.GetWindowThreadProcessId(user32.GetForegroundWindow(), None)
-            cur_thread = kernel32.GetCurrentThreadId()
-            user32.AttachThreadInput(fg_thread, cur_thread, True)
-            user32.SetForegroundWindow(hwnd)
-            user32.AttachThreadInput(fg_thread, cur_thread, False)
-        except Exception:
-            pass
         time.sleep(0.05)
 
 

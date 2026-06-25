@@ -11,14 +11,19 @@
 // Show one:      node mail.js --show=<messageId>
 // Draft a reply: node mail.js --reply --message-id=<id> --body-file=reply.html
 //                (creates a DRAFT reply-all in the thread; never sends)
-// Draft new:     node mail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.html [--cc=c@z]
-//                (creates a fresh DRAFT to specific recipients; never sends)
+// Draft new:     node mail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.html \
+//                  [--cc=c@z] [--attach=file1.pdf,file2.png] [--replace] [--text]
+//                (creates a fresh DRAFT to specific recipients; never sends. --attach adds file
+//                 attachments; --replace first deletes any existing drafts with the same subject
+//                 so re-runs don't pile up duplicates; --text treats the body-file as plain text
+//                 instead of HTML.)
 // Send to self:  node mail.js --send-self --subject="..." --body-file=note.txt
 //                (sends a plain-text mail to your own inbox; handy for phone copy-paste)
 // Delete one:    node mail.js --delete=<messageId>
 //                (moves the message to Deleted Items — reversible, never a permanent purge)
 
 const fs = require('fs');
+const path = require('path');
 const { getGraphClient } = require('./graph-client');
 
 const args = Object.fromEntries(
@@ -142,20 +147,46 @@ async function reply(client) {
   console.log(`Draft reply created in thread (id ${draft.id.slice(0, 20)}...). Review in Outlook Drafts.`);
 }
 
+// Reusable: create a draft message (never sends). Returns the created draft.
+//   createDraft(client, { to, subject, body, cc, attach, replace, contentType })
+//   - attach: a path or comma-separated string or array of paths -> file attachments
+//   - replace: delete any existing drafts with the same subject first (avoids duplicates)
+async function createDraft(client, { to, subject, body = '', cc, attach, replace = false, contentType = 'html' } = {}) {
+  if (!to || !subject) throw new Error('createDraft requires { to, subject }');
+  client = client || await getGraphClient();
+  if (replace) {
+    const existing = await client.api('/me/mailFolders/drafts/messages')
+      .filter(`subject eq '${String(subject).replace(/'/g, "''")}'`)
+      .select('id,subject').top(20).get();
+    for (const m of existing.value || []) await client.api(`/me/messages/${m.id}`).delete();
+  }
+  const recip = (s) => String(s).split(',').map(a => ({ emailAddress: { address: a.trim() } }));
+  const message = { subject, body: { contentType, content: body }, toRecipients: recip(to) };
+  if (cc) message.ccRecipients = recip(cc);
+  const attachPaths = Array.isArray(attach)
+    ? attach
+    : (attach ? String(attach).split(',').map(s => s.trim()).filter(Boolean) : []);
+  if (attachPaths.length) {
+    message.attachments = attachPaths.map(p => ({
+      '@odata.type': '#microsoft.graph.fileAttachment',
+      name: path.basename(p),
+      contentBytes: fs.readFileSync(p).toString('base64'),
+    }));
+  }
+  return client.api('/me/messages').post(message);
+}
+
 async function draftNew(client) {
   if (!args.to || !args.subject || !args['body-file']) {
     throw new Error('--draft-new requires --to, --subject, and --body-file');
   }
-  const html = fs.readFileSync(args['body-file'], 'utf8');
-  const recip = (s) => String(s).split(',').map(a => ({ emailAddress: { address: a.trim() } }));
-  const message = {
-    subject: args.subject,
-    body: { contentType: 'html', content: html },
-    toRecipients: recip(args.to),
-  };
-  if (args.cc) message.ccRecipients = recip(args.cc);
-  const draft = await client.api('/me/messages').post(message);
-  console.log(`Draft created to ${args.to} (id ${draft.id.slice(0, 20)}...). Review in Outlook Drafts; never sent.`);
+  const body = fs.readFileSync(args['body-file'], 'utf8');
+  const draft = await createDraft(client, {
+    to: args.to, subject: args.subject, body, cc: args.cc,
+    attach: args.attach, replace: !!args.replace, contentType: args.text ? 'text' : 'html',
+  });
+  const extra = args.attach ? ' with attachment' : '';
+  console.log(`Draft created to ${args.to} (id ${draft.id.slice(0, 20)}...)${extra}. Review in Outlook Drafts; never sent.`);
 }
 
 async function sendSelf(client) {
@@ -176,16 +207,21 @@ async function sendSelf(client) {
   console.log(`Sent to self (${me_addr}): "${args.subject}"`);
 }
 
-(async () => {
-  const client = await getGraphClient();
-  if (args['list-unread']) return listUnread(client);
-  if (args['list-inbox']) return listInbox(client);
-  if (args['list-drafts']) return listDrafts(client);
-  if (args.search) return search(client);
-  if (args.show) return show(client);
-  if (args.reply) return reply(client);
-  if (args['draft-new']) return draftNew(client);
-  if (args['send-self']) return sendSelf(client);
-  if (args.delete) return del(client);
-  throw new Error('Specify --list-unread, --list-inbox, --list-drafts, --search, --show, --reply, --draft-new, --send-self, or --delete');
-})().catch(e => { console.error('Error:', e.message); process.exit(1); });
+module.exports = { createDraft };
+
+// --- CLI (only when run directly, so `require` of this file is side-effect-free) ---
+if (require.main === module) {
+  (async () => {
+    const client = await getGraphClient();
+    if (args['list-unread']) return listUnread(client);
+    if (args['list-inbox']) return listInbox(client);
+    if (args['list-drafts']) return listDrafts(client);
+    if (args.search) return search(client);
+    if (args.show) return show(client);
+    if (args.reply) return reply(client);
+    if (args['draft-new']) return draftNew(client);
+    if (args['send-self']) return sendSelf(client);
+    if (args.delete) return del(client);
+    throw new Error('Specify --list-unread, --list-inbox, --list-drafts, --search, --show, --reply, --draft-new, --send-self, or --delete');
+  })().catch(e => { console.error('Error:', e.message); process.exit(1); });
+}
