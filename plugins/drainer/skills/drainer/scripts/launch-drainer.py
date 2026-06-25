@@ -83,6 +83,9 @@ def _auto_update():
             timeout=30,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+            # claude.exe is a console app; under the windowless pythonw poller it would otherwise
+            # pop a fresh "Claude" console window every cycle and steal focus. Suppress it.
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
     except Exception:
         pass  # never block the poller/digest over a failed update check
