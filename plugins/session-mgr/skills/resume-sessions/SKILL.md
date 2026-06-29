@@ -102,7 +102,7 @@ instructions: |-
     -d "<cwd_with_forward_slashes>" \
     --title "<short title (≤30 chars)>" \
     powershell -NoExit -NoProfile \
-    -File "$HOME/OneDrive/Claude/scripts/launch-session.ps1" \
+    -File "$HOME/Dev/rrrutledge/rrrutledge-claude-code-plugins/scripts/launch-session.ps1" \
     -Resume "<session_id>"
   ```
 
@@ -122,7 +122,7 @@ instructions: |-
 
   ## Notes
 
-  - `launch-session.ps1` lives at `~/OneDrive/Claude/scripts/launch-session.ps1`. Its `-Resume`
+  - `launch-session.ps1` lives at `~/Dev/rrrutledge/rrrutledge-claude-code-plugins/scripts/launch-session.ps1`. Its `-Resume`
     flag runs `claude --resume <session_id>` in the correct working directory.
   - `claude --resume <session_id>` resumes an existing session by its UUID, picking up the full
     conversation history.
