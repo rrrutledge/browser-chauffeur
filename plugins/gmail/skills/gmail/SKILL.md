@@ -42,6 +42,12 @@ Under `scripts/` (run with `node`):
   - List inbox: `node gmail.js --list-inbox [--top=50] [--json]` (newest-first; `--json` emits a
     structured array for scripts — each item has the RFC822 Message-ID as `id`, plus `uid`, `subject`,
     `from`, `fromAddress`, `received`, `isRead`)
+  - List sent: `node gmail.js --list-sent [--top=50] [--json]` (sent mail, newest-first; same output
+    format as `--list-inbox`)
+  - Search: `node gmail.js --search=<query> [--folder=all|inbox|sent] [--top=50] [--json]` (IMAP TEXT
+    search — matches headers + body; `--folder` defaults to `all` (`[Gmail]/All Mail`), covering both
+    inbox and sent; results newest-first. Use this to check whether a reply was sent to a contact before
+    concluding a thread is unresponded.)
   - Show one: `node gmail.js --show=<message-id>` (`<message-id>` is the Message-ID header, with the
     angle brackets, e.g. `<abc@mail.gmail.com>`)
   - List drafts: `node gmail.js --list-drafts [--top=30]`

@@ -6,6 +6,11 @@
 //
 // List inbox:    node gmail.js --list-inbox [--top=50] [--json]
 //                (inbox, newest-first; --json emits a structured array for scripts)
+// List sent:     node gmail.js --list-sent [--top=50] [--json]
+//                (sent mail, newest-first; same output format as --list-inbox)
+// Search:        node gmail.js --search=<query> [--folder=all|inbox|sent] [--top=50] [--json]
+//                (search for messages matching query; --folder defaults to "all" ([Gmail]/All Mail);
+//                 matches headers + body via IMAP TEXT search; newest-first)
 // Show one:      node gmail.js --show=<message-id>
 //                (<message-id> is the RFC822 Message-ID header, e.g. <abc@mail.gmail.com>)
 // List drafts:   node gmail.js --list-drafts [--top=30]
@@ -73,12 +78,12 @@ async function findUid(c, messageId) {
   return ids && ids.length ? ids[ids.length - 1] : null;
 }
 
-async function listInbox(c) {
+async function listFolder(c, mailbox) {
   const top = parseInt(args.top || '50', 10);
-  const lock = await c.getMailboxLock('INBOX');
+  const lock = await c.getMailboxLock(mailbox);
   try {
     const total = c.mailbox.exists;
-    if (!total) { if (args.json) console.log('[]'); else console.log('No inbox messages.'); return; }
+    if (!total) { if (args.json) console.log('[]'); else console.log(`No messages in ${mailbox}.`); return; }
     const start = Math.max(1, total - top + 1);
     const out = [];
     for await (const m of c.fetch(`${start}:*`, { envelope: true, flags: true, internalDate: true })) {
@@ -92,12 +97,51 @@ async function listInbox(c) {
         received: (e.date || m.internalDate || new Date()).toISOString
           ? (e.date || m.internalDate).toISOString() : String(e.date || m.internalDate),
         isRead: m.flags ? m.flags.has('\\Seen') : false,
-        preview: '',
       });
     }
-    out.reverse(); // newest-first
+    out.reverse();
     if (args.json) { console.log(JSON.stringify(out, null, 2)); return; }
-    console.log(`${out.length} inbox message(s) (newest first):`);
+    console.log(`${out.length} message(s) in ${mailbox} (newest first):`);
+    for (const m of out) {
+      console.log(`\n--- ${m.received.slice(0, 16)}  |  ${m.isRead ? 'read ' : 'UNREAD'} | ${m.subject}`);
+      console.log(`    from: ${m.from}`);
+      console.log(`    id:   ${m.id}`);
+    }
+  } finally { lock.release(); }
+}
+
+async function search(c) {
+  const query = String(args.search);
+  const top = parseInt(args.top || '50', 10);
+  const folderArg = String(args.folder || 'all').toLowerCase();
+  const mailbox = folderArg === 'inbox' ? 'INBOX'
+    : folderArg === 'sent' ? '[Gmail]/Sent Mail'
+    : '[Gmail]/All Mail';
+  const lock = await c.getMailboxLock(mailbox);
+  try {
+    const uids = await c.search({ text: query }, { uid: true });
+    if (!uids || !uids.length) {
+      if (args.json) console.log('[]'); else console.log(`No messages found matching "${query}" in ${mailbox}.`);
+      return;
+    }
+    const take = uids.slice(-top);
+    const out = [];
+    for await (const m of c.fetch(take, { envelope: true, flags: true, internalDate: true }, { uid: true })) {
+      const e = m.envelope || {};
+      out.push({
+        id: e.messageId || `uid-${m.uid}`,
+        uid: m.uid,
+        subject: e.subject || '(no subject)',
+        from: fromList(e.from),
+        fromAddress: e.from && e.from[0] ? e.from[0].address : '',
+        received: (e.date || m.internalDate || new Date()).toISOString
+          ? (e.date || m.internalDate).toISOString() : String(e.date || m.internalDate),
+        isRead: m.flags ? m.flags.has('\\Seen') : false,
+      });
+    }
+    out.sort((a, b) => (a.received < b.received ? 1 : -1));
+    if (args.json) { console.log(JSON.stringify(out, null, 2)); return; }
+    console.log(`${out.length} message(s) matching "${query}" in ${mailbox} (newest first):`);
     for (const m of out) {
       console.log(`\n--- ${m.received.slice(0, 16)}  |  ${m.isRead ? 'read ' : 'UNREAD'} | ${m.subject}`);
       console.log(`    from: ${m.from}`);
@@ -300,14 +344,16 @@ async function check(c) {
   const c = client();
   await c.connect();
   try {
-    if (args['list-inbox']) return await listInbox(c);
+    if (args['list-inbox']) return await listFolder(c, 'INBOX');
     if (args['list-drafts']) return await listDrafts(c);
     if (args.show) return await show(c);
     if (args.reply) return await reply(c);
     if (args['draft-new']) return await draftNew(c);
     if (args['send-draft']) return await sendDraft(c);
     if (args.archive) return await archive(c);
+    if (args['list-sent']) return await listFolder(c, '[Gmail]/Sent Mail');
+    if (args.search) return await search(c);
     if (args.check) return await check(c);
-    throw new Error('Specify --list-inbox, --list-drafts, --show, --reply, --draft-new, --send-draft, --archive, or --check');
+    throw new Error('Specify --list-inbox, --list-sent, --search, --list-drafts, --show, --reply, --draft-new, --send-draft, --archive, or --check');
   } finally { await c.logout(); }
 })().catch(e => { console.error('Error:', e.message); process.exit(1); });
