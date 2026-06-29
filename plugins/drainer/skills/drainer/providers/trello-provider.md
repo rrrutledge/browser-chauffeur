@@ -134,21 +134,17 @@ Each advance also posts a dated comment recording what happened, so the board re
 
 ### Nudge cadence
 
-Pick the tier based on how closely the user works with the contact and how difficult the ask is:
+Pick the tier based on how closely the user works with the contact:
 
 **Frequent collaborator** — someone the user works with regularly who would treat this as a normal part of their day:
 - After sending → bump **3 business days**
 - After 1st follow-up (no reply) → bump **1 week**
 
 **Infrequent contact** — someone outside the user's regular workflow, or where this ask isn't part of their day job:
-- After sending → bump **1 week**
-- After 1st follow-up (no reply) → bump **2 weeks**
-
-**Difficult ask** — asking for something that requires real effort, commitment, or internal approval from the contact (e.g. sponsorship money, a significant favor, a formal agreement):
 - After sending → bump **2 weeks**
 - After any follow-up (no reply) → bump **2 weeks**
 
-When unsure, default to infrequent. When the ask is for money or a formal commitment, use difficult ask regardless of how well the user knows the contact.
+When unsure, default to infrequent.
 
 If the situational check finds **nothing to do right now** (it's not yet time to follow up, or they
 replied and the user already answered), silently bump the due date and finish — surface no tab.
