@@ -9,6 +9,17 @@ Apply these whenever authoring or editing a document or message in Russell's nam
 
 **Everything here applies to every medium by default** — Teams, Slack, email, Jira comments, Confluence, Word, PRs. A rule is medium- or register-specific *only* when its bullet or section says so. The **Formal writing** and **Conversational writing** sections below describe **register** (how warm, how structured) — not which rules are in scope; their guidance applies wherever you're writing in that register, across all channels.
 
+## Self-audit before staging (mandatory gate)
+
+Reading this skill once and composing "in the voice" reliably leaks the patterns it bans — the rules slip not because they're missing but because the draft was never checked against them. So after you write a draft, run it through this gate **before** you stage, send, or present it:
+
+1. **Name the persona/register** this message is in — `1on1`, `outreach`, `announcement`, `meeting-invite`, formal, etc. State it to yourself explicitly.
+2. **Walk that persona's bullets and the "Never do these" list one at a time, against your actual draft** — not from memory. For each bullet, find the words in your draft it governs and confirm they comply, or revise. This is a line-by-line audit of the text you wrote, not a general vibe check.
+3. **Apply the load-bearing outreach checks every time**, since these are the ones most often missed: cold/first-touch outreach opens with the *soft* ask (gauge interest, invite a conversation) and names any hard commitment only lightly and later; never restate a link, date, or detail already shared upthread; land on one ask; close with "let me/us know."
+4. Only after the draft survives the audit do you stage it.
+
+A draft that reaches the user should already read as Russell's, because you verified it against the specific bullets — not because you intended to.
+
 ## Links
 
 Always embed links as hyperlinks on descriptive text within the sentence flow — never paste bare `https://…` URLs in prose.
