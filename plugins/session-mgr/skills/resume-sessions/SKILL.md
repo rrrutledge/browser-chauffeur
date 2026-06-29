@@ -86,10 +86,9 @@ instructions: |-
 
   Run: `python ~/.tmp/find_abrupt_sessions.py '<json_array_of_active_ids>'`
 
-  ## Step 3 — Filter to interactive sessions
+  ## Step 3 — Filter out non-interactive sessions
 
   From the full list, additionally exclude:
-  - Drainer auto-seeded sessions: last_user_text starts with "Your task instructions are in"
   - Background task notification endings: last_user_text starts with "<task-notification>"
   - Triage prompt endings: last_user_text is very long (>500 chars) and contains a JSON array
 
@@ -126,8 +125,6 @@ instructions: |-
     flag runs `claude --resume <session_id>` in the correct working directory.
   - `claude --resume <session_id>` resumes an existing session by its UUID, picking up the full
     conversation history.
-  - Sessions from the drainer (autonomous email/Teams triage loops) are deliberately excluded —
-    the drainer manages its own lifecycle and will re-queue any incomplete items.
   - There are ~1,300 JSONL session files total; the script scans them all but only reads the tail
     of each (last user message), so it completes in a few seconds.
 ---
