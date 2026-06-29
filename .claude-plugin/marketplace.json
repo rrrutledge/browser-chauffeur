@@ -74,6 +74,11 @@
       "name": "teams",
       "source": "./plugins/teams",
       "description": "Read Microsoft Teams chats and watched-team channels via the Teams internal REST services with tokens sniffed from the live Teams web session. List unread DMs, group chats, meeting chats, and watched-team channels, and read a conversation's messages — no DOM hydration. Mark-read and reply drafting are browser-driven (drainer worker + message-draft skill)."
+    },
+    {
+      "name": "session-mgr",
+      "source": "./plugins/session-mgr",
+      "description": "Find and resume Claude Code sessions that ended abruptly — after a restart, crash, or unplanned shutdown. Scans all sessions across every working directory and opens each one in a new Windows Terminal tab."
     }
   ]
 }
