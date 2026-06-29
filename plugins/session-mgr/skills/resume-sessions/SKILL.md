@@ -84,13 +84,21 @@ instructions: |-
   print(json.dumps(abrupt, indent=2))
   ```
 
-  Run: `python ~/.tmp/find_abrupt_sessions.py '<json_array_of_active_ids>'`
+  Run: `python .tmp/find_abrupt_sessions.py '<json_array_of_active_ids>'`
 
-  ## Step 3 — Filter out non-interactive sessions
+  ## Step 3 — Exclude only sessions with clear machine-generated endings
 
-  From the full list, additionally exclude:
-  - Background task notification endings: last_user_text starts with "<task-notification>"
-  - Triage prompt endings: last_user_text is very long (>500 chars) and contains a JSON array
+  From the full list, exclude only sessions whose last_user_text matches one of these exact
+  machine-generated patterns — do NOT apply any other judgment about whether a session looks
+  "complete" or "worth resuming":
+
+  - Proper exit: last_user_text is exactly `<local-command-stdout>Goodbye!</local-command-stdout>`
+    or `<local-command-stdout>Bye!</local-command-stdout>`
+  - Background task notification: last_user_text starts with `<task-notification>`
+  - Automated triage prompt: last_user_text is longer than 500 chars AND contains a JSON array (`[`)
+
+  Launch everything else — short replies, drainer seeds, mid-sentence messages, one-word answers,
+  all of it. Do not guess whether the user considered a session finished.
 
   ## Step 4 — Launch each session in a new WT tab
 
