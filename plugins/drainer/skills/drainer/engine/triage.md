@@ -13,7 +13,11 @@ For every inbound item ask both questions before assigning a bucket:
    but what Russell himself would decide to act on. A training deadline he'd complete is an action;
    a security alert for a failed login he already knows about isn't — reading it changes nothing he'd
    do. An automated sender does not make something junk — read the content and ask whether it would
-   move Russell to act. Volume is irrelevant; actionability is in Russell's response, not the sender's intent.
+   move Russell to act. Volume is irrelevant; actionability is in Russell's response, not the sender's
+   intent. **Audience breadth is irrelevant too** — a message sent to a hundred people that names an
+   action Russell himself would take (sign the card, complete the survey, RSVP, return the form) is an
+   action for *him*, exactly as much as if he were the only recipient. Being one of many recipients
+   never downgrades a real action; ask only whether Russell would do the thing.
 
 2. **"Is there an advantage to acting NOW?"** — Even when there is an action, ask whether doing it
    immediately matters. Is someone waiting on Russell? Does it keep a conversation moving? Is there a
@@ -43,12 +47,19 @@ urgency, no one is blocked waiting for his reply, and the digest is the right ve
   ticket, a lookup, a system update…), a decision, a check, or delegating it to the team — or BOTH
   (often: do the work, then reply about the outcome). This is ONE bucket on purpose; don't try to
   decide reply-vs-work here. Record a hint: **"reply" / "work" / "work-then-reply"**.
+  An action Russell himself would perform is **needs-you (work)** even when the request went out to a
+  whole group rather than to him by name — a "please sign Kelsey's card by Friday," a "submit your
+  goals," a "RSVP for the offsite." The trigger is that *he* has a thing to do, not that he was singled
+  out; how many others were also asked makes no difference.
   A **personal, individually-written** message that shares something personal — a one-to-one note, a
   personal update from a friend or contact, not a corporate/automated/mass announcement — is
   **needs-you (reply)** even when it asks nothing explicitly: replying at a human level *is* the action.
   The personal tone is the signal; the warmth of what they shared is the reason to write back.
-- **fyi** — **impersonal** information: the user may want to know but nothing is asked and no human reply
-  is owed (a report, an automated heads-up, a decision someone else made, a mass/corporate announcement).
+- **fyi** — **impersonal** information with **nothing for Russell to do**: he may want to know, but no
+  human reply is owed and no action is his to take (a report, an automated heads-up, a decision someone
+  else made, a mass announcement that only informs). A mass/corporate announcement is fyi *only* when it
+  carries no action Russell would take — the moment it asks him to do something he'd actually do (even
+  optional, even with a soft deadline), it is **needs-you**, not fyi.
 - **junk** — no information value AND no action: automated noise, newsletters, pure marketing,
   CI/build notifications, duplicate status churn, chatter not aimed at the user. Junk is also a signal
   to stop it arriving again; *how* to stop it is provider mechanics — each provider's **JUNK-LEARNING**
@@ -71,5 +82,6 @@ plainly carries the whole story and asks nothing (e.g. a recording notice with n
   ask once than to auto-act on something that wasn't actually a standing decision.
 - Unsure between **needs-you** and **fyi** → **needs-you** (prefer acting).
 - Unsure between **fyi** and **junk** → **fyi** (prefer keeping eyes on it).
-- Reserve **needs-you** for genuine asks directed at Russell **or personal messages owed a human
-  reply**; bias toward **fyi** for impersonal/automated information.
+- Reserve **needs-you** for genuine actions Russell would take — whoever else was also asked — **or
+  personal messages owed a human reply**; bias toward **fyi** only for information that leaves him
+  nothing to do.
