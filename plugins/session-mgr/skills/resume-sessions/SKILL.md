@@ -3,17 +3,25 @@ skill: resume-sessions
 description: Find and resume Claude Code sessions that ended abruptly (without an "exit" command). Use when the user asks to resume sessions after a computer restart, crash, or unplanned shutdown, or when they want to recover sessions that weren't properly closed.
 instructions: |-
   Find all Claude Code sessions that ended without an explicit "exit" command and launch each one
-  in a new Windows Terminal tab for resumption.
+  in a new Windows Terminal tab for resumption. Skip sessions that are currently open.
 
-  ## Step 1 — Find abrupt sessions
+  ## Step 1 — Find currently active session IDs
 
-  Write a Python script to `.tmp/find_abrupt_sessions.py` and run it:
+  Run `wmic process where "name='claude.exe'" get CommandLine` and extract every session UUID
+  (pattern: `--resume <uuid>` or `--session-id <uuid>`). These are sessions already open in a tab
+  and must be excluded from the launch list.
+
+  Write a Python script to `.tmp/find_abrupt_sessions.py` and run it, passing the active IDs as
+  a JSON argument or writing them to a temp file first.
+
+  ## Step 2 — Find abrupt sessions
 
   ```python
-  import os, json
+  import os, json, sys
   from datetime import datetime
 
   PROJECTS_DIR = os.path.expanduser("~/.claude/projects")
+  active_ids = set(json.loads(sys.argv[1])) if len(sys.argv) > 1 else set()
 
   abrupt = []
 
@@ -25,8 +33,11 @@ instructions: |-
       for fname in os.listdir(full_project):
           if not fname.endswith(".jsonl"):
               continue
-          fpath = os.path.join(full_project, fname)
+          session_id = fname.replace(".jsonl", "")
+          if session_id in active_ids:
+              continue
 
+          fpath = os.path.join(full_project, fname)
           title = None
           cwd = None
           last_user_text = None
@@ -59,7 +70,6 @@ instructions: |-
           if last_user_text.lower() == "exit":
               continue
 
-          session_id = fname.replace(".jsonl", "")
           mtime = os.path.getmtime(fpath)
           abrupt.append({
               "session_id": session_id,
@@ -74,20 +84,16 @@ instructions: |-
   print(json.dumps(abrupt, indent=2))
   ```
 
-  Run with `python ~/.tmp/find_abrupt_sessions.py`.
+  Run: `python ~/.tmp/find_abrupt_sessions.py '<json_array_of_active_ids>'`
 
-  ## Step 2 — Filter to interactive sessions
+  ## Step 3 — Filter to interactive sessions
 
-  From the full list, exclude:
-  - The current session (match on last_user_text being the prompt the user just typed)
+  From the full list, additionally exclude:
   - Drainer auto-seeded sessions: last_user_text starts with "Your task instructions are in"
   - Background task notification endings: last_user_text starts with "<task-notification>"
-  - Triage prompt endings: last_user_text is very long (>500 chars) and contains JSON arrays
+  - Triage prompt endings: last_user_text is very long (>500 chars) and contains a JSON array
 
-  If args specifies a date or time range (e.g. "since Monday", "from last week", "last 2 days"),
-  additionally filter to sessions whose mtime falls within that range.
-
-  ## Step 3 — Launch each session in a new WT tab
+  ## Step 4 — Launch each session in a new WT tab
 
   For each session in the filtered list, run:
 
@@ -109,9 +115,10 @@ instructions: |-
 
   Launch each tab sequentially (the Bash tool runs them one at a time naturally).
 
-  ## Step 4 — Confirm
+  ## Step 5 — Confirm
 
-  After all tabs are launched, tell the user how many sessions were opened and list the titles.
+  Tell the user how many sessions were opened and list the titles. If any sessions were skipped
+  because they were already open, mention that count too.
 
   ## Notes
 
@@ -121,4 +128,6 @@ instructions: |-
     conversation history.
   - Sessions from the drainer (autonomous email/Teams triage loops) are deliberately excluded —
     the drainer manages its own lifecycle and will re-queue any incomplete items.
+  - There are ~1,300 JSONL session files total; the script scans them all but only reads the tail
+    of each (last user message), so it completes in a few seconds.
 ---
