@@ -141,10 +141,10 @@ Pick the tier based on how closely the user works with the contact:
 - After 1st follow-up (no reply) → bump **1 week**
 
 **Infrequent contact** — someone outside the user's regular workflow, or where this ask isn't part of their day job:
-- After sending → bump **2 weeks**
-- After any follow-up (no reply) → bump **2 weeks**
+- After sending → bump **1 week**
+- After 1st follow-up (no reply) → bump **2 weeks**
 
-When unsure, default to infrequent. When the ask requires real commitment or internal approval from the contact (e.g. sponsorship money, a formal agreement), always use the infrequent cadence — regardless of how closely the user works with them.
+When unsure, default to infrequent. When the ask requires real commitment or internal approval from the contact (e.g. sponsorship money, a formal agreement), start at **2 weeks** instead of 1 — regardless of how closely the user works with them.
 
 If the situational check finds **nothing to do right now** (it's not yet time to follow up, or they
 replied and the user already answered), silently bump the due date and finish — surface no tab.
