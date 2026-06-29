@@ -9,17 +9,17 @@ Apply these whenever authoring or editing a document or message in Russell's nam
 
 **Everything here applies to every medium by default** — Teams, Slack, email, Jira comments, Confluence, Word, PRs. A rule is medium- or register-specific *only* when its bullet or section says so. The **Formal writing** and **Conversational writing** sections below describe **register** (how warm, how structured) — not which rules are in scope; their guidance applies wherever you're writing in that register, across all channels.
 
-## The drafting loop: Read → Write → Verify (mandatory gate)
+## The drafting loop: Read → Write → Verify → Stage → Learn (mandatory)
 
-Every message in Russell's name goes through three steps, in order. Skipping the third is what leaks the patterns this skill bans — the rules slip not because they're missing but because the draft was never checked against them. Reading once then composing "in the voice" is not enough.
+Every message in Russell's name — a Jira comment, an email, a Teams post, a PR — runs through these steps, in order. Skipping a step is what leaks the patterns this skill bans: reading once then composing "in the voice" is not enough.
 
 1. **Read** — before writing a word, identify the persona/register this message is in (`1on1`, `outreach`, `announcement`, `meeting-invite`, formal, etc.) and read that section's bullets plus the "Never do these" list. Compose against what you just read, not from memory.
-2. **Write** — draft the message.
-3. **Verify** — walk the same persona bullets and "Never do these" one at a time against your **actual draft text**. For each bullet, find the words it governs and confirm they comply, or revise. This is a line-by-line audit of what you wrote, not a general vibe check. Only after the draft survives this step do you stage, send, or present it.
+2. **Write** — draft the message. When it's on the same topic as a prior message or email thread — even if it isn't a direct response, and even when the most recent message is one Russell sent himself — anchor it there rather than composing fresh, so the follow-up answers where the conversation actually stands and the history stays together. In Teams, use Reply on a message in that topic; in email, reply into the existing thread on that subject.
+3. **Verify** — walk the same persona bullets and "Never do these" one at a time against your **actual draft text**. For each bullet, find the words it governs and confirm they comply, or revise. This is a line-by-line audit of what you wrote, not a general vibe check. **Apply the load-bearing outreach checks every time**, since these are the ones most often missed: cold/first-touch outreach opens with the *soft* ask (gauge interest, invite a conversation) and names any hard commitment only lightly and later; never restate a link, date, or detail already shared upthread; land on one ask; close with "let me/us know."
+4. **Stage, never send** — a draft that survives verify is staged for Russell's approval; by default he sends it himself. Put the text into the real UI where it'll be sent — the ticket comment box, the Teams compose box, the email reply — via `browser-chauffeur`, so he sees it in context, edits inline, and clicks the app's own Send. If the UI genuinely can't be driven, show the proposed text in chat for approval instead. The one send exception: when a channel has a programmatic send path and Russell, having reviewed the exact draft this turn, gives an explicit per-message instruction to send it, you may send that reviewed text for him (today only personal Gmail, via the `gmail` skill's `--send-draft`). Default, silence, and any autonomous run mean draft-only — never infer a send.
+5. **Learn** — after he sends, run the **Voice learning loop** below: diff what he actually sent against your draft and update this guidance when the voice changed.
 
-**Apply the load-bearing outreach checks on every verify**, since these are the ones most often missed: cold/first-touch outreach opens with the *soft* ask (gauge interest, invite a conversation) and names any hard commitment only lightly and later; never restate a link, date, or detail already shared upthread; land on one ask; close with "let me/us know."
-
-A draft that reaches the user should already read as Russell's, because you verified it against the specific bullets — not because you intended to.
+A draft that reaches Russell should already read as his, because you verified it against the specific bullets — not because you intended to.
 
 ## Links
 
@@ -80,20 +80,6 @@ Use for: self-evaluations, quarterly/weekly R&D reviews, stakeholder and status 
 - **Continuity.** Tie back to the prior period's report: what you said you'd do → what you did.
 - **Right altitude.** Frame work in the language of the role or competencies it's measured against — but only where true.
 - **Bullets with bold lead-ins.** Start each bullet with a **bold 4–7 word key phrase**, then " — " and the detail; put an intro sentence above a list with a blank line before the list.
-
-### Draft first, then send
-
-Any message that leaves Russell's hands — a Jira comment, an email, a Teams post — is drafted for his approval before it's sent. By default he sends it himself. The one exception: when a channel has a programmatic send path and Russell, having reviewed the exact draft this turn, gives an explicit per-message instruction to send it, you may send that reviewed text for him (today only personal Gmail has this, via the `gmail` skill's `--send-draft`). Default, silence, and any autonomous run still mean draft-only — never infer a send.
-
-**Draft it in the app where it will be sent.** The ideal is to put the text into the real UI — the ticket comment box, the Teams compose box, the email reply — via `browser-chauffeur`, so Russell sees exactly how it will look in context, edits it inline if he wants, and clicks the app's own Send button. Drafting in-place (never auto-sending) is the preferred approach whenever the UI can be opened.
-
-**Thread off the related message.** When the draft is on the same topic as a prior message or email thread — even if it isn't a direct response to that specific message, and even when the most recent message in that thread is one Russell sent himself — anchor it there rather than composing fresh. In Teams, use the Reply feature on a message in that topic; in email, reply into the existing thread on that subject (replying to the most recent message, even if it's Russell's own sent message, so the follow-up answers where the conversation actually stands). This keeps conversation history together and gives readers the context without restating it. Real example: a bug-report message in a group chat was sent as a reply to Patrick's original error post (same topic, not a direct response) rather than as a new message, so the connection was immediately clear.
-
-If the target UI genuinely can't be driven, fall back to showing the proposed text in chat for approval, then send only once he says to. This mirrors the discipline the conversational tools already follow (Teams drafts are typed into the compose box, never auto-sent).
-
-After he sends, run the **Voice learning loop** below — diff what he actually sent against your draft and update this guidance if the voice changed.
-
----
 
 ## Conversational writing
 
