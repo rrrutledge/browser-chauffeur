@@ -24,9 +24,10 @@
 // consumptionhorizon caught up to the last message yet still be unread (isRead=false). So unread
 // detection for chats MUST use the aggregator's isRead, never the horizon.
 //
-// READ-ONLY. No send path (composing/sending stays browser-driven via DRAFT-MODE) and no mark-read:
-// the aggregator's isRead is not driven by any replayable HTTP call, so marking read is browser-
-// driven too (the worker opens the conversation via browser-chauffeur). See teams-provider.md § CLEAR.
+// SEND: the `send` subcommand POSTs to the IC3 messages endpoint (same token as `messages`), so
+// sending is a one-liner: node teams-chat.js send <convId> "text". No mark-read: the aggregator's
+// isRead is not driven by any replayable HTTP call, so marking read stays browser-driven (the worker
+// opens the conversation via browser-chauffeur). See teams-provider.md § CLEAR.
 //
 // CONFIG (env vars; sensible defaults for Russell's setup):
 //   DRAINER_TEAMS_WATCHED_TEAM_ID    — the watched team's space id (threadProperties.spaceId / General id)
@@ -39,6 +40,7 @@
 // Usage:
 //   node teams-chat.js enumerate [--top 40] [--unread]  -> JSON array of conversations, newest-first
 //   node teams-chat.js messages <convId> [--top 20]     -> recent messages (newest-first)
+//   node teams-chat.js send <convId> <message> [--html] -> send a message to a conversation
 //   node teams-chat.js mark-unread --conversation-id <id> --message-id <id>  -> mark message (and after) unread
 //   node teams-chat.js token [--force]                  -> ensure/refresh cached tokens, print status
 
@@ -336,6 +338,23 @@ async function cmdMarkUnread(convId, messageId) {
   process.stdout.write(`Marked unread from message ${messageId} in ${convId}\n`);
 }
 
+async function cmdSend(convId, text, isHtml) {
+  if (!convId) throw new Error('send requires a convId');
+  if (!text) throw new Error('send requires message text');
+  const content = isHtml ? text : `<p>${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`;
+  const body = { content, messagetype: 'RichText/Html', contenttype: 'html' };
+  let res = await call('ic3', 'POST', `/v1/users/ME/conversations/${enc(convId)}/messages`, body);
+  if (res.status !== 200 && res.status !== 201) {
+    res = await call('agg', 'POST', `/api/v2/teams/users/me/chats/${enc(convId)}/messages`, body);
+    if (res.status !== 200 && res.status !== 201)
+      throw new Error(`send HTTP ${res.status}: ${res.body.slice(0, 400)}`);
+  }
+  let parsed; try { parsed = JSON.parse(res.body); } catch { throw new Error(`send: non-JSON response (HTTP ${res.status}): ${res.body.slice(0, 200)}`); }
+  const id = parsed.id || parsed.OriginalArrivalTime || null;
+  const time = parsed.composetime || parsed.OriginalArrivalTime || null;
+  process.stdout.write(JSON.stringify({ id, time }, null, 2) + '\n');
+}
+
 async function cmdToken(force) {
   const meta = await getTokens(force);
   process.stdout.write(`Tokens OK ✅  ic3 exp=${meta.ic3.expISO}  agg exp=${meta.agg.expISO}\n`);
@@ -351,10 +370,16 @@ async function cmdToken(force) {
     switch (cmd) {
       case 'enumerate': await cmdEnumerate(parseInt(flag('--top') || '40', 10), has('--unread')); break;
       case 'messages': await cmdMessages(positional[0], parseInt(flag('--top') || '20', 10)); break;
+      case 'send': {
+        const convId = positional[0];
+        const convIdIdx = rest.findIndex(a => a === convId);
+        const msgText = rest.slice(convIdIdx + 1).filter(a => a !== '--html').join(' ');
+        await cmdSend(convId, msgText, has('--html')); break;
+      }
       case 'mark-unread': await cmdMarkUnread(flag('--conversation-id'), flag('--message-id')); break;
       case 'token': await cmdToken(has('--force')); break;
       default:
-        process.stderr.write('Usage: teams-chat.js <enumerate [--unread]|messages <convId>|mark-unread --conversation-id <id> --message-id <id>|token> [--top N] [--force]\n');
+        process.stderr.write('Usage: teams-chat.js <enumerate [--unread]|messages <convId>|send <convId> <message> [--html]|mark-unread --conversation-id <id> --message-id <id>|token> [--top N] [--force]\n');
         process.exit(1);
     }
   } catch (e) {
