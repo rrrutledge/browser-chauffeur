@@ -129,7 +129,7 @@ If the message is a single clear sentence ending in a question, that is usually 
 
 ### Core voice
 
-- **Sign off as "Russ" — never "Russell".** In any personal or professional communication (email, Teams, Slack, comments), the sign-off is always `Russ`. "Russell" is only correct in third-party references to him (e.g., a formal document header), never in a sign-off. **Exception — any church setting:** in an LDS church context (a missionary, his Bishop, a ward member — anyone written to in a church capacity), sign off as `Bro. [Lastname]` (e.g. `Bro. Rutledge`).
+- **Sign off as "Russ" in email — no sign-off in chat.** Email sign-offs are always `Russ` (never "Russell"). In Teams and Slack, skip the sign-off entirely — Russell never signs his name in chat. "Russell" is only correct in third-party references (e.g., a formal document header). **Exception — any church setting:** in an LDS church context, sign off as `Bro. [Lastname]` (e.g. `Bro. Rutledge`).
 - **Warm, direct, humble.** Plain words, short sentences.
 - **Open with warmth.** Lead with a brief positive or appreciative line before the business — regardless of persona or whether the other person did anything special. Real edit: a 1on1 reply that opened straight into "I have a conflict…" was corrected to open with "thank you for thinking of me for both of these!" first.
 - **Answer the question first.** When replying to a direct question, lead with the answer — then add context. Don't bury it behind a preamble or a generic thanks. ("Not yet, but I've opened a ticket to track it: …" — the "Not yet, but" comes before anything else.)

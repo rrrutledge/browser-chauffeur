@@ -18,7 +18,7 @@ SHELL_BUILTINS = {
 TRUSTED_COMMANDS = {
     'awk',
     'base32', 'base64', 'basename', 'bc', 'bq',
-    'cal', 'cat', 'cd', 'claude', 'clip', 'cmp', 'column', 'comm', 'command', 'cut', 'cygpath',
+    'cal', 'cat', 'cd', 'claude', 'clip', 'cmp', 'column', 'comm', 'command', 'credential', 'cut', 'cygpath',
     'date', 'decktape', 'df', 'diff', 'dirname', 'docker', 'du',
     'echo', 'env', 'exec', 'expand', 'explorer', 'export', 'expr',
     'factor', 'file', 'find', 'findstr', 'fmt', 'fold', 'free', 'fsutil',
