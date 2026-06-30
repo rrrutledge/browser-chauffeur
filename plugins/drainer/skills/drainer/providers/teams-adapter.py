@@ -97,9 +97,9 @@ class Provider(ProviderBase):
         return items
 
     def triage_text(self, item):
-        # For meeting chats, scan [NEW] messages (past the IC3 horizon) for recording indicators.
-        # [context] messages are already past the drainer's cleared horizon — skip them so a
-        # previously-processed recording is never re-flagged when a later message arrives.
+        # For meeting chats, surface all [NEW] messages (past the IC3 horizon) so triage sees the
+        # actual new content. The lastMessage may be a trivial follow-up while earlier unread
+        # messages contain a recording notification — the triage AI handles classification.
         if item.get("type") != "meeting":
             return item.get("preview") or ""
         conv_id = item.get("id")
@@ -112,17 +112,13 @@ class Provider(ProviderBase):
             msgs = json.loads(show.stdout or "[]")
         except ValueError:
             return item.get("preview") or ""
-        meeting_name = item.get("label") or item.get("subject") or "meeting"
         horizon_known = any(m.get("unread") is not None for m in msgs)
-        for m in msgs:
-            if horizon_known and not m.get("unread"):
-                continue  # [context] — already past the drainer's cleared horizon
-            text = m.get("text") or ""
-            sender = m.get("from") or ""
-            if "isExportedToOdsp" in text or (sender == "(unknown)" and text.strip().endswith("Play")):
-                return (f"[MEETING RECORDING AVAILABLE] {meeting_name} — "
-                        "this meeting was recorded; AI notes may contain action items")
-        return item.get("preview") or ""
+        if not horizon_known:
+            return item.get("preview") or ""
+        new_msgs = [m for m in reversed(msgs) if m.get("unread")]
+        if not new_msgs:
+            return item.get("preview") or ""
+        return "\n".join(f"{m.get('from', '?')}: {m.get('text', '')}" for m in new_msgs)
 
     def stable_id(self, item):
         lm = item.get("lastMessage") or {}
