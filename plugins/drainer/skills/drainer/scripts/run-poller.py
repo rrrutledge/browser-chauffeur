@@ -293,6 +293,48 @@ def _worker_summary(json_file):
     return subject or f"from {who}"
 
 
+def _spawn_teams_mark_read(items, repo, runtime_dir, worker_model):
+    """Spawn a single silent batch worker tab that marks all Teams fyi/junk items read.
+
+    Browser-driven (REST consumptionhorizon PUTs don't flip isRead). The worker follows
+    teams-provider.md § CLEAR for each conversation, then self-closes without interrupting
+    the user. Items are already recorded in seen-state before this is called.
+    """
+    seeds = os.path.join(runtime_dir, "seeds")
+    os.makedirs(seeds, exist_ok=True)
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    prompt_file = os.path.join(seeds, f"teams-mark-read-{ts}.prompt.txt")
+    teams_provider_md = os.path.join(PROVIDERS_DIR, "teams-provider.md")
+    convs = [
+        {
+            "convId": it.get("convId") or it.get("messageId") or it["_id"],
+            "label": it.get("label") or it.get("subject") or it["_id"],
+            "firstUnreadMessageId": it.get("firstUnreadMessageId"),
+        }
+        for it in items
+    ]
+    convs_json = json.dumps(convs, indent=2)
+    n = len(items)
+    with open(prompt_file, "w", encoding="utf-8") as f:
+        f.write(
+            f"You are a drainer batch worker marking {n} Teams conversation(s) read. "
+            "Read `~/.claude/CLAUDE.md` first.\n\n"
+            f"Follow `{teams_provider_md}` § CLEAR for EACH conversation below. "
+            "Open Teams web ONCE, then for each conversation click it and run the boundary-check "
+            "(fetch latest messages, compare against firstUnreadMessageId, mark-unread any that "
+            "arrived after the worker started). Use browser-chauffeur for all browser operations.\n\n"
+            f"Conversations:\n{convs_json}\n\n"
+            f"When all conversations are marked read, write `{prompt_file[:-10]}done` to signal "
+            "completion, then self-close: "
+            f"read the hosting PID from `{prompt_file}.hostpid` and run "
+            "`taskkill /PID <pid> /T /F` (PowerShell) to terminate this session. "
+            "No draft, no digest entry, no user interaction — this is a silent maintenance tab."
+        )
+    title = f"Teams: mark-read ({n} conversation{'s' if n != 1 else ''})"
+    spawn_cmd = os.path.join(SCRIPT_DIR, "spawn-tab.cmd")
+    spawn_tab([spawn_cmd, title, repo, prompt_file, worker_model], cwd=repo)
+
+
 def spawn_worker(iid, json_file, repo, runtime_dir, worker_model):
     seeds = os.path.join(runtime_dir, "seeds")
     os.makedirs(seeds, exist_ok=True)
@@ -576,6 +618,10 @@ def main():
             for it in others:
                 print(f"    [{it['_bucket']:9}] [{it['_source']:20}] {it['_id']}\n"
                       f"        {it.get('from')} | {it.get('subject')}")
+        teams_others = [it for it in others if it["_source"] == "teams"]
+        if teams_others:
+            print(f"  teams mark-read batch (dry-run): {len(teams_others)} conv(s): "
+                  + ", ".join(it.get("convId") or it["_id"] for it in teams_others))
         return
 
     dispatched, auto_dispatched, held, queued = 0, 0, 0, 0
@@ -609,6 +655,10 @@ def main():
         seen_state("queue-add", cfg["runtime_dir"], it["_source"], iid, json_file)
         seen_state("record", cfg["runtime_dir"], it["_source"], iid, it["_bucket"])
         queued += 1
+
+    teams_others = [it for it in others if it["_source"] == "teams"]
+    if teams_others:
+        _spawn_teams_mark_read(teams_others, repo, cfg["runtime_dir"], cfg["worker_model"])
 
     print(f"dispatched {dispatched} worker tab(s), {auto_dispatched} auto-handle worker(s), "
           f"queued {queued} for digest, held {held} at global cap of {cfg['max_open_tabs']}. "
