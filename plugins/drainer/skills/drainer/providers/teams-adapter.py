@@ -97,6 +97,30 @@ class Provider(ProviderBase):
             it.setdefault("preview", lm.get("preview"))
         return items
 
+    def triage_text(self, item):
+        # Meeting recordings land as [context] before a trivial follow-up becomes [NEW]; scan all
+        # recent messages so triage sees the recording, not just the irrelevant last message.
+        if item.get("type") != "meeting":
+            return item.get("preview") or ""
+        conv_id = item.get("id")
+        if not conv_id:
+            return item.get("preview") or ""
+        show = run_node([self.teamsjs, "messages", conv_id, "--top", "20"], **self._node_kw())
+        if show.returncode != 0:
+            return item.get("preview") or ""
+        try:
+            msgs = json.loads(show.stdout or "[]")
+        except ValueError:
+            return item.get("preview") or ""
+        meeting_name = item.get("label") or item.get("subject") or "meeting"
+        for m in msgs:
+            text = m.get("text") or ""
+            sender = m.get("from") or ""
+            if "isExportedToOdsp" in text or (sender == "(unknown)" and text.strip().endswith("Play")):
+                return (f"[MEETING RECORDING AVAILABLE] {meeting_name} — "
+                        "this meeting was recorded; AI notes may contain action items")
+        return item.get("preview") or ""
+
     def stable_id(self, item):
         lm = item.get("lastMessage") or {}
         digits = "".join(c for c in (lm.get("time") or "") if c.isdigit())
