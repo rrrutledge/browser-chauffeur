@@ -1,9 +1,11 @@
 // Read / mark-read a Slack workspace via the Slack Web API.
 //
-// Auth: set SLACK_BOT_TOKEN to a Slack API token, SLACK_COOKIE_D to the companion `d` session cookie
-// (required when the token type needs it — e.g. a browser `xoxc` token is invalid_auth without it; a
-// bot/app token that doesn't need a cookie can set it to any non-empty value), and SLACK_TEAM_ID to the
-// workspace's team id. No npm deps — uses Node's built-in fetch (Node 18+).
+// Auth: token + d-cookie are auto-sniffed from the live CDP browser session and cached at
+// ~/.claude/slack-token.json. The CDP browser (Edge on port 9222) must have a Slack tab open
+// (app.slack.com/client/<TEAM_ID>). SLACK_BOT_TOKEN / SLACK_COOKIE_D env vars serve as a
+// bootstrap fallback when the sniff fails (e.g. browser not running). SLACK_TEAM_ID identifies
+// the workspace in localStorage; if unset the first team found is used.
+// Requires playwright-core (present via browser-chauffeur). Fetch: Node 18+.
 //
 // Auth glance:   node slack.js --check
 //                (calls auth.test; prints the signed-in user/team; non-zero exit on auth failure)
@@ -16,8 +18,10 @@
 //                (conversations.mark up to <ts>, or subscriptions.thread.mark when --thread-ts is given —
 //                 the conversation/thread's "gone"; reversible, never deletes)
 
-const TOKEN = process.env.SLACK_BOT_TOKEN;
-const COOKIE = process.env.SLACK_COOKIE_D;
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+
 const TEAM = process.env.SLACK_TEAM_ID;
 
 const args = Object.fromEntries(
@@ -27,26 +31,133 @@ const args = Object.fromEntries(
   })
 );
 
-function requireAuth() {
-  if (!TOKEN || !COOKIE) {
-    throw new Error('Not signed in: set SLACK_BOT_TOKEN and SLACK_COOKIE_D (the `d` session cookie) in the environment.');
+// ---- Token cache + CDP sniff ---------------------------------------------------
+
+// Stable user-level path so the cache is found regardless of which repo the skill runs from.
+const TOKEN_FILE = path.join(os.homedir(), '.claude', 'slack-token.json');
+const EXPIRY_SKEW_S = 120;
+const TOKEN_TTL_S = 23 * 3600; // xoxc tokens typically last ~24h; cache for 23h
+const CDP_TIMEOUT_MS = 30000;
+
+function readCachedToken() {
+  try {
+    const meta = JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf8'));
+    if (meta.token && meta.cookie && meta.exp && meta.exp - EXPIRY_SKEW_S > Date.now() / 1000) return meta;
+  } catch {}
+  return null;
+}
+
+async function sniffToken() {
+  const { chromium } = (() => {
+    try { return require('playwright-core'); }
+    catch { return require(path.join(os.homedir(), '.claude', 'browser-chauffeur', 'node_modules', 'playwright-core')); }
+  })();
+  // Race against a timeout — connectOverCDP can hang indefinitely on a wedged browser.
+  const browser = await Promise.race([
+    chromium.connectOverCDP('http://localhost:9222'),
+    new Promise((_, reject) => setTimeout(
+      () => reject(new Error('CDP connect timed out after 30 s — is Edge running on port 9222?')),
+      CDP_TIMEOUT_MS,
+    )),
+  ]);
+  const context = browser.contexts()[0];
+  if (!context) {
+    await browser.disconnect().catch(() => {});
+    throw new Error('No CDP browser context (is Edge running on port 9222?)');
+  }
+  // Match only the authenticated Slack app tab, not marketing/signin/status pages.
+  const page = context.pages().find(p => /app\.slack\.com\/client\//.test(p.url()));
+  if (!page) {
+    await browser.disconnect().catch(() => {});
+    const teamHint = TEAM ? `app.slack.com/client/${TEAM}` : 'app.slack.com/client/<TEAM_ID>';
+    throw new Error(`No authenticated Slack tab found in CDP browser — open ${teamHint}`);
+  }
+  let localToken, cookies;
+  try {
+    // Fetch token and cookies in parallel — independent CDP round-trips.
+    [localToken, cookies] = await Promise.all([
+      page.evaluate((teamId) => {
+        try {
+          const raw = localStorage.getItem('localConfig_v2');
+          if (!raw) return null;
+          const cfg = JSON.parse(raw);
+          if (teamId && cfg.teams && cfg.teams[teamId]) return cfg.teams[teamId].token || null;
+          const ids = Object.keys(cfg.teams || {});
+          return ids.length ? (cfg.teams[ids[0]].token || null) : null;
+        } catch { return null; }
+      }, TEAM || ''),
+      context.cookies(['https://slack.com', 'https://app.slack.com']),
+    ]);
+  } finally {
+    // disconnect() leaves the remote Edge process running; close() would kill it.
+    await browser.disconnect().catch(() => {});
+  }
+  const dCookie = cookies.find(c => c.name === 'd' && c.domain && c.domain.includes('slack.com'));
+  if (!localToken || !localToken.startsWith('xoxc-')) {
+    throw new Error('No valid xoxc token in Slack localStorage — is the Slack tab signed in?');
+  }
+  if (!dCookie) throw new Error('No d session cookie found for slack.com');
+  const cookieExp = dCookie.expires && dCookie.expires > 0 ? dCookie.expires : null;
+  const meta = {
+    token: localToken,
+    cookie: dCookie.value,
+    exp: cookieExp ? Math.min(cookieExp, Math.floor(Date.now() / 1000) + TOKEN_TTL_S) : Math.floor(Date.now() / 1000) + TOKEN_TTL_S,
+    capturedISO: new Date().toISOString(),
+  };
+  fs.mkdirSync(path.dirname(TOKEN_FILE), { recursive: true });
+  fs.writeFileSync(TOKEN_FILE, JSON.stringify(meta, null, 2));
+  return meta;
+}
+
+async function getToken(force) {
+  if (!force) {
+    const cached = readCachedToken();
+    if (cached) return cached;
+  }
+  try {
+    return await sniffToken();
+  } catch (sniffErr) {
+    if (process.env.SLACK_BOT_TOKEN && process.env.SLACK_COOKIE_D) {
+      if (force) {
+        // Re-sniff failed after invalid_auth — retrying the same stale env-var token would be
+        // silent and misleading; surface a clear error instead.
+        throw new Error(`Token re-sniff failed (${sniffErr.message}) and env-var credentials appear stale. `
+          + 'Update SLACK_BOT_TOKEN/SLACK_COOKIE_D or open a Slack tab in the CDP browser.');
+      }
+      // First-time env-var fallback: cache for 1 h so subsequent call()s skip the sniff.
+      const meta = {
+        token: process.env.SLACK_BOT_TOKEN,
+        cookie: process.env.SLACK_COOKIE_D,
+        exp: Math.floor(Date.now() / 1000) + 3600,
+        capturedISO: new Date().toISOString(),
+      };
+      try { fs.mkdirSync(path.dirname(TOKEN_FILE), { recursive: true }); fs.writeFileSync(TOKEN_FILE, JSON.stringify(meta, null, 2)); } catch {}
+      return meta;
+    }
+    throw new Error(`${sniffErr.message} (alternatively, set SLACK_BOT_TOKEN + SLACK_COOKIE_D env vars)`);
   }
 }
 
-// One Slack Web API call. The token goes in the Authorization header; the companion `d` cookie rides
-// along in the Cookie header (most api/ paths and all client.* paths reject a browser xoxc token alone).
+// One Slack Web API call. Token + d-cookie come from the cache/sniff; on invalid_auth the token
+// is re-sniffed once and the call retried (transparent to callers).
 async function call(method, params = {}) {
+  let meta = await getToken(false);
   const body = new URLSearchParams(params).toString();
-  const res = await fetch(`https://slack.com/api/${method}`, {
+  const doFetch = (tok, cookie) => fetch(`https://slack.com/api/${method}`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${TOKEN}`,
-      'Cookie': `d=${COOKIE}`,
+      'Authorization': `Bearer ${tok}`,
+      'Cookie': `d=${cookie}`,
       'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
     },
     body,
-  });
-  const json = await res.json();
+  }).then(r => r.json());
+  let json = await doFetch(meta.token, meta.cookie);
+  if (!json.ok && json.error === 'invalid_auth') {
+    try { fs.unlinkSync(TOKEN_FILE); } catch {}
+    meta = await getToken(true);
+    json = await doFetch(meta.token, meta.cookie);
+  }
   if (!json.ok) throw new Error(`${method} failed: ${json.error || 'unknown'}`);
   return json;
 }
@@ -258,7 +369,6 @@ async function check() {
 }
 
 (async () => {
-  requireAuth();
   if (args.check) return await check();
   if (args['list-unread']) return await listUnread();
   if (args.show) return await show();

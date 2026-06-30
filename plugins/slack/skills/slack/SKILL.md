@@ -15,22 +15,18 @@ through `slack.js`, drafts go through `message-draft`.
 
 ## Auth
 
-`slack.js` calls the Web API with a token, sent as a Bearer header plus a companion `d` session cookie.
-The cookie is required for a browser-issued `xoxc` user token (which is `invalid_auth` without it) and for
-the `client.*` endpoints; a bot/app token that doesn't need a cookie can set it to any non-empty value. A
-user token is what lets the poller read unread DMs and mentions the way the account-holder sees them.
+`slack.js` auto-sniffs a fresh `xoxc-` token and companion `d` session cookie from the live CDP browser
+session (Edge on port 9222) and caches them at `~/.claude/slack-token.json`. The cache is reused for
+all subsequent calls; an `invalid_auth` response triggers a transparent re-sniff and single retry. No
+manual token maintenance is needed as long as the CDP browser has an authenticated `app.slack.com/client/`
+tab open.
 
-Set three environment variables (never in a file):
+**Bootstrap fallback:** `SLACK_BOT_TOKEN` and `SLACK_COOKIE_D` env vars are used if the sniff fails
+(e.g. browser not running). `SLACK_TEAM_ID` is used to select the right team from `localStorage`; if
+unset the first team found is used.
 
-- **`SLACK_BOT_TOKEN`** — the Slack API token (for a personal user token, the `xoxc-` value).
-- **`SLACK_COOKIE_D`** — the `d` session cookie value (the `xoxd-…` companion to an `xoxc` token).
-- **`SLACK_TEAM_ID`** — the workspace's team id.
-
-**Secrets stay machine-local.** The plugin code is shared via the marketplace; the token/cookie are
-per-machine, so the workspace is only reachable where you've set them. For a browser-sniffed user token,
-the token and cookie expire periodically — when `--check` reports `invalid_auth`, re-sniff both from the
-browser (the token from `localStorage.localConfig_v2.teams[<teamId>].token`, the cookie from
-DevTools → Application → Cookies → `d`) and re-set the env vars. There is no refresh-token flow.
+**Secrets stay machine-local.** The cached token lives in `~/.claude/` (never synced); the plugin
+source is shared via the marketplace and contains no credentials.
 
 ## Scripts
 
