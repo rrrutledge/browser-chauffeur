@@ -1,8 +1,7 @@
 """teams poller adapter — Microsoft Teams chats/channels via the teams skill's teams-chat.js.
 
 All teams mechanics live HERE, alongside the prose contract in `teams-provider.md`: locating the teams
-skill's teams-chat.js, the `enumerate --unread` read, the conversation-id scheme, and the captured item
-shape. The poller (`scripts/run-poller.py`) loads this adapter dynamically and drives it through the
+skill's teams-chat.js, the enumerate read, the conversation-id scheme, and the captured item shape. The poller (`scripts/run-poller.py`) loads this adapter dynamically and drives it through the
 `ProviderBase` interface — it contains no Teams specifics.
 
 This is the Teams sibling of `slack-adapter.py`: it wraps a sibling skill's read CLI. teams-chat.js talks
@@ -82,7 +81,7 @@ class Provider(ProviderBase):
         return {"cwd": TOKEN_HOME, "env": env}
 
     def enumerate(self, limit):
-        res = run_node([self.teamsjs, "enumerate", "--unread", "--top", str(limit)], **self._node_kw())
+        res = run_node([self.teamsjs, "enumerate", "--top", str(limit)], **self._node_kw())
         if res.returncode != 0:
             raise ProviderError(f"teams enumerate failed (signed in to Teams web?): {res.stderr.strip()[:300]}", kind="auth")
         items = json.loads(res.stdout or "[]")
