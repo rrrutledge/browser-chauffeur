@@ -25,6 +25,9 @@ from provider_base import ProviderBase, ProviderError, run_node, slug  # noqa: E
 # Stable per-machine home (teams-chat.js caches its sniffed tokens here, absolutely). We also run node
 # from here for a consistent cwd.
 TOKEN_HOME = os.path.join(os.path.expanduser("~"), ".claude", "drainer")
+# Per-conversation message-ID horizons — the highest message ID captured per conversation,
+# written by capture() and read by triage_text() to know where to stop fetching.
+_HORIZONS = os.path.join(TOKEN_HOME, "teams-msg-horizons.json")
 
 
 class Provider(ProviderBase):
@@ -96,11 +99,29 @@ class Provider(ProviderBase):
             it.setdefault("preview", lm.get("preview"))
         return items
 
-    def _new_msgs_since_horizon(self, conv_id, batch_size=20, max_messages=200):
-        """Fetch [NEW] messages back to the IC3 horizon, paginating in batches.
+    @staticmethod
+    def _load_horizons():
+        try:
+            with open(_HORIZONS, encoding="utf-8") as f:
+                return json.load(f)
+        except (OSError, ValueError):
+            return {}
 
-        Fetches newest-N, doubles until an unread:false message is found (the cleared
+    @staticmethod
+    def _save_horizon(conv_id, msg_id):
+        horizons = Provider._load_horizons()
+        horizons[conv_id] = msg_id
+        tmp = _HORIZONS + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(horizons, f, indent=2)
+        os.replace(tmp, _HORIZONS)
+
+    def _new_msgs_since(self, conv_id, last_msg_id, batch_size=20, max_messages=200):
+        """Fetch messages newer than last_msg_id, paginating in batches of batch_size.
+
+        Grows the window until a message with id <= last_msg_id appears (the known
         boundary) or the conversation start is reached. Returns messages oldest-first.
+        If last_msg_id is None, fetches up to max_messages from the start.
         """
         top = 0
         msgs = []
@@ -115,23 +136,33 @@ class Provider(ProviderBase):
                 break
             if not msgs:
                 break
-            if any(m.get("unread") is None for m in msgs):
-                return []  # horizon unavailable — can't tell new from context
-            if any(m.get("unread") is False for m in msgs):
-                break  # found the cleared boundary; all new content is now in msgs
+            if last_msg_id is not None:
+                try:
+                    if any(int(m.get("id", "0")) <= int(last_msg_id) for m in msgs):
+                        break  # reached the known boundary
+                except (ValueError, TypeError):
+                    break
             if len(msgs) < top:
                 break  # reached the beginning of the conversation
-        return list(reversed([m for m in msgs if m.get("unread")]))
+        if last_msg_id is not None:
+            try:
+                new = [m for m in msgs if int(m.get("id", "0")) > int(last_msg_id)]
+            except (ValueError, TypeError):
+                new = msgs
+        else:
+            new = msgs
+        return list(reversed(new))
 
     def triage_text(self, item):
-        # For meeting chats, surface all [NEW] messages (past the IC3 horizon) so triage sees the
-        # actual new content — not just the lastMessage preview. Paginate until the horizon is found.
+        # For meeting chats, surface messages newer than the last captured message so triage
+        # sees all new content — not just the lastMessage preview.
         if item.get("type") != "meeting":
             return item.get("preview") or ""
         conv_id = item.get("id")
         if not conv_id:
             return item.get("preview") or ""
-        new_msgs = self._new_msgs_since_horizon(conv_id)
+        last_msg_id = self._load_horizons().get(conv_id)
+        new_msgs = self._new_msgs_since(conv_id, last_msg_id)
         if not new_msgs:
             return item.get("preview") or ""
         return "\n".join(f"{m.get('from', '?')}: {m.get('text', '')}" for m in new_msgs)
@@ -176,6 +207,11 @@ class Provider(ProviderBase):
             body = lm.get("preview") or "(could not load messages)"
         with open(msg_file, "w", encoding="utf-8") as f:
             f.write(header + body + "\n")
+        # Advance the per-conversation horizon to the highest message ID captured, so triage_text
+        # knows where to stop fetching on the next cycle (independent of Teams' read state).
+        msg_ids = [int(m["id"]) for m in msgs if m.get("id", "").isdigit()]
+        if msg_ids:
+            self._save_horizon(conv_id, str(max(msg_ids)))
         # Record the first unread message id so the worker knows the exact boundary.
         first_unread_id = next((m["id"] for m in reversed(msgs) if m.get("unread")), None)
         record = {
