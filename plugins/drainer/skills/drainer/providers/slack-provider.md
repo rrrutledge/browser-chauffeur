@@ -25,6 +25,7 @@ The `slack` `slack.js` lives at `<slack-skill>/scripts/slack.js` — run it with
 - one **unread DM** (im) — keyed to its latest unread message,
 - one **unread group DM** (mpim) — keyed to its latest unread message,
 - one **@-mention in a channel** — one item per mentioning message,
+- one **unread channel** (no @-mention) — one item per channel, keyed to its latest unread message,
 - one **subscribed thread with unread replies** — keyed to its latest unread reply (the `subject` notes
   whether it also @-mentions you).
 
@@ -63,8 +64,10 @@ the message permalink, openable in Slack.
 ## CLEAR
 Advance the read cursor (the Slack "gone") — reversible and non-destructive (nothing is deleted; re-reading
 or a newer message re-surfaces it). Narrate it. Never delete messages.
-- **DM / group DM / channel mention** — `node slack.js --mark --channel=<channel> --ts=<ts>`
-  (`conversations.mark`). For a channel mention, marking up to the mention's `ts` clears its unread badge.
+- **DM / group DM / channel mention / channel unread** — `node slack.js --mark --channel=<channel> --ts=<ts>`
+  (`conversations.mark`). Advances the read cursor to `ts`. For a channel @-mention this clears the
+  mention badge but leaves any newer messages unread (the channel may re-surface as "Unread in #channel"
+  on the next cycle — that is expected, not an error).
 - **Thread item** — `node slack.js --mark --channel=<channel> --ts=<ts> --thread-ts=<threadTs>`
   (`subscriptions.thread.mark`) — advances the thread's own read cursor.
 
