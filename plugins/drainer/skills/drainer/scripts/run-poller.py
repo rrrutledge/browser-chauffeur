@@ -293,44 +293,74 @@ def _worker_summary(json_file):
     return subject or f"from {who}"
 
 
-def _spawn_teams_mark_read(items, repo, runtime_dir, worker_model):
+def _precheck_newer_id(teamsjs, conv_id, first_unread_id, node_kw):
+    """Return the earliest message id numerically greater than first_unread_id, or None.
+
+    Called before spawning the mark-read worker so boundary-guard data is pre-computed
+    without requiring the LLM to do REST discovery. Returns None if first_unread_id is
+    absent, the REST call fails, or no newer messages exist.
+    """
+    if not first_unread_id:
+        return None
+    res = run_node([teamsjs, "messages", conv_id, "--top", "20"], **node_kw)
+    if res.returncode != 0:
+        return None
+    try:
+        msgs = json.loads(res.stdout or "[]")
+    except ValueError:
+        return None
+    newer = []
+    for m in msgs:
+        try:
+            if int(m.get("id", "0")) > int(first_unread_id):
+                newer.append(m["id"])
+        except (ValueError, TypeError):
+            pass
+    return min(newer, key=lambda x: int(x)) if newer else None
+
+
+def _spawn_teams_mark_read(items, teams_provider, repo, runtime_dir, worker_model):
     """Spawn a single silent batch worker tab that marks all Teams fyi/junk items read.
 
-    Browser-driven (REST consumptionhorizon PUTs don't flip isRead). The worker follows
-    teams-provider.md § CLEAR for each conversation, then self-closes without interrupting
-    the user. Items are already recorded in seen-state before this is called.
+    The boundary-check (REST fetch + compare against firstUnreadMessageId) is done here
+    in Python before spawning, so the worker only has to open each conversation in Teams
+    web via browser-chauffeur and then run a pre-computed mark-unread call if needed.
+    Items are already recorded in seen-state before this is called.
     """
     seeds = os.path.join(runtime_dir, "seeds")
     os.makedirs(seeds, exist_ok=True)
     ts = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
     prompt_file = os.path.join(seeds, f"teams-mark-read-{ts}.prompt.txt")
-    teams_provider_md = os.path.join(PROVIDERS_DIR, "teams-provider.md")
-    convs = [
-        {
-            "convId": it.get("convId") or it.get("messageId") or it["_id"],
+    teamsjs = teams_provider.teamsjs
+    node_kw = teams_provider._node_kw()
+    convs = []
+    for it in items:
+        conv_id = it.get("convId") or it.get("messageId") or it["_id"]
+        mark_unread_id = _precheck_newer_id(
+            teamsjs, conv_id, it.get("firstUnreadMessageId"), node_kw
+        )
+        convs.append({
+            "convId": conv_id,
             "label": it.get("label") or it.get("subject") or it["_id"],
-            "firstUnreadMessageId": it.get("firstUnreadMessageId"),
-        }
-        for it in items
-    ]
+            "markUnreadId": mark_unread_id,
+        })
     convs_json = json.dumps(convs, indent=2)
     n = len(items)
     with open(prompt_file, "w", encoding="utf-8") as f:
         f.write(
             f"You are a drainer batch worker marking {n} Teams conversation(s) read. "
             "Read `~/.claude/CLAUDE.md` first.\n\n"
-            f"Follow `{teams_provider_md}` § CLEAR for EACH conversation below. "
-            "The order matters: for each conversation, FIRST run the REST boundary-check "
-            "(node teams-chat.js messages <convId> --top 20; collect any message ids numerically "
-            "greater than firstUnreadMessageId), THEN open that conversation in Teams web (which "
-            "marks all messages read), THEN mark-unread the earliest collected newer id so the "
-            "next poller cycle picks up anything that arrived after this worker started. "
-            "Use browser-chauffeur for all browser operations.\n\n"
+            "For EACH conversation below: use browser-chauffeur to open Teams web "
+            "(`https://teams.cloud.microsoft/v2/?ctx=chat`) and click the conversation "
+            "row matching `label` — this flips isRead. Then, if `markUnreadId` is not null, "
+            f"run: `node \"{teamsjs}\" mark-unread --conversation-id <convId> "
+            "--message-id <markUnreadId>` — this re-flags any message that arrived after "
+            "the poller started so the next cycle picks it up. No REST discovery needed; "
+            "the ids are already computed.\n\n"
             f"Conversations:\n{convs_json}\n\n"
-            f"When all conversations are marked read, write `{prompt_file[:-10]}done` to signal "
-            "completion, then self-close: "
-            f"read the hosting PID from `{prompt_file}.hostpid` and run "
-            "`taskkill /PID <pid> /T /F` (PowerShell) to terminate this session. "
+            f"When done, write `{prompt_file[:-10]}done` to signal completion, then "
+            f"self-close: read the hosting PID from `{prompt_file}.hostpid` and run "
+            "`taskkill /PID <pid> /T /F` (PowerShell). "
             "No draft, no digest entry, no user interaction — this is a silent maintenance tab."
         )
     title = f"Teams: mark-read ({n} conversation{'s' if n != 1 else ''})"
@@ -660,8 +690,8 @@ def main():
         queued += 1
 
     teams_others = [it for it in others if it["_source"] == "teams"]
-    if teams_others:
-        _spawn_teams_mark_read(teams_others, repo, cfg["runtime_dir"], cfg["worker_model"])
+    if teams_others and prov.get("teams"):
+        _spawn_teams_mark_read(teams_others, prov["teams"], repo, cfg["runtime_dir"], cfg["worker_model"])
 
     print(f"dispatched {dispatched} worker tab(s), {auto_dispatched} auto-handle worker(s), "
           f"queued {queued} for digest, held {held} at global cap of {cfg['max_open_tabs']}. "
