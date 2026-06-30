@@ -96,26 +96,42 @@ class Provider(ProviderBase):
             it.setdefault("preview", lm.get("preview"))
         return items
 
+    def _new_msgs_since_horizon(self, conv_id, batch_size=20, max_messages=200):
+        """Fetch [NEW] messages back to the IC3 horizon, paginating in batches.
+
+        Fetches newest-N, doubles until an unread:false message is found (the cleared
+        boundary) or the conversation start is reached. Returns messages oldest-first.
+        """
+        top = 0
+        msgs = []
+        while top < max_messages:
+            top = min(top + batch_size, max_messages)
+            show = run_node([self.teamsjs, "messages", conv_id, "--top", str(top)], **self._node_kw())
+            if show.returncode != 0:
+                break
+            try:
+                msgs = json.loads(show.stdout or "[]")
+            except ValueError:
+                break
+            if not msgs:
+                break
+            if any(m.get("unread") is None for m in msgs):
+                return []  # horizon unavailable — can't tell new from context
+            if any(m.get("unread") is False for m in msgs):
+                break  # found the cleared boundary; all new content is now in msgs
+            if len(msgs) < top:
+                break  # reached the beginning of the conversation
+        return list(reversed([m for m in msgs if m.get("unread")]))
+
     def triage_text(self, item):
         # For meeting chats, surface all [NEW] messages (past the IC3 horizon) so triage sees the
-        # actual new content. The lastMessage may be a trivial follow-up while earlier unread
-        # messages contain a recording notification — the triage AI handles classification.
+        # actual new content — not just the lastMessage preview. Paginate until the horizon is found.
         if item.get("type") != "meeting":
             return item.get("preview") or ""
         conv_id = item.get("id")
         if not conv_id:
             return item.get("preview") or ""
-        show = run_node([self.teamsjs, "messages", conv_id, "--top", "20"], **self._node_kw())
-        if show.returncode != 0:
-            return item.get("preview") or ""
-        try:
-            msgs = json.loads(show.stdout or "[]")
-        except ValueError:
-            return item.get("preview") or ""
-        horizon_known = any(m.get("unread") is not None for m in msgs)
-        if not horizon_known:
-            return item.get("preview") or ""
-        new_msgs = [m for m in reversed(msgs) if m.get("unread")]
+        new_msgs = self._new_msgs_since_horizon(conv_id)
         if not new_msgs:
             return item.get("preview") or ""
         return "\n".join(f"{m.get('from', '?')}: {m.get('text', '')}" for m in new_msgs)
