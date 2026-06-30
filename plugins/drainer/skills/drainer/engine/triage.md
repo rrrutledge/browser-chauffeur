@@ -7,7 +7,8 @@ each bucket (own worker vs digest) lives in the driver and SKILL.
 
 ## The two questions
 
-For every inbound item ask both questions before assigning a bucket:
+For every inbound item ask both questions before assigning a bucket. They are the whole decision — the
+buckets below just name the outcome.
 
 1. **"Would Russell actually do something because of this?"** — Not what the sender wants him to do,
    but what Russell himself would decide to act on. A training deadline he'd complete is an action;
@@ -32,34 +33,40 @@ For every inbound item ask both questions before assigning a bucket:
 email didn't reach Russell; he may eventually want to contact that person another way, but there's no
 urgency, no one is blocked waiting for his reply, and the digest is the right venue.
 
+**"Review and confirm" notifications:** always **fyi**. A notification whose only possible outcome is
+"yes, that looks right" is awareness, not work — no action item spawns from reading it. It only spawns
+an action in the rare case that the review reveals something unexpected; Russell spots that in the digest
+and escalates himself. No tab opens just to confirm something he already knew happened. Automated
+confirmations of account actions fall squarely here: a token regenerated, a password changed, a setting
+updated, a new device added, a sign-in confirmed. The same principle extends to any automated
+notification that reports a completed event — the content is information, not a request.
 
 ## The four buckets
+
+Each bucket names an outcome of the two questions; *when* each applies is decided up there, so the
+definitions below only say what the label means and what the loop does with it.
 
 - **auto-handle** — there is an action to take, but it is **fully determined by a standing rule** with
   **no judgment call left for Russell**: the same answer every time, decided in advance. Claude can do
   the action autonomously and tell Russell afterward in the digest, rather than opening a tab to ask.
   Use this **only** when a provider's **AUTO-HANDLE** section names a rule that plainly matches this item
-  (the rule says exactly what to do and under what condition). The bar is high: if there's any genuine
-  decision — *should* this be approved, *how* to word a reply, *whether* it's the right move — it is
-  **needs-you**, not auto-handle. No matching standing rule → it is not auto-handle. (The worker still
-  performs the action; it just never interrupts Russell, and the digest records what was done.)
-- **needs-you** — there is something to DO: a reply, a piece of work to kick off (code, a doc, a
-  ticket, a lookup, a system update…), a decision, a check, or delegating it to the team — or BOTH
-  (often: do the work, then reply about the outcome). This is ONE bucket on purpose; don't try to
-  decide reply-vs-work here. Record a hint: **"reply" / "work" / "work-then-reply"**.
-  An action Russell himself would perform is **needs-you (work)** even when the request went out to a
-  whole group rather than to him by name — a "please sign Kelsey's card by Friday," a "submit your
-  goals," a "RSVP for the offsite." The trigger is that *he* has a thing to do, not that he was singled
-  out; how many others were also asked makes no difference.
-  A **personal, individually-written** message that shares something personal — a one-to-one note, a
-  personal update from a friend or contact, not a corporate/automated/mass announcement — is
-  **needs-you (reply)** even when it asks nothing explicitly: replying at a human level *is* the action.
-  The personal tone is the signal; the warmth of what they shared is the reason to write back.
-- **fyi** — **impersonal** information with **nothing for Russell to do**: he may want to know, but no
-  human reply is owed and no action is his to take (a report, an automated heads-up, a decision someone
-  else made, a mass announcement that only informs). A mass/corporate announcement is fyi *only* when it
-  carries no action Russell would take — the moment it asks him to do something he'd actually do (even
-  optional, even with a soft deadline), it is **needs-you**, not fyi.
+  (the rule says exactly what to do and under what condition). The bar is high: any genuine decision left
+  — *should* this be approved, *how* to word a reply, *whether* it's the right move — makes it
+  **needs-you**. No matching standing rule → not auto-handle. (The worker still performs the action; it
+  just never interrupts Russell, and the digest records what was done.)
+- **needs-you** — the two questions land on act-now: there is something to DO and now is the time. The
+  thing to do may be a reply, a piece of work to kick off (code, a doc, a ticket, a lookup, a system
+  update…), a decision, a check, or delegating it to the team — or BOTH (often: do the work, then reply
+  about the outcome). This is ONE bucket on purpose; don't split reply-vs-work here. Record a hint:
+  **"reply" / "work" / "work-then-reply"**.
+  One extension beyond the two questions: a **personal, individually-written** message that shares
+  something personal — a one-to-one note, a personal update from a friend or contact, not a
+  corporate/automated/mass announcement — is **needs-you (reply)** even when it asks nothing explicitly.
+  Replying at a human level *is* the action; the personal tone is the signal and the warmth of what they
+  shared is the reason to write back.
+- **fyi** — information that leaves Russell nothing to do now: Q1 turns up no action he'd take, or Q2
+  says it can wait. He may want to know, but no human reply is owed and nothing is his to act on. The
+  digest surfaces it.
 - **junk** — no information value AND no action: automated noise, newsletters, pure marketing,
   CI/build notifications, duplicate status churn, chatter not aimed at the user. Junk is also a signal
   to stop it arriving again; *how* to stop it is provider mechanics — each provider's **JUNK-LEARNING**
@@ -82,6 +89,3 @@ plainly carries the whole story and asks nothing (e.g. a recording notice with n
   ask once than to auto-act on something that wasn't actually a standing decision.
 - Unsure between **needs-you** and **fyi** → **needs-you** (prefer acting).
 - Unsure between **fyi** and **junk** → **fyi** (prefer keeping eyes on it).
-- Reserve **needs-you** for genuine actions Russell would take — whoever else was also asked — **or
-  personal messages owed a human reply**; bias toward **fyi** only for information that leaves him
-  nothing to do.
