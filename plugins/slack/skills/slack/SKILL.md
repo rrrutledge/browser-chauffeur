@@ -40,11 +40,13 @@ Under `scripts/` (run with `node`):
   - Auth glance: `node slack.js --check` (calls `auth.test`; prints the signed-in user/team; non-zero
     exit on auth failure)
   - List unread: `node slack.js --list-unread [--top=50] [--json]` — unread **DMs**, **group DMs**,
-    **@-mentions of you in channels**, and **unread replies in subscribed threads**, newest-first.
-    **Muted conversations are skipped** (muting is the user's "stop"). `--json` emits a structured array;
-    each item carries `id` (`<channel>:<ts>`), `channel`, `channelType` (`im`/`mpim`/`channel`/`thread`),
-    `ts`, `threadTs` (set for thread items), `from`, `fromId`, `subject`, `channelName`, `received` (ISO),
-    `preview`, `unreadCount`.
+    **@-mentions of you in channels**, **unread channel messages (no @-mention, one item per channel)**,
+    and **unread replies in subscribed threads**, newest-first. **Muted conversations are skipped**
+    (muting is the user's "stop"). `--json` emits a structured array; each item carries `id`
+    (`<channel>:<ts>`), `channel`, `channelType` (`im`/`mpim`/`channel`/`thread`), `ts`, `threadTs`
+    (set for thread items), `from`, `fromId`, `subject`, `channelName`, `received` (ISO), `preview`,
+    `unreadCount`. Channel items: `subject` is `"@mention in #name"` for @-mention items or
+    `"Unread in #name"` for non-mention unread items.
   - Show one: `node slack.js --show --channel=<C> --ts=<ts> [--thread-ts=<tts>] [--json]` — the message
     text plus a `chat.getPermalink` url. Pass `--thread-ts` to read a threaded reply. `--json` emits
     `{channel,ts,threadTs,from,fromId,received,text,permalink}`.

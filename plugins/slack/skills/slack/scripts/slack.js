@@ -8,8 +8,8 @@
 // Auth glance:   node slack.js --check
 //                (calls auth.test; prints the signed-in user/team; non-zero exit on auth failure)
 // List unread:   node slack.js --list-unread [--top=50] [--json]
-//                (unread DMs + group DMs + @-mentions + unread subscribed-thread replies, newest-first;
-//                 muted conversations are skipped; --json emits a structured array)
+//                (unread DMs + group DMs + @-mentions + channel unreads + unread subscribed-thread
+//                 replies, newest-first; muted conversations are skipped; --json emits a structured array)
 // Show one:      node slack.js --show --channel=<C> --ts=<ts> [--thread-ts=<tts>] [--json]
 //                (the message text + a chat.getPermalink url; pass --thread-ts for a threaded reply)
 // Mark read:     node slack.js --mark --channel=<C> --ts=<ts> [--thread-ts=<tts>]
@@ -105,6 +105,11 @@ async function renderText(text) {
   return clean(out);
 }
 
+// Build a short joined preview from up to 5 messages (oldest-first), rendered and trimmed.
+async function previewText(msgs) {
+  return clean((await Promise.all(msgs.slice(0, 5).reverse().map(m => renderText(m.text)))).join(' / ')).slice(0, 600);
+}
+
 // Unread top-level messages in one conversation: recent history filtered to ts > last_read, excluding our
 // own and pure system join/leave noise. (Passing oldest=last_read is unreliable — some conversations
 // carry a last_read value Slack rejects with invalid_ts_oldest — so we filter client-side.)
@@ -132,14 +137,13 @@ async function listUnread() {
       const latest = msgs[0];
       const info = await convInfo(c.id);
       const from = await userName(latest.user);
-      const preview = (await Promise.all(msgs.slice(0, 5).reverse().map(m => renderText(m.text)))).join(' / ');
       const subject = kind === 'ims' ? `DM from ${from}` : `Group DM (${info.name || 'group'})`;
       const channelName = kind === 'ims' ? `@${from}` : (info.name ? `mpdm:${info.name}` : 'group DM');
       items.push({
         id: `${c.id}:${latest.ts}`, channel: c.id, channelType: kind === 'ims' ? 'im' : 'mpim',
         ts: latest.ts, threadTs: '', from, fromId: latest.user, subject, channelName,
         received: tsToIso(latest.ts), isRead: false, unreadCount: msgs.length,
-        preview: clean(preview).slice(0, 600),
+        preview: await previewText(msgs),
       });
     }
   }
@@ -163,6 +167,26 @@ async function listUnread() {
     }
   }
 
+  // Channel unread messages (no @-mention): one item per channel, keyed to the latest unread message.
+  // Channels with mention_count >= 1 are handled exclusively by the @-mention loop above — skip them
+  // here even if no mentions were found in the fetch window (avoids silently demoting an @-mention that
+  // sits beyond the 30-message history limit to a plain "Unread in #channel" item).
+  for (const c of counts.channels || []) {
+    if (!c.has_unreads || muted.has(c.id) || (c.mention_count || 0) >= 1) continue;
+    const msgs = await unreadMessages(c.id, c.last_read, me);
+    if (!msgs.length) continue;
+    const latest = msgs[0];
+    const info = await convInfo(c.id);
+    const chName = info.name ? `#${info.name}` : c.id;
+    const from = await userName(latest.user);
+    items.push({
+      id: `${c.id}:${latest.ts}`, channel: c.id, channelType: 'channel',
+      ts: latest.ts, threadTs: '', from, fromId: latest.user, subject: `Unread in ${chName}`,
+      channelName: chName, received: tsToIso(latest.ts), isRead: false, unreadCount: msgs.length,
+      preview: await previewText(msgs),
+    });
+  }
+
   // Subscribed threads with unread replies: one item per thread, keyed to the latest unread reply. A
   // thread carries its OWN read cursor (root_msg.last_read) separate from the channel's, so thread
   // replies never appear in conversations.history above — they're enumerated here.
@@ -182,13 +206,12 @@ async function listUnread() {
       const chName = info.name ? `#${info.name}` : channel;
       const from = await userName(latest.user);
       const mentioned = unread.some(m => (m.text || '').includes(`<@${me}>`));
-      const preview = (await Promise.all(unread.slice(0, 5).reverse().map(m => renderText(m.text)))).join(' / ');
       items.push({
         id: `${channel}:${latest.ts}`, channel, channelType: 'thread',
         ts: latest.ts, threadTs: root.thread_ts || root.ts, from, fromId: latest.user,
         subject: mentioned ? `@mention in thread in ${chName}` : `Thread reply in ${chName}`,
         channelName: chName, received: tsToIso(latest.ts), isRead: false, unreadCount: unread.length,
-        preview: clean(preview).slice(0, 600),
+        preview: await previewText(unread),
       });
     }
   } catch { /* threads view unavailable — DMs/mentions still enumerate */ }
@@ -198,7 +221,7 @@ async function listUnread() {
   const out = items.slice(0, top);
 
   if (args.json) { console.log(JSON.stringify(out, null, 2)); return; }
-  if (!out.length) { console.log('No unread DMs, mentions, or thread replies.'); return; }
+  if (!out.length) { console.log('No unread DMs, mentions, channel messages, or thread replies.'); return; }
   console.log(`${out.length} unread item(s) (newest first):`);
   for (const it of out) {
     console.log(`\n--- ${it.received.slice(0, 16)}  |  ${it.subject}`);
