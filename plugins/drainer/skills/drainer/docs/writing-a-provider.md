@@ -6,12 +6,18 @@ or a browser. The contract is `engine/provider.md`; the providers in `../provide
 worked examples to copy from.
 
 ## Where it lives — two files that sit together
-A provider is **two files** in `providers/`, because two consumers drive it:
+A provider is **two files** that sit together, because two consumers drive it:
 
-- **`providers/<source>-adapter.py`** — **code** the deterministic poller loads and drives (how to
-  *read* the source).
-- **`providers/<source>-provider.md`** — **prose** the AI worker reads to act on one item (how to
-  *act* and *clear*).
+- **`<source>-adapter.py`** — **code** the deterministic poller loads and drives (how to *read* the
+  source).
+- **`<source>-provider.md`** — **prose** the AI worker reads to act on one item (how to *act* and
+  *clear*).
+
+Put both in the plugin's **`providers/`** when the source is generic and shareable. Put them in your
+machine's **`<local_dir>/providers/`** when the source is specific to one machine (a work-only
+internal system, a personal-only account) — that keeps it out of the shared, identity-free plugin. The
+engine resolves each enabled provider by searching the plugin's `providers/` first, then
+`<local_dir>/providers/`, so either location runs through the same loop.
 
 A machine enables the provider by name (with any config it needs) in `.claude/drainer.local.md` →
 `providers`. All providers share the one generic worker flow (`engine/worker-core.md`).

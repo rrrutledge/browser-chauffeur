@@ -22,6 +22,15 @@ you want in `drainer.local.md` and give any config they need (Trello board id; a
 subdomain). They're generic: you sign in as yourself. To add a source that isn't there yet, write a
 new provider — see `docs/writing-a-provider.md`.
 
+### Machine-local providers — `<local_dir>/providers/`
+A source specific to one machine — a work-only internal system, a personal-only account — lives in
+**`<local_dir>/providers/`** next to your `context.md`, so it stays out of the shared plugin (which
+is generic and identity-free) and never follows the plugin to another machine. Drop its two files
+(`<name>-adapter.py` + `<name>-provider.md`) there and enable `<name>` in `drainer.local.md` exactly
+like a shipped provider. The engine resolves each enabled provider by searching the plugin's
+`providers/` first, then `<local_dir>/providers/`, so local and shipped providers run through the same
+loop identically.
+
 ## Credentials
 OS credential store (Windows Credential Manager / Keychain) or environment variables (e.g.
 `TRELLO_KEY`/`TRELLO_TOKEN`). **Never** in the plugin or the settings file. Providers fetch them at
