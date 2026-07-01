@@ -35,7 +35,11 @@ carries the whole story and asks nothing — a recording notice with no notes �
 - **someone reaches out on a human level** — a personal, individually-written note, not a
   corporate/automated/mass announcement. Replying *is* the thing to do even when it asks nothing
   explicitly: acknowledging that he got it and appreciates it counts. The personal tone is the signal;
-  the warmth of what they shared is the reason to write back.
+  the warmth of what they shared is the reason to write back. **Treat a 1:1 direct message from a real
+  person as this case by default** — a private DM is personal outreach, so it's **needs-you** (hint:
+  "reply") even when it's just a short remark or a closing "sounds good"; the minimum action is a quick
+  acknowledgment or 👍 reaction on their message. A group or meeting message that names Russell directly
+  counts the same way; only automated, mass, or not-aimed-at-him chatter stays fyi.
 - a **dated to-do** comes due — a Trello tracker or outreach card, any dated item, the moment its due
   date arrives or passes. The due date IS the queue: a due item is the action surfacing when it was
   scheduled for.
