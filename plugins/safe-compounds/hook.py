@@ -18,6 +18,7 @@ disable Haiku fallbacks; SAFE_COMPOUNDS_TRUSTED_JSON to pin the trusted set.
 import json
 import os
 import sys
+import traceback
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -99,6 +100,14 @@ def main():
     except Exception:
         defer()
 
+    try:
+        dispatch(data)
+    except Exception:
+        log_debug(f"HOOK CRASHED, deferring to normal permission flow:\n{traceback.format_exc()}")
+        defer()
+
+
+def dispatch(data):
     config.reset()
     paths.reset_pending_worktree_paths()
     paths.reset_allowed_edit_dirs()
