@@ -134,6 +134,17 @@ CASES = [
     {"id": "mcp_blanket_configured", "tool": "mcp__myserver__whatever", "expect": "ALLOW"},
     {"id": "mcp_unknown_verb", "tool": "mcp__server__frobnicate_thing", "expect": "PROMPT"},
 
+    # --- Workflow -------------------------------------------------------------
+    {"id": "workflow_named_blanket", "tool": "Workflow", "name": "myworkflow", "expect": "ALLOW"},
+    {"id": "workflow_named_not_blanket", "tool": "Workflow", "name": "otherworkflow", "expect": "PROMPT"},
+    {"id": "workflow_inline_script_blanket", "tool": "Workflow",
+     "script": "export const meta = {\n  name: 'myworkflow',\n  description: 'x',\n}\nlog('hi')",
+     "expect": "ALLOW"},
+    {"id": "workflow_inline_script_not_blanket", "tool": "Workflow",
+     "script": "export const meta = {\n  name: 'otherworkflow',\n  description: 'x',\n}\nlog('hi')",
+     "expect": "PROMPT"},
+    {"id": "workflow_no_name_or_script", "tool": "Workflow", "expect": "PROMPT"},
+
     # --- Read ---------------------------------------------------------------
     {"id": "read_claude_rules", "tool": "Read", "file_path": "{CWD}/.claude/rules/architecture.md", "expect": "ALLOW"},
     {"id": "read_claude_teams", "tool": "Read", "file_path": "{CWD}/.claude/teams/bugfix-squad/agent-04b.md", "expect": "ALLOW"},

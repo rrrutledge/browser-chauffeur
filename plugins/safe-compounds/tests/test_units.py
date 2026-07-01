@@ -15,10 +15,14 @@ from safe_compounds.commands import is_git_command_safe, is_curl_safe, is_sed_co
 from safe_compounds.mcp import classify_mcp_tool  # noqa: E402
 from safe_compounds.enforce import detect_complex_bash, detect_simple_expansion, detect_cd_compound, enforce_bash  # noqa: E402
 from safe_compounds.scripts import check_node_segment  # noqa: E402
+from safe_compounds.workflow import classify_workflow_tool  # noqa: E402
 
 
 def set_config(**kwargs):
-    base = {"trusted_commands": [], "curl_domains": [], "mcp_blanket_servers": [], "trusted_script_dirs": []}
+    base = {
+        "trusted_commands": [], "curl_domains": [], "mcp_blanket_servers": [],
+        "trusted_script_dirs": [], "workflow_blanket_names": [],
+    }
     base.update(kwargs)
     config._CONFIG = base
 
@@ -196,6 +200,39 @@ class TestMcp:
     def test_unknown_verb(self):
         set_config()
         assert classify_mcp_tool("mcp__s__frobnicate_thing") is False
+
+
+class TestWorkflow:
+    def test_named_blanket(self):
+        set_config(workflow_blanket_names=["code-review"])
+        assert classify_workflow_tool({"name": "code-review"}) is True
+
+    def test_named_not_blanket(self):
+        set_config(workflow_blanket_names=["code-review"])
+        assert classify_workflow_tool({"name": "other"}) is False
+
+    def test_no_config(self):
+        set_config()
+        assert classify_workflow_tool({"name": "code-review"}) is False
+
+    def test_inline_script_blanket(self):
+        set_config(workflow_blanket_names=["code-review"])
+        script = "export const meta = {\n  name: 'code-review',\n  description: 'x',\n}\nlog('hi')"
+        assert classify_workflow_tool({"script": script}) is True
+
+    def test_inline_script_not_blanket(self):
+        set_config(workflow_blanket_names=["code-review"])
+        script = "export const meta = {\n  name: 'other',\n  description: 'x',\n}\nlog('hi')"
+        assert classify_workflow_tool({"script": script}) is False
+
+    def test_no_name_or_script(self):
+        set_config(workflow_blanket_names=["code-review"])
+        assert classify_workflow_tool({}) is False
+
+    def test_name_takes_precedence_over_script(self):
+        set_config(workflow_blanket_names=["code-review"])
+        script = "export const meta = {\n  name: 'other',\n  description: 'x',\n}\n"
+        assert classify_workflow_tool({"name": "code-review", "script": script}) is True
 
 
 class TestComplexBash:

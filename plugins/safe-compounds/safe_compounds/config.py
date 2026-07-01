@@ -11,7 +11,8 @@ Example ~/.claude/safe-compounds-config.json:
       "curl_domains": ["atlassian.net", "mycorp.sharepoint.com"],
       "mcp_blanket_servers": ["plugin_product-management_atlassian"],
       "trusted_script_dirs": ["my-plugins/"],
-      "learned_sync_exclude": ["my-internal-cli"]
+      "learned_sync_exclude": ["my-internal-cli"],
+      "workflow_blanket_names": ["code-review"]
     }
 
 Every value here is a command *name* or path/domain string — a name-level
@@ -25,6 +26,11 @@ blanket-allowed, etc.).
 `trusted_commands` is your private/company trust — it is never promoted to the
 shared PR. `learned_sync_exclude` blocklists additional command names that the
 AI might learn but should never be shared publicly (e.g. an internal tool name).
+
+`workflow_blanket_names` auto-allows Workflow tool calls by their declared
+`meta.name` — matched whether the workflow was launched by saved name or as
+an inline/dynamic script. Everything not listed still prompts, since a
+workflow can spin up many subagents.
 """
 import json
 import os
@@ -35,6 +41,7 @@ _DEFAULTS = {
     "mcp_blanket_servers": [],
     "trusted_script_dirs": [],
     "learned_sync_exclude": [],
+    "workflow_blanket_names": [],
 }
 
 _CONFIG = None
