@@ -33,6 +33,31 @@ def _window_class(hwnd):
         return ""
 
 
+def spawn_silent(prompt_file, model, cwd):
+    """Run a Claude worker silently with no visible window or terminal tab.
+
+    Uses `claude --print` (single-turn non-interactive mode): Claude runs tools, completes the task,
+    and exits automatically. No WT tab is created, no hostpid kill is needed.
+    For background maintenance tasks (e.g. Teams mark-read) that need no human review.
+    """
+    seed = (
+        f"Your task instructions are in '{prompt_file}' - "
+        "open it and begin immediately without waiting for further input."
+    )
+    args = ["claude", "--print"]
+    if model:
+        args += ["--model", model]
+    args.append(seed)
+    subprocess.Popen(
+        args,
+        cwd=cwd,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        creationflags=NO_WINDOW | subprocess.DETACHED_PROCESS,
+    )
+
+
 def spawn_tab(args, cwd):
     """Open a Windows Terminal worker tab (via spawn-tab.cmd) with focus-aware placement.
 
