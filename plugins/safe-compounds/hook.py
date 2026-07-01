@@ -5,6 +5,7 @@ Decision order (preserved from the original single-file hook):
   PowerShell tool  -> deny (use the Bash tool)
   Write / Edit     -> writes.decide_write_edit
   mcp__*           -> mcp.classify_mcp_tool
+  Workflow         -> workflow.classify_workflow_tool (blanket-approved saved names only)
   Bash             -> enforce.enforce_bash (deny), then per-segment trust (allow)
   anything else    -> defer (no output)
 
@@ -17,6 +18,7 @@ disable Haiku fallbacks; SAFE_COMPOUNDS_TRUSTED_JSON to pin the trusted set.
 import json
 import os
 import sys
+import traceback
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -27,6 +29,7 @@ from safe_compounds.log import log_debug  # noqa: E402
 from safe_compounds.mcp import classify_mcp_tool  # noqa: E402
 from safe_compounds.shell import split_segments  # noqa: E402
 from safe_compounds.trust import get_trusted  # noqa: E402
+from safe_compounds.workflow import classify_workflow_tool  # noqa: E402
 from safe_compounds.writes import decide_write_edit  # noqa: E402
 
 POWERSHELL_TOOL_REASON = (
@@ -97,6 +100,14 @@ def main():
     except Exception:
         defer()
 
+    try:
+        dispatch(data)
+    except Exception:
+        log_debug(f"HOOK CRASHED, deferring to normal permission flow:\n{traceback.format_exc()}")
+        defer()
+
+
+def dispatch(data):
     config.reset()
     paths.reset_pending_worktree_paths()
     paths.reset_allowed_edit_dirs()
@@ -134,6 +145,12 @@ def main():
     if tool and tool.startswith('mcp__'):
         if classify_mcp_tool(tool):
             log_debug(f"DECISION: Allow MCP tool {tool}")
+            allow()
+        defer()
+
+    if tool == 'Workflow':
+        if classify_workflow_tool(tool_input):
+            log_debug(f"DECISION: Allow Workflow {tool_input.get('name')}")
             allow()
         defer()
 
