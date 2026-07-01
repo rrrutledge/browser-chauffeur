@@ -1,8 +1,7 @@
 """teams poller adapter — Microsoft Teams chats/channels via the teams skill's teams-chat.js.
 
 All teams mechanics live HERE, alongside the prose contract in `teams-provider.md`: locating the teams
-skill's teams-chat.js, the `enumerate --unread` read, the conversation-id scheme, and the captured item
-shape. The poller (`scripts/run-poller.py`) loads this adapter dynamically and drives it through the
+skill's teams-chat.js, the enumerate read, the conversation-id scheme, and the captured item shape. The poller (`scripts/run-poller.py`) loads this adapter dynamically and drives it through the
 `ProviderBase` interface — it contains no Teams specifics.
 
 This is the Teams sibling of `slack-adapter.py`: it wraps a sibling skill's read CLI. teams-chat.js talks
@@ -26,6 +25,9 @@ from provider_base import ProviderBase, ProviderError, run_node, slug  # noqa: E
 # Stable per-machine home (teams-chat.js caches its sniffed tokens here, absolutely). We also run node
 # from here for a consistent cwd.
 TOKEN_HOME = os.path.join(os.path.expanduser("~"), ".claude", "drainer")
+# Per-conversation message-ID horizons — the highest message ID captured per conversation,
+# written by capture() and read by triage_text() to know where to stop fetching.
+_HORIZONS = os.path.join(TOKEN_HOME, "teams-msg-horizons.json")
 
 
 class Provider(ProviderBase):
@@ -82,7 +84,7 @@ class Provider(ProviderBase):
         return {"cwd": TOKEN_HOME, "env": env}
 
     def enumerate(self, limit):
-        res = run_node([self.teamsjs, "enumerate", "--unread", "--top", str(limit)], **self._node_kw())
+        res = run_node([self.teamsjs, "enumerate", "--top", str(limit)], **self._node_kw())
         if res.returncode != 0:
             raise ProviderError(f"teams enumerate failed (signed in to Teams web?): {res.stderr.strip()[:300]}", kind="auth")
         items = json.loads(res.stdout or "[]")
@@ -96,6 +98,74 @@ class Provider(ProviderBase):
             it.setdefault("received", lm.get("time"))
             it.setdefault("preview", lm.get("preview"))
         return items
+
+    @staticmethod
+    def _load_horizons():
+        try:
+            with open(_HORIZONS, encoding="utf-8") as f:
+                return json.load(f)
+        except (OSError, ValueError):
+            return {}
+
+    @staticmethod
+    def _save_horizon(conv_id, msg_id):
+        horizons = Provider._load_horizons()
+        horizons[conv_id] = msg_id
+        tmp = _HORIZONS + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(horizons, f, indent=2)
+        os.replace(tmp, _HORIZONS)
+
+    def _new_msgs_since(self, conv_id, last_msg_id, batch_size=20, max_messages=200):
+        """Fetch messages newer than last_msg_id, paginating in batches of batch_size.
+
+        Grows the window until a message with id <= last_msg_id appears (the known
+        boundary) or the conversation start is reached. Returns messages oldest-first.
+        If last_msg_id is None, fetches up to max_messages from the start.
+        """
+        top = 0
+        msgs = []
+        while top < max_messages:
+            top = min(top + batch_size, max_messages)
+            show = run_node([self.teamsjs, "messages", conv_id, "--top", str(top)], **self._node_kw())
+            if show.returncode != 0:
+                break
+            try:
+                msgs = json.loads(show.stdout or "[]")
+            except ValueError:
+                break
+            if not msgs:
+                break
+            if last_msg_id is not None:
+                try:
+                    if any(int(m.get("id", "0")) <= int(last_msg_id) for m in msgs):
+                        break  # reached the known boundary
+                except (ValueError, TypeError):
+                    break
+            if len(msgs) < top:
+                break  # reached the beginning of the conversation
+        if last_msg_id is not None:
+            try:
+                new = [m for m in msgs if int(m.get("id", "0")) > int(last_msg_id)]
+            except (ValueError, TypeError):
+                new = msgs
+        else:
+            new = msgs
+        return list(reversed(new))
+
+    def triage_text(self, item):
+        # For meeting chats, surface messages newer than the last captured message so triage
+        # sees all new content — not just the lastMessage preview.
+        if item.get("type") != "meeting":
+            return item.get("preview") or ""
+        conv_id = item.get("id")
+        if not conv_id:
+            return item.get("preview") or ""
+        last_msg_id = self._load_horizons().get(conv_id)
+        new_msgs = self._new_msgs_since(conv_id, last_msg_id)
+        if not new_msgs:
+            return item.get("preview") or ""
+        return "\n".join(f"{m.get('from', '?')}: {m.get('text', '')}" for m in new_msgs)
 
     def stable_id(self, item):
         lm = item.get("lastMessage") or {}
@@ -137,6 +207,11 @@ class Provider(ProviderBase):
             body = lm.get("preview") or "(could not load messages)"
         with open(msg_file, "w", encoding="utf-8") as f:
             f.write(header + body + "\n")
+        # Advance the per-conversation horizon to the highest message ID captured, so triage_text
+        # knows where to stop fetching on the next cycle (independent of Teams' read state).
+        msg_ids = [int(m["id"]) for m in msgs if m.get("id", "").isdigit()]
+        if msg_ids:
+            self._save_horizon(conv_id, str(max(msg_ids)))
         # Record the first unread message id so the worker knows the exact boundary.
         first_unread_id = next((m["id"] for m in reversed(msgs) if m.get("unread")), None)
         record = {
