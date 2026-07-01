@@ -1,6 +1,6 @@
 {
   "name": "message-draft",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Draft a message in the active web composer (Teams chat, Slack message, or Outlook reply) via browser automation / REST. Stages a draft in the correct conversation and NEVER sends. Supersedes teams-message and slack-message.",
   "author": {
     "name": "Russell Rutledge"

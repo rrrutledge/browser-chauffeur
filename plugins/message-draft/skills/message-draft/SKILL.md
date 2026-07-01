@@ -47,7 +47,15 @@ the done-criteria once it has run.
 4. **Never press a bare Enter in the composer — it sends.** Line breaks are Shift+Enter; use
    browser-chauffeur's bare-Enter-refusing composer primitives. (Enter is fine inside a link-insert
    dialog.)
-5. **Selectors below are last-known-good (web UIs, 2026-06) — expect drift.** The invariants
+5. **A composer with text already in it holds a draft — read it first, never type on top of it.**
+   Before the first keystroke, read the target composer back (`el.innerText`). If it already contains
+   text, that's a draft the user left in this conversation. Preserve it: surface it verbatim for
+   review and clear it only with an explicit OK — typing on top would append into one garbled message,
+   and clearing without asking would silently discard words the user wrote. In an autonomous run with
+   no one to review, do NOT overwrite — leave the draft and flag the conversation instead. (Clearing a
+   truly abandoned draft also collapses the duplicate "new chat" rail entry it spawned and unblocks
+   clean future sends.)
+6. **Selectors below are last-known-good (web UIs, 2026-06) — expect drift.** The invariants
    don't drift; rediscover selectors live via browser-chauffeur (screenshot → inspect) when they do.
 
 ## Mode: `teams`
@@ -76,8 +84,9 @@ Inputs: the address, message body, optional hyperlinks (display text + URL), opt
 2. **Identity-gate.** Confirm the chat heading (an `h1`/`h2`/`h3` containing the name —
    `[data-tid="chat-header-title"]` does NOT exist in this build) matches before typing. 1:1: last
    name + first-name prefix; group/meeting: a case-insensitive substring of the chat name.
-3. **Compose.** The composer is `div[data-tid="ckeditor"]` (target the `:visible` one). Clear any
-   draft auto-restore, then type the body; line breaks are Shift+Enter, never a bare Enter.
+3. **Compose.** The composer is `div[data-tid="ckeditor"]` (target the `:visible` one). Check it for
+   an existing draft per invariant 5 (Teams auto-restores a left draft here), clear it, then type the
+   body; line breaks are Shift+Enter, never a bare Enter.
 4. **Hyperlinks.** Ctrl+K opens an Insert-link dialog; fill `[data-tid="insertHyperlink-displayText"]`
    and `[data-tid="insertHyperlink-linkAddress"]` (⚠️ `data-tid`, not `id`), then click
    `[data-tid="insertHyperlink-insertButton"]` (⚠️ NOT `role=button` with text "Insert" — that
@@ -111,9 +120,9 @@ drainer item — its `channel` + `ts` + optional `threadTs` + permalink), the me
    keystroke. On mismatch, don't type — re-navigate. Typing into a stranger's DM is the failure to avoid.
 3. **Compose.** Click the composer (`[data-qa="message_input"] .ql-editor`,
    `.ql-editor[contenteditable="true"]`, `div[role="textbox"][contenteditable="true"]` — target the
-   `:visible` one), clear any auto-restored draft (Ctrl+A, Backspace), then type the body. Line breaks are
-   **Shift+Enter**; a bare **Enter sends**, so never press it. (Use browser-chauffeur's
-   bare-Enter-refusing composer primitives.)
+   `:visible` one), check it for an existing draft per invariant 5, clear it (Ctrl+A, Backspace), then
+   type the body. Line breaks are **Shift+Enter**; a bare **Enter sends**, so never press it. (Use
+   browser-chauffeur's bare-Enter-refusing composer primitives.)
 4. **Links.** Slack renders a pasted URL as a link automatically; for anchor-text links, type the phrase
    and apply a link via the composer's link affordance (Ctrl+K inside the Slack composer opens its
    link dialog — distinct from the quick switcher, which is Ctrl+K when no composer is focused).
