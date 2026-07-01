@@ -2,5 +2,6 @@
   "trusted_commands": [],
   "curl_domains": ["example.org"],
   "mcp_blanket_servers": ["myserver"],
-  "trusted_script_dirs": []
+  "trusted_script_dirs": [],
+  "workflow_blanket_names": ["myworkflow"]
 }
