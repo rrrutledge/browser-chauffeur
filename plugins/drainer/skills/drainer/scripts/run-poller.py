@@ -34,7 +34,7 @@ PROVIDERS_DIR = os.path.join(SKILL_DIR, "providers")
 sys.path.insert(0, SCRIPT_DIR)
 import presence  # noqa: E402  (sibling module)
 from provider_base import run_node, NO_WINDOW, ProviderError, spawn_tab, spawn_silent  # noqa: E402  (subprocess helper + typed provider failure)
-from drainer_config import read_config  # noqa: E402  (shared .claude/drainer.local.md reader)
+from drainer_config import read_config, find_provider_file  # noqa: E402  (shared .claude/drainer.local.md reader + provider resolution)
 
 SEEN_STATE = os.path.join(SCRIPT_DIR, "seen-state.js")
 HEALTH_FILE = "provider-health.json"
@@ -124,9 +124,10 @@ def load_providers(cfg, health):
     """
     providers = []
     for name in cfg["providers"]:
-        path = os.path.join(PROVIDERS_DIR, f"{name}-adapter.py")
-        if not os.path.exists(path):
-            print(f"(skipping provider '{name}': no poller adapter at providers/{name}-adapter.py)")
+        path = find_provider_file(PROVIDERS_DIR, cfg["local_dir"], name, "-adapter.py")
+        if not path:
+            print(f"(skipping provider '{name}': no poller adapter at providers/{name}-adapter.py "
+                  f"or {cfg['local_dir']}/providers/{name}-adapter.py)")
             continue
         try:
             spec = importlib.util.spec_from_file_location(f"{name.replace('-', '_')}_adapter", path)
@@ -168,14 +169,14 @@ def _read(path):
         return ""
 
 
-def _auto_handle_rules(providers_by_name):
+def _auto_handle_rules(providers_by_name, local_dir):
     """Concatenate each enabled provider's AUTO-HANDLE section so the triage model can recognize an
     auto-handle item. The rules live in providers/<name>-provider.md (worker-facing), but classification
     happens here at triage time, so the relevant sections are surfaced to the model. A provider with no
     AUTO-HANDLE section contributes nothing. New providers add rules just by writing the section."""
     out = []
     for name in sorted(providers_by_name):
-        doc = _read(os.path.join(PROVIDERS_DIR, f"{name}-provider.md"))
+        doc = _read(find_provider_file(PROVIDERS_DIR, local_dir, name, "-provider.md") or "")
         m = re.search(r"^##\s+AUTO-HANDLE\b.*?(?=^##\s|\Z)", doc, re.DOTALL | re.MULTILINE)
         if m:
             out.append(f"### {name}\n{m.group(0).strip()}")
@@ -186,7 +187,7 @@ def triage(items, repo, local_dir, model, providers_by_name):
     claude = shutil.which("claude") or "claude"
     rubric = _read(os.path.join(SCRIPT_DIR, "..", "engine", "triage.md"))  # embed -> self-contained
     context = _read(os.path.join(local_dir, "context.md"))
-    auto_rules = _auto_handle_rules(providers_by_name)
+    auto_rules = _auto_handle_rules(providers_by_name, local_dir)
 
     def preview(it):
         # The owning adapter supplies the text triage sees: its `triage_text` returns the new message
@@ -364,17 +365,19 @@ def _spawn_teams_mark_read(items, teams_provider, repo, runtime_dir, worker_mode
     spawn_silent(prompt_file, worker_model, repo)
 
 
-def spawn_worker(iid, json_file, repo, runtime_dir, worker_model):
+def spawn_worker(iid, json_file, repo, runtime_dir, worker_model, local_dir):
     seeds = os.path.join(runtime_dir, "seeds")
     os.makedirs(seeds, exist_ok=True)
     prompt_file = os.path.join(seeds, f"{iid}.prompt.txt")
     worker_core = os.path.join(SKILL_DIR, "engine", "worker-core.md")
+    local_providers = os.path.join(local_dir, "providers")
     with open(prompt_file, "w", encoding="utf-8") as f:
         f.write(
             "You are a drainer worker handling ONE item. Read `~/.claude/CLAUDE.md`, then follow the "
             f"drainer worker procedure at `{worker_core}` for the single captured item at\n"
-            f"`{json_file}`.\nThe item's `source` field names the provider — read "
-            f"`{PROVIDERS_DIR}/<source>-provider.md` for its CLEAR and DRAFT-MODE and use them. "
+            f"`{json_file}`.\nThe item's `source` field names the provider — read its "
+            f"`<source>-provider.md` (in `{PROVIDERS_DIR}`, or `{local_providers}` for a machine-local "
+            "provider) for its CLEAR and DRAFT-MODE and use them. "
             "Draft-only: never send or post. When you judge the item's work complete, present your "
             "result to the user and write "
             f"`{json_file[:-5]}.done` proactively in that same turn — write it as soon as you think "
@@ -662,7 +665,7 @@ def main():
         iid = it["_id"]
         model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
         json_file = provider.capture(it, iid, cfg["runtime_dir"])
-        spawn_worker(iid, json_file, repo, cfg["runtime_dir"], model)
+        spawn_worker(iid, json_file, repo, cfg["runtime_dir"], model, cfg["local_dir"])
         seen_state("record", cfg["runtime_dir"], it["_source"], iid, "auto-handle")
         auto_dispatched += 1
     for it in needs:
@@ -673,7 +676,7 @@ def main():
             continue
         model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
         json_file = provider.capture(it, iid, cfg["runtime_dir"])
-        spawn_worker(iid, json_file, repo, cfg["runtime_dir"], model)
+        spawn_worker(iid, json_file, repo, cfg["runtime_dir"], model, cfg["local_dir"])
         seen_state("record", cfg["runtime_dir"], it["_source"], iid, "needs-you")
         global_oc += 1
         dispatched += 1
