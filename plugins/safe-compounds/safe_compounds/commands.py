@@ -240,7 +240,7 @@ SCHTASKS_TRUSTED_SUBCOMMANDS = {'/query', '//query', '/change', '//change', '/di
 
 # ------------------------------------------------------------------ gh --------
 GH_TRUSTED_SUBCOMMANDS = {
-    'pr':       {'view', 'list', 'diff', 'checks', 'create', 'edit', 'close', 'reopen', 'ready', 'comment', 'review'},
+    'pr':       {'view', 'list', 'diff', 'checks', 'create', 'edit', 'close', 'reopen', 'ready', 'comment', 'review', 'checkout'},
     'issue':    {'view', 'list', 'create', 'edit', 'close', 'reopen', 'comment'},
     'repo':     {'view'},
     'run':      {'view', 'list', 'cancel', 'rerun'},
