@@ -175,7 +175,6 @@ GIT_TRUSTED_SUBCOMMANDS = {
 GIT_CONDITIONAL_SUBCOMMANDS = {
     'push':   {'--force', '-f', '--delete'},
     'tag':    {'-d', '--delete'},
-    'reset':  {'--hard'},
     'switch': {'--discard-changes', '-f', '--force'},
 }
 
@@ -199,11 +198,24 @@ def _git_clean_ok(args):
     return any(a in ('-n', '--dry-run') for a in args)
 
 
+def _git_reset_ok(args):
+    if '--hard' not in args:
+        return True
+    # Reject if -- appears: tokens after it are pathspecs, not refs.
+    if '--' in args:
+        return False
+    # Allow --hard only when syncing to a remote tracking ref (origin/...).
+    # The target commits exist on the remote; committed local work is recoverable via reflog.
+    # Note: uncommitted working-tree changes are NOT recoverable — --hard always discards them.
+    non_flag_args = [a for a in args if not a.startswith('-')]
+    return bool(non_flag_args) and non_flag_args[0].startswith('origin/')
+
+
 GIT_SPEC = {
     'command': 'git',
     'trusted': GIT_TRUSTED_SUBCOMMANDS,
     'conditional': GIT_CONDITIONAL_SUBCOMMANDS,
-    'specials': {'checkout': _git_checkout_ok, 'clean': _git_clean_ok},
+    'specials': {'checkout': _git_checkout_ok, 'clean': _git_clean_ok, 'reset': _git_reset_ok},
     'global_opts': GIT_GLOBAL_OPTS_WITH_ARG,
     'allow_empty': True,
     'category': None,  # no AI fallback: unknown git subcommands prompt
