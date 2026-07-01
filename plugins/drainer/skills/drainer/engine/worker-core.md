@@ -93,7 +93,26 @@ exactly as if that content had arrived as email:
   `node <skill>/scripts/seen-state.js queue-add <runtime_dir> <source> <id> <path to items/<id>.json>`
   — `<runtime_dir>` is the parent of the `items/` folder your `<id>.json` lives in, `<source>` is the
   item's `source` field, and the helper sits at `scripts/seen-state.js` under this skill. Then go
-  straight to step 6 and write `.done`; leave the source notification for the digest to clear.
+  straight to step 6 and write `.done`; leave the source notification for the digest to clear. Then
+  **close this tab** (see §2c step 5).
+
+## 2c. Re-triage to FYI after content examination
+Lightweight triage can't read the body, so a `needs-you` item may turn out to be FYI once you examine
+the content — a spam digest, an automated status notice, a confirmation of something that already
+happened. When you read the content and determine no action is needed and there's nothing for Russell
+to see, close the tab silently:
+
+1. **CLEAR the source item** per your provider's CLEAR op (archive/mark-read), so it doesn't resurface.
+2. **Patch `triage` to `"fyi"`** in the `items/<id>.json` file using the Edit tool before queuing, so
+   the digest categorizes it correctly (not as needs-you).
+3. **Queue a digest entry**:
+   `node <skill>/scripts/seen-state.js queue-add <runtime_dir> <source> <id> <path to items/<id>.json>`
+4. **Write `.done` immediately** with a one-line reason (e.g.
+   "fyi: spam digest — both messages genuine spam, auto-discarded by Google").
+5. **Close this tab** — read the PID from `<your-prompt-file>.hostpid` and run
+   `taskkill /PID <pid> /T /F` in PowerShell. If the file is missing, stop normally.
+
+Do not present anything to Russell. The digest is how he learns about it.
 
 ## 3. Do the action (you do the work WITH the user)
 Figure out what the item needs and **DO THE WORK in this session**. You are the implementer, not a
@@ -164,9 +183,10 @@ direction you keep working in the same session and update the source/card again 
 the work looks done rather than waiting on acknowledgment. (Tab-close can't be detected reliably, so
 `.done` is the advance signal.)
 
-Items you resolve WITHOUT surfacing them for the user's attention — a pointer you re-triaged to fyi/junk
-and routed to the digest (§2b), or a situational no-op close (nothing to do right now) — likewise write
-`.done` at once.
+Items you resolve WITHOUT surfacing them for the user's attention — a pointer re-triaged to fyi/junk
+(§2b), a content re-triage to FYI (§2c), or a situational no-op close (nothing to do right now) —
+likewise write `.done` at once AND close the tab (read `.hostpid`, `taskkill /PID <pid> /T /F`). A
+silently-resolved tab is just noise in the taskbar; close it.
 
 ## 7. Improve the source (don't just hoard facts)
 If the user had to tell you something you could have known, don't just note it — figure out *where it
