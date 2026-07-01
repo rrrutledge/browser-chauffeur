@@ -33,7 +33,7 @@ SKILL_DIR = os.path.dirname(SCRIPT_DIR)
 PROVIDERS_DIR = os.path.join(SKILL_DIR, "providers")
 sys.path.insert(0, SCRIPT_DIR)
 import presence  # noqa: E402  (sibling module)
-from provider_base import run_node, NO_WINDOW, ProviderError, spawn_tab  # noqa: E402  (subprocess helper + typed provider failure)
+from provider_base import run_node, NO_WINDOW, ProviderError, spawn_tab, spawn_silent  # noqa: E402  (subprocess helper + typed provider failure)
 from drainer_config import read_config  # noqa: E402  (shared .claude/drainer.local.md reader)
 
 SEEN_STATE = os.path.join(SCRIPT_DIR, "seen-state.js")
@@ -358,14 +358,10 @@ def _spawn_teams_mark_read(items, teams_provider, repo, runtime_dir, worker_mode
             "the poller started so the next cycle picks it up. No REST discovery needed; "
             "the ids are already computed.\n\n"
             f"Conversations:\n{convs_json}\n\n"
-            f"When done, write `{prompt_file[:-10]}done` to signal completion, then "
-            f"self-close: read the hosting PID from `{prompt_file}.hostpid` and run "
-            "`taskkill /PID <pid> /T /F` (PowerShell). "
-            "No draft, no digest entry, no user interaction — this is a silent maintenance tab."
+            f"When done, write `{prompt_file[:-10]}done` to signal completion. "
+            "No draft, no digest entry, no user interaction — this is a silent background task."
         )
-    title = f"Teams: mark-read ({n} conversation{'s' if n != 1 else ''})"
-    spawn_cmd = os.path.join(SCRIPT_DIR, "spawn-tab.cmd")
-    spawn_tab([spawn_cmd, title, repo, prompt_file, worker_model], cwd=repo)
+    spawn_silent(prompt_file, worker_model, repo)
 
 
 def spawn_worker(iid, json_file, repo, runtime_dir, worker_model):
