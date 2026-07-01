@@ -78,3 +78,24 @@ def read_config(repo):
         # Wall-clock time (HH:MM, 24h) the daily digest task fires; consumed by the installer.
         "digest_time": scalar("digest_time", "17:00"),
     }
+
+
+def provider_search_dirs(plugin_providers_dir, local_dir):
+    """Where a provider's files are looked up, in order: the plugin's own `providers/`, then the
+    machine-local `<local_dir>/providers/`. The plugin ships the generic, identity-free providers; a
+    machine keeps work- or personal-specific providers (that shouldn't live in the shared plugin) in
+    `<local_dir>/providers/` and enables them by name in drainer.local.md exactly like a shipped one."""
+    dirs = [plugin_providers_dir]
+    if local_dir:
+        dirs.append(os.path.join(local_dir, "providers"))
+    return dirs
+
+
+def find_provider_file(plugin_providers_dir, local_dir, name, suffix):
+    """Resolve `<name><suffix>` (e.g. `-adapter.py` / `-provider.md`) across the search dirs above.
+    Returns the first existing path, or None if no dir has it."""
+    for d in provider_search_dirs(plugin_providers_dir, local_dir):
+        path = os.path.join(d, f"{name}{suffix}")
+        if os.path.exists(path):
+            return path
+    return None
