@@ -5,7 +5,7 @@ Decision order (preserved from the original single-file hook):
   PowerShell tool  -> deny (use the Bash tool)
   Write / Edit     -> writes.decide_write_edit
   mcp__*           -> mcp.classify_mcp_tool
-  Workflow         -> workflow.classify_workflow_tool (blanket-approved names only)
+  Workflow         -> workflow.classify_workflow_tool (blanket-approved saved names only)
   Bash             -> enforce.enforce_bash (deny), then per-segment trust (allow)
   anything else    -> defer (no output)
 
@@ -141,7 +141,7 @@ def main():
 
     if tool == 'Workflow':
         if classify_workflow_tool(tool_input):
-            log_debug(f"DECISION: Allow Workflow {tool_input.get('name') or '(inline)'}")
+            log_debug(f"DECISION: Allow Workflow {tool_input.get('name')}")
             allow()
         defer()
 

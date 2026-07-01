@@ -215,24 +215,16 @@ class TestWorkflow:
         set_config()
         assert classify_workflow_tool({"name": "code-review"}) is False
 
-    def test_inline_script_blanket(self):
+    def test_inline_script_never_blanket_even_if_it_claims_the_name(self):
+        # An inline/dynamic script's own text is unverified at call time, so a
+        # self-declared meta.name must never grant blanket trust.
         set_config(workflow_blanket_names=["code-review"])
         script = "export const meta = {\n  name: 'code-review',\n  description: 'x',\n}\nlog('hi')"
-        assert classify_workflow_tool({"script": script}) is True
-
-    def test_inline_script_not_blanket(self):
-        set_config(workflow_blanket_names=["code-review"])
-        script = "export const meta = {\n  name: 'other',\n  description: 'x',\n}\nlog('hi')"
         assert classify_workflow_tool({"script": script}) is False
 
     def test_no_name_or_script(self):
         set_config(workflow_blanket_names=["code-review"])
         assert classify_workflow_tool({}) is False
-
-    def test_name_takes_precedence_over_script(self):
-        set_config(workflow_blanket_names=["code-review"])
-        script = "export const meta = {\n  name: 'other',\n  description: 'x',\n}\n"
-        assert classify_workflow_tool({"name": "code-review", "script": script}) is True
 
 
 class TestComplexBash:

@@ -137,11 +137,9 @@ CASES = [
     # --- Workflow -------------------------------------------------------------
     {"id": "workflow_named_blanket", "tool": "Workflow", "name": "myworkflow", "expect": "ALLOW"},
     {"id": "workflow_named_not_blanket", "tool": "Workflow", "name": "otherworkflow", "expect": "PROMPT"},
-    {"id": "workflow_inline_script_blanket", "tool": "Workflow",
+    # An inline script's self-declared meta.name is never trusted, however it names itself.
+    {"id": "workflow_inline_script_claiming_blanket_name", "tool": "Workflow",
      "script": "export const meta = {\n  name: 'myworkflow',\n  description: 'x',\n}\nlog('hi')",
-     "expect": "ALLOW"},
-    {"id": "workflow_inline_script_not_blanket", "tool": "Workflow",
-     "script": "export const meta = {\n  name: 'otherworkflow',\n  description: 'x',\n}\nlog('hi')",
      "expect": "PROMPT"},
     {"id": "workflow_no_name_or_script", "tool": "Workflow", "expect": "PROMPT"},
 

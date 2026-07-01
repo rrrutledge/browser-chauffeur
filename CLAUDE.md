@@ -124,7 +124,7 @@ are promoted back to the plugin source via a GitHub PR on a rolling branch
 | `mcp_blanket_servers` | MCP server names to blanket-allow |
 | `trusted_script_dirs` | Directories containing safe scripts |
 | `learned_sync_exclude` | Learned commands to exclude from PR sync |
-| `workflow_blanket_names` | Workflow tool `meta.name` values to blanket-allow (named or inline/dynamic scripts) |
+| `workflow_blanket_names` | Saved workflow names (`tool_input.name`) to blanket-allow — never matches an inline/dynamic script |
 
 ---
 
