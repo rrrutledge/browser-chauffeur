@@ -19,7 +19,7 @@ const { chromium } = (() => {
   try { return require('playwright-core'); }
   catch { return require(require('path').join(require('os').homedir(), '.claude', 'browser-chauffeur', 'node_modules', 'playwright-core')); }
 })();
-const { dismissOverlays, screenshotOnFailure } = (() => {
+const { dismissOverlays, screenshotOnFailure, openTab, closeTab } = (() => {
   try { return require('browser-chauffeur-helpers'); }
   catch { return require(require('path').join(require('os').homedir(), '.claude', 'browser-chauffeur', 'node_modules', 'browser-chauffeur-helpers')); }
 })();
@@ -27,10 +27,11 @@ const { dismissOverlays, screenshotOnFailure } = (() => {
 async function run() {
   const browser = await chromium.connectOverCDP('http://localhost:9222');
   const context = browser.contexts()[0];
-  const page = context.pages()[0] || await context.newPage();
+  // Always open with openTab, never bare newPage — it registers the tab so the
+  // launcher's sweep can reclaim it if this script crashes.
+  const page = await openTab(context, 'https://example.com');
 
   try {
-    await page.goto('https://example.com');
     await dismissOverlays(page);
     
     // Your automation logic here
@@ -38,6 +39,8 @@ async function run() {
   } catch (e) {
     await screenshotOnFailure(context, 'example-error');
     throw e;
+  } finally {
+    await closeTab(page);   // close (or park, if last tab) + unregister
   }
 }
 
@@ -63,6 +66,20 @@ Takes a diagnostic screenshot when automation fails. Useful in catch blocks.
   - `label` - String label for the screenshot file
 - **Returns**: Promise<void>
 - **Saves to**: `.tmp/diag-{label}-{timestamp}.png`
+
+### `openTab(context, url)`
+
+Opens a new tab, registers it in the shared tab registry (so the launcher's sweep can reclaim it if the script crashes), and navigates to `url` if provided. **Use this for every tab you create — never bare `context.newPage()`.** An unregistered tab escapes the orphan sweep and leaks until the age/count backstop reaps it or the browser crashes.
+
+- **Parameters**: `context` - Playwright browser context; `url` - optional URL to navigate to
+- **Returns**: Promise<Page>
+
+### `closeTab(page)`
+
+Closes a tab opened with `openTab` and unregisters it. Parks on `about:blank` instead of closing when it's the browser's last tab, so it never exits the persistent browser. Call it in a `finally` block. Only pass tabs you created — never a tab you found.
+
+- **Parameters**: `page` - a Playwright page returned by `openTab`
+- **Returns**: Promise<void>
 
 ### Login detection
 

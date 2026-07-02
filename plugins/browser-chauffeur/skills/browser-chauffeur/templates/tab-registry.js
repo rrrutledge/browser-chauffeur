@@ -9,10 +9,11 @@
 // an active session's tab, and never a tab the user opened (those are never
 // registered here).
 //
-// RECOMMENDED USAGE — use the bundled openTab/closeTab so opening and closing a
-// tab are mechanically inseparable from registering and unregistering it. This
-// removes the failure mode where a script opens a tab but forgets to register it
-// (making it un-reclaimable) or closes it but forgets to unregister it.
+// REQUIRED USAGE — always use the bundled openTab/closeTab so opening and
+// closing a tab are mechanically inseparable from registering and unregistering
+// it. Never open a tab with bare context.newPage(): an unregistered tab is
+// invisible to the launch-browser.py orphan sweep, so it leaks until the
+// age/count backstop reaps it or the browser crashes under the accumulation.
 //
 //   const { openTab, closeTab } = require('browser-chauffeur-helpers');
 //   const page = await openTab(context, 'https://example.com');  // creates + registers (+ optional goto)

@@ -68,7 +68,7 @@ python plugins/browser-chauffeur/skills/browser-chauffeur/templates/launch-brows
 
 Adjust the path to wherever your skill is mounted. This auto-detects Edge first (better Windows SSO integration), falls back to Chrome, and manages port selection and profile automatically. If a persistent browser is already running, it prints the existing connection info and exits immediately. If not, it launches a new one with a persistent profile at `~/.claude/browser-chauffeur/profile/`. The state is stored globally at `~/.claude/browser-chauffeur/state.json` so all Claude instances can discover and reuse the same browser.
 
-**Automatic orphan-tab sweep.** When reusing an existing browser, this script first reclaims any tabs left behind by chauffeur scripts that crashed before cleaning up (it closes a tracked tab only when the process that created it is gone — never an active session's tab, never a tab the user opened). This keeps the open-target count low so `connectOverCDP` stays fast and reliable (see **Resilient Connection**). It is automatic and safe — you don't invoke it directly.
+**Automatic tab sweep.** When reusing an existing browser, this script keeps the tab count low in three layers: (1) it reclaims tabs left behind by chauffeur scripts that crashed before cleaning up (a tracked tab whose creating process is gone), (2) it ages out any tab open longer than the TTL (15 min, override with `BROWSER_CHAUFFEUR_TAB_TTL`), and (3) it enforces a hard ceiling of 10 open tabs (override with `BROWSER_CHAUFFEUR_MAX_TABS`), closing the oldest first. It never closes a tab an active script still owns, and never the browser's last page. Layers 2–3 are the backstop that catches tabs opened without the `openTab` helper — those aren't registered, so layer 1 can't see them. This keeps `connectOverCDP` fast and reliable and stops the browser accumulating enough tabs to crash (see **Resilient Connection**). It is automatic and safe — you don't invoke it directly.
 
 **Save the PORT from the output** — you'll pass it to scripts via `--cdp-port`. The PID and PROFILE_DIR are printed for diagnostics but you don't need to track them — the browser stays running and the profile persists.
 
@@ -147,7 +147,7 @@ This ensures the AI is always watching the road, not just handing off directions
 
 Two layers keep this reliable:
 
-1. **Root cause — keep the tab count low.** The main source of accumulation is tabs orphaned when a script crashes before its cleanup runs. Scripts register each tab they create (`registerTab` from `browser-chauffeur-helpers`) and unregister it on clean close; `launch-browser.py` sweeps the genuine orphans (creating process gone) on every reuse. So a healthy profile stays small and `connectOverCDP` stays fast — this is what makes it reliable, not just recoverable.
+1. **Root cause — keep the tab count low.** Scripts create every tab with `openTab` (from `browser-chauffeur-helpers`), which registers it, and `closeTab` unregisters on clean close; `launch-browser.py` sweeps genuine orphans (creating process gone) on every reuse. A tab opened without `openTab` is never registered, so this orphan sweep can't reclaim it — which is exactly why `openTab` is the only sanctioned way to open a tab (see Phase 1). As a backstop for any tab that still slips through, the same sweep ages out tabs older than the TTL and enforces a hard ceiling on total tabs (closing the oldest first). So a healthy profile stays small and `connectOverCDP` stays fast — this is what makes it reliable, not just recoverable.
 
 2. **Backstop — fail fast, never hang.** `connectBrowser()` in `script-template.js` races `connectOverCDP` against a 30s hard timeout (`Promise.race`), so if the profile is still wedged the script gets an actionable error instead of hanging forever. Every ad-hoc script you generate must use this hardened `connectBrowser()` — never call `chromium.connectOverCDP(...)` bare.
 
@@ -181,7 +181,9 @@ Before touching anything:
 
    // Save this reference - it stays valid even if other tabs open/close
    ```
-   **Why:** Tab positions shift as tabs are created/closed. Other Claude sessions may be working in parallel. Targeting by index is unreliable. Save the page object reference and reuse it throughout the script. **Always create tabs with `openTab(context, url)`, not `context.newPage()`** — `openTab` bundles registration so a created tab can never become an un-reclaimable orphan (see **Resilient Connection**). Tabs you *found* (didn't create) are not yours — don't register or close them.
+   **Why:** Tab positions shift as tabs are created/closed. Other Claude sessions may be working in parallel. Targeting by index is unreliable. Save the page object reference and reuse it throughout the script. **Create every tab with `openTab(context, url)`** — it bundles registration so the tab is tracked and reclaimable (see **Resilient Connection**), and it navigates for you when you pass a URL. Tabs you *found* (didn't create) are not yours — don't register or close them.
+
+   **Never open a tab with `context.newPage()` or by calling `page.goto()` on a fresh page you created yourself** — an unregistered tab escapes the orphan sweep entirely, so it lingers until the TTL/count backstop reaps it or the browser crashes under the accumulated count. `openTab` is the only sanctioned way to create a tab.
 
 3. Navigate to the target page or state (if not already there)
 4. Read page state with `myTab.evaluate(() => document.body.innerText)`, or enumerate `myTab.frames()` if the body is unexpectedly short (see **Iframe detection** below)

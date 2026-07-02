@@ -55,6 +55,17 @@ STATE_FILE = str(CHAUFFEUR_DIR / "state.json")
 PERSISTENT_PROFILE = str(CHAUFFEUR_DIR / "profile")
 TAB_REGISTRY = CHAUFFEUR_DIR / "created-tabs.json"
 
+# Backstop tab hygiene. This is a dedicated automation browser (separate from
+# the user's personal browser), so idle tabs carry no user browsing to protect
+# and can be reaped on age and count. This catches leaks the PID-based orphan
+# sweep structurally can't: a tab opened without the openTab helper is never
+# registered, so its creating PID is never recorded and the orphan check can't
+# see it. TTL ages any tab out; MAX_TABS is a hard ceiling that closes the
+# oldest first — so the browser can never accumulate enough tabs to crash.
+# Both are env-overridable for tuning without a code change.
+TAB_TTL_SECONDS = int(os.environ.get("BROWSER_CHAUFFEUR_TAB_TTL", 15 * 60))
+MAX_TABS = int(os.environ.get("BROWSER_CHAUFFEUR_MAX_TABS", 10))
+
 
 def is_port_available(port: int) -> bool:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -90,24 +101,30 @@ def is_cdp_alive(port: int) -> bool:
         return False
 
 
-def sweep_orphan_tabs(port: int) -> None:
-    """Close tabs left behind by chauffeur scripts that crashed before cleanup.
+def sweep_tabs(port: int) -> None:
+    """Keep the persistent browser's tab count low and healthy.
 
-    A tab is closed ONLY when the process that created it (recorded by the Node
-    tab-registry) is no longer running — i.e. a genuine orphan. Active sessions'
-    tabs (creating process alive) and user/other tabs (never registered) are
-    never touched. Uses the raw CDP HTTP endpoints (/json, /json/close), which
-    never auto-attach to targets and so never hang the way connectOverCDP can.
+    Three layers, applied in order:
+      1. Orphan reap — a registered tab whose creating Node process is gone
+         (a script that crashed before its cleanup ran) is closed.
+      2. Age-out (TTL) — any tab open longer than TAB_TTL_SECONDS is closed.
+         This includes tabs opened WITHOUT the openTab helper — those are never
+         registered, so layer 1 can't see them. They're adopted into the
+         registry on first sight so their age can be tracked from then on.
+      3. Count cap — if more than MAX_TABS remain, the oldest are closed until
+         the count is back at the ceiling.
+
+    Never touched: the browser's last remaining page (closing it would exit the
+    browser and lose all logins), and any tab whose creating process is still
+    alive (an active script owns it). This is a dedicated automation browser
+    separate from the user's personal browser, so idle tabs carry no user
+    browsing to protect. Uses the raw CDP HTTP endpoints (/json, /json/close),
+    which never auto-attach to targets and so never hang the way
+    connectOverCDP can.
 
     Best-effort: any error here is swallowed so it can't block a launch.
     """
-    try:
-        with open(TAB_REGISTRY) as f:
-            entries = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return
-    if not entries:
-        return
+    now_ms = int(time.time() * 1000)
 
     try:
         resp = urlopen(f"http://localhost:{port}/json", timeout=5)
@@ -115,43 +132,81 @@ def sweep_orphan_tabs(port: int) -> None:
     except (URLError, OSError, json.JSONDecodeError):
         return
 
-    live_pages = {t["id"] for t in targets if t.get("type") == "page" and "id" in t}
-    live_page_count = len(live_pages)
+    live = {t["id"]: t for t in targets if t.get("type") == "page" and "id" in t}
+    if not live:
+        return
 
-    kept: list[dict] = []
-    closed = 0
-    for e in entries:
-        tid = e.get("targetId")
-        node_pid = e.get("nodePid")
-        # Already gone — prune from the registry, nothing to close.
-        if tid not in live_pages:
-            continue
-        # Creating process still alive — an active session owns this tab. Keep.
-        if node_pid and is_pid_running(node_pid):
-            kept.append(e)
-            continue
-        # Orphan, but never close the browser's last page (that would exit it).
-        if live_page_count <= 1:
-            kept.append(e)
-            continue
+    try:
+        with open(TAB_REGISTRY) as f:
+            entries = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        entries = []
+
+    # Index the registry by targetId, dropping entries whose tab is already
+    # gone. Preserve the recorded nodePid/ts so an active owner isn't lost.
+    reg: dict[str, dict] = {
+        e["targetId"]: e for e in entries
+        if e.get("targetId") in live
+    }
+    # Adopt any live tab we don't already track (opened without openTab, or by
+    # the user). Record first-seen time so TTL/cap can age it out later.
+    for tid, t in live.items():
+        if tid not in reg:
+            reg[tid] = {"targetId": tid, "nodePid": None,
+                        "url": t.get("url", ""), "ts": now_ms}
+
+    open_ids = set(live)
+
+    def close(tid: str) -> bool:
+        # Never close the browser's last page — that would exit the browser.
+        if len(open_ids) <= 1:
+            return False
         try:
             urlopen(f"http://localhost:{port}/json/close/{tid}", timeout=5).read()
-            closed += 1
-            live_page_count -= 1
         except (URLError, OSError):
-            kept.append(e)
+            return False
+        open_ids.discard(tid)
+        reg.pop(tid, None)
+        return True
+
+    def owned_by_live_script(e: dict) -> bool:
+        pid = e.get("nodePid")
+        return bool(pid) and is_pid_running(pid)
+
+    closed = 0
+    # Layers 1 & 2 — orphan reap + age-out, oldest first.
+    for e in sorted(reg.values(), key=lambda e: e.get("ts") or 0):
+        tid = e["targetId"]
+        if tid not in open_ids or owned_by_live_script(e):
+            continue
+        is_orphan = e.get("nodePid") is not None  # registered but creator gone
+        is_old = (now_ms - (e.get("ts") or now_ms)) >= TAB_TTL_SECONDS * 1000
+        if is_orphan or is_old:
+            if close(tid):
+                closed += 1
+
+    # Layer 3 — hard ceiling. Close the oldest remaining (that we're allowed to)
+    # until the count is back at the cap.
+    for e in sorted(reg.values(), key=lambda e: e.get("ts") or 0):
+        if len(open_ids) <= MAX_TABS:
+            break
+        tid = e["targetId"]
+        if tid not in open_ids or owned_by_live_script(e):
+            continue
+        if close(tid):
+            closed += 1
 
     try:
         TAB_REGISTRY.parent.mkdir(parents=True, exist_ok=True)
         tmp = TAB_REGISTRY.with_name(TAB_REGISTRY.name + f".{os.getpid()}.tmp")
         with open(tmp, "w") as f:
-            json.dump(kept, f)
+            json.dump(list(reg.values()), f)
         os.replace(tmp, TAB_REGISTRY)
     except OSError:
         pass
 
     if closed:
-        print(f"Swept {closed} orphaned chauffeur tab(s).")
+        print(f"Swept {closed} tab(s) to keep the browser healthy.")
 
 
 def load_state() -> dict | None:
@@ -201,9 +256,10 @@ def run_persistent(url: str) -> int:
         pid, port, profile_dir = state["pid"], state["port"], state["profile_dir"]
         # Edge process sharing can change PIDs - if CDP responds, browser is alive
         if is_cdp_alive(port):
-            # Reclaim tabs orphaned by crashed runs before handing the browser
-            # back — keeps the target count low so connectOverCDP stays healthy.
-            sweep_orphan_tabs(port)
+            # Reap orphaned, aged-out, and over-the-cap tabs before handing the
+            # browser back — keeps the target count low so connectOverCDP stays
+            # healthy and the browser can't accumulate enough tabs to crash.
+            sweep_tabs(port)
             print(f"Reusing existing browser on port {port} (original PID {pid})")
             print(f"PID={pid}")
             print(f"PORT={port}")

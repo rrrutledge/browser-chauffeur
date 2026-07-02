@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.9.0] - 2026-07-02
+
+Stops the persistent browser accumulating tabs until it crashes. The 1.8.0 orphan sweep only reclaims *registered* tabs whose creating process died — a tab opened without the `openTab` helper is never registered, so it leaked forever. This adds a backstop that catches those, and tightens the docs so ad-hoc scripts always register their tabs.
+
+### Added
+- **Age-out + count-cap backstop in `launch-browser.py`.** The tab sweep (renamed `sweep_orphan_tabs` → `sweep_tabs`) now runs three layers on every browser reuse: (1) orphan reap (unchanged — registered tab, creating process gone), (2) **age-out** — close any tab open longer than `TAB_TTL_SECONDS` (default 15 min), and (3) **count cap** — if more than `MAX_TABS` (default 10) remain, close the oldest until back at the ceiling. Tabs opened without `openTab` (never registered) are adopted into the registry on first sight so their age can drive layers 2–3. It never closes a tab an active script still owns, and never the browser's last page. This is safe because the chauffeur browser is a dedicated automation instance, separate from the user's personal browser. Both thresholds are env-overridable (`BROWSER_CHAUFFEUR_TAB_TTL`, `BROWSER_CHAUFFEUR_MAX_TABS`).
+
+### Changed
+- SKILL.md — Phase 0 documents the three-layer sweep; Phase 1 makes `openTab` the only sanctioned way to create a tab with a standalone guardrail against `context.newPage()`/bare `page.goto()`; "Resilient Connection" explains why an unregistered tab escapes the orphan sweep and how the backstop covers it.
+- `script-quality-standards.md` — new **BANNED: Opening Tabs Without `openTab`** section.
+- `templates/tab-registry.js`, `templates/script-template.js`, `HELPERS.md` — header/example text upgraded from "prefer `openTab`" to "always `openTab`, never bare `newPage`"; HELPERS.md documents `openTab`/`closeTab`.
+
 ## [1.8.0] - 2026-06-08
 
 Makes `connectOverCDP` reliable on the persistent profile by addressing the root cause — tab accumulation — instead of only the symptom.
