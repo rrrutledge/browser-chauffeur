@@ -57,10 +57,10 @@ TAB_REGISTRY = CHAUFFEUR_DIR / "created-tabs.json"
 
 # Backstop tab hygiene. This is a dedicated automation browser (separate from
 # the user's personal browser), so idle tabs carry no user browsing to protect
-# and can be reaped on age and count. This catches leaks the PID-based orphan
-# sweep structurally can't: a tab opened without the openTab helper is never
-# registered, so its creating PID is never recorded and the orphan check can't
-# see it. TTL ages out tabs idle past the threshold; MAX_TABS is a hard ceiling
+# and can be reaped on age and count. This catches leaks the owner-based reap
+# structurally can't: a tab opened without the openTab helper is never
+# registered, so it has no owning session and the owner check can't see it.
+# TTL ages out tabs idle past the threshold; MAX_TABS is a hard ceiling
 # that closes the least-recently-active first — so the browser can never
 # accumulate enough tabs to crash. Both are env-overridable without a code change.
 TAB_TTL_SECONDS = int(os.environ.get("BROWSER_CHAUFFEUR_TAB_TTL", 15 * 60))
@@ -105,8 +105,10 @@ def sweep_tabs(port: int) -> None:
     """Keep the persistent browser's tab count low and healthy.
 
     Three layers, applied in order:
-      1. Orphan reap — a registered tab whose creating Node process is gone
-         (a script that crashed before its cleanup ran) is closed.
+      1. Owner reap — a tab whose owning session has ended (its recorded owner
+         process is gone) is closed. For ad-hoc use that owner is the script
+         that opened the tab; for a launched Claude session it's the session's
+         long-lived host process, so the tab lives as long as that window.
       2. Age-out (TTL) — any tab idle (no activity) longer than TAB_TTL_SECONDS
          is closed. This includes tabs opened WITHOUT the openTab helper — those
          are never registered, so layer 1 can't see them. They're adopted into
@@ -114,11 +116,12 @@ def sweep_tabs(port: int) -> None:
          on. Activity = a tab created/reused via the openTab/findTab helpers, or
          a URL/title change the sweep notices between runs.
       3. Count cap — if more than MAX_TABS remain, the least-recently-active are
-         closed until the count is back at the ceiling.
+         closed until the count is back at the ceiling; idle/unowned tabs go
+         before a live session's tabs, which are touched only as a last resort.
 
     Never touched: the browser's last remaining page (closing it would exit the
-    browser and lose all logins), and any tab whose creating process is still
-    alive (an active script owns it). This is a dedicated automation browser
+    browser and lose all logins), and any tab whose owning session is still
+    alive. This is a dedicated automation browser
     separate from the user's personal browser, so idle tabs carry no user
     browsing to protect. Uses the raw CDP HTTP endpoints (/json, /json/close),
     which never auto-attach to targets and so never hang the way
@@ -145,7 +148,7 @@ def sweep_tabs(port: int) -> None:
         entries = []
 
     # Index the registry by targetId, dropping entries whose tab is already
-    # gone. Preserve the recorded nodePid/ts so an active owner isn't lost.
+    # gone. Preserve the recorded owner/ts so a live session's tab isn't lost.
     reg: dict[str, dict] = {}
     for e in entries:
         tid = e.get("targetId")
@@ -167,7 +170,7 @@ def sweep_tabs(port: int) -> None:
     # the user). Record first-seen time so TTL/cap can age it out later.
     for tid, t in live.items():
         if tid not in reg:
-            reg[tid] = {"targetId": tid, "nodePid": None,
+            reg[tid] = {"targetId": tid, "ownerPid": None, "ownerSession": None,
                         "url": t.get("url", ""), "title": t.get("title", ""),
                         "ts": now_ms, "lastActive": now_ms}
 
@@ -190,32 +193,45 @@ def sweep_tabs(port: int) -> None:
         reg.pop(tid, None)
         return True
 
-    def owned_by_live_script(e: dict) -> bool:
-        pid = e.get("nodePid")
+    def owner_pid(e: dict):
+        # ownerPid is the current field; nodePid is the pre-1.9 name.
+        return e.get("ownerPid") or e.get("nodePid")
+
+    def owned_by_live_owner(e: dict) -> bool:
+        pid = owner_pid(e)
         return bool(pid) and is_pid_running(pid)
 
     closed = 0
-    # Layers 1 & 2 — orphan reap + age-out, least-recently-active first.
+    # Layers 1 & 2 — owner reap + age-out, least-recently-active first.
     for e in sorted(reg.values(), key=recency):
         tid = e["targetId"]
-        if tid not in open_ids or owned_by_live_script(e):
+        if tid not in open_ids or owned_by_live_owner(e):
             continue
-        is_orphan = e.get("nodePid") is not None  # registered but creator gone
+        is_orphan = owner_pid(e) is not None  # had an owner, now gone
         is_idle = (now_ms - recency(e)) >= TAB_TTL_SECONDS * 1000
         if is_orphan or is_idle:
             if close(tid):
                 closed += 1
 
-    # Layer 3 — hard ceiling. Close the least-recently-active remaining (that
-    # we're allowed to) until the count is back at the cap.
-    for e in sorted(reg.values(), key=recency):
-        if len(open_ids) <= MAX_TABS:
-            break
-        tid = e["targetId"]
-        if tid not in open_ids or owned_by_live_script(e):
-            continue
-        if close(tid):
-            closed += 1
+    # Layer 3 — hard ceiling. Prefer evicting idle/unowned tabs; only if still
+    # over the cap (everything left belongs to a live session) evict the
+    # least-recently-active owned tab as a last resort, because exceeding the
+    # ceiling risks the crash the whole sweep exists to prevent.
+    def trim(candidates):
+        nonlocal closed
+        for e in candidates:
+            if len(open_ids) <= MAX_TABS:
+                break
+            tid = e["targetId"]
+            if tid not in open_ids:
+                continue
+            if close(tid):
+                closed += 1
+
+    if len(open_ids) > MAX_TABS:
+        ordered = sorted(reg.values(), key=recency)
+        trim([e for e in ordered if not owned_by_live_owner(e)])
+        trim([e for e in ordered if owned_by_live_owner(e)])
 
     try:
         TAB_REGISTRY.parent.mkdir(parents=True, exist_ok=True)

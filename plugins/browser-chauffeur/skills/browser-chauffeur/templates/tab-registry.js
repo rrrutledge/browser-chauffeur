@@ -1,13 +1,16 @@
 // Tab registry — tracks tabs that chauffeur scripts create, so a later launch
-// can reclaim ones orphaned by a crashed/interrupted run.
+// can reclaim ones whose owning session has ended.
 //
-// WHY: connectOverCDP auto-attaches to every open target. When a script dies
-// before its finally block runs, the tab it opened stays open forever. Over many
-// sessions these orphans pile up and eventually wedge connectOverCDP. Tracking
-// each created tab's CDP targetId + the creating process's PID lets the sweep in
-// launch-browser.py close ONLY our own orphans (creating process is dead) — never
-// an active session's tab, and never a tab the user opened (those are never
-// registered here).
+// WHY: connectOverCDP auto-attaches to every open target. When a session ends
+// before its tabs are closed, they stay open forever. Over many sessions these
+// pile up and eventually wedge connectOverCDP. Each tab is recorded with its CDP
+// targetId + the OWNING SESSION (the long-lived Claude session that opened it —
+// see ownerInfo below), so the sweep in launch-browser.py keeps a tab alive
+// exactly as long as its session's window is open and reclaims it when that
+// window closes — never an active session's tab, and never a tab the user opened
+// (those are never registered here). The owner is the session, NOT the ephemeral
+// node script: one session fires many short-lived scripts (act, screenshot,
+// retry), so the tab must outlive any single script.
 //
 // REQUIRED USAGE — always use the bundled openTab/closeTab so opening and
 // closing a tab are mechanically inseparable from registering and unregistering
@@ -50,6 +53,22 @@ function save(entries) {
   fs.renameSync(tmp, REGISTRY);
 }
 
+// The owner of a tab is the Claude session that opened it — recorded so the
+// launcher's sweep keeps the tab alive exactly as long as that session's window
+// is open, and reclaims it when the window closes. The session launcher
+// (launch-session.ps1) exports BROWSER_CHAUFFEUR_OWNER_PID (the long-lived host
+// process whose liveness the sweep checks) and BROWSER_CHAUFFEUR_OWNER_SESSION
+// (the Claude session id, for traceability). When unset — ad-hoc use outside a
+// launched session — we fall back to this node process, so the tab is owned by
+// the script that opened it, as before.
+function ownerInfo() {
+  const envPid = Number(process.env.BROWSER_CHAUFFEUR_OWNER_PID);
+  return {
+    ownerPid: Number.isInteger(envPid) && envPid > 0 ? envPid : process.pid,
+    ownerSession: process.env.BROWSER_CHAUFFEUR_OWNER_SESSION || null,
+  };
+}
+
 // Resolve a page's CDP targetId (the registry's stable key across processes).
 async function targetIdOf(context, page) {
   const session = await context.newCDPSession(page);
@@ -61,7 +80,7 @@ async function targetIdOf(context, page) {
   }
 }
 
-// Record a tab this process created. Returns its CDP targetId (also used to
+// Record a tab this session created. Returns its CDP targetId (also used to
 // unregister). Returns null on failure — registration is best-effort and must
 // never break the actual automation. `lastActive` drives the launcher's sweep:
 // it evicts the least-recently-active tab first, so it starts equal to `ts`.
@@ -70,7 +89,7 @@ async function registerTab(context, page) {
     const targetId = await targetIdOf(context, page);
     const now = Date.now();
     const entries = load();
-    entries.push({ targetId, nodePid: process.pid, url: page.url(), ts: now, lastActive: now });
+    entries.push({ targetId, ...ownerInfo(), url: page.url(), ts: now, lastActive: now });
     save(entries);
     return targetId;
   } catch {
@@ -80,21 +99,24 @@ async function registerTab(context, page) {
 
 // Bump a tab's last-active time so the sweep treats it as recently used and
 // evicts genuinely idle tabs first. Use on the tab-reuse path (a tab you found,
-// not one you opened). Clears any stale creator ownership — a tab that outlived
-// its opener and is being reused is now governed by activity, not orphan-reap.
-// Adopts the tab into the registry if it wasn't opened via openTab. Best-effort.
+// not one you opened). Also claims the tab for the CURRENT session — a tab you
+// are actively reusing should stay alive as long as your session's window is
+// open, even if a different (now-gone) session first opened it. Adopts the tab
+// into the registry if it wasn't opened via openTab. Best-effort.
 async function touchTab(context, page) {
   try {
     const targetId = await targetIdOf(context, page);
     const now = Date.now();
+    const { ownerPid, ownerSession } = ownerInfo();
     const entries = load();
     const existing = entries.find(e => e.targetId === targetId);
     if (existing) {
       existing.lastActive = now;
       existing.url = page.url();
-      existing.nodePid = null;
+      existing.ownerPid = ownerPid;
+      existing.ownerSession = ownerSession;
     } else {
-      entries.push({ targetId, nodePid: null, url: page.url(), ts: now, lastActive: now });
+      entries.push({ targetId, ownerPid, ownerSession, url: page.url(), ts: now, lastActive: now });
     }
     save(entries);
   } catch {

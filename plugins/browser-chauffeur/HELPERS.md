@@ -69,7 +69,7 @@ Takes a diagnostic screenshot when automation fails. Useful in catch blocks.
 
 ### `openTab(context, url)`
 
-Opens a new tab, registers it in the shared tab registry (so the launcher's sweep can reclaim it if the script crashes), and navigates to `url` if provided. **Use this for every tab you create — never bare `context.newPage()`.** An unregistered tab escapes the orphan sweep and leaks until the age/count backstop reaps it or the browser crashes.
+Opens a new tab, registers it in the shared tab registry (owned by the current Claude session, so the launcher's sweep keeps it alive while the session's window is open and reclaims it when that window closes), and navigates to `url` if provided. **Use this for every tab you create — never bare `context.newPage()`.** An unregistered tab escapes the orphan sweep and leaks until the age/count backstop reaps it or the browser crashes.
 
 - **Parameters**: `context` - Playwright browser context; `url` - optional URL to navigate to
 - **Returns**: Promise<Page>
