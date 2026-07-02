@@ -50,21 +50,55 @@ function save(entries) {
   fs.renameSync(tmp, REGISTRY);
 }
 
+// Resolve a page's CDP targetId (the registry's stable key across processes).
+async function targetIdOf(context, page) {
+  const session = await context.newCDPSession(page);
+  try {
+    const { targetInfo } = await session.send('Target.getTargetInfo');
+    return targetInfo.targetId;
+  } finally {
+    await session.detach().catch(() => {});
+  }
+}
+
 // Record a tab this process created. Returns its CDP targetId (also used to
 // unregister). Returns null on failure — registration is best-effort and must
-// never break the actual automation.
+// never break the actual automation. `lastActive` drives the launcher's sweep:
+// it evicts the least-recently-active tab first, so it starts equal to `ts`.
 async function registerTab(context, page) {
   try {
-    const session = await context.newCDPSession(page);
-    const { targetInfo } = await session.send('Target.getTargetInfo');
-    await session.detach().catch(() => {});
-    const targetId = targetInfo.targetId;
+    const targetId = await targetIdOf(context, page);
+    const now = Date.now();
     const entries = load();
-    entries.push({ targetId, nodePid: process.pid, url: page.url(), ts: Date.now() });
+    entries.push({ targetId, nodePid: process.pid, url: page.url(), ts: now, lastActive: now });
     save(entries);
     return targetId;
   } catch {
     return null;
+  }
+}
+
+// Bump a tab's last-active time so the sweep treats it as recently used and
+// evicts genuinely idle tabs first. Use on the tab-reuse path (a tab you found,
+// not one you opened). Clears any stale creator ownership — a tab that outlived
+// its opener and is being reused is now governed by activity, not orphan-reap.
+// Adopts the tab into the registry if it wasn't opened via openTab. Best-effort.
+async function touchTab(context, page) {
+  try {
+    const targetId = await targetIdOf(context, page);
+    const now = Date.now();
+    const entries = load();
+    const existing = entries.find(e => e.targetId === targetId);
+    if (existing) {
+      existing.lastActive = now;
+      existing.url = page.url();
+      existing.nodePid = null;
+    } else {
+      entries.push({ targetId, nodePid: null, url: page.url(), ts: now, lastActive: now });
+    }
+    save(entries);
+  } catch {
+    // best-effort
   }
 }
 
@@ -82,6 +116,16 @@ function unregisterTab(targetId) {
 // the page. WeakMap so entries are GC'd with the page and the page object stays
 // unpolluted.
 const tabIds = new WeakMap();
+
+// Find an existing tab by predicate and mark it active, so a tab a worker keeps
+// returning to keeps its place in the eviction order and isn't reaped as idle.
+// Returns the matching page, or null (caller then opens one with openTab).
+// Prefer this over a bare context.pages().find(...) on the tab-reuse path.
+async function findTab(context, predicate) {
+  const page = context.pages().find(predicate);
+  if (page) await touchTab(context, page);
+  return page || null;
+}
 
 // Open a new tab, register it, and (optionally) navigate to url. Returns the
 // page. Use this instead of context.newPage() so registration can't be skipped.
@@ -111,4 +155,4 @@ async function closeTab(page) {
   }
 }
 
-module.exports = { openTab, closeTab, registerTab, unregisterTab, REGISTRY };
+module.exports = { openTab, closeTab, findTab, touchTab, registerTab, unregisterTab, REGISTRY };

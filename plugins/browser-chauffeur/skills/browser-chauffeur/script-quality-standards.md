@@ -61,7 +61,7 @@ const page = await openTab(context, 'https://example.com');
 try { /* work */ } finally { await closeTab(page); }
 ```
 
-Tabs you *found* (didn't create) are not yours — don't pass them to `closeTab`.
+Tabs you *found* (didn't create) are not yours — don't pass them to `closeTab`. To reuse an existing tab, find it with `findTab(context, predicate)` rather than a bare `context.pages().find(...)` — `findTab` marks it active so the sweep won't reap a tab you're still using.
 
 ## ✅ REQUIRED: Verification Code
 

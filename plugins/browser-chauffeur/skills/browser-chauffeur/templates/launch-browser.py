@@ -60,9 +60,9 @@ TAB_REGISTRY = CHAUFFEUR_DIR / "created-tabs.json"
 # and can be reaped on age and count. This catches leaks the PID-based orphan
 # sweep structurally can't: a tab opened without the openTab helper is never
 # registered, so its creating PID is never recorded and the orphan check can't
-# see it. TTL ages any tab out; MAX_TABS is a hard ceiling that closes the
-# oldest first — so the browser can never accumulate enough tabs to crash.
-# Both are env-overridable for tuning without a code change.
+# see it. TTL ages out tabs idle past the threshold; MAX_TABS is a hard ceiling
+# that closes the least-recently-active first — so the browser can never
+# accumulate enough tabs to crash. Both are env-overridable without a code change.
 TAB_TTL_SECONDS = int(os.environ.get("BROWSER_CHAUFFEUR_TAB_TTL", 15 * 60))
 MAX_TABS = int(os.environ.get("BROWSER_CHAUFFEUR_MAX_TABS", 10))
 
@@ -107,12 +107,14 @@ def sweep_tabs(port: int) -> None:
     Three layers, applied in order:
       1. Orphan reap — a registered tab whose creating Node process is gone
          (a script that crashed before its cleanup ran) is closed.
-      2. Age-out (TTL) — any tab open longer than TAB_TTL_SECONDS is closed.
-         This includes tabs opened WITHOUT the openTab helper — those are never
-         registered, so layer 1 can't see them. They're adopted into the
-         registry on first sight so their age can be tracked from then on.
-      3. Count cap — if more than MAX_TABS remain, the oldest are closed until
-         the count is back at the ceiling.
+      2. Age-out (TTL) — any tab idle (no activity) longer than TAB_TTL_SECONDS
+         is closed. This includes tabs opened WITHOUT the openTab helper — those
+         are never registered, so layer 1 can't see them. They're adopted into
+         the registry on first sight so their activity can be tracked from then
+         on. Activity = a tab created/reused via the openTab/findTab helpers, or
+         a URL/title change the sweep notices between runs.
+      3. Count cap — if more than MAX_TABS remain, the least-recently-active are
+         closed until the count is back at the ceiling.
 
     Never touched: the browser's last remaining page (closing it would exit the
     browser and lose all logins), and any tab whose creating process is still
@@ -144,18 +146,37 @@ def sweep_tabs(port: int) -> None:
 
     # Index the registry by targetId, dropping entries whose tab is already
     # gone. Preserve the recorded nodePid/ts so an active owner isn't lost.
-    reg: dict[str, dict] = {
-        e["targetId"]: e for e in entries
-        if e.get("targetId") in live
-    }
+    reg: dict[str, dict] = {}
+    for e in entries:
+        tid = e.get("targetId")
+        if tid not in live:
+            continue
+        cur = live[tid]
+        # Passive activity signal: if the tab's URL or title changed since we
+        # last saw it, it was navigated/worked in between sweeps — refresh its
+        # activity time so eviction favors genuinely idle tabs. This needs no
+        # cooperation from the scripts that touched the tab.
+        if e.get("url") != cur.get("url", "") or e.get("title") != cur.get("title", ""):
+            e["lastActive"] = now_ms
+        e["url"] = cur.get("url", "")
+        e["title"] = cur.get("title", "")
+        e.setdefault("ts", now_ms)
+        e.setdefault("lastActive", e["ts"])
+        reg[tid] = e
     # Adopt any live tab we don't already track (opened without openTab, or by
     # the user). Record first-seen time so TTL/cap can age it out later.
     for tid, t in live.items():
         if tid not in reg:
             reg[tid] = {"targetId": tid, "nodePid": None,
-                        "url": t.get("url", ""), "ts": now_ms}
+                        "url": t.get("url", ""), "title": t.get("title", ""),
+                        "ts": now_ms, "lastActive": now_ms}
 
     open_ids = set(live)
+
+    def recency(e: dict) -> int:
+        # Least-recently-active first. Falls back to creation time for entries
+        # predating lastActive tracking.
+        return e.get("lastActive") or e.get("ts") or 0
 
     def close(tid: str) -> bool:
         # Never close the browser's last page — that would exit the browser.
@@ -174,20 +195,20 @@ def sweep_tabs(port: int) -> None:
         return bool(pid) and is_pid_running(pid)
 
     closed = 0
-    # Layers 1 & 2 — orphan reap + age-out, oldest first.
-    for e in sorted(reg.values(), key=lambda e: e.get("ts") or 0):
+    # Layers 1 & 2 — orphan reap + age-out, least-recently-active first.
+    for e in sorted(reg.values(), key=recency):
         tid = e["targetId"]
         if tid not in open_ids or owned_by_live_script(e):
             continue
         is_orphan = e.get("nodePid") is not None  # registered but creator gone
-        is_old = (now_ms - (e.get("ts") or now_ms)) >= TAB_TTL_SECONDS * 1000
-        if is_orphan or is_old:
+        is_idle = (now_ms - recency(e)) >= TAB_TTL_SECONDS * 1000
+        if is_orphan or is_idle:
             if close(tid):
                 closed += 1
 
-    # Layer 3 — hard ceiling. Close the oldest remaining (that we're allowed to)
-    # until the count is back at the cap.
-    for e in sorted(reg.values(), key=lambda e: e.get("ts") or 0):
+    # Layer 3 — hard ceiling. Close the least-recently-active remaining (that
+    # we're allowed to) until the count is back at the cap.
+    for e in sorted(reg.values(), key=recency):
         if len(open_ids) <= MAX_TABS:
             break
         tid = e["targetId"]

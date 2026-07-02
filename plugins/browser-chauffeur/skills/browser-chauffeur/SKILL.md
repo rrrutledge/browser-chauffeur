@@ -68,7 +68,7 @@ python plugins/browser-chauffeur/skills/browser-chauffeur/templates/launch-brows
 
 Adjust the path to wherever your skill is mounted. This auto-detects Edge first (better Windows SSO integration), falls back to Chrome, and manages port selection and profile automatically. If a persistent browser is already running, it prints the existing connection info and exits immediately. If not, it launches a new one with a persistent profile at `~/.claude/browser-chauffeur/profile/`. The state is stored globally at `~/.claude/browser-chauffeur/state.json` so all Claude instances can discover and reuse the same browser.
 
-**Automatic tab sweep.** When reusing an existing browser, this script keeps the tab count low in three layers: (1) it reclaims tabs left behind by chauffeur scripts that crashed before cleaning up (a tracked tab whose creating process is gone), (2) it ages out any tab open longer than the TTL (15 min, override with `BROWSER_CHAUFFEUR_TAB_TTL`), and (3) it enforces a hard ceiling of 10 open tabs (override with `BROWSER_CHAUFFEUR_MAX_TABS`), closing the oldest first. It never closes a tab an active script still owns, and never the browser's last page. Layers 2–3 are the backstop that catches tabs opened without the `openTab` helper — those aren't registered, so layer 1 can't see them. This keeps `connectOverCDP` fast and reliable and stops the browser accumulating enough tabs to crash (see **Resilient Connection**). It is automatic and safe — you don't invoke it directly.
+**Automatic tab sweep.** When reusing an existing browser, this script keeps the tab count low in three layers: (1) it reclaims tabs left behind by chauffeur scripts that crashed before cleaning up (a tracked tab whose creating process is gone), (2) it ages out any tab idle longer than the TTL (15 min, override with `BROWSER_CHAUFFEUR_TAB_TTL`), and (3) it enforces a hard ceiling of 10 open tabs (override with `BROWSER_CHAUFFEUR_MAX_TABS`), closing the least-recently-active first. Activity is tracked automatically — a tab created or reused via `openTab`/`findTab`, or one whose URL/title the sweep sees change between runs, is treated as recently active. It never closes a tab an active script still owns, and never the browser's last page. Layers 2–3 are the backstop that catches tabs opened without the `openTab` helper — those aren't registered, so layer 1 can't see them. This keeps `connectOverCDP` fast and reliable and stops the browser accumulating enough tabs to crash (see **Resilient Connection**). It is automatic and safe — you don't invoke it directly.
 
 **Save the PORT from the output** — you'll pass it to scripts via `--cdp-port`. The PID and PROFILE_DIR are printed for diagnostics but you don't need to track them — the browser stays running and the profile persists.
 
@@ -168,10 +168,11 @@ Before touching anything:
    
 2. **Get and save your tab reference** — target the specific tab you need by URL pattern, never by position:
    ```javascript
-   const { openTab } = require('browser-chauffeur-helpers');
+   const { findTab, openTab } = require('browser-chauffeur-helpers');
 
-   // Find existing tab by URL
-   let myTab = pages.find(p => p.url().includes('example.com/my-section'));
+   // Reuse an existing tab by URL — findTab also marks it active, so a tab you
+   // keep returning to isn't reaped as idle by the sweep.
+   let myTab = await findTab(context, p => p.url().includes('example.com/my-section'));
 
    // Or create a new tab for complete isolation — openTab creates AND registers
    // it in one step (so the orphan sweep can reclaim it if this script crashes).

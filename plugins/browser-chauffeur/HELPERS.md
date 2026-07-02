@@ -81,6 +81,21 @@ Closes a tab opened with `openTab` and unregisters it. Parks on `about:blank` in
 - **Parameters**: `page` - a Playwright page returned by `openTab`
 - **Returns**: Promise<void>
 
+### `findTab(context, predicate)`
+
+Finds an existing tab by predicate and marks it active, so a tab a worker keeps returning to keeps its place in the eviction order and isn't reaped as idle. Use this on the tab-reuse path instead of a bare `context.pages().find(...)`.
+
+- **Parameters**: `context` - Playwright browser context; `predicate` - `(page) => boolean`
+- **Returns**: Promise<Page | null> — the matching page, or `null` (then open one with `openTab`)
+- **Note**: purely an eviction-ordering optimization — if you skip it and use `pages().find(...)`, nothing breaks; the tab just isn't marked active on that reuse.
+
+### `touchTab(context, page)`
+
+Marks a tab active (the lower-level primitive `findTab` uses). Call it directly when you hold a page you'll keep using across a long flow and want to refresh its activity.
+
+- **Parameters**: `context` - Playwright browser context; `page` - the Playwright page
+- **Returns**: Promise<void>
+
 ### Login detection
 
 **Do not try to detect login state with scripts. Detect it with the LLM via screenshot inspection.**
