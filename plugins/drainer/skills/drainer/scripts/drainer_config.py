@@ -59,11 +59,11 @@ def read_config(repo):
         # Worker tabs need an explicit model — otherwise they inherit the session default, which may be
         # a 1M-context model the account can't use. The poller picks per item by triage complexity:
         # simple -> worker_model, complex -> worker_model_complex (both standard context).
-        "worker_model": scalar("worker_model", "claude-sonnet-4-6"),
+        "worker_model": scalar("worker_model", "claude-sonnet-5"),
         "worker_model_complex": scalar("worker_model_complex", "claude-opus-4-8"),
         # The triage call must also pin a model — under the scheduled task it has no parent session,
         # so it would otherwise inherit a 1M-context default the account can't use. Standard Sonnet.
-        "triage_model": scalar("triage_model", "claude-sonnet-4-6"),
+        "triage_model": scalar("triage_model", "claude-sonnet-5"),
         # The once-a-day digest session. It summarizes fyi, groups junk with source-stop proposals,
         # and runs the reconciliation scan — judgment-heavy, so a stronger standard-context model.
         "digest_model": scalar("digest_model", "claude-opus-4-8"),
