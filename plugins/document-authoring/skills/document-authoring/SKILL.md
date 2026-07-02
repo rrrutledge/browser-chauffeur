@@ -88,6 +88,10 @@ Use for: Teams 1:1 chats, Teams channel posts, Slack messages, email replies.
 
 The goal is that the message reads like Russell wrote it. Concrete patterns and real samples beat adjectives — imitate the samples.
 
+### Register: personal friend vs. professional contact
+
+Before drafting, read the thread for relationship signals. If the thread has personal content — asking about family or kids by name, sharing life milestones, the other person sharing personal updates in return — the contact is a personal friend and the reply register shifts significantly: drop the salutation, go much more casual ("Yup - no problem"), use emoji freely, and skip structured acknowledgment phrases. Personal friends don't get "Hi Max - Thanks for the update. I'll look forward to hearing from you next week!" — they get something much more offhand and warm. Real edit (thread had Russell asking about Max's child Gustav by name, and sharing a daughter's graduation): draft said "Hi Max - Thanks for the update. I'll look forward to hearing from you next week!" → sent as "Yup - no problem. You are great 👍"
+
 ### Brevity (overrides everything else)
 
 Messages are **short**. Default to the fewest sentences that carry the point. Before finalizing, delete any sentence that:
