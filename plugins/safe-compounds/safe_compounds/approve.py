@@ -35,6 +35,15 @@ def is_segment_trusted(seg, trusted):
     if not commands.is_output_redirection_safe(seg):
         return False
 
+    # Strip stream-merge/discard redirect clauses (2>&1, >&2, 2>/dev/null, ...)
+    # before any per-command checker runs. Several checkers (is_start_safe,
+    # check_cwd_file_command, ...) do positional argument analysis on the
+    # tokenized segment, and a trailing redirect clause left in place reads as
+    # a real argument (e.g. "start file.html 2>&1" picks "2>&1" as the launch
+    # target instead of "file.html"). Doing this once here, rather than in
+    # each checker, fixes every current and future positional checker at once.
+    seg = commands.strip_safe_redirections(seg)
+
     word = first_word(seg)
 
     if word == 'curl':

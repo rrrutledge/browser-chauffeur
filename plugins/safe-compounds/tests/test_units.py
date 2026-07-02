@@ -11,7 +11,9 @@ from safe_compounds.shell import (  # noqa: E402
     ASSIGNMENT_ONLY, extract_substitutions, first_word, split_segments, strip_var_assignment,
 )
 from safe_compounds import config  # noqa: E402
-from safe_compounds.commands import is_git_command_safe, is_curl_safe, is_sed_command_safe  # noqa: E402
+from safe_compounds.commands import (  # noqa: E402
+    is_git_command_safe, is_curl_safe, is_sed_command_safe, is_start_safe, strip_safe_redirections,
+)
 from safe_compounds.mcp import classify_mcp_tool  # noqa: E402
 from safe_compounds.enforce import detect_complex_bash, detect_simple_expansion, detect_cd_compound, enforce_bash  # noqa: E402
 from safe_compounds.scripts import check_node_segment  # noqa: E402
@@ -176,6 +178,39 @@ class TestSed:
 
     def test_inplace_combined(self):
         assert is_sed_command_safe("sed -ni s/a/b/ f") is False
+
+
+class TestStripSafeRedirections:
+    def test_stderr_merge_suffix(self):
+        assert strip_safe_redirections('start report.docx 2>&1').strip() == 'start report.docx'
+
+    def test_stderr_merge_before_pipe(self):
+        # split_segments() already separates "| head -2" into its own segment;
+        # this is the "start ... 2>&1" segment as approve.py sees it.
+        assert strip_safe_redirections('start report.docx 2>&1 ').strip() == 'start report.docx'
+
+    def test_devnull_merge(self):
+        assert strip_safe_redirections('cmd >/dev/null 2>&1').strip() == 'cmd'
+
+    def test_no_redirect_unchanged(self):
+        assert strip_safe_redirections('start report.docx') == 'start report.docx'
+
+    def test_preserves_quoted_spaces(self):
+        seg = 'start "" "C:/some dir/My File.docx" 2>&1'
+        assert strip_safe_redirections(seg).strip() == 'start "" "C:/some dir/My File.docx"'
+
+
+class TestStartSafe:
+    def test_bare_docx(self):
+        assert is_start_safe('start report.docx') is True
+
+    def test_stderr_merge_does_not_defeat_target_check(self):
+        # Regression: a trailing "2>&1" used to become the last token, so
+        # is_start_safe read it as the launch target and rejected the command.
+        assert is_start_safe(strip_safe_redirections('start report.docx 2>&1')) is True
+
+    def test_unsafe_extension_still_rejected_with_redirect(self):
+        assert is_start_safe(strip_safe_redirections('start evil.exe 2>&1')) is False
 
 
 class TestMcp:

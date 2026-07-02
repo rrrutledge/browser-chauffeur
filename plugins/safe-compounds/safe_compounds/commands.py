@@ -601,6 +601,43 @@ def is_output_redirection_safe(segment):
     return False
 
 
+# enforce_bash's own redirect detector (enforce.py: detect_output_redirection)
+# runs before any segment reaches this module, and blocks every '>' / '>>'
+# redirect except stream merges/discards (2>&1, >&2, 2>/dev/null, >/dev/null,
+# ...). So a stream-merge/discard clause is the only kind of redirect that can
+# still be present on a segment by the time per-command checkers run.
+_SAFE_REDIRECT_CLAUSE = re.compile(r'(?:^|\s)\d*>>?\s*(?:/dev/null|&\d+)')
+
+
+def strip_safe_redirections(segment):
+    """Remove stream-merge/discard redirect clauses from a segment string.
+
+    Per-command checkers (is_start_safe, check_cwd_file_command, ...) tokenize
+    a segment and look at positional arguments (last token, first non-flag
+    arg). A trailing clause like "2>&1" left in the string reads as a real
+    argument — e.g. "start file.html 2>&1" picks "2>&1" as the launch target
+    instead of "file.html", failing a check that would otherwise pass. These
+    clauses never write to a new location, so they're always safe to drop
+    before positional analysis runs.
+    """
+    masked = re.sub(
+        r'"[^"\\]*(?:\\.[^"\\]*)*"|\'[^\'\\]*(?:\\.[^\'\\]*)*\'',
+        lambda m: '\0' * len(m.group(0)),
+        segment,
+    )
+    spans = [m.span() for m in _SAFE_REDIRECT_CLAUSE.finditer(masked)]
+    if not spans:
+        return segment
+    parts = []
+    last = 0
+    for start, end in spans:
+        parts.append(segment[last:start])
+        parts.append(' ')
+        last = end
+    parts.append(segment[last:])
+    return ''.join(parts)
+
+
 # --------------------------------------------------- unknown commands --------
 UNKNOWN_CMD_PATTERN = re.compile(r'^[a-zA-Z][\w.-]*$')
 
