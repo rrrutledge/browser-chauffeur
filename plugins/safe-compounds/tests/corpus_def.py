@@ -106,10 +106,18 @@ CASES = [
     {"id": "start_docx", "tool": "Bash", "command": "start report.docx", "expect": "ALLOW"},
     {"id": "start_exe", "tool": "Bash", "command": "start evil.exe", "expect": "PROMPT"},
     {"id": "wt_claude", "tool": "Bash", "command": "wt new-tab claude --version", "expect": "ALLOW"},
+    # A trailing stream-merge redirect (added to silence terminal noise) must
+    # not defeat is_start_safe's target-extension check.
+    {"id": "start_docx_stderr_merge", "tool": "Bash", "command": "start report.docx 2>&1", "expect": "ALLOW"},
+    {"id": "start_docx_stderr_pipe_head", "tool": "Bash",
+     "command": 'start report.docx 2>&1 | head -2', "expect": "ALLOW"},
+    {"id": "start_exe_stderr_merge", "tool": "Bash", "command": "start evil.exe 2>&1", "expect": "PROMPT"},
 
     # --- CWD-scoped file ops ------------------------------------------------
     {"id": "cp_within", "tool": "Bash", "command": "cp a.txt b.txt", "files": {"a.txt": "x"}, "expect": "ALLOW"},
     {"id": "cp_outside", "tool": "Bash", "command": "cp a.txt /etc/passwd", "files": {"a.txt": "x"}, "expect": "PROMPT"},
+    {"id": "cp_within_stderr_merge", "tool": "Bash", "command": "cp a.txt b.txt 2>&1",
+     "files": {"a.txt": "x"}, "expect": "ALLOW"},
 
     # --- scripts (deny-by-default; trusted dir vs elsewhere) ----------------
     {"id": "pyfile_tmp", "tool": "Bash", "command": "python .tmp/run.py",
