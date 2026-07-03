@@ -17,7 +17,7 @@ function present(pkg) {
   try { require.resolve(pkg, { paths: [DEP_DIR] }); return true; } catch { return false; }
 }
 
-if (present('imapflow') && present('mailparser') && present('nodemailer')) {
+if (present('imapflow') && present('mailparser') && present('marked') && present('nodemailer')) {
   console.log('[OK] gmail deps already installed at ' + DEP_DIR);
   process.exit(0);
 }
