@@ -58,9 +58,11 @@ function save(entries) {
 // is open, and reclaims it when the window closes. The session launcher
 // (launch-session.ps1) exports BROWSER_CHAUFFEUR_OWNER_PID (the long-lived host
 // process whose liveness the sweep checks) and BROWSER_CHAUFFEUR_OWNER_SESSION
-// (the Claude session id, for traceability). When unset — ad-hoc use outside a
-// launched session — we fall back to this node process, so the tab is owned by
-// the script that opened it, as before.
+// (the Claude session id, for traceability). For a session you start yourself,
+// set OWNER_PID in your shell profile (see SKILL.md "Tying tab ownership to a
+// session"). If neither is set, ownership falls back to this short-lived node
+// process — the tab is then reclaimed soon after this script finishes, not at
+// session end.
 function ownerInfo() {
   const envPid = Number(process.env.BROWSER_CHAUFFEUR_OWNER_PID);
   return {
@@ -97,12 +99,12 @@ async function registerTab(context, page) {
   }
 }
 
-// Bump a tab's last-active time so the sweep treats it as recently used and
-// evicts genuinely idle tabs first. Use on the tab-reuse path (a tab you found,
-// not one you opened). Also claims the tab for the CURRENT session — a tab you
-// are actively reusing should stay alive as long as your session's window is
-// open, even if a different (now-gone) session first opened it. Adopts the tab
-// into the registry if it wasn't opened via openTab. Best-effort.
+// Mark a tab active for the current session. findTab calls this for you on the
+// reuse path, so you rarely call it directly — reach for it only when you hold
+// a found tab across a long flow and want to keep it fresh. It bumps lastActive
+// (so the sweep doesn't treat the tab as idle while you're using it) and claims
+// ownership for the current session. Adopts the tab into the registry if it
+// wasn't opened via openTab. Best-effort.
 async function touchTab(context, page) {
   try {
     const targetId = await targetIdOf(context, page);
