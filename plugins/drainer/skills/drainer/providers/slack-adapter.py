@@ -97,6 +97,10 @@ class Provider(ProviderBase):
             "snippet": item.get("preview"), "url": permalink, "messageId": f"{channel}:{ts}",
             "channel": channel, "ts": ts, "threadTs": thread_ts,
             "channelType": item.get("channelType"), "channelName": item.get("channelName"),
+            # The workspace this item belongs to. The drainer runs one Slack workspace, so this is the same
+            # value every time (SLACK_TEAM_ID) — carried so the ENGAGE disposition can confirm scope
+            # (engagement is ISC-only, team T04PXKRM0) and stays correct if a second workspace is ever added.
+            "teamId": os.environ.get("SLACK_TEAM_ID"),
             "bodyFile": body_file,
             "ts_captured": datetime.now(timezone.utc).isoformat(),
         }

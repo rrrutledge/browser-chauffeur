@@ -10,8 +10,8 @@ each bucket (own worker vs digest) lives in the driver and SKILL.
 For every inbound item ask: **is there something for Russell to do?** If there is, now is the time — do
 it immediately, or kick it off in a tab. Everything Russell is going to do, he does right now.
 
-Answering that is the whole of triage, and the answer is one of four buckets — two when there's something
-to do, two when there isn't.
+Answering that is the whole of triage. The answer is one of four core buckets — two when there's something
+to do, two when there isn't — plus one special disposition, **engage**, for a community Russell leads (below).
 
 **First, follow pointers — but don't open them here.** Some items aren't the content; they POINT to it (a
 Teams meeting-recording notice linking to AI notes with action items; a LinkedIn/Facebook "X messaged
@@ -40,17 +40,6 @@ carries the whole story and asks nothing — a recording notice with no notes �
   "reply") even when it's just a short remark or a closing "sounds good"; the minimum action is a quick
   acknowledgment or 👍 reaction on their message. A group or meeting message that names Russell directly
   counts the same way; only automated, mass, or not-aimed-at-him chatter stays fyi.
-- **Russell holds a community leadership role on this platform and the post is worth a leader's visible
-  engagement** — when he is Executive Director (or equivalent) of the workspace's community, a qualifying
-  public post creates a concrete action: react visibly to show enthusiasm and optionally add a short
-  encouraging thread comment. The action is lightweight but real — it models engagement for others and
-  fulfils the ED role. **Scope: ISC Slack workspace `T04PXKRM0`, and any analogous platform where he
-  holds the same role.** Qualifying post types: community announcements, event or CFP notices, new-member
-  intros or welcomes, someone sharing their work or a win, open questions addressed to the community,
-  milestone or gratitude posts. Bot/integration messages, automated churn, and muted-conversation content
-  do not qualify. Existing stronger rules take priority: a 1:1 DM from a community member is still
-  **needs-you (reply)**; an @-mention that asks him something is still **needs-you (reply)**; these are
-  not engage items. → **`needs-you` (hint: `engage`)**.
 - a **dated to-do** comes due — a Trello tracker or outreach card, any dated item, the moment its due
   date arrives or passes. The due date IS the queue: a due item is the action surfacing when it was
   scheduled for.
@@ -59,7 +48,7 @@ carries the whole story and asks nothing — a recording notice with no notes �
 
 - **needs-you** — Russell acts on it now, in its own worker tab. This is the default for anything he'd
   do. It's ONE bucket on purpose; don't split reply-vs-work here. Record a hint:
-  **"reply" / "work" / "work-then-reply" / "engage"**.
+  **"reply" / "work" / "work-then-reply"**.
 - **auto-handle** — the narrow case where a **standing rule fully decides** the action: the same answer
   every time, no judgment left. Claude does it autonomously and reports it in the digest instead of
   opening a tab. These standing rules are defined per source, in `providers/<source>-provider.md` under
@@ -84,9 +73,39 @@ carries the whole story and asks nothing — a recording notice with no notes �
   arriving again; *how* to stop it is provider mechanics — each provider's **JUNK-LEARNING** section owns
   the remediation (unsubscribe → source-app notification settings → inbox rule, in that order).
 
+## The engage disposition — a community Russell leads
+
+A fifth disposition sits beside the four buckets, for the narrow case where **Russell holds a community
+leadership role** on the platform the item came from — he is the Executive Director of InnerSource Commons,
+and its Slack workspace is his community's home. There, a qualifying public post is not passive fyi: it's a
+standing chance to **model active engagement** — react to show enthusiasm and, when it fits, add a short
+encouraging comment. That is part of the ED job, so the post is worth surfacing as an engagement nudge.
+
+**Scope — the ISC Slack workspace only** (`SLACK_TEAM_ID=T04PXKRM0`), or any other platform where Russell
+holds the same leadership role. No other Slack workspace and no other source gets this disposition.
+
+**A post qualifies when it's community content worth a leader's public reaction:** community announcements,
+event or CFP notices (an `@channel` broadcast counts), new-member intros or welcomes, someone sharing their
+work or a win, open questions addressed to the community, milestone or gratitude posts. Keep it to the handful
+that genuinely merit an ED's visible engagement each day.
+
+**Stronger rules still win, and bot noise never qualifies.** A 1:1 DM from a community member is still
+**needs-you (reply)**; an @-mention that asks Russell something is still **needs-you (reply)**; a muted
+conversation is still skipped. Bot/integration messages, automated status churn, and duplicate churn stay
+**fyi**/**junk**. Engage is *additive* — it only catches high-value community content that would otherwise
+fall to fyi.
+
+- **engage** — the qualifying post above. It does **not** open a live worker tab; it collects into the daily
+  digest, where the engagement is prepared and reviewed in a batch: a proposed emoji reaction plus, when it
+  fits, a short in-voice comment staged for Russell's per-item approval. **Draft-only — nothing is reacted to
+  or posted without his explicit OK.** Routing and mechanics live in `providers/slack-provider.md` → ENGAGE
+  and `engine/digest-core.md`. The engage disposition flows to the digest like fyi/junk, not to a worker tab.
+
 ## Tie-breakers
 - **auto-handle** is never a tie-breaker default: pick it ONLY when a provider AUTO-HANDLE rule clearly
   matches. Any doubt that the rule applies → fall back to **needs-you** (let Russell decide). Better to
   ask once than to auto-act on something that wasn't actually a standing decision.
 - Unsure whether there's something to do → treat it as **needs-you** (prefer acting).
 - Nothing to do, unsure between **fyi** and **junk** → **fyi** (prefer keeping eyes on it).
+- **engage** applies only in the ISC Slack workspace and only to genuine community content; unsure whether
+  a post there is engage-worthy → **fyi** (don't over-trigger — a few high-value nudges, not blanket reactions).

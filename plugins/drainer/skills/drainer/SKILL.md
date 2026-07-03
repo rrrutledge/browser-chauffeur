@@ -35,16 +35,17 @@ instructions: |-
 
   ### 3. Follow the engine specs (bundled next to this SKILL.md)
   Canonical and source-agnostic — don't restate them:
-  - **`engine/triage.md`** — the one rubric: needs-you / fyi / junk (only three; junk → propose a
-    source-stop in priority order: unsubscribe, then app notification settings, then an inbox rule).
+  - **`engine/triage.md`** — the one rubric: needs-you / auto-handle / fyi / junk, plus **engage** for
+    community content on a workspace Russell leads (ISC Slack — surfaced in the digest, not a worker tab).
+    Junk → propose a source-stop in priority order: unsubscribe, then app notification settings, then an inbox rule.
   - **`engine/poller-core.md`** — the continuous keeper's contract: what `scripts/run-poller.py` does
     each cycle (presence → enumerate → triage → dispatch, never clear; `--dry-run` for a report) and
     where AI is used (batched triage + the worker).
   - **`engine/worker-core.md`** — the per-item worker procedure (read brain → situational-check → do
     the work → draft in voice → learn from the send → advance the item).
   - **`engine/digest-core.md`** — the slow loop: the once-a-day, interactive EOD digest
-    (`scripts/run-digest.py`) that empties the fyi/junk queue and re-surfaces stale needs-you items,
-    clearing nothing without Russell's review.
+    (`scripts/run-digest.py`) that empties the fyi/junk queue, prepares engage proposals for Russell's
+    per-item OK, and re-surfaces stale needs-you items, clearing nothing without Russell's review.
   - **`engine/provider.md`** — the interface a provider implements.
 
   ### 4. Hard rules (always)

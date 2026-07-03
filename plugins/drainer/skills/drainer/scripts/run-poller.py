@@ -154,8 +154,11 @@ TRIAGE_INSTRUCTIONS = (
     "a quick reply or a trivial action; complex = multi-step work, research, code, or a delicate / "
     "high-stakes message — these get a stronger model). Use bucket = auto-handle ONLY when a provider "
     "AUTO-HANDLE rule (in the world-knowledge / provider docs) plainly matches — a standing decision with "
-    "no judgment left; when in doubt use needs-you. Return ONLY a JSON array, one object per input "
-    'id: [{"id": "...", "bucket": "needs-you|auto-handle|fyi|junk", '
+    "no judgment left; when in doubt use needs-you. Use bucket = engage ONLY for a qualifying community "
+    "post in a workspace Russell leads (the rubric's 'engage disposition' — ISC Slack only); it flows to "
+    "the daily digest, not a worker tab, so set kind = null and complexity = simple for it. Return ONLY a "
+    "JSON array, one object per input "
+    'id: [{"id": "...", "bucket": "needs-you|auto-handle|engage|fyi|junk", '
     '"kind": "reply|work|work-then-reply|null", '
     '"complexity": "simple|complex", "reason": "<short>"}] — no prose, no code fence.'
 )
@@ -619,15 +622,19 @@ def main():
     # needs-you cap (open_count only counts needs-you), letting a standing-rule action run without waiting
     # behind tabs parked for Russell's attention.
     auto = [it for it in all_new if it["_bucket"] == "auto-handle"]
+    # everything else -> the digest queue: fyi, junk, and engage (a qualifying ISC-Slack community post the
+    # ED should react/comment on — no worker tab; the interactive digest prepares the reaction/comment
+    # proposal and Russell approves each per-item). seen-state records these 'queued' (not 'dispatched'),
+    # so engage rides the same digest path as fyi/junk and never consumes a needs-you cap slot.
     others = [it for it in all_new if it["_bucket"] not in ("needs-you", "auto-handle")]
 
     if args.dry_run:
         counts = {b: sum(1 for it in all_new if it["_bucket"] == b)
-                  for b in ("needs-you", "auto-handle", "fyi", "junk")}
+                  for b in ("needs-you", "auto-handle", "engage", "fyi", "junk")}
         total_all = sum(totals.values())
         print(f"DRY-RUN — {len(all_new)} new of {total_all} across {len(providers)} source(s) | "
               f"{counts['needs-you']} needs-you, {counts['auto-handle']} auto-handle, "
-              f"{counts['fyi']} fyi, {counts['junk']} junk | "
+              f"{counts['engage']} engage, {counts['fyi']} fyi, {counts['junk']} junk | "
               f"global cap {cfg['max_open_tabs']}, currently open {global_oc}")
         if auto:
             print("  auto-handle (autonomous worker, not capped):")
