@@ -73,16 +73,17 @@ carries the whole story and asks nothing — a recording notice with no notes �
   arriving again; *how* to stop it is provider mechanics — each provider's **JUNK-LEARNING** section owns
   the remediation (unsubscribe → source-app notification settings → inbox rule, in that order).
 
-## The engage disposition — a community Russell leads
+## The engage disposition — a community where Russell leads
 
 A fifth disposition sits beside the four buckets, for the narrow case where **Russell holds a community
-leadership role** on the platform the item came from — he is the Executive Director of InnerSource Commons,
-and its Slack workspace is his community's home. There, a qualifying public post is not passive fyi: it's a
-standing chance to **model active engagement** — react to show enthusiasm and, when it fits, add a short
-encouraging comment. That is part of the ED job, so the post is worth surfacing as an engagement nudge.
+leadership role** on the platform the item came from. There, a qualifying public post is not passive fyi:
+it's a standing chance to **model active engagement** — react to show enthusiasm and, when it fits, add a
+short encouraging comment. That is part of the leadership job, so the post is worth surfacing as an
+engagement nudge.
 
-**Scope — the ISC Slack workspace only** (`SLACK_TEAM_ID=T04PXKRM0`), or any other platform where Russell
-holds the same leadership role. No other Slack workspace and no other source gets this disposition.
+**Scope — only platforms configured as community leadership workspaces.** Each source's
+`providers/<source>-provider.md` → ENGAGE section names the config key (in `drainer.local.md`) that
+enables this; no source gets the engage disposition without that config being set.
 
 **A post qualifies when it's community content worth a leader's public reaction:** community announcements,
 event or CFP notices (an `@channel` broadcast counts), new-member intros or welcomes, someone sharing their
@@ -107,5 +108,6 @@ fall to fyi.
   ask once than to auto-act on something that wasn't actually a standing decision.
 - Unsure whether there's something to do → treat it as **needs-you** (prefer acting).
 - Nothing to do, unsure between **fyi** and **junk** → **fyi** (prefer keeping eyes on it).
-- **engage** applies only in the ISC Slack workspace and only to genuine community content; unsure whether
-  a post there is engage-worthy → **fyi** (don't over-trigger — a few high-value nudges, not blanket reactions).
+- **engage** applies only on configured community leadership platforms and only to genuine community content;
+  unsure whether a post there is engage-worthy → **fyi** (don't over-trigger — a few high-value nudges, not
+  blanket reactions).

@@ -36,7 +36,7 @@ instructions: |-
   ### 3. Follow the engine specs (bundled next to this SKILL.md)
   Canonical and source-agnostic — don't restate them:
   - **`engine/triage.md`** — the one rubric: needs-you / auto-handle / fyi / junk, plus **engage** for
-    community content on a workspace Russell leads (ISC Slack — surfaced in the digest, not a worker tab).
+    community content on a configured leadership workspace (surfaced in the digest, not a worker tab).
     Junk → propose a source-stop in priority order: unsubscribe, then app notification settings, then an inbox rule.
   - **`engine/poller-core.md`** — the continuous keeper's contract: what `scripts/run-poller.py` does
     each cycle (presence → enumerate → triage → dispatch, never clear; `--dry-run` for a report) and

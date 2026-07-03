@@ -42,8 +42,8 @@ miss. Then continue to the queue below.
   `{ id, source, item }`. Each `item` carries at least `triage` (`fyi` | `junk` | `auto-handle` |
   `engage`), `from`, `subject`, and `snippet`, plus whatever else that provider's capture recorded (e.g.
   a `url` and the ids its CLEAR needs). Split it by `item.triage` into **fyi**, **junk**,
-  **auto-handle** (what a worker already did on its own — see step 2b), and **engage** (qualifying ISC Slack
-  community posts to engage with as the ED — you prepare the reaction/comment proposal here; see step 2c).
+  **auto-handle** (what a worker already did on its own — see step 2b), and **engage** (community posts
+  from a configured leadership workspace — you prepare the reaction/comment proposal here; see step 2c).
 - **The stale needs-you items:** `node <seen-state.js> stale-list <runtime_dir> <stale_hours>` → a JSON
   array of `{ id, source, ts, ageHours, item }` for every needs-you item still `dispatched` (never
   cleared) and older than `stale_hours`. These are the reconciliation cases — a worker crashed or was
@@ -67,13 +67,14 @@ invite for *jane@acme.com* (requested by Bob)"). Order most-notable first. On Ru
 (step 5). If something here looks wrong — a rule fired when it shouldn't have — flag it so the AUTO-HANDLE
 rule can be tightened; that's the one case where an auto-handled item needs follow-up.
 
-## 2c. Engage — ISC community posts worth the ED's engagement (you prepare, Russell approves)
+## 2c. Engage — community posts worth a leader's engagement (you prepare, Russell approves)
 
-Qualifying InnerSource Commons Slack posts the poller flagged `engage` because Russell, as ED, should model
-active engagement there (react, maybe a short encouraging comment) — see `providers/slack-provider.md` →
-ENGAGE. Unlike auto-handled items, **nothing has been prepared yet**: no worker ran, and the post is still
-unread in Slack. You (this interactive digest, with browser access) prepare each proposal now and present it
-for Russell's per-item OK. **Draft-only — never react and never send on his behalf.**
+Posts the poller flagged `engage` because Russell holds a community leadership role on this platform
+and should model active engagement (react, maybe a short encouraging comment) — see
+`providers/slack-provider.md` → ENGAGE. Unlike auto-handled items, **nothing has been prepared yet**:
+no worker ran, and the post is still unread in Slack. You (this interactive digest, with browser access)
+prepare each proposal now and present it for Russell's per-item OK. **Draft-only — never react and never
+send on his behalf.**
 
 For **each** engage item, before presenting:
 1. **SITUATIONAL-CHECK** — re-read the post via the slack provider's SITUATIONAL-CHECK

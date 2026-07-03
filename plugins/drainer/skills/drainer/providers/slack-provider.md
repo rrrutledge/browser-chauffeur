@@ -14,10 +14,15 @@ id prefix: `slack-`; body file: `<id>.slack.md`.
 > This is the Web-API counterpart to the IMAP `gmail-provider.md` / Graph `outlook-graph-provider.md`.
 
 ## Config (in `.claude/drainer.local.md` → `providers.slack`)
-No config — auth is by environment variables. Credentials: `SLACK_BOT_TOKEN` (the Slack API token — for a
-personal user token, the `xoxc-` value), `SLACK_COOKIE_D` (the `d` session cookie — required for a browser
-`xoxc` token, which is `invalid_auth` without it, and for the `client.*` endpoints), and `SLACK_TEAM_ID`
-(the workspace's team id) in the environment.
+Auth is by environment variables. Credentials: `SLACK_BOT_TOKEN` (the Slack API token — for a personal user
+token, the `xoxc-` value), `SLACK_COOKIE_D` (the `d` session cookie — required for a browser `xoxc` token,
+which is `invalid_auth` without it, and for the `client.*` endpoints), and `SLACK_TEAM_ID` (the workspace's
+team id) in the environment.
+
+**Community leadership (engage feature):** add these keys to the `providers.slack` block in
+`drainer.local.md` to enable the `engage` disposition for qualifying community posts on this workspace:
+- `community_leader: true` — enables engage triage (required)
+- `community_role: "<your role>"` — used in engage proposals (e.g. `"Executive Director"`; optional)
 
 The `slack` `slack.js` lives at `<slack-skill>/scripts/slack.js` — run it with `node`.
 
@@ -59,8 +64,8 @@ shape the worker can rely on:
 `channel` + `ts` (also joined as `messageId`) are the load-bearing fields — the worker needs them for
 SITUATIONAL-CHECK (`--show`) and CLEAR (`--mark`). For a **thread** item, `threadTs` is also set and is
 required for both `--show` and `--mark`. `channelType` is `im` / `mpim` / `channel` / `thread`. `url` is
-the message permalink, openable in Slack. `teamId` is the workspace's `SLACK_TEAM_ID` — used by the ENGAGE
-disposition to confirm the item is in the ISC workspace (`T04PXKRM0`).
+the message permalink, openable in Slack. `teamId` is the workspace's `SLACK_TEAM_ID`, captured for workspace-identity use (e.g. differentiating
+workspaces if a second is ever added).
 
 ## CLEAR
 Advance the read cursor (the Slack "gone") — reversible and non-destructive (nothing is deleted; re-reading
@@ -98,18 +103,18 @@ auto-handle — it falls back to the normal needs-you/fyi/junk triage.
    - **Digest note:** "Auto-rejected Slack Connect request: *[channel/org]* (requested by *[requester]*)."
    - **Then** CLEAR the item (mark read) and write `.done` immediately.
 
-## ENGAGE (ISC Slack — the ED's engagement surface)
+## ENGAGE (community leadership workspace — engagement surface)
 
-**Scope:** this section applies only when the configured workspace is InnerSource Commons
-(`SLACK_TEAM_ID=T04PXKRM0`) — the community Russell leads as Executive Director. The drainer runs one
-Slack workspace (a single `SLACK_TEAM_ID`), so a Slack item here IS an ISC item; the captured record
-carries `teamId` for a definitive check, and if a second, non-ISC workspace is ever added, gate engagement
-on `teamId == T04PXKRM0`. Other workspaces use normal triage only.
+**Scope:** this section applies only when `community_leader: true` is set in the `providers.slack`
+block of `drainer.local.md`. Without that config, all Slack items triage normally and this section is
+inert. (The personal drainer context — which workspace, which role — lives in `drainer.local.md`, not
+here.)
 
-Qualifying community posts in this workspace are **engagement opportunities, not passive fyi** — a standing
-chance for the ED to model active engagement (react to show enthusiasm, drop a short encouraging comment).
+Qualifying community posts in the configured workspace are **engagement opportunities, not passive fyi**
+— a standing chance to model active engagement (react to show enthusiasm, drop a short encouraging
+comment).
 The triage rubric (`engine/triage.md` → "The engage disposition") classifies such a post as the **`engage`**
-bucket, which flows to the **daily digest** — like `fyi`/`junk`, it does **not** open a worker tab. The
+bucket, which flows to the **daily digest** like `fyi`/`junk` — it does **not** open a worker tab. The
 engagement is prepared and reviewed in the digest, in a batch. **Nothing is reacted to or posted automatically.**
 
 **Qualifying posts** (shared criteria in `engine/triage.md`): community announcements, event or CFP notices
