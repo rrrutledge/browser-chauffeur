@@ -68,8 +68,6 @@ def is_segment_trusted(seg, trusted):
         return commands.is_powershell_safe(seg)
     if word == 'wt':
         return commands.is_wt_safe(seg, trusted)
-    if word.lower().endswith('wt.exe'):
-        return commands.is_wt_exe_path_safe(seg)
     if word.lower().endswith('.cmd'):
         tokens = shell_tokenize(seg)
         filepath = tokens[0] if tokens else seg.strip()

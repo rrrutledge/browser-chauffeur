@@ -106,6 +106,22 @@ CASES = [
     {"id": "start_docx", "tool": "Bash", "command": "start report.docx", "expect": "ALLOW"},
     {"id": "start_exe", "tool": "Bash", "command": "start evil.exe", "expect": "PROMPT"},
     {"id": "wt_claude", "tool": "Bash", "command": "wt new-tab claude --version", "expect": "ALLOW"},
+    # A full path to wt.exe (not the bare `wt` on PATH) launching the known
+    # handoff-session script must still be recognized: first_word() collapses
+    # any "*wt.exe" path down to bare "wt" before dispatch, so the exe-path
+    # check has to live inside is_wt_safe rather than a separate word.endswith
+    # branch (which is unreachable once .exe is stripped).
+    {"id": "wt_exe_fullpath_launch_session", "tool": "Bash",
+     "command": ('"{HOME}/AppData/Local/Microsoft/WindowsApps/wt.exe" -w 0 new-tab -d "{CWD}" '
+                 '--title "x" powershell -NoExit -NoProfile -File '
+                 '"{HOME}/Dev/rrrutledge/rrrutledge-claude-code-plugins/scripts/launch-session.ps1" '
+                 '-Model "claude-sonnet-4-6" -SeedFile "{CWD}/.tmp/handoff-seed.txt"'),
+     "expect": "ALLOW"},
+    # Same full-path wt.exe shape but not launching the known script — must
+    # still fall through to the untrusted-program prompt.
+    {"id": "wt_exe_fullpath_untrusted", "tool": "Bash",
+     "command": '"{HOME}/AppData/Local/Microsoft/WindowsApps/wt.exe" -w 0 new-tab powershell -NoExit -Command x',
+     "expect": "PROMPT"},
     # A trailing stream-merge redirect (added to silence terminal noise) must
     # not defeat is_start_safe's target-extension check.
     {"id": "start_docx_stderr_merge", "tool": "Bash", "command": "start report.docx 2>&1", "expect": "ALLOW"},
