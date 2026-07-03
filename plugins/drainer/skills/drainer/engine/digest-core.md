@@ -39,10 +39,11 @@ miss. Then continue to the queue below.
 ## 1. Gather (deterministic — just read state)
 
 - **The digest queue:** `node <seen-state.js> queue-list <runtime_dir>` → a JSON array of
-  `{ id, source, item }`. Each `item` carries at least `triage` (`fyi` | `junk` | `auto-handle`), `from`,
-  `subject`, and `snippet`, plus whatever else that provider's capture recorded (e.g. a `url` and the ids
-  its CLEAR needs). Split it by `item.triage` into **fyi**, **junk**, and **auto-handle** (the last is
-  what a worker already did on its own — see step 2b).
+  `{ id, source, item }`. Each `item` carries at least `triage` (`fyi` | `junk` | `auto-handle` |
+  `engage`), `from`, `subject`, and `snippet`, plus whatever else that provider's capture recorded (e.g.
+  a `url` and the ids its CLEAR needs). Split it by `item.triage` into **fyi**, **junk**,
+  **auto-handle** (what a worker already did on its own — see step 2b), and **engage** (engagement
+  proposals a worker prepared for Russell's per-item approval — see step 2c).
 - **The stale needs-you items:** `node <seen-state.js> stale-list <runtime_dir> <stale_hours>` → a JSON
   array of `{ id, source, ts, ageHours, item }` for every needs-you item still `dispatched` (never
   cleared) and older than `stale_hours`. These are the reconciliation cases — a worker crashed or was
@@ -65,6 +66,29 @@ invite for *jane@acme.com* (requested by Bob)"). Order most-notable first. On Ru
 **no provider CLEAR** (the worker already cleared the source) — just `queue-clear` them like the rest
 (step 5). If something here looks wrong — a rule fired when it shouldn't have — flag it so the AUTO-HANDLE
 rule can be tightened; that's the one case where an auto-handled item needs follow-up.
+
+## 2c. Engage — ISC community engagement proposals (each awaits Russell's OK)
+
+Items a worker prepared as engagement proposals for qualifying ISC Slack community posts. The worker has
+already (a) proposed an emoji reaction and (b) optionally staged a draft thread comment in the Slack
+composer — but nothing has been posted yet. This section is where Russell reviews and approves each one.
+
+Present as a distinct **"Engage"** section, one entry per post:
+- **Who posted, which channel, and a one-line summary of the post** (read the body file if the snippet
+  doesn't give enough context).
+- **Proposed reaction** — the emoji the worker chose and why (e.g. "🎉 — event announcement").
+- **Staged comment** — whether a draft reply was staged in the Slack composer; if so, note the
+  permalink so Russell can find it in Slack. If no draft was staged, say so.
+- **Permalink** (`url` field) — for Russell to open the post directly.
+
+On Russell's review:
+- **If he approves** — he applies the emoji in Slack himself (click the emoji picker on the message)
+  and, if a draft comment was staged, reviews + sends it from the Slack composer.
+- **If he passes** — no action; just `queue-clear` the item. Any staged draft in the Slack composer
+  will remain there until he manually discards it.
+
+In either case, on his go-ahead run `node <seen-state.js> queue-clear <runtime_dir> <id>` — no
+provider CLEAR is needed (the worker already marked the item read during dispatch).
 
 ## 2. fyi — summarize so Russell never has to open the item
 
@@ -103,9 +127,9 @@ clearing action until he chooses.
 ## 5. Present, then clear ONLY on Russell's review
 
 Present the whole digest in the terminal — any stuck-provider health alerts (step 0) at the very top,
-then the **Auto-handled** section (step 2b), fyi summaries, grouped junk with stop-proposals, and the
-stale list — in one readable pass. Then **wait for Russell's go-ahead.** Nothing is disposed of
-silently.
+then the **Auto-handled** section (step 2b), **Engage** proposals (step 2c), fyi summaries, grouped
+junk with stop-proposals, and the stale list — in one readable pass. Then **wait for Russell's
+go-ahead.** Nothing is disposed of silently.
 
 For **each auto-handled item** (already actioned + source-cleared by its worker), on his OK just remove
 it from the queue: `node <seen-state.js> queue-clear <runtime_dir> <id>` — no provider CLEAR.

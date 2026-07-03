@@ -97,6 +97,46 @@ auto-handle — it falls back to the normal needs-you/fyi/junk triage.
    - **Digest note:** "Auto-rejected Slack Connect request: *[channel/org]* (requested by *[requester]*)."
    - **Then** CLEAR the item (mark read) and write `.done` immediately.
 
+## ENGAGE (ISC Slack — ED engagement surface)
+
+**Scope:** this section applies only when the configured workspace is InnerSource Commons
+(`SLACK_TEAM_ID=T04PXKRM0`). Other workspaces skip it and use normal triage only.
+
+Russell is the Executive Director of InnerSource Commons. Qualifying community posts in this workspace
+are engagement opportunities — not passive fyi. The triage rubric (`engine/triage.md`) classifies them
+**`needs-you` (hint: `engage`)**; the worker spawned for each item prepares the engagement proposal for
+Russell's review in the digest. **Nothing is posted or reacted to automatically.**
+
+**Qualifying posts** (see `engine/triage.md` for the shared criteria): community announcements, event
+or CFP notices (even `@channel` broadcasts), new-member intros or welcomes, someone sharing their work
+or a win, open questions addressed to the community, milestone or gratitude posts. Bot/integration
+messages, automated status churn, and muted-conversation content do not qualify.
+
+**SITUATIONAL-CHECK first.** Before preparing any engagement, re-read the post with
+`node slack.js --show --channel=<C> --ts=<ts>` to confirm Russell (or another admin) hasn't already
+reacted or replied. If the post is already engaged with, treat it as no-op: CLEAR it and write `.done`.
+
+**Worker action — prepare the proposal, then hand off to the digest:**
+
+1. **Propose an emoji reaction** — pick one from Russell's palette that fits the post's tone:
+   🎉 (events / wins), 👍 (announcements / approvals), ✅ (completed milestones). Write the chosen
+   emoji and a one-line reason into the digest entry.
+2. **Stage a draft thread reply** (optional, skip if a pure emoji reaction is sufficient) — compose a
+   short (1–3 sentence), warm, in-voice comment via the **`message-draft`** skill's **`slack`** mode,
+   threaded on the original post. The draft sits in the Slack composer, un-sent.
+3. **Patch `triage` to `"engage"`** in `items/<id>.json` (using the Edit tool), then queue a digest
+   entry: `node <skill>/scripts/seen-state.js queue-add <runtime_dir> <source> <id> <path to items/<id>.json>`.
+   The entry should note: which channel/post, proposed emoji, whether a comment draft was staged.
+4. **CLEAR the item** (mark read via the CLEAR op above) so it doesn't re-surface on the next cycle.
+5. **Write `.done` and close this tab** — the engage item is now in the digest queue for Russell's review.
+
+**Reactions note (v1):** `slack.js --react` does not yet exist. In v1, emoji reactions are proposals
+only — the digest tells Russell which emoji to apply and he clicks it in Slack himself. A future
+`--react` flag could automate this step once he approves in the digest.
+
+**Draft-only guardrail:** the proposed reaction and staged comment are never applied to Slack until
+Russell gives explicit per-item approval in the digest. No autonomous posting of any kind.
+
 ## JUNK-LEARNING
 Stop this noise arriving again, in **priority order** (best outcome = it never pings) — propose, never
 apply without the user's OK:

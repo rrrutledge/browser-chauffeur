@@ -40,6 +40,17 @@ carries the whole story and asks nothing — a recording notice with no notes �
   "reply") even when it's just a short remark or a closing "sounds good"; the minimum action is a quick
   acknowledgment or 👍 reaction on their message. A group or meeting message that names Russell directly
   counts the same way; only automated, mass, or not-aimed-at-him chatter stays fyi.
+- **Russell holds a community leadership role on this platform and the post is worth a leader's visible
+  engagement** — when he is Executive Director (or equivalent) of the workspace's community, a qualifying
+  public post creates a concrete action: react visibly to show enthusiasm and optionally add a short
+  encouraging thread comment. The action is lightweight but real — it models engagement for others and
+  fulfils the ED role. **Scope: ISC Slack workspace `T04PXKRM0`, and any analogous platform where he
+  holds the same role.** Qualifying post types: community announcements, event or CFP notices, new-member
+  intros or welcomes, someone sharing their work or a win, open questions addressed to the community,
+  milestone or gratitude posts. Bot/integration messages, automated churn, and muted-conversation content
+  do not qualify. Existing stronger rules take priority: a 1:1 DM from a community member is still
+  **needs-you (reply)**; an @-mention that asks him something is still **needs-you (reply)**; these are
+  not engage items. → **`needs-you` (hint: `engage`)**.
 - a **dated to-do** comes due — a Trello tracker or outreach card, any dated item, the moment its due
   date arrives or passes. The due date IS the queue: a due item is the action surfacing when it was
   scheduled for.
@@ -48,7 +59,7 @@ carries the whole story and asks nothing — a recording notice with no notes �
 
 - **needs-you** — Russell acts on it now, in its own worker tab. This is the default for anything he'd
   do. It's ONE bucket on purpose; don't split reply-vs-work here. Record a hint:
-  **"reply" / "work" / "work-then-reply"**.
+  **"reply" / "work" / "work-then-reply" / "engage"**.
 - **auto-handle** — the narrow case where a **standing rule fully decides** the action: the same answer
   every time, no judgment left. Claude does it autonomously and reports it in the digest instead of
   opening a tab. These standing rules are defined per source, in `providers/<source>-provider.md` under
