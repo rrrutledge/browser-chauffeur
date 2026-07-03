@@ -14,15 +14,17 @@
 // Show one:      node gmail.js --show=<message-id>
 //                (<message-id> is the RFC822 Message-ID header, e.g. <abc@mail.gmail.com>)
 // List drafts:   node gmail.js --list-drafts [--top=30]
-// Draft a reply: node gmail.js --reply --message-id=<id> --body-file=reply.txt [--attach=a.pdf,b.png]
+// Draft a reply: node gmail.js --reply --message-id=<id> --body-file=reply.md [--attach=a.pdf,b.png]
 //                (appends a DRAFT reply in the thread to [Gmail]/Drafts; never sends; replaces any
 //                 prior draft on the same thread; prints a draft-id for --send-draft. <id> is looked up
 //                 in the inbox and All Mail — pass the most recent message in the thread, even one the
 //                 user sent; a reply to the user's own message keeps its recipients instead of self.
-//                 --body-file may be plain text or HTML; plaintext line breaks are preserved as <br>.)
-// Draft new:     node gmail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.txt [--cc=c@z] [--attach=a.pdf,b.png]
+//                 --body-file is Markdown (converted to HTML); pass a file containing HTML tags to
+//                 skip conversion and insert verbatim.)
+// Draft new:     node gmail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.md [--cc=c@z] [--attach=a.pdf,b.png]
 //                (appends a fresh DRAFT to [Gmail]/Drafts; never sends; prints a draft-id.
-//                 --body-file may be plain text or HTML; plaintext line breaks are preserved as <br>.)
+//                 --body-file is Markdown (converted to HTML); pass a file containing HTML tags to
+//                 skip conversion and insert verbatim.)
 //                (--attach takes one path or a comma-separated list; files ride along on the draft)
 // Send a draft:  node gmail.js --send-draft --draft-id=<draft-message-id>
 //                (promotes one already-staged draft: transmits its exact bytes via SMTP, then removes
@@ -44,6 +46,7 @@ module.paths.push(path.join(os.homedir(), '.claude', 'gmail', 'node_modules'));
 
 const { ImapFlow } = require('imapflow');
 const { simpleParser } = require('mailparser');
+const { marked } = require('marked');
 const nodemailer = require('nodemailer');
 const MailComposer = require('nodemailer/lib/mail-composer');
 
@@ -76,8 +79,7 @@ const clean = (s) => (s || '').replace(/\s+/g, ' ').trim();
 
 function bodyToHtml(raw) {
   if (/<[a-z!/][\s\S]*>/i.test(raw)) return raw;
-  const esc = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  return esc.replace(/\r\n/g, '\n').replace(/\n/g, '<br>\n');
+  return marked.parse(raw);
 }
 
 async function findUid(c, messageId) {
