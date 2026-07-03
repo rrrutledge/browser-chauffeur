@@ -1,9 +1,12 @@
 # trello provider — outreach boards (Trello API)
 
-A provider for the **outreach** source. The card's **due date IS the queue**: harvested on
-every run like any other source, it simply returns cards due now-or-earlier (usually none), so it
-rides the single schedule with no special cadence. All Trello reads and mutations go through the
-**`trello-outreach`** skill (don't reimplement the Trello API here). Implements
+A provider for the **outreach** source. The card's **go-live date IS the queue**: harvested on
+every run like any other source, it returns cards that are startable now — Start now-or-earlier, OR
+Due now-or-earlier, OR undated — and not wearing a ⛔ Blocked label. Outreach cards set no Start, so
+they queue purely on their **due date** (the follow-up date) exactly as before. Task cards use the
+**startable model** (see STARTABLE-TASK MODEL): Start = the "work-on-it-next / ping-back" date, Due =
+a real deadline. It rides the single schedule with no special cadence. All Trello reads and mutations
+go through the **`trello-outreach`** skill (don't reimplement the Trello API here). Implements
 `../engine/provider.md`; classify by `../engine/triage.md`. id prefix: `trello-`.
 
 ## Config
@@ -32,23 +35,50 @@ rides the single schedule with no special cadence. All Trello reads and mutation
   the content and STAGE-PLAYBOOK for the generic per-stage activity.
 - Drainer knobs in `.claude/drainer.local.md` → `providers.trello`:
   - `skip_lists` — terminal/parking lists to ignore (e.g. Abandoned, Finished, Adopted, Templates).
+  - `skip_labels` — labels whose cards are suppressed (default `[Blocked]` → hides ⛔ Blocked cards).
+    Matched as a case-insensitive substring, so `blocked` catches `⛔ Blocked`.
+  - `status_labels` — dependency-state labels held out of contact classification (default
+    `[Blocked, Waiting]`), so a ⛔/⏳ label is never read as a person's name.
   - `label_vocab` — `{channels: [...], features: [...]}`; any label not in those is a contact name.
 Credentials: `TRELLO_API_KEY` / `TRELLO_TOKEN` in the environment (used by `trello-outreach`).
 
 ## AUTH-GLANCE
 Confirm `TRELLO_API_KEY`/`TRELLO_TOKEN` are set. If not, tell the user to set them and stop.
 
+## STARTABLE-TASK MODEL
+The default posture is **hungry to start**: everything is startable now unless it's genuinely blocked.
+Two facts live in native Trello fields, two in labels + a description convention:
+- **Start date = "work-on-it-next / ping-back"** — the day the card should resurface. This is the queue
+  driver. A startable-now task carries **no** Start; a ⏳ Waiting card's Start is when to re-nudge.
+- **Due date = a real deadline** — tracked and shown, but not what surfaces the card (a slipped Due
+  does force it up as a safety net). Reserved for genuine deadlines.
+- **⏳ Waiting** (label) = blocked on a **person's** reply. Still surfaces on its ping-back Start so the
+  worker can re-nudge. Record `Waiting-for: <name> · <channel>` in the description (Phase 2's reply
+  matcher reads it).
+- **⛔ Blocked** (label) = blocked on **another card** finishing. Suppressed entirely (`skip_labels`)
+  until unblocked. Record `Blocked-by: <upstream-shortlink>[, …]` in the description; optionally attach
+  the upstream card for a human-visible link.
+
+**Unblock is a push.** When an upstream card is finished (moved to a terminal/skip list or archived),
+call `trello_utils.cascade_unblock(board_id, finished_card_id, session)`: it scans the board once,
+finds cards whose `Blocked-by:` names the finished card, and for each whose **last** blocker just
+cleared, strips its ⛔ label and sets **Start = today** so it surfaces on the next drain. Nothing polls
+the blocked card. (Phase 2 will add a second trigger — an inbound reply resolving a ⏳ card — to this
+same cascade.)
+
 ## ENUMERATE
 Via `trello-outreach`, list cards across the configured boards that sit in an **active** list (not in
-`skip_lists`) and are either **due now-or-earlier** (overdue counts) **or have no due date at all** —
-undated cards are still in play. Rank dated cards by due date (most recent first) and undated cards by
-their **creation date** (decoded from the card's ObjectId). Build a
-stable id: `trello-<card-name-slug>-<last6 of cardId>-<dueYYYYMMDD|nodue>`. The due date is part of the
-id on purpose: a card recurs every follow-up cycle (CLEAR bumps its due date out), and seen-state keeps
-a drained id forever, so without the due stamp a card would be marked seen on its first drain and never
-resurface when its next due date arrives. Parse each card's labels with `label_vocab` into channel /
-features / contacts so the worker knows where the conversation lives, and resolve the card's
-`initiative` (the initiative-colored label's slug, else the board default).
+`skip_lists`), are **not** wearing a `skip_labels` label (⛔ Blocked), and are **startable** — Start
+now-or-earlier, OR Due now-or-earlier (overdue counts), OR carrying neither date. Rank dated cards by
+their **go-live date** (the earliest of Start/Due, most recent first) and undated cards by their
+**creation date** (decoded from the card's ObjectId). Build a stable id:
+`trello-<card-name-slug>-<last6 of cardId>-<goLiveYYYYMMDD|nodue>` where the go-live date is Start when
+present, else Due. That date is part of the id on purpose: a card recurs every cycle (a nudge bumps its
+Start out; an outreach CLEAR bumps its Due out), and seen-state keeps a drained id forever, so without
+the stamp a card would be marked seen on its first drain and never resurface. Parse each card's labels
+with `label_vocab` into channel / features / contacts (⛔/⏳ status labels are held out) so the worker
+knows where the conversation lives, and resolve the card's `initiative` (the initiative-colored label's
+slug, else the board default).
 
 ## CAPTURE (needs-you)
 The card itself is the item, and **we own it** — unlike inbound mail/Teams, the same card recurs every
@@ -131,6 +161,11 @@ Only **after** the user confirms they sent/handled the message, advance the card
 - **advance** — move to a later stage + set the next due date (it progressed).
 - **stop** — move to Abandoned + clear the due date (not pursuing).
 Each advance also posts a dated comment recording what happened, so the board reflects reality.
+
+For **task cards** (startable model), a ⏳ Waiting card also nudges by bumping its **Start** (ping-back
+date), never its Due; and whenever a card is **finished** (moved to a terminal/skip list), fire
+`trello_utils.cascade_unblock(board_id, finished_card_id, session)` so any ⛔ Blocked cards waiting on
+it are freed (⛔ stripped, Start set to today) on the spot.
 
 ### Nudge cadence
 

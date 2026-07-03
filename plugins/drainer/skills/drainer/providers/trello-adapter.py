@@ -13,10 +13,15 @@ per board). The drainer drains EVERY board in that registry. Per-drainer knobs (
 `label_vocab`) stay in that repo's drainer.local.md. If no registry file is present, it falls back to a
 legacy `providers.trello.boards` block in drainer.local.md.
 
-The card's **due date IS the queue**: enumerate returns cards in active lists that are due now-or-earlier
-or have no due date. Dated cards are ranked by due date, most recent first; undated cards are ranked by
-their creation date, decoded from the card's ObjectId. Credentials are TRELLO_API_KEY / TRELLO_TOKEN in
-the environment (read by trello_utils.get_trello_session).
+The **go-live date IS the queue** (startable-task model): the native Start date is a card's
+"work-on-it-next / ping-back" date and the native Due date is a real deadline. enumerate returns cards
+in active lists that are startable — Start now-or-earlier, OR Due now-or-earlier (a slipped deadline
+forces the card up), OR no date at all — and NOT wearing a ⛔ Blocked (skip) label. Outreach cards set
+no Start, so they still queue purely on Due — unchanged. Dated cards rank by their go-live date (the
+earliest of start/due), most recent first; undated cards rank by their creation date, decoded from the
+card's ObjectId. Blocked cards are suppressed until finishing their upstream runs
+trello_utils.cascade_unblock (strips ⛔, sets Start=today). Credentials are TRELLO_API_KEY /
+TRELLO_TOKEN in the environment (read by trello_utils.get_trello_session).
 """
 import glob
 import json
@@ -43,6 +48,11 @@ class Provider(ProviderBase):
         # Stored lowercased; a list is skipped if any token is a substring of its name (case-insensitive),
         # so emoji-prefixed lists like "📋 Templates" still match the plain "Templates" token.
         self.skip_lists = {"abandoned", "finished", "adopted", "templates"}
+        # Same substring rule for labels: a card wearing a skip label is suppressed. "⛔ Blocked" cards
+        # are hidden until their upstream clears (the push cascade strips the label). status_labels are
+        # the superset held out of contact classification (a ⛔/⏳ label is never a contact name).
+        self.skip_labels = {"blocked"}
+        self.status_labels = {"blocked", "waiting"}
         self.channels = []
         self.features = []
         # Board name → default initiative slug (from a board's `initiative:` field in the registry);
@@ -123,6 +133,12 @@ class Provider(ProviderBase):
             skip = self._parse_inline_list(block, "skip_lists")
             if skip:
                 self.skip_lists = {s.lower() for s in skip}
+            skip_labels = self._parse_inline_list(block, "skip_labels")
+            if skip_labels:
+                self.skip_labels = {s.lower() for s in skip_labels}
+            status_labels = self._parse_inline_list(block, "status_labels")
+            if status_labels:
+                self.status_labels = {s.lower() for s in status_labels}
             self.channels = self._parse_inline_list(block, "channels")
             self.features = self._parse_inline_list(block, "features")
         # Boards: the shared registry is authoritative; drainer.local.md's boards block is the fallback.
@@ -227,11 +243,23 @@ class Provider(ProviderBase):
         initiative = next((l.get("name") for l in labels
                            if (l.get("color") or "").lower() == "yellow" and l.get("name")),
                           None)
-        names = [l.get("name") for l in labels if l.get("name") and l.get("name") != initiative]
+        # Hold status labels (⛔ Blocked / ⏳ Waiting) out of the name pool so they're never read as a
+        # contact — they carry dependency state, not a person.
+        names = [l.get("name") for l in labels
+                 if l.get("name") and l.get("name") != initiative
+                 and not any(tok in l.get("name").lower() for tok in self.status_labels)]
         channel = next((n for n in names if n in self.channels), None)
         feats = [n for n in names if n in self.features]
         contacts = [n for n in names if n not in self.channels and n not in self.features]
         return channel, feats, contacts, initiative
+
+    def _has_skip_label(self, card):
+        """True if the card wears a suppress label (default: ⛔ Blocked) — hidden until it's cleared."""
+        for l in card.get("labels", []):
+            nm = (l.get("name") or "").lower()
+            if nm and any(tok in nm for tok in self.skip_labels):
+                return True
+        return False
 
     @staticmethod
     def _due_dt(due):
@@ -281,7 +309,8 @@ class Provider(ProviderBase):
         for board in self.boards:
             bid, bname = board["id"], board.get("name", board["id"])
             lists = {l["id"]: l["name"] for l in self._utils.get_board_lists(bid, self.session)}
-            for card in self._utils.get_board_cards(bid, self.session):
+            # fields="all" so the newer `start` date comes back (the default card payload omits it).
+            for card in self._utils.get_board_cards(bid, self.session, fields="all"):
                 list_name = lists.get(card.get("idList"))
                 # get_board_lists returns only OPEN lists; a card whose list isn't in that map sits on
                 # an archived/closed list (still an open card, but off the board) — not active, skip it.
@@ -290,17 +319,26 @@ class Provider(ProviderBase):
                 ln = list_name.lower()
                 if any(tok in ln for tok in self.skip_lists):
                     continue
+                # ⛔ Blocked cards are suppressed until their upstream clears (the push cascade removes
+                # the label and sets Start = today, so they resurface on a later drain).
+                if self._has_skip_label(card):
+                    continue
                 # Skip cards assigned to someone else; unassigned cards are always Russell's.
                 assigned = card.get("idMembers") or []
                 if assigned and my_id not in assigned:
                     continue
+                # Startable-task model: Start = the "go-live / ping-back" date, Due = a real deadline.
+                # A card is in play when its Start has arrived, OR its Due has arrived (a slipped
+                # deadline forces it up as a safety net), OR it carries neither date (startable now).
+                # Outreach cards set no Start, so they still queue purely on Due — unchanged behavior.
+                start_dt = self._due_dt(card.get("start"))
                 due_dt = self._due_dt(card.get("due"))
-                # In play: due now-or-earlier (overdue counts) OR no due date at all.
-                if due_dt is not None and due_dt > now:
+                gate_dts = [d for d in (start_dt, due_dt) if d is not None]
+                if gate_dts and min(gate_dts) > now:
                     continue
-                # Sort rank: a dated card ranks by its due date; an undated card ranks by its creation
-                # date (always in the past).
-                sort_dt = due_dt if due_dt is not None else self._created_dt(card["id"])
+                # Sort rank: a dated card ranks by its go-live date (the earliest of start/due); an
+                # undated card ranks by its creation date (always in the past).
+                sort_dt = min(gate_dts) if gate_dts else self._created_dt(card["id"])
                 channel, feats, contacts, initiative_label = self._classify_labels(card)
                 # A per-card initiative label wins over the board's default initiative. The slug is the
                 # initiative label's name slugified (→ initiatives/<slug>.md); board defaults are already
@@ -314,6 +352,7 @@ class Provider(ProviderBase):
                     "list": list_name,
                     "name": card.get("name", ""),
                     "due": card.get("due"),
+                    "start": card.get("start"),
                     "url": card.get("shortUrl") or card.get("url"),
                     "desc": card.get("desc", ""),
                     "channelLabel": channel,
@@ -337,14 +376,15 @@ class Provider(ProviderBase):
         return items[:limit]
 
     def stable_id(self, item):
-        # The due date is PART OF the identity, not just a field: a card recurs every follow-up cycle
-        # (CLEAR bumps its due date out), and seen-state's `clear` leaves a drained id in seen.json
-        # forever (status=cleared, key persists) while dedup is pure key-presence. So a stable
-        # per-card id would be marked seen on the first drain and never resurface when the next due
-        # date arrives. Folding the due date (YYYYMMDD) in makes each due-cycle a distinct item that
-        # surfaces anew; an undated card uses "nodue" and so stays seen until it's given a due date.
-        due = (item.get("due") or "")
-        stamp = "".join(c for c in due if c.isdigit())[:8] or "nodue"
+        # The go-live date is PART OF the identity, not just a field: a card recurs every cycle (a
+        # nudge bumps its Start out, CLEAR bumps an outreach card's Due out), and seen-state's `clear`
+        # leaves a drained id in seen.json forever (status=cleared, key persists) while dedup is pure
+        # key-presence. So a stable per-card id would be marked seen on the first drain and never
+        # resurface when the next date arrives. Folding the go-live date (Start when present, else Due,
+        # YYYYMMDD) in makes each cycle a distinct item that surfaces anew; an undated card uses "nodue"
+        # and so stays seen until it's given a date.
+        stamp_src = item.get("start") or item.get("due") or ""
+        stamp = "".join(c for c in stamp_src if c.isdigit())[:8] or "nodue"
         return f"{self.name}-{slug(item.get('name'), 40)}-{item['cardId'][-6:]}-{stamp}".strip("-")[:72]
 
     def capture(self, item, iid, runtime_dir):
@@ -355,7 +395,8 @@ class Provider(ProviderBase):
         with open(body_file, "w", encoding="utf-8") as f:
             f.write(f"# {item.get('name')}\n\n"
                     f"Board: {item.get('board')} / List: {item.get('list')}\n"
-                    f"Due: {item.get('due') or '(none)'}\n"
+                    f"Next-action (start): {item.get('start') or '(none)'}\n"
+                    f"Deadline (due): {item.get('due') or '(none)'}\n"
                     f"Channel: {item.get('channelLabel') or '(none)'}\n"
                     f"Contacts: {', '.join(item.get('contacts') or []) or '(none)'}\n"
                     f"Initiative: {item.get('initiative') or '(none)'}\n"
@@ -365,6 +406,7 @@ class Provider(ProviderBase):
             "id": iid, "source": self.name, "triage": item.get("_bucket", "needs-you"),
             "kind": item.get("_kind"), "cardId": item["cardId"], "board": item.get("board"),
             "list": item.get("list"), "name": item.get("name"), "due": item.get("due"),
+            "start": item.get("start"),
             "url": item.get("url"), "contacts": item.get("contacts") or [],
             "channelLabel": item.get("channelLabel"), "initiative": item.get("initiative"),
             "bodyFile": body_file,

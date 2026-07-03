@@ -8,8 +8,10 @@ live in CLAUDE.local.md. This module provides the generic API operations.
 import ctypes
 import json
 import os
+import re
 import urllib.request
 import urllib.parse
+from datetime import datetime, timezone
 
 BASE_URL = 'https://api.trello.com/1'
 
@@ -121,8 +123,12 @@ def create_card(list_id, card_data, session):
         'name': card_data['title'],
         'desc': card_data.get('description', ''),
     }
+    # `due` is a real deadline; `start` is the next-action / ping-back date (the startable-task model).
+    # Outreach cards typically set only `due` (their follow-up date); task cards set `start`.
     if card_data.get('due'):
         body['due'] = card_data['due']
+    if card_data.get('start'):
+        body['start'] = card_data['start']
     return trello_request('POST', '/cards', session, body=body)
 
 
@@ -134,8 +140,12 @@ def delete_card(card_id, session):
     return trello_request('DELETE', f'/cards/{card_id}', session)
 
 
-def get_board_cards(board_id, session):
-    return trello_request('GET', f'/boards/{board_id}/cards', session)
+def get_board_cards(board_id, session, fields=None):
+    """List a board's open cards. Pass fields='all' (or a comma-separated list) to control which
+    card fields come back — the default Trello card payload omits the newer `start` date, so callers
+    that need Start/Due together (the startable-task model) should request fields='all'."""
+    params = {'fields': fields} if fields else None
+    return trello_request('GET', f'/boards/{board_id}/cards', session, params=params)
 
 
 def find_card_by_name(board_id, name, session):
@@ -182,6 +192,10 @@ def add_label_to_card(card_id, label_id, session):
                           body={'value': label_id})
 
 
+def remove_label_from_card(card_id, label_id, session):
+    return trello_request('DELETE', f'/cards/{card_id}/idLabels/{label_id}', session)
+
+
 def ensure_labels_exist(board_id, label_definitions, session):
     existing = get_board_labels(board_id, session)
     existing_names = {label['name'] for label in existing}
@@ -198,3 +212,81 @@ def extract_github_field_value(field_values, field_name):
         if 'field' in fv and fv['field'] and fv['field']['name'] == field_name:
             return fv.get('text') or fv.get('date') or fv.get('name')
     return None
+
+
+# --------------------------------------------------------------------- startable-task dependency model
+# A blocked card advertises its blockers in a `Blocked-by: <shortlink>, ...` line in its description
+# (shortlinks are the 8-char code in a card's shortUrl, https://trello.com/c/<shortlink>). The unblock
+# is a PUSH: finishing an upstream card runs cascade_unblock, which strips the blocked label and sets
+# Start = today on every card whose LAST remaining blocker just cleared. Nothing polls the blocked card.
+
+_BLOCKED_BY_RE = re.compile(r'^\s*blocked-by\s*:(.*)$', re.IGNORECASE | re.MULTILINE)
+# A shortlink is the 8-char code after /c/ in a card URL, or a bare 8-char token delimited by
+# whitespace/commas — the delimiter guard keeps 8-letter slug words (…/12-ping-kristine) from matching.
+_URL_SHORTLINK_RE = re.compile(r'trello\.com/c/([A-Za-z0-9]{8})')
+_BARE_SHORTLINK_RE = re.compile(r'(?:^|[\s,])([A-Za-z0-9]{8})(?=[\s,]|$)')
+
+
+def parse_blocked_by(desc):
+    """Return the list of upstream card shortlinks named on a card's `Blocked-by:` line(s)."""
+    out = []
+    for m in _BLOCKED_BY_RE.finditer(desc or ''):
+        seg = m.group(1)
+        out.extend(_URL_SHORTLINK_RE.findall(seg))
+        out.extend(_BARE_SHORTLINK_RE.findall(_URL_SHORTLINK_RE.sub(' ', seg)))
+    seen, res = set(), []
+    for x in out:
+        if x not in seen:
+            seen.add(x)
+            res.append(x)
+    return res
+
+
+def _card_is_done(card, lists_by_id, done_substrs):
+    """A blocker counts as resolved when its card is archived (closed) or sits in a terminal list
+    (Finished / Abandoned / Adopted / Done) — the same lists the drainer already treats as parked."""
+    if card.get('closed'):
+        return True
+    name = (lists_by_id.get(card.get('idList')) or '').lower()
+    return any(t in name for t in done_substrs)
+
+
+def cascade_unblock(board_id, finished_card_id, session,
+                    blocked_label_substr='blocked',
+                    done_substrs=('finished', 'abandoned', 'adopted', 'done')):
+    """Push-unblock downstream cards after `finished_card_id` is completed.
+
+    Scans the board once, finds cards whose `Blocked-by:` names the finished card, and for each — if
+    ALL of its blockers are now done — strips its blocked label and sets Start = today so it surfaces
+    on the next drain. Multi-blocker cards and chains fall out of the all-blockers-done check for free.
+    Returns the list of unblocked card ids. Read-heavy but runs only at completion time.
+    """
+    cards = get_board_cards(board_id, session, fields='all')
+    lists_by_id = {l['id']: l['name'] for l in get_board_lists(board_id, session)}
+    by_shortlink = {c.get('shortLink'): c for c in cards if c.get('shortLink')}
+    finished = next((c for c in cards if c.get('id') == finished_card_id
+                     or c.get('shortLink') == finished_card_id), None)
+    if not finished:
+        return []
+    finished_keys = {finished.get('id'), finished.get('shortLink')}
+    today = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
+    unblocked = []
+    for card in cards:
+        blockers = parse_blocked_by(card.get('desc'))
+        if not blockers or finished_keys.isdisjoint(blockers):
+            continue
+        # Only unblock once every blocker this card names is resolved (handles multi-blocker + chains).
+        all_done = True
+        for sl in blockers:
+            blk = by_shortlink.get(sl)
+            if blk is None or not _card_is_done(blk, lists_by_id, done_substrs):
+                all_done = False
+                break
+        if not all_done:
+            continue
+        for label in card.get('labels', []):
+            if blocked_label_substr in (label.get('name') or '').lower():
+                remove_label_from_card(card['id'], label['id'], session)
+        update_card(card['id'], {'start': today}, session)
+        unblocked.append(card['id'])
+    return unblocked
