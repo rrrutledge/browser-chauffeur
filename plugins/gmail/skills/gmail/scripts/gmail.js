@@ -75,9 +75,6 @@ const fromList = (arr) => (arr || []).map(addr).join(', ');
 const stripId = (id) => String(id || '').replace(/^<|>$/g, '');
 const clean = (s) => (s || '').replace(/\s+/g, ' ').trim();
 
-function bodyToHtml(raw) {
-  return marked.parse(raw);
-}
 
 async function findUid(c, messageId) {
   // Locate a message in the inbox by its Message-ID header; returns its UID or null.
@@ -238,7 +235,7 @@ async function reply(c) {
   if (!args['message-id'] || !args['body-file']) {
     throw new Error('--reply requires --message-id and --body-file');
   }
-  const html = bodyToHtml(fs.readFileSync(args['body-file'], 'utf8'));
+  const html = marked.parse(fs.readFileSync(args['body-file'], 'utf8'));
   let orig;
   for (const mailbox of ['INBOX', ALLMAIL]) {
     const lock = await c.getMailboxLock(mailbox);
@@ -290,7 +287,7 @@ async function draftNew(c) {
   if (!args.to || !args.subject || !args['body-file']) {
     throw new Error('--draft-new requires --to, --subject, and --body-file');
   }
-  const html = bodyToHtml(fs.readFileSync(args['body-file'], 'utf8'));
+  const html = marked.parse(fs.readFileSync(args['body-file'], 'utf8'));
   const { raw, messageId } = await buildMime({ to: args.to, cc: args.cc || undefined, subject: args.subject, html });
   await c.append(DRAFTS, raw, ['\\Draft']);
   console.log(`Draft staged in [Gmail]/Drafts to ${args.to}. Review in Gmail; never sent.`);
