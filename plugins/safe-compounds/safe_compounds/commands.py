@@ -448,7 +448,15 @@ def is_wt_exe_path_safe(seg):
 
 
 def is_wt_safe(seg, trusted):
-    """Approve `wt` only if the program it ultimately launches is trusted."""
+    """Approve `wt` if it launches the known-safe Claude session script, or if
+    the program it ultimately launches is trusted.
+
+    first_word() collapses any path (bare `wt` or a full `.../wt.exe` path)
+    down to `wt`, so the exe-path-specific check has to happen here rather
+    than as a separate dispatch branch in approve.py.
+    """
+    if is_wt_exe_path_safe(seg):
+        return True
     tokens = shell_tokenize(seg)
     if len(tokens) < 2:
         return False
