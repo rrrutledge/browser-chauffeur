@@ -19,7 +19,7 @@ const { chromium } = (() => {
   try { return require('playwright-core'); }
   catch { return require(require('path').join(require('os').homedir(), '.claude', 'browser-chauffeur', 'node_modules', 'playwright-core')); }
 })();
-const { dismissOverlays, screenshotOnFailure } = (() => {
+const { dismissOverlays, screenshotOnFailure, openTab, closeTab } = (() => {
   try { return require('browser-chauffeur-helpers'); }
   catch { return require(require('path').join(require('os').homedir(), '.claude', 'browser-chauffeur', 'node_modules', 'browser-chauffeur-helpers')); }
 })();
@@ -27,10 +27,11 @@ const { dismissOverlays, screenshotOnFailure } = (() => {
 async function run() {
   const browser = await chromium.connectOverCDP('http://localhost:9222');
   const context = browser.contexts()[0];
-  const page = context.pages()[0] || await context.newPage();
+  // Always open with openTab, never bare newPage — it registers the tab so the
+  // launcher's sweep can reclaim it if this script crashes.
+  const page = await openTab(context, 'https://example.com');
 
   try {
-    await page.goto('https://example.com');
     await dismissOverlays(page);
     
     // Your automation logic here
@@ -38,6 +39,8 @@ async function run() {
   } catch (e) {
     await screenshotOnFailure(context, 'example-error');
     throw e;
+  } finally {
+    await closeTab(page);   // close (or park, if last tab) + unregister
   }
 }
 
@@ -63,6 +66,35 @@ Takes a diagnostic screenshot when automation fails. Useful in catch blocks.
   - `label` - String label for the screenshot file
 - **Returns**: Promise<void>
 - **Saves to**: `.tmp/diag-{label}-{timestamp}.png`
+
+### `openTab(context, url)`
+
+Opens a new tab, registers it in the shared tab registry (owned by the current Claude session, so the launcher's sweep keeps it alive while the session's window is open and reclaims it when that window closes), and navigates to `url` if provided. **Use this for every tab you create — never bare `context.newPage()`.** An unregistered tab escapes the orphan sweep and leaks until the age/count backstop reaps it or the browser crashes. It also attaches a page-scoped `popup` listener, so any tab this page later spawns itself (`target="_blank"`, `window.open`, ctrl-click) is registered under the same session automatically — capture it with `await page.waitForEvent('popup')` around the click if you need to drive it.
+
+- **Parameters**: `context` - Playwright browser context; `url` - optional URL to navigate to
+- **Returns**: Promise<Page>
+
+### `closeTab(page)`
+
+Closes a tab opened with `openTab` and unregisters it. Parks on `about:blank` instead of closing when it's the browser's last tab, so it never exits the persistent browser. Call it in a `finally` block. Only pass tabs you created — never a tab you found.
+
+- **Parameters**: `page` - a Playwright page returned by `openTab`
+- **Returns**: Promise<void>
+
+### `findTab(context, predicate)`
+
+Finds an existing tab by predicate and marks it active, so a tab a worker keeps returning to keeps its place in the eviction order and isn't reaped as idle. Use this on the tab-reuse path instead of a bare `context.pages().find(...)`.
+
+- **Parameters**: `context` - Playwright browser context; `predicate` - `(page) => boolean`
+- **Returns**: Promise<Page | null> — the matching page, or `null` (then open one with `openTab`)
+- **Note**: purely an eviction-ordering optimization — if you skip it and use `pages().find(...)`, nothing breaks; the tab just isn't marked active on that reuse.
+
+### `touchTab(context, page)`
+
+Marks a tab active (the lower-level primitive `findTab` uses). Call it directly when you hold a page you'll keep using across a long flow and want to refresh its activity.
+
+- **Parameters**: `context` - Playwright browser context; `page` - the Playwright page
+- **Returns**: Promise<void>
 
 ### Login detection
 

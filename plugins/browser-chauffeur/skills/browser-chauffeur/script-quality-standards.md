@@ -42,6 +42,10 @@ await deleteBtn.waitFor({ state: 'visible', timeout: 5000 });
 await deleteBtn.click();
 ```
 
+## ✅ REQUIRED: Get tabs via `openTab` / `findTab`
+
+Create every tab with `openTab(context, url)`, and reuse an existing one with `findTab(context, predicate)` — never bare `context.newPage()` or `context.pages().find(...)`. These register the tab against its owning session so the sweep can reclaim it; an unregistered tab has no owner and is only cleaned up once it goes idle or the count cap is hit. Close tabs you created with `closeTab` in a `finally`; never pass a tab you only *found* to `closeTab`. **SKILL.md Phase 1 has the full rationale** — this is the one place it's spelled out.
+
 ## ✅ REQUIRED: Verification Code
 
 **Every script must output explicit success/failure:**
@@ -78,4 +82,3 @@ Scripts must navigate to their target URL themselves — don't assume the browse
 - Use `page.route()` for request interception (not `frame.route()` — it doesn't exist)
 - Include `dismissOverlays(page)` after navigation (see Common Patterns in SKILL.md)
 - Save a diagnostic screenshot in catch blocks (see Common Patterns in SKILL.md)
-- Create tabs with `openTab(context, url)` and close them with `closeTab(page)` in `finally` (not bare `context.newPage()`/`page.close()`) — these bundle tab registration so a crash can't leak an un-reclaimable tab (see Resilient Connection in SKILL.md). The `script-template.js` reference already does this.

@@ -26,6 +26,8 @@ $seed = $null
 if ($Resume) {
   $claudeArgs = @('--resume', $Resume)
   if ($Model) { $claudeArgs = @('--model', $Model) + $claudeArgs }
+  # Own browser-chauffeur tabs for this resumed session (see note below).
+  $env:BROWSER_CHAUFFEUR_OWNER_PID = $PID
   claude @claudeArgs
   return
 }
@@ -80,4 +82,10 @@ $claudeArgs = @()
 if ($Model)     { $claudeArgs += @('--model', $Model) }
 if ($SessionId) { $claudeArgs += @('--session-id', $SessionId) }
 $claudeArgs += $seed
+# Own any browser-chauffeur tabs this session opens. The browser-chauffeur sweep
+# keeps a tab alive while its owner process is running and reclaims it when the
+# owner is gone, so tying ownership to THIS host process (which lives exactly as
+# long as this WT tab) means the browser tab is cleaned up when the tab closes —
+# not orphaned. Every node script the session spawns inherits these env vars.
+$env:BROWSER_CHAUFFEUR_OWNER_PID = $PID
 claude @claudeArgs

@@ -1,18 +1,22 @@
 // Tab registry — tracks tabs that chauffeur scripts create, so a later launch
-// can reclaim ones orphaned by a crashed/interrupted run.
+// can reclaim ones whose owning session has ended.
 //
-// WHY: connectOverCDP auto-attaches to every open target. When a script dies
-// before its finally block runs, the tab it opened stays open forever. Over many
-// sessions these orphans pile up and eventually wedge connectOverCDP. Tracking
-// each created tab's CDP targetId + the creating process's PID lets the sweep in
-// launch-browser.py close ONLY our own orphans (creating process is dead) — never
-// an active session's tab, and never a tab the user opened (those are never
-// registered here).
+// WHY: connectOverCDP auto-attaches to every open target. When a session ends
+// before its tabs are closed, they stay open forever. Over many sessions these
+// pile up and eventually wedge connectOverCDP. Each tab is recorded with its CDP
+// targetId + the OWNING SESSION (the long-lived Claude session that opened it —
+// see ownerInfo below), so the sweep in launch-browser.py keeps a tab alive
+// exactly as long as its session's window is open and reclaims it when that
+// window closes — never an active session's tab, and never a tab the user opened
+// (those are never registered here). The owner is the session, NOT the ephemeral
+// node script: one session fires many short-lived scripts (act, screenshot,
+// retry), so the tab must outlive any single script.
 //
-// RECOMMENDED USAGE — use the bundled openTab/closeTab so opening and closing a
-// tab are mechanically inseparable from registering and unregistering it. This
-// removes the failure mode where a script opens a tab but forgets to register it
-// (making it un-reclaimable) or closes it but forgets to unregister it.
+// REQUIRED USAGE — always use the bundled openTab/closeTab so opening and
+// closing a tab are mechanically inseparable from registering and unregistering
+// it. Never open a tab with bare context.newPage(): an unregistered tab is
+// invisible to the launch-browser.py orphan sweep, so it leaks until the
+// age/count backstop reaps it or the browser crashes under the accumulation.
 //
 //   const { openTab, closeTab } = require('browser-chauffeur-helpers');
 //   const page = await openTab(context, 'https://example.com');  // creates + registers (+ optional goto)
@@ -20,6 +24,13 @@
 //
 // closeTab parks (about:blank) instead of closing when it's the browser's last
 // tab, so it never accidentally exits the persistent browser.
+//
+// Tabs a page spawns by itself (a click that opens window.open / target=_blank /
+// ctrl-click) are captured too: openTab/findTab attach a page-scoped 'popup'
+// listener that registers the new tab under the same session. That listener is
+// on the specific page, so the popup is by definition a child of a tab this
+// session owns — unlike a context-level 'page' listener, which fires for every
+// new tab in the shared browser with no way to tell which one you opened.
 //
 // registerTab/unregisterTab remain exported as the lower-level primitives, but
 // prefer openTab/closeTab.
@@ -49,17 +60,69 @@ function save(entries) {
   fs.renameSync(tmp, REGISTRY);
 }
 
-// Record a tab this process created. Returns its CDP targetId (also used to
+// The owner of a tab is the Claude session that opened it — recorded so the
+// launcher's sweep keeps the tab alive exactly as long as that session's window
+// is open, and reclaims it when the window closes. The session launcher
+// (launch-session.ps1) exports BROWSER_CHAUFFEUR_OWNER_PID: the long-lived host
+// process whose liveness the sweep checks. For a session you start yourself, set
+// OWNER_PID in your shell profile (see SKILL.md "Tying tab ownership to a
+// session"). If it's unset, ownership falls back to this short-lived node
+// process — the tab is then reclaimed soon after this script finishes, not at
+// session end.
+function ownerInfo() {
+  const envPid = Number(process.env.BROWSER_CHAUFFEUR_OWNER_PID);
+  return {
+    ownerPid: Number.isInteger(envPid) && envPid > 0 ? envPid : process.pid,
+  };
+}
+
+// Resolve a page's CDP targetId (the registry's stable key across processes).
+async function targetIdOf(context, page) {
+  const session = await context.newCDPSession(page);
+  try {
+    const { targetInfo } = await session.send('Target.getTargetInfo');
+    return targetInfo.targetId;
+  } finally {
+    await session.detach().catch(() => {});
+  }
+}
+
+// Record a tab this session created. Returns its CDP targetId (also used to
 // unregister). Returns null on failure — registration is best-effort and must
-// never break the actual automation.
+// never break the actual automation. `lastActive` drives the launcher's sweep:
+// it evicts the least-recently-active tab first, so it starts equal to `ts`.
 async function registerTab(context, page) {
   try {
-    const session = await context.newCDPSession(page);
-    const { targetInfo } = await session.send('Target.getTargetInfo');
-    await session.detach().catch(() => {});
-    const targetId = targetInfo.targetId;
+    const targetId = await targetIdOf(context, page);
+    const now = Date.now();
     const entries = load();
-    entries.push({ targetId, nodePid: process.pid, url: page.url(), ts: Date.now() });
+    entries.push({ targetId, ...ownerInfo(), url: page.url(), ts: now, lastActive: now });
+    save(entries);
+    return targetId;
+  } catch {
+    return null;
+  }
+}
+
+// Mark a tab active for the current session and claim its ownership; adopt it
+// into the registry if it wasn't opened via openTab. Bumps lastActive so the
+// sweep doesn't treat the tab as idle while you're using it. findTab calls this
+// for you on the reuse path, so you rarely call it directly. Returns the tab's
+// CDP targetId (null on failure). Best-effort.
+async function touchTab(context, page) {
+  try {
+    const targetId = await targetIdOf(context, page);
+    const now = Date.now();
+    const { ownerPid } = ownerInfo();
+    const entries = load();
+    const existing = entries.find(e => e.targetId === targetId);
+    if (existing) {
+      existing.lastActive = now;
+      existing.url = page.url();
+      existing.ownerPid = ownerPid;
+    } else {
+      entries.push({ targetId, ownerPid, url: page.url(), ts: now, lastActive: now });
+    }
     save(entries);
     return targetId;
   } catch {
@@ -82,12 +145,51 @@ function unregisterTab(targetId) {
 // unpolluted.
 const tabIds = new WeakMap();
 
+// Pages we've already attached a popup listener to — so re-touching a tab (e.g.
+// findTab called repeatedly in a loop) doesn't stack duplicate listeners.
+const popupTracked = new WeakSet();
+
+// Own the tabs a page spawns itself. A click that opens window.open /
+// target=_blank / ctrl-click fires 'popup' ON THIS page, so the new tab is by
+// definition a child of a tab this session owns — register it under the same
+// session and chain the listener so a popup's own popups are caught too. This is
+// page-scoped on purpose: a context-level 'page' listener would fire for every
+// new tab in the shared browser (other sessions', the user's) with no way to
+// attribute it. Best-effort — the launcher sweep still adopts anything missed.
+function trackPopups(context, page) {
+  if (popupTracked.has(page)) return;
+  popupTracked.add(page);
+  page.on('popup', async (popup) => {
+    try {
+      const id = await touchTab(context, popup);  // register, owned by this session
+      if (id) tabIds.set(popup, id);
+      trackPopups(context, popup);
+    } catch {
+      // best-effort
+    }
+  });
+}
+
+// Find an existing tab by predicate and mark it active, so a tab a worker keeps
+// returning to keeps its place in the eviction order and isn't reaped as idle.
+// Returns the matching page, or null (caller then opens one with openTab).
+// Prefer this over a bare context.pages().find(...) on the tab-reuse path.
+async function findTab(context, predicate) {
+  const page = context.pages().find(predicate);
+  if (page) {
+    await touchTab(context, page);
+    trackPopups(context, page);
+  }
+  return page || null;
+}
+
 // Open a new tab, register it, and (optionally) navigate to url. Returns the
 // page. Use this instead of context.newPage() so registration can't be skipped.
 async function openTab(context, url) {
   const page = await context.newPage();
   const tabId = await registerTab(context, page);
   tabIds.set(page, tabId);
+  trackPopups(context, page);
   if (url) await page.goto(url);
   return page;
 }
@@ -110,4 +212,4 @@ async function closeTab(page) {
   }
 }
 
-module.exports = { openTab, closeTab, registerTab, unregisterTab, REGISTRY };
+module.exports = { openTab, closeTab, findTab, touchTab, registerTab, unregisterTab, REGISTRY };

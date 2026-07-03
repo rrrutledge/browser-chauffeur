@@ -34,13 +34,20 @@ Russell decided in advance — do the action without presenting or waiting, then
    "auto-handled: approved workspace invite for <email>"). There is **no presentation and no
    wait-for-acknowledgment**, because nothing was put in front of Russell — the digest is how he learns
    it happened. (Same "silent resolution writes `.done` at once" rule as §6.)
-6. **Close this tab** as your very last step. An auto-handle item has no one to wait for, so a tab left
-   open would just sit there reading "finished" until Russell checks it by hand — exactly the
-   interruption auto-handle exists to avoid. So terminate the session and close the tab: your launcher
-   wrote the hosting terminal's PID to `<your-prompt-file>.hostpid` (the seed names the path); read it
-   and run `taskkill /PID <pid> /T /F`, which kills the session and its tab together. If that file is
-   missing (an older launcher that didn't record it), just stop normally — don't hunt for the process.
-   This step is **auto-handle only** — needs-you items always stay open for the user.
+6. **Close up as your very last step**, in this order. An auto-handle item has no one to wait for, so
+   anything left open just sits there reading "finished" until Russell checks it by hand — exactly the
+   interruption auto-handle exists to avoid.
+   1. **Your browser tabs** — if you opened any (clicked a button, read a card in the browser), close
+      them: invoke browser-chauffeur to run `launch-browser.py --close-owned`, which closes only the
+      tabs your session opened (never the user's, never another session's). Cleaning up your own tabs
+      here means they never reach the browser sweep.
+   2. **Your session tab** — your launcher wrote the hosting terminal's PID to
+      `<your-prompt-file>.hostpid` (the seed names the path); read it and run `taskkill /PID <pid> /T /F`,
+      which kills the session and its tab together. If that file is missing (an older launcher that
+      didn't record it), just stop normally — don't hunt for the process.
+
+   This whole step is **auto-handle only** — needs-you items stay open for the user (see §6 for how they
+   close their browser tabs).
 
 Everything below (steps 0–7) is the **needs-you** flow — follow it for every item that is NOT auto-handle.
 
@@ -187,6 +194,19 @@ Items you resolve WITHOUT surfacing them for the user's attention — a pointer 
 (§2b), a content re-triage to FYI (§2c), or a situational no-op close (nothing to do right now) —
 likewise write `.done` at once AND close the tab (read `.hostpid`, `taskkill /PID <pid> /T /F`). A
 silently-resolved tab is just noise in the taskbar; close it.
+
+**Close your browser tabs when you and the user are truly finished with the item.** If you opened tabs in
+the browser (read a card, drove a web composer, clicked through a link), close them as your last act once
+the item is genuinely done — the ideal that keeps the browser sweep a rare backstop rather than the norm.
+"Done" here is later than `.done`: `.done` frees the queue slot the moment the work looks complete, but
+your session stays live, and for most needs-you items the user still has a human step to do — send the
+draft you staged, submit the form — and you often have follow-up (learning from the send per §5, a tracker
+card) once they confirm. Keep any tab the user still needs open through all that. When they've told you
+their part is done and you've finished any follow-up, close the tabs you opened: invoke browser-chauffeur
+to run `launch-browser.py --close-owned`, which closes only this session's tabs (never the user's, never
+another session's, never the browser's last page). If a tab you opened was never something the user needed
+to see — its content is already mirrored where they work (a Slack draft that shows in their own Slack) —
+close it as soon as that's clear rather than waiting.
 
 ## 7. Improve the source (don't just hoard facts)
 If the user had to tell you something you could have known, don't just note it — figure out *where it

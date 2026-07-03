@@ -3,10 +3,11 @@
 // detection, fallback, or target-load validation — that is handled by Claude
 // interactively during Phase 0 before any script runs.
 //
-// Each script opens its own tab (newPage), works in it, and closes it when
-// done. The browser is persistent — it stays running across tasks so logins
-// survive. The finally block guards against closing the last tab (which would
-// exit the browser and lose all sessions).
+// Each script opens its own tab with openTab (never bare newPage — openTab
+// registers the tab so the launcher's sweep can reclaim it), works in it, and
+// closes it with closeTab when done. The browser is persistent — it stays
+// running across tasks so logins survive. closeTab guards against closing the
+// last tab (which would exit the browser and lose all sessions).
 
 const { chromium } = (() => {
   try { return require('playwright-core'); }
