@@ -14,13 +14,15 @@
 // Show one:      node gmail.js --show=<message-id>
 //                (<message-id> is the RFC822 Message-ID header, e.g. <abc@mail.gmail.com>)
 // List drafts:   node gmail.js --list-drafts [--top=30]
-// Draft a reply: node gmail.js --reply --message-id=<id> --body-file=reply.html [--attach=a.pdf,b.png]
+// Draft a reply: node gmail.js --reply --message-id=<id> --body-file=reply.md [--attach=a.pdf,b.png]
 //                (appends a DRAFT reply in the thread to [Gmail]/Drafts; never sends; replaces any
 //                 prior draft on the same thread; prints a draft-id for --send-draft. <id> is looked up
 //                 in the inbox and All Mail — pass the most recent message in the thread, even one the
-//                 user sent; a reply to the user's own message keeps its recipients instead of self.)
-// Draft new:     node gmail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.html [--cc=c@z] [--attach=a.pdf,b.png]
-//                (appends a fresh DRAFT to [Gmail]/Drafts; never sends; prints a draft-id)
+//                 user sent; a reply to the user's own message keeps its recipients instead of self.
+//                 --body-file is Markdown — bold, links, lists all work; HTML tags pass through.)
+// Draft new:     node gmail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.md [--cc=c@z] [--attach=a.pdf,b.png]
+//                (appends a fresh DRAFT to [Gmail]/Drafts; never sends; prints a draft-id.
+//                 --body-file is Markdown — bold, links, lists all work; HTML tags pass through.)
 //                (--attach takes one path or a comma-separated list; files ride along on the draft)
 // Send a draft:  node gmail.js --send-draft --draft-id=<draft-message-id>
 //                (promotes one already-staged draft: transmits its exact bytes via SMTP, then removes
@@ -42,6 +44,7 @@ module.paths.push(path.join(os.homedir(), '.claude', 'gmail', 'node_modules'));
 
 const { ImapFlow } = require('imapflow');
 const { simpleParser } = require('mailparser');
+const { marked } = require('marked');
 const nodemailer = require('nodemailer');
 const MailComposer = require('nodemailer/lib/mail-composer');
 
@@ -231,7 +234,7 @@ async function reply(c) {
   if (!args['message-id'] || !args['body-file']) {
     throw new Error('--reply requires --message-id and --body-file');
   }
-  const html = fs.readFileSync(args['body-file'], 'utf8');
+  const html = marked.parse(fs.readFileSync(args['body-file'], 'utf8'));
   let orig;
   for (const mailbox of ['INBOX', ALLMAIL]) {
     const lock = await c.getMailboxLock(mailbox);
@@ -283,7 +286,7 @@ async function draftNew(c) {
   if (!args.to || !args.subject || !args['body-file']) {
     throw new Error('--draft-new requires --to, --subject, and --body-file');
   }
-  const html = fs.readFileSync(args['body-file'], 'utf8');
+  const html = marked.parse(fs.readFileSync(args['body-file'], 'utf8'));
   const { raw, messageId } = await buildMime({ to: args.to, cc: args.cc || undefined, subject: args.subject, html });
   await c.append(DRAFTS, raw, ['\\Draft']);
   console.log(`Draft staged in [Gmail]/Drafts to ${args.to}. Review in Gmail; never sent.`);
