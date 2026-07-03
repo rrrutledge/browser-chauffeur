@@ -42,26 +42,9 @@ await deleteBtn.waitFor({ state: 'visible', timeout: 5000 });
 await deleteBtn.click();
 ```
 
-## ❌ BANNED: Opening Tabs Without `openTab`
+## ✅ REQUIRED: Get tabs via `openTab` / `findTab`
 
-**Never create a tab with `context.newPage()`, and never navigate a fresh self-created page with `page.goto()`:**
-```javascript
-// ❌ WRONG - unregistered tab, invisible to the orphan sweep
-const page = await context.newPage();
-await page.goto('https://example.com');
-```
-
-**Why:** `openTab` records each tab in the shared registry so the launcher's sweep can reclaim it. A tab opened with bare `newPage()` is never registered — the orphan sweep can't see it, so it lingers until the age/count backstop reaps it or the browser crashes under the accumulation.
-
-**Always create tabs with `openTab` and close them with `closeTab` in `finally`:**
-```javascript
-// ✅ CORRECT - creates + registers in one step (goto happens if you pass a URL)
-const { openTab, closeTab } = require('browser-chauffeur-helpers');
-const page = await openTab(context, 'https://example.com');
-try { /* work */ } finally { await closeTab(page); }
-```
-
-Tabs you *found* (didn't create) are not yours — don't pass them to `closeTab`. To reuse an existing tab, find it with `findTab(context, predicate)` rather than a bare `context.pages().find(...)` — `findTab` marks it active so the sweep won't reap a tab you're still using.
+Create every tab with `openTab(context, url)`, and reuse an existing one with `findTab(context, predicate)` — never bare `context.newPage()` or `context.pages().find(...)`. These register the tab against its owning session so the sweep can reclaim it; an unregistered tab has no owner and is only cleaned up once it goes idle or the count cap is hit. Close tabs you created with `closeTab` in a `finally`; never pass a tab you only *found* to `closeTab`. **SKILL.md Phase 1 has the full rationale** — this is the one place it's spelled out.
 
 ## ✅ REQUIRED: Verification Code
 
@@ -99,4 +82,3 @@ Scripts must navigate to their target URL themselves — don't assume the browse
 - Use `page.route()` for request interception (not `frame.route()` — it doesn't exist)
 - Include `dismissOverlays(page)` after navigation (see Common Patterns in SKILL.md)
 - Save a diagnostic screenshot in catch blocks (see Common Patterns in SKILL.md)
-- Create tabs with `openTab` and close them with `closeTab` in `finally` (see **BANNED: Opening Tabs Without `openTab`** above). The `script-template.js` reference already does this.
