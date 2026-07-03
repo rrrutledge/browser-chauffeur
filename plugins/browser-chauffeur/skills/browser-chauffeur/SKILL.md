@@ -318,6 +318,12 @@ Some SPAs (Articulate Rise, OpenSesame, content platforms) load page sections as
    - User asked you to "open" something for them
    - Tab was already open when you started (you found it, didn't create it)
 
+   **Closing all your session's tabs at the end (level-1 self-cleanup).** `closeTab` handles the tab one script opened. When a whole **session** is finished with the browser — every task done and the user no longer needs any staged tab open — close everything it opened in one call:
+   ```bash
+   python plugins/browser-chauffeur/skills/browser-chauffeur/templates/launch-browser.py --close-owned
+   ```
+   It closes only tabs owned by this session (matched on `BROWSER_CHAUFFEUR_OWNER_PID`) — never another session's, never the user's, never the browser's last page. This is the ideal: sessions clean up after themselves, so the sweep (owner reap → idle age-out → count cap) stays the rare backstop it's meant to be. Only leave a tab open while the user still needs it (a login, a review, an in-progress form).
+
 3. **Leave the browser running.** The persistent browser stays open for future tasks — this is how logins survive across tasks. **NEVER** kill all browser processes (e.g., `taskkill //IM msedge.exe`, `Get-Process msedge | Stop-Process`, `pkill msedge`) — that destroys both the persistent chauffeur browser and the user's personal browser sessions.
 
 4. **Do NOT delete the profile.** The persistent profile at `~/.claude/browser-chauffeur/profile/` stores the user's logins and sessions. Deleting it would force them to re-authenticate on every task. If you need to reset the browser (clear all logins and start fresh), see the profile cleanup utilities below.

@@ -254,6 +254,74 @@ def save_state(pid: int, port: int, profile_dir: str) -> None:
         json.dump({"pid": pid, "port": port, "profile_dir": profile_dir}, f)
 
 
+def close_owned_tabs() -> int:
+    """Close every tab owned by the current session — level-1 self-cleanup.
+
+    A session's final courtesy: close its own browser tabs when it's genuinely
+    done with them, so they never reach the sweep. Matches tabs whose recorded
+    owner is this session's BROWSER_CHAUFFEUR_OWNER_PID. Uses the raw CDP HTTP
+    endpoint (never auto-attaches, can't hang), only ever touches this session's
+    own tabs, and never closes the browser's last remaining page. Best-effort.
+    """
+    owner_env = os.environ.get("BROWSER_CHAUFFEUR_OWNER_PID")
+    if not owner_env:
+        print("No BROWSER_CHAUFFEUR_OWNER_PID set — nothing owned to close.")
+        return 0
+    try:
+        owner = int(owner_env)
+    except ValueError:
+        return 0
+
+    state = load_state()
+    if not state or not is_cdp_alive(state["port"]):
+        print("No live browser — nothing to close.")
+        return 0
+    port = state["port"]
+
+    try:
+        resp = urlopen(f"http://localhost:{port}/json", timeout=5)
+        targets = json.loads(resp.read())
+    except (URLError, OSError, json.JSONDecodeError):
+        return 0
+    live = {t["id"] for t in targets if t.get("type") == "page" and "id" in t}
+    open_count = len(live)
+
+    try:
+        with open(TAB_REGISTRY) as f:
+            entries = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        entries = []
+
+    kept: list[dict] = []
+    closed = 0
+    for e in entries:
+        tid = e.get("targetId")
+        e_owner = e.get("ownerPid") or e.get("nodePid")
+        # Close my own tabs, but never the browser's last remaining page.
+        if tid in live and e_owner == owner and open_count > 1:
+            try:
+                urlopen(f"http://localhost:{port}/json/close/{tid}", timeout=5).read()
+                closed += 1
+                open_count -= 1
+                continue  # drop from the registry
+            except (URLError, OSError):
+                pass
+        if tid in live:
+            kept.append(e)
+
+    try:
+        TAB_REGISTRY.parent.mkdir(parents=True, exist_ok=True)
+        tmp = TAB_REGISTRY.with_name(TAB_REGISTRY.name + f".{os.getpid()}.tmp")
+        with open(tmp, "w") as f:
+            json.dump(kept, f)
+        os.replace(tmp, TAB_REGISTRY)
+    except OSError:
+        pass
+
+    print(f"Closed {closed} tab(s) owned by this session.")
+    return 0
+
+
 def launch_browser(port: int, url: str, profile_dir: str) -> tuple[str, int]:
     Path(profile_dir).mkdir(parents=True, exist_ok=True)
 
@@ -354,7 +422,12 @@ def main() -> int:
                    help="Initial URL (default: about:blank)")
     p.add_argument("--profile-dir", default=None,
                    help="Profile directory (--fresh only; auto-generated if omitted)")
+    p.add_argument("--close-owned", action="store_true",
+                   help="Close all tabs owned by this session (BROWSER_CHAUFFEUR_OWNER_PID) and exit")
     args = p.parse_args()
+
+    if args.close_owned:
+        return close_owned_tabs()
 
     if args.fresh:
         if args.port is None:
