@@ -77,6 +77,10 @@ def read_config(repo):
         "orphan_grace_minutes": int(scalar("orphan_grace_minutes", "15")),
         # Wall-clock time (HH:MM, 24h) the daily digest task fires; consumed by the installer.
         "digest_time": scalar("digest_time", "17:00"),
+        # Phase-2 reverse reply-unblock: on each cycle, match inbound replies against open ⏳ Waiting
+        # cards and surface a matched card immediately (ahead of its ping-back date) so its downstream
+        # ⛔ cards can start. A kill-switch (set `reverse_unblock: off`) since it rides live channels.
+        "reverse_unblock": scalar("reverse_unblock", "on").lower() not in ("off", "false", "0", "no"),
     }
 
 

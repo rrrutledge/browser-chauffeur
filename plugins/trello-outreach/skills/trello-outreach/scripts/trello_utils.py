@@ -220,6 +220,13 @@ def extract_github_field_value(field_values, field_name):
 # is a PUSH: finishing an upstream card runs cascade_unblock, which strips the blocked label and sets
 # Start = today on every card whose LAST remaining blocker just cleared. Nothing polls the blocked card.
 
+# A ⏳ Waiting card advertises who we're waiting on in a `Waiting-for: <name> · <channel>` line in its
+# description — the watch spec Phase 2's reverse reply-matcher reads (see the drainer's reverse-unblock
+# step). One card may name more than one person on separate lines. The `·` (middot) separates the
+# person from the channel we expect their reply on (Email / Slack / Teams / LinkedIn); a line with no
+# separator is taken as a bare name with an unspecified channel.
+_WAITING_FOR_RE = re.compile(r'^\s*waiting-for\s*:(.*)$', re.IGNORECASE | re.MULTILINE)
+
 _BLOCKED_BY_RE = re.compile(r'^\s*blocked-by\s*:(.*)$', re.IGNORECASE | re.MULTILINE)
 # A shortlink is the 8-char code after /c/ in a card URL, or a bare 8-char token delimited by
 # whitespace/commas — the delimiter guard keeps 8-letter slug words (…/12-ping-kristine) from matching.
@@ -242,6 +249,24 @@ def parse_blocked_by(desc):
     return res
 
 
+def parse_waiting_for(desc):
+    """Return the people a ⏳ card is waiting on: a list of {"name", "channel"} from its
+    `Waiting-for: <name> · <channel>` line(s). `channel` is None when the line names no channel.
+    Empty list when the card carries no Waiting-for line."""
+    out = []
+    for m in _WAITING_FOR_RE.finditer(desc or ''):
+        seg = m.group(1).strip()
+        if not seg:
+            continue
+        # The middot separates person from channel; also tolerate a plain '|' or ' - ' as a fallback.
+        parts = re.split(r'\s*[·|]\s*|\s+-\s+', seg, maxsplit=1)
+        name = parts[0].strip()
+        channel = parts[1].strip() if len(parts) > 1 and parts[1].strip() else None
+        if name:
+            out.append({"name": name, "channel": channel})
+    return out
+
+
 def _card_is_done(card, lists_by_id, done_substrs):
     """A blocker counts as resolved when its card is archived (closed) or sits in a terminal list
     (Finished / Abandoned / Adopted / Done) — the same lists the drainer already treats as parked."""
@@ -251,34 +276,52 @@ def _card_is_done(card, lists_by_id, done_substrs):
     return any(t in name for t in done_substrs)
 
 
-def cascade_unblock(board_id, finished_card_id, session,
+def cascade_unblock(board_ids, finished_card_id, session,
                     blocked_label_substr='blocked',
                     done_substrs=('finished', 'abandoned', 'adopted', 'done')):
     """Push-unblock downstream cards after `finished_card_id` is completed.
 
-    Scans the board once, finds cards whose `Blocked-by:` names the finished card, and for each — if
-    ALL of its blockers are now done — strips its blocked label and sets Start = today so it surfaces
-    on the next drain. Multi-blocker cards and chains fall out of the all-blockers-done check for free.
-    Returns the list of unblocked card ids. Read-heavy but runs only at completion time.
+    `board_ids` is normally the full board registry (every board in `trello-boards.yaml`), not just
+    the finished card's own board — a blocker and the card(s) it blocks are often on different boards
+    (e.g. a one-time admin task blocking an outreach card). A single board id/shortlink is also
+    accepted for the common same-board case. Trello shortlinks are globally unique, so a card is
+    matched by shortlink (or id) across the whole passed-in set regardless of which board it's on;
+    the finished card and every blocker just need to live on ONE of the given boards.
+
+    Fetches every given board's cards once, finds cards anywhere in that set whose `Blocked-by:`
+    names the finished card, and for each — if ALL of its blockers are now done — strips its blocked
+    label and sets Start = today so it surfaces on the next drain. Multi-blocker cards and chains fall
+    out of the all-blockers-done check for free. Returns the list of unblocked card ids. Read-heavy
+    (N board fetches) but runs only at completion time.
     """
-    cards = get_board_cards(board_id, session, fields='all')
-    lists_by_id = {l['id']: l['name'] for l in get_board_lists(board_id, session)}
-    by_shortlink = {c.get('shortLink'): c for c in cards if c.get('shortLink')}
-    finished = next((c for c in cards if c.get('id') == finished_card_id
-                     or c.get('shortLink') == finished_card_id), None)
+    if isinstance(board_ids, str):
+        board_ids = [board_ids]
+
+    all_cards, lists_by_id = [], {}
+    for board_id in board_ids:
+        all_cards.extend(get_board_cards(board_id, session, fields='all'))
+        lists_by_id.update({l['id']: l['name'] for l in get_board_lists(board_id, session)})
+
+    by_key = {}
+    for c in all_cards:
+        by_key[c['id']] = c
+        if c.get('shortLink'):
+            by_key[c['shortLink']] = c
+
+    finished = by_key.get(finished_card_id)
     if not finished:
         return []
     finished_keys = {finished.get('id'), finished.get('shortLink')}
     today = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
     unblocked = []
-    for card in cards:
+    for card in all_cards:
         blockers = parse_blocked_by(card.get('desc'))
         if not blockers or finished_keys.isdisjoint(blockers):
             continue
         # Only unblock once every blocker this card names is resolved (handles multi-blocker + chains).
         all_done = True
         for sl in blockers:
-            blk = by_shortlink.get(sl)
+            blk = by_key.get(sl)
             if blk is None or not _card_is_done(blk, lists_by_id, done_substrs):
                 all_done = False
                 break
