@@ -75,7 +75,6 @@ const fromList = (arr) => (arr || []).map(addr).join(', ');
 const stripId = (id) => String(id || '').replace(/^<|>$/g, '');
 const clean = (s) => (s || '').replace(/\s+/g, ' ').trim();
 
-
 async function findUid(c, messageId) {
   // Locate a message in the inbox by its Message-ID header; returns its UID or null.
   const ids = await c.search({ header: { 'message-id': stripId(messageId) } }, { uid: true });
