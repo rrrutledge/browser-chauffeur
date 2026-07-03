@@ -10,8 +10,8 @@ each bucket (own worker vs digest) lives in the driver and SKILL.
 For every inbound item ask: **is there something for Russell to do?** If there is, now is the time — do
 it immediately, or kick it off in a tab. Everything Russell is going to do, he does right now.
 
-Answering that is the whole of triage. The answer is one of four core buckets — two when there's something
-to do, two when there isn't — plus one special disposition, **engage**, for a community Russell leads (below).
+Answering that is the whole of triage, and the answer is one of four buckets — two when there's something
+to do, two when there isn't.
 
 **First, follow pointers — but don't open them here.** Some items aren't the content; they POINT to it (a
 Teams meeting-recording notice linking to AI notes with action items; a LinkedIn/Facebook "X messaged
@@ -40,6 +40,14 @@ carries the whole story and asks nothing — a recording notice with no notes �
   "reply") even when it's just a short remark or a closing "sounds good"; the minimum action is a quick
   acknowledgment or 👍 reaction on their message. A group or meeting message that names Russell directly
   counts the same way; only automated, mass, or not-aimed-at-him chatter stays fyi.
+- **community activity on a platform where Russell leads** — in a workspace where he is the community's
+  Executive Director or equivalent (currently ISC Slack), a public post worth his visible engagement as
+  leader is something to do: reacting with an emoji or dropping a short encouraging comment models the
+  engagement others need to see from leadership. Qualifying posts: event or CFP announcements, new-member
+  intros or welcomes, someone sharing their work or a win, open questions to the community, milestone or
+  gratitude posts. A 1:1 DM from a community member is still **needs-you (reply)** as personal outreach;
+  an @-mention asking Russell something is still **needs-you (reply)** as a direct ask; bot/integration
+  messages and automated churn stay **fyi**/**junk**. → **`needs-you` (hint: `reply`)**.
 - a **dated to-do** comes due — a Trello tracker or outreach card, any dated item, the moment its due
   date arrives or passes. The due date IS the queue: a due item is the action surfacing when it was
   scheduled for.
@@ -73,41 +81,11 @@ carries the whole story and asks nothing — a recording notice with no notes �
   arriving again; *how* to stop it is provider mechanics — each provider's **JUNK-LEARNING** section owns
   the remediation (unsubscribe → source-app notification settings → inbox rule, in that order).
 
-## The engage disposition — a community where Russell leads
-
-A fifth disposition sits beside the four buckets, for the narrow case where **Russell holds a community
-leadership role** on the platform the item came from. There, a qualifying public post is not passive fyi:
-it's a standing chance to **model active engagement** — react to show enthusiasm and, when it fits, add a
-short encouraging comment. That is part of the leadership job, so the post is worth surfacing as an
-engagement nudge.
-
-**Scope — only platforms configured as community leadership workspaces.** Each source's
-`providers/<source>-provider.md` → ENGAGE section names the config key (in `drainer.local.md`) that
-enables this; no source gets the engage disposition without that config being set.
-
-**A post qualifies when it's community content worth a leader's public reaction:** community announcements,
-event or CFP notices (an `@channel` broadcast counts), new-member intros or welcomes, someone sharing their
-work or a win, open questions addressed to the community, milestone or gratitude posts. Keep it to the handful
-that genuinely merit an ED's visible engagement each day.
-
-**Stronger rules still win, and bot noise never qualifies.** A 1:1 DM from a community member is still
-**needs-you (reply)**; an @-mention that asks Russell something is still **needs-you (reply)**; a muted
-conversation is still skipped. Bot/integration messages, automated status churn, and duplicate churn stay
-**fyi**/**junk**. Engage is *additive* — it only catches high-value community content that would otherwise
-fall to fyi.
-
-- **engage** — the qualifying post above. It does **not** open a live worker tab; it collects into the daily
-  digest, where the engagement is prepared and reviewed in a batch: a proposed emoji reaction plus, when it
-  fits, a short in-voice comment staged for Russell's per-item approval. **Draft-only — nothing is reacted to
-  or posted without his explicit OK.** Routing and mechanics live in `providers/slack-provider.md` → ENGAGE
-  and `engine/digest-core.md`. The engage disposition flows to the digest like fyi/junk, not to a worker tab.
-
 ## Tie-breakers
 - **auto-handle** is never a tie-breaker default: pick it ONLY when a provider AUTO-HANDLE rule clearly
   matches. Any doubt that the rule applies → fall back to **needs-you** (let Russell decide). Better to
   ask once than to auto-act on something that wasn't actually a standing decision.
 - Unsure whether there's something to do → treat it as **needs-you** (prefer acting).
 - Nothing to do, unsure between **fyi** and **junk** → **fyi** (prefer keeping eyes on it).
-- **engage** applies only on configured community leadership platforms and only to genuine community content;
-  unsure whether a post there is engage-worthy → **fyi** (don't over-trigger — a few high-value nudges, not
-  blanket reactions).
+- For community posts on ISC Slack: unsure whether a post is worth visible engagement → **fyi** (a few
+  high-value nudges per day, not blanket reactions).

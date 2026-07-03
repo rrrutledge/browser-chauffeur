@@ -14,15 +14,10 @@ id prefix: `slack-`; body file: `<id>.slack.md`.
 > This is the Web-API counterpart to the IMAP `gmail-provider.md` / Graph `outlook-graph-provider.md`.
 
 ## Config (in `.claude/drainer.local.md` → `providers.slack`)
-Auth is by environment variables. Credentials: `SLACK_BOT_TOKEN` (the Slack API token — for a personal user
-token, the `xoxc-` value), `SLACK_COOKIE_D` (the `d` session cookie — required for a browser `xoxc` token,
-which is `invalid_auth` without it, and for the `client.*` endpoints), and `SLACK_TEAM_ID` (the workspace's
-team id) in the environment.
-
-**Community leadership (engage feature):** add these keys to the `providers.slack` block in
-`drainer.local.md` to enable the `engage` disposition for qualifying community posts on this workspace:
-- `community_leader: true` — enables engage triage (required)
-- `community_role: "<your role>"` — used in engage proposals (e.g. `"Executive Director"`; optional)
+No config — auth is by environment variables. Credentials: `SLACK_BOT_TOKEN` (the Slack API token — for a
+personal user token, the `xoxc-` value), `SLACK_COOKIE_D` (the `d` session cookie — required for a browser
+`xoxc` token, which is `invalid_auth` without it, and for the `client.*` endpoints), and `SLACK_TEAM_ID`
+(the workspace's team id) in the environment.
 
 The `slack` `slack.js` lives at `<slack-skill>/scripts/slack.js` — run it with `node`.
 
@@ -103,48 +98,24 @@ auto-handle — it falls back to the normal needs-you/fyi/junk triage.
    - **Digest note:** "Auto-rejected Slack Connect request: *[channel/org]* (requested by *[requester]*)."
    - **Then** CLEAR the item (mark read) and write `.done` immediately.
 
-## ENGAGE (community leadership workspace — engagement surface)
+## ISC COMMUNITY POSTS (ED engagement)
 
-**Scope:** this section applies only when `community_leader: true` is set in the `providers.slack`
-block of `drainer.local.md`. Without that config, all Slack items triage normally and this section is
-inert. (The personal drainer context — which workspace, which role — lives in `drainer.local.md`, not
-here.)
+Russell is the Executive Director of InnerSource Commons, whose community lives in this Slack workspace.
+A public post worth his visible engagement as ED — event or CFP announcement, new-member intro or welcome,
+someone sharing their work or a win, an open question to the community, a milestone or gratitude post —
+is **something to do**, not passive fyi. The action is lightweight but real: react with an emoji and,
+when it adds value, drop a short encouraging thread comment. That is how leadership is modeled.
 
-Qualifying community posts in the configured workspace are **engagement opportunities, not passive fyi**
-— a standing chance to model active engagement (react to show enthusiasm, drop a short encouraging
-comment).
-The triage rubric (`engine/triage.md` → "The engage disposition") classifies such a post as the **`engage`**
-bucket, which flows to the **daily digest** like `fyi`/`junk` — it does **not** open a worker tab. The
-engagement is prepared and reviewed in the digest, in a batch. **Nothing is reacted to or posted automatically.**
+These posts triage as **`needs-you`** per `engine/triage.md` ("community activity on a platform where
+Russell leads"). The worker handles them as any reply item:
 
-**Qualifying posts** (shared criteria in `engine/triage.md`): community announcements, event or CFP notices
-(even `@channel` broadcasts), new-member intros or welcomes, someone sharing their work or a win, open
-questions addressed to the community, milestone or gratitude posts. Bot/integration messages, automated
-status churn, and muted-conversation content do not qualify — and a 1:1 DM or an @-mention that asks Russell
-something stays `needs-you (reply)`, not engage.
-
-**Flow (no worker tab).** The poller captures a qualifying post as `engage` and queues it for the digest;
-it clears nothing (the post stays unread in Slack until Russell handles it). The digest is where the ED
-engagement is prepared and approved — see `engine/digest-core.md` → "Engage". At digest time, for each
-engage item:
-
-1. **SITUATIONAL-CHECK** — re-read the post with `node slack.js --show --channel=<C> --ts=<ts>` (add
-   `--thread-ts=<threadTs>` for a thread) to confirm Russell (or another admin) hasn't already reacted or
-   replied. Already engaged → treat as a no-op: just CLEAR it (mark read) and `queue-clear` it, no proposal.
-2. **Propose an emoji reaction** — pick one from Russell's palette that fits the post's tone: 🎉 (events /
-   wins), 👍 (announcements / approvals), ✅ (completed milestones). Present the emoji and a one-line reason.
-3. **Propose a short comment (optional)** — when a pure emoji isn't enough, a short (1–3 sentence), warm,
-   in-voice thread comment. Present the proposed text; on Russell's OK for that item, stage it via the
-   **`message-draft`** skill's **`slack`** mode (threaded on the original post) so it lands in the Slack
-   composer, un-sent, for him to send.
-
-**Reactions (v1): a proposal Russell applies himself.** `slack.js` has no `--react` verb, so the digest
-names the emoji and Russell clicks it on the message in Slack. (A future `--react` verb could apply an
-approved reaction directly; until then, reacting is his one click.)
-
-**Draft-only guardrail:** a reaction is a public post as Russell exactly as a message is. The proposed
-reaction and any staged comment are never applied to Slack until Russell gives explicit per-item approval
-in the digest — never auto-react, never auto-send.
+1. **SITUATIONAL-CHECK first** — re-read the post (`node slack.js --show --channel=<C> --ts=<ts>`) to
+   confirm no one has already reacted or replied on Russell's behalf.
+2. **Propose an emoji reaction** — pick one that fits the post's tone: 🎉 (events / wins), 👍
+   (announcements / approvals), ✅ (completed milestones). `slack.js` has no `--react` verb, so note the
+   proposed emoji for Russell to click himself in Slack.
+3. **Draft a comment when a pure emoji isn't enough** — a short (1–3 sentence), warm, in-voice thread
+   reply staged via DRAFT-MODE (un-sent in the Slack composer). Skip if the emoji alone is sufficient.
 
 ## JUNK-LEARNING
 Stop this noise arriving again, in **priority order** (best outcome = it never pings) — propose, never

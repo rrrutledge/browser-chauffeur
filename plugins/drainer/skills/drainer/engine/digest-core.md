@@ -39,11 +39,10 @@ miss. Then continue to the queue below.
 ## 1. Gather (deterministic — just read state)
 
 - **The digest queue:** `node <seen-state.js> queue-list <runtime_dir>` → a JSON array of
-  `{ id, source, item }`. Each `item` carries at least `triage` (`fyi` | `junk` | `auto-handle` |
-  `engage`), `from`, `subject`, and `snippet`, plus whatever else that provider's capture recorded (e.g.
-  a `url` and the ids its CLEAR needs). Split it by `item.triage` into **fyi**, **junk**,
-  **auto-handle** (what a worker already did on its own — see step 2b), and **engage** (community posts
-  from a configured leadership workspace — you prepare the reaction/comment proposal here; see step 2c).
+  `{ id, source, item }`. Each `item` carries at least `triage` (`fyi` | `junk` | `auto-handle`), `from`,
+  `subject`, and `snippet`, plus whatever else that provider's capture recorded (e.g. a `url` and the ids
+  its CLEAR needs). Split it by `item.triage` into **fyi**, **junk**, and **auto-handle** (the last is
+  what a worker already did on its own — see step 2b).
 - **The stale needs-you items:** `node <seen-state.js> stale-list <runtime_dir> <stale_hours>` → a JSON
   array of `{ id, source, ts, ageHours, item }` for every needs-you item still `dispatched` (never
   cleared) and older than `stale_hours`. These are the reconciliation cases — a worker crashed or was
@@ -66,35 +65,6 @@ invite for *jane@acme.com* (requested by Bob)"). Order most-notable first. On Ru
 **no provider CLEAR** (the worker already cleared the source) — just `queue-clear` them like the rest
 (step 5). If something here looks wrong — a rule fired when it shouldn't have — flag it so the AUTO-HANDLE
 rule can be tightened; that's the one case where an auto-handled item needs follow-up.
-
-## 2c. Engage — community posts worth a leader's engagement (you prepare, Russell approves)
-
-Posts the poller flagged `engage` because Russell holds a community leadership role on this platform
-and should model active engagement (react, maybe a short encouraging comment) — see
-`providers/slack-provider.md` → ENGAGE. Unlike auto-handled items, **nothing has been prepared yet**:
-no worker ran, and the post is still unread in Slack. You (this interactive digest, with browser access)
-prepare each proposal now and present it for Russell's per-item OK. **Draft-only — never react and never
-send on his behalf.**
-
-For **each** engage item, before presenting:
-1. **SITUATIONAL-CHECK** — re-read the post via the slack provider's SITUATIONAL-CHECK
-   (`node slack.js --show --channel=<C> --ts=<ts>`, add `--thread-ts=<threadTs>` for a thread) to confirm
-   Russell (or another admin) hasn't already reacted or replied. Already engaged → drop it: run the slack
-   **CLEAR** (mark read) and `queue-clear`, and don't present it.
-2. **Choose a proposed emoji** from Russell's palette that fits the post's tone — 🎉 (events / wins),
-   👍 (announcements / approvals), ✅ (completed milestones).
-3. **Draft a short comment only when a pure emoji isn't enough** — a 1–3 sentence, warm, in-voice thread
-   reply. Hold the staging until he approves (step 5), so you don't stack drafts he passes on.
-
-Present as a distinct **"Engage"** section, one entry per post:
-- **Who posted, which channel, and a one-line summary of the post** (read the body file if the snippet
-  doesn't give enough context).
-- **Proposed reaction** — the emoji and why (e.g. "🎉 — event announcement").
-- **Proposed comment** — the draft text if you're proposing one, or "reaction only" if an emoji suffices.
-- **Permalink** (`url` field) — for Russell to open the post directly.
-
-Clearing is handled in step 5 on his review — no provider CLEAR runs until then (the post stays unread so
-he can still see it in Slack).
 
 ## 2. fyi — summarize so Russell never has to open the item
 
@@ -133,19 +103,12 @@ clearing action until he chooses.
 ## 5. Present, then clear ONLY on Russell's review
 
 Present the whole digest in the terminal — any stuck-provider health alerts (step 0) at the very top,
-then the **Auto-handled** section (step 2b), **Engage** proposals (step 2c), fyi summaries, grouped
-junk with stop-proposals, and the stale list — in one readable pass. Then **wait for Russell's
-go-ahead.** Nothing is disposed of silently.
+then the **Auto-handled** section (step 2b), fyi summaries, grouped junk with stop-proposals, and the
+stale list — in one readable pass. Then **wait for Russell's go-ahead.** Nothing is disposed of
+silently.
 
 For **each auto-handled item** (already actioned + source-cleared by its worker), on his OK just remove
 it from the queue: `node <seen-state.js> queue-clear <runtime_dir> <id>` — no provider CLEAR.
-
-For **each engage item**, on his per-item decision:
-- **Engage** — if he approves a staged comment, stage it now via `message-draft` slack mode (threaded on
-  the post) so it lands in the Slack composer un-sent for him to send; remind him to click the proposed
-  emoji on the message himself (v1 has no `--react`). Then run the slack **CLEAR** (mark read) so the post
-  stops re-surfacing, and `queue-clear` it.
-- **Pass** — no reaction, no comment: run the slack **CLEAR** and `queue-clear` it.
 
 On his OK, for **each fyi/junk item he approves clearing**:
 1. Read the item's `source` and ids from its `items/<id>.json` (or the queue entry).
