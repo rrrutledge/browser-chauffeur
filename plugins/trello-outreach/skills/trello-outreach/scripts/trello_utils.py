@@ -123,8 +123,12 @@ def create_card(list_id, card_data, session):
         'name': card_data['title'],
         'desc': card_data.get('description', ''),
     }
+    # `due` is a real deadline; `start` is the next-action / ping-back date (the startable-task model).
+    # Outreach cards typically set only `due` (their follow-up date); task cards set `start`.
     if card_data.get('due'):
         body['due'] = card_data['due']
+    if card_data.get('start'):
+        body['start'] = card_data['start']
     return trello_request('POST', '/cards', session, body=body)
 
 
