@@ -57,8 +57,8 @@ Under `scripts/` (run with `node`):
     thread to thread off — even one the user sent. When that message is the user's own, the reply keeps its recipients (To/CC)
     instead of addressing back to the user; otherwise it's a reply-all to the sender + other recipients.
   - **`--body-file` is Markdown** — write the body in Markdown (`**bold**`, `[text](url)`, paragraphs,
-    lists) and the script converts it to HTML via `marked`. If the file already contains HTML tags it is
-    inserted verbatim instead.
+    lists) and the script converts it to HTML via `marked`. HTML tags in the source pass through
+    unchanged.
   - Draft new (never sends): `node gmail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.md [--cc=c@z]`
     (`--reply` and `--draft-new` each print a `draft-id:` line — the staged draft's Message-ID. That id
     is what `--send-draft` takes. `--reply` also replaces any prior draft on the same thread, so a thread

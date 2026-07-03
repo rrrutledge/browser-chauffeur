@@ -19,12 +19,10 @@
 //                 prior draft on the same thread; prints a draft-id for --send-draft. <id> is looked up
 //                 in the inbox and All Mail — pass the most recent message in the thread, even one the
 //                 user sent; a reply to the user's own message keeps its recipients instead of self.
-//                 --body-file is Markdown (converted to HTML); pass a file containing HTML tags to
-//                 skip conversion and insert verbatim.)
+//                 --body-file is Markdown — bold, links, lists all work; HTML tags pass through.)
 // Draft new:     node gmail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.md [--cc=c@z] [--attach=a.pdf,b.png]
 //                (appends a fresh DRAFT to [Gmail]/Drafts; never sends; prints a draft-id.
-//                 --body-file is Markdown (converted to HTML); pass a file containing HTML tags to
-//                 skip conversion and insert verbatim.)
+//                 --body-file is Markdown — bold, links, lists all work; HTML tags pass through.)
 //                (--attach takes one path or a comma-separated list; files ride along on the draft)
 // Send a draft:  node gmail.js --send-draft --draft-id=<draft-message-id>
 //                (promotes one already-staged draft: transmits its exact bytes via SMTP, then removes
@@ -78,7 +76,6 @@ const stripId = (id) => String(id || '').replace(/^<|>$/g, '');
 const clean = (s) => (s || '').replace(/\s+/g, ' ').trim();
 
 function bodyToHtml(raw) {
-  if (/<[a-z!/][\s\S]*>/i.test(raw)) return raw;
   return marked.parse(raw);
 }
 
