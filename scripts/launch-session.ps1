@@ -28,7 +28,6 @@ if ($Resume) {
   if ($Model) { $claudeArgs = @('--model', $Model) + $claudeArgs }
   # Own browser-chauffeur tabs for this resumed session (see note below).
   $env:BROWSER_CHAUFFEUR_OWNER_PID = $PID
-  $env:BROWSER_CHAUFFEUR_OWNER_SESSION = $Resume
   claude @claudeArgs
   return
 }
@@ -89,5 +88,4 @@ $claudeArgs += $seed
 # long as this WT tab) means the browser tab is cleaned up when the tab closes —
 # not orphaned. Every node script the session spawns inherits these env vars.
 $env:BROWSER_CHAUFFEUR_OWNER_PID = $PID
-if ($SessionId) { $env:BROWSER_CHAUFFEUR_OWNER_SESSION = $SessionId }
 claude @claudeArgs

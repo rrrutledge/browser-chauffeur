@@ -172,7 +172,7 @@ def sweep_tabs(port: int) -> None:
     # the user). Record first-seen time so TTL/cap can age it out later.
     for tid, t in live.items():
         if tid not in reg:
-            reg[tid] = {"targetId": tid, "ownerPid": None, "ownerSession": None,
+            reg[tid] = {"targetId": tid, "ownerPid": None,
                         "url": t.get("url", ""), "title": t.get("title", ""),
                         "ts": now_ms, "lastActive": now_ms}
 
