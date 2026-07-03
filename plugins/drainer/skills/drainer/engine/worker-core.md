@@ -38,7 +38,7 @@ Russell decided in advance — do the action without presenting or waiting, then
    anything left open just sits there reading "finished" until Russell checks it by hand — exactly the
    interruption auto-handle exists to avoid.
    1. **Your browser tabs** — if you opened any (clicked a button, read a card in the browser), close
-      them: invoke browser-chauffeur to run `launch-browser.py --close-owned`, which closes only the
+      them: invoke browser-chauffeur to run `chauffeur.py --close-owned`, which closes only the
       tabs your session opened (never the user's, never another session's). Cleaning up your own tabs
       here means they never reach the browser sweep.
    2. **Your session tab** — your launcher wrote the hosting terminal's PID to
@@ -203,7 +203,7 @@ your session stays live, and for most needs-you items the user still has a human
 draft you staged, submit the form — and you often have follow-up (learning from the send per §5, a tracker
 card) once they confirm. Keep any tab the user still needs open through all that. When they've told you
 their part is done and you've finished any follow-up, close the tabs you opened: invoke browser-chauffeur
-to run `launch-browser.py --close-owned`, which closes only this session's tabs (never the user's, never
+to run `chauffeur.py --close-owned`, which closes only this session's tabs (never the user's, never
 another session's, never the browser's last page). If a tab you opened was never something the user needed
 to see — its content is already mirrored where they work (a Slack draft that shows in their own Slack) —
 close it as soon as that's clear rather than waiting.

@@ -5,7 +5,7 @@
 // before its tabs are closed, they stay open forever. Over many sessions these
 // pile up and eventually wedge connectOverCDP. Each tab is recorded with its CDP
 // targetId + the OWNING SESSION (the long-lived Claude session that opened it —
-// see ownerInfo below), so the sweep in launch-browser.py keeps a tab alive
+// see ownerInfo below), so the sweep in chauffeur.py keeps a tab alive
 // exactly as long as its session's window is open and reclaims it when that
 // window closes — never an active session's tab, and never a tab the user opened
 // (those are never registered here). The owner is the session, NOT the ephemeral
@@ -15,7 +15,7 @@
 // REQUIRED USAGE — always use the bundled openTab/closeTab so opening and
 // closing a tab are mechanically inseparable from registering and unregistering
 // it. Never open a tab with bare context.newPage(): an unregistered tab is
-// invisible to the launch-browser.py orphan sweep, so it leaks until the
+// invisible to the chauffeur.py orphan sweep, so it leaks until the
 // age/count backstop reaps it or the browser crashes under the accumulation.
 //
 //   const { openTab, closeTab } = require('browser-chauffeur-helpers');
