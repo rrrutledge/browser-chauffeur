@@ -63,8 +63,31 @@ Two facts live in native Trello fields, two in labels + a description convention
 call `trello_utils.cascade_unblock(board_id, finished_card_id, session)`: it scans the board once,
 finds cards whose `Blocked-by:` names the finished card, and for each whose **last** blocker just
 cleared, strips its ⛔ label and sets **Start = today** so it surfaces on the next drain. Nothing polls
-the blocked card. (Phase 2 will add a second trigger — an inbound reply resolving a ⏳ card — to this
-same cascade.)
+the blocked card. A ⏳ card being resolved by a detected reply is the **second trigger** to this same
+cascade — see REVERSE-MATCH.
+
+## REVERSE-MATCH (a card surfaced because its awaited reply landed)
+A ⏳ Waiting card normally sleeps until its ping-back Start date. But the poller runs a **reverse
+reply-check** each cycle: when an inbound message (Slack / email / Teams) arrives from the person a ⏳
+card's `Waiting-for:` line names, and an AI confirm judges it the awaited reply, the poller **surfaces
+that card immediately** — ahead of its ping-back date — as a needs-you item. Such an item's captured
+json carries a **`reverseMatch`** object (`from` / `channel` / `subject` / `url` / `preview`) and its
+body leads with a **⚡ Reply detected** banner. When you get one:
+1. **Open the thread** (the `reverseMatch.url`, or search the channel per SITUATIONAL-CHECK) and read
+   the actual reply. Confirm it genuinely answers this card's ask.
+2. **If it resolves the ask:** finish the ⏳ card via `trello-outreach` — for a **merged** card (the
+   person's reply *was* the deliverable) that means moving it to a terminal/done list (or archiving it)
+   and posting a dated comment recording what they said + the thread deep link. Do that move **first**,
+   then fire the cascade: `trello_utils.cascade_unblock(board_id, <this ⏳ card's id or shortLink>,
+   session)`. The cascade only frees a downstream ⛔ card once **every** blocker it names is in a done
+   state, so the ⏳ card must already be terminal/archived when you call it — otherwise the cascade sees
+   it as still-open and unblocks nothing. On success every ⛔ card whose last blocker was this one loses
+   ⛔ and gets Start = today. (`board_id` is on the captured json as `boardId`.)
+3. **If it does NOT resolve it** (an unrelated message from the same person): leave the ⏳ card on its
+   ping-back date, handle the message on its own, and write .done — no cascade.
+
+The ping-back date is the **fallback**: it only fires when no reply was ever detected. A resolved card
+drops off the waiting index, so the same thread won't re-surface it on a later drain.
 
 ## ENUMERATE
 Via `trello-outreach`, list cards across the configured boards that sit in an **active** list (not in

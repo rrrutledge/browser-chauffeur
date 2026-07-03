@@ -220,6 +220,13 @@ def extract_github_field_value(field_values, field_name):
 # is a PUSH: finishing an upstream card runs cascade_unblock, which strips the blocked label and sets
 # Start = today on every card whose LAST remaining blocker just cleared. Nothing polls the blocked card.
 
+# A ⏳ Waiting card advertises who we're waiting on in a `Waiting-for: <name> · <channel>` line in its
+# description — the watch spec Phase 2's reverse reply-matcher reads (see the drainer's reverse-unblock
+# step). One card may name more than one person on separate lines. The `·` (middot) separates the
+# person from the channel we expect their reply on (Email / Slack / Teams / LinkedIn); a line with no
+# separator is taken as a bare name with an unspecified channel.
+_WAITING_FOR_RE = re.compile(r'^\s*waiting-for\s*:(.*)$', re.IGNORECASE | re.MULTILINE)
+
 _BLOCKED_BY_RE = re.compile(r'^\s*blocked-by\s*:(.*)$', re.IGNORECASE | re.MULTILINE)
 # A shortlink is the 8-char code after /c/ in a card URL, or a bare 8-char token delimited by
 # whitespace/commas — the delimiter guard keeps 8-letter slug words (…/12-ping-kristine) from matching.
@@ -240,6 +247,24 @@ def parse_blocked_by(desc):
             seen.add(x)
             res.append(x)
     return res
+
+
+def parse_waiting_for(desc):
+    """Return the people a ⏳ card is waiting on: a list of {"name", "channel"} from its
+    `Waiting-for: <name> · <channel>` line(s). `channel` is None when the line names no channel.
+    Empty list when the card carries no Waiting-for line."""
+    out = []
+    for m in _WAITING_FOR_RE.finditer(desc or ''):
+        seg = m.group(1).strip()
+        if not seg:
+            continue
+        # The middot separates person from channel; also tolerate a plain '|' or ' - ' as a fallback.
+        parts = re.split(r'\s*[·|]\s*|\s+-\s+', seg, maxsplit=1)
+        name = parts[0].strip()
+        channel = parts[1].strip() if len(parts) > 1 and parts[1].strip() else None
+        if name:
+            out.append({"name": name, "channel": channel})
+    return out
 
 
 def _card_is_done(card, lists_by_id, done_substrs):

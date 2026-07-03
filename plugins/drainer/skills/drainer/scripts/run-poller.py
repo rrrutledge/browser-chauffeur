@@ -230,6 +230,206 @@ def triage(items, repo, local_dir, model, providers_by_name):
     return {v["id"]: v for v in json.loads(m.group(0))}
 
 
+# ---------------------------------------------------------------------------- reverse reply-unblock (Phase 2)
+#
+# A REVERSE situational check. The drainer already runs a forward check (from a card, "did they
+# reply?"); this is the mirror (from an inbound reply, "does this resolve an open ⏳ Waiting card?").
+# The sender is the join key: each ⏳ card names who we're waiting on (its `Waiting-for:` line), so a
+# near-free pre-filter asks "is this message's sender one we're waiting on?" — and only on a hit does it
+# escalate to one AI call ("is this the reply that card was waiting for?"). That keeps cost O(matches),
+# not O(messages × cards). A confirmed match SURFACES the waiting card as a needs-you tab immediately
+# (ahead of its ping-back date); the worker verifies, resolves the card, and fires the Phase-1
+# cascade_unblock so downstream ⛔ cards become startable on the same drain. (Auto-resolving without a
+# tab is a future toggle once trust is established — today the human confirms, per the design's Q2.)
+
+# Inbound sources whose new items can be replies. Trello is excluded — it's the card side, not a reply.
+_INBOUND_SOURCES = {"gmail", "outlook-rest", "outlook-graph", "slack", "teams"}
+# Source → the channel word used on a card's `Waiting-for: <name> · <channel>` line, for within-channel
+# preference. Both Outlook adapters and Gmail are "Email"; Slack/Teams/LinkedIn carry their own name.
+_SOURCE_CHANNEL = {"gmail": "email", "outlook-rest": "email", "outlook-graph": "email",
+                   "slack": "slack", "teams": "teams", "linkedin": "linkedin"}
+_NAME_STOPWORDS = {"the", "team", "notifications", "no", "reply", "via", "mailer", "daemon"}
+
+
+def _name_tokens(s):
+    """Lowercase alphanumeric name tokens from a sender/person string, dropping an email address and
+    trivial words. 'Kristine Ruhl <k.ruhl@x.com>' -> {'kristine', 'ruhl'}."""
+    s = re.sub(r"<[^>]*>", " ", s or "")  # drop an embedded <address>
+    s = re.sub(r"\S+@\S+", " ", s)         # drop a bare address
+    toks = {t for t in re.split(r"[^a-z0-9]+", s.lower()) if len(t) > 1}
+    return toks - _NAME_STOPWORDS
+
+
+def _item_email(item):
+    """The sender email on an inbound item, if the adapter carries one (mail providers), else ''."""
+    for k in ("fromAddress", "fromEmail"):
+        if item.get(k):
+            return item[k].lower()
+    m = re.search(r"<([^>]+@[^>]+)>", item.get("from") or "")
+    if m:
+        return m.group(1).lower()
+    frm = (item.get("from") or "").strip()
+    return frm.lower() if "@" in frm and " " not in frm else ""
+
+
+def _person_matches_item(person, item):
+    """Near-free pre-filter: does this inbound item's sender look like the person a ⏳ card waits on?
+    Name-based (one token-set contains the other, so 'Kristine' ⊂ 'Kristine Ruhl' still hits) with an
+    email local-part bonus. Deliberately high-recall — the AI confirm below is the real gate."""
+    ptoks = _name_tokens(person.get("name"))
+    itoks = _name_tokens(item.get("from"))
+    if ptoks and itoks and (ptoks <= itoks or itoks <= ptoks):
+        return True
+    email = _item_email(item)
+    if email and ptoks:
+        local = email.split("@")[0]
+        if any(tok in local for tok in ptoks if len(tok) > 2):
+            return True
+    return False
+
+
+def _reverse_confirm(pairs, repo, model, providers_by_name):
+    """One AI call over the candidate (reply, waiting-card) pairs: which replies actually resolve their
+    card's ask? Returns the set of pair indices confirmed. Fail-safe: on any error, confirm NONE (a
+    missed unblock just falls back to the ping-back date; a wrong one would start work prematurely)."""
+    claude = shutil.which("claude") or "claude"
+    payload = []
+    for i, (item, card) in enumerate(pairs):
+        prov = providers_by_name.get(item["_source"])
+        body = (prov.triage_text(item) if prov else (item.get("preview") or ""))[:1200]
+        same_channel = _SOURCE_CHANNEL.get(item["_source"]) == (
+            (card.get("_waitingChannel") or "").lower() or None)
+        payload.append({
+            "id": i,
+            "waitingCard": card.get("name"),
+            "theAsk": (card.get("desc") or "")[:800],
+            "waitingForChannel": card.get("_waitingChannel"),
+            "replyFrom": item.get("from"),
+            "replyChannel": _SOURCE_CHANNEL.get(item["_source"], item["_source"]),
+            "sameChannelAsExpected": same_channel,
+            "replySubject": item.get("subject"),
+            "replyBody": body,
+        })
+    prompt = (
+        "You are the drainer's REVERSE reply-matcher. Each item pairs an open Trello ⏳ Waiting card "
+        "(something we asked a person and are waiting on) with an inbound message from a sender whose "
+        "name matched who that card waits on. For EACH pair decide: is THIS message the reply that "
+        "resolves the card's ask — i.e. the awaited person actually responding to what we asked (even "
+        "partially)? A message from the same-named person about an UNRELATED topic does NOT resolve it; "
+        "an automated/mailing-list message never does. `sameChannelAsExpected=false` (they replied on a "
+        "different channel than we asked on) lowers but does not veto confidence. Return ONLY a JSON "
+        'array, one object per id: [{"id": <int>, "resolves": true|false, '
+        '"confidence": "high|medium|low", "reason": "<short>"}] — no prose, no code fence.\n\n'
+        f"## Pairs (JSON)\n{json.dumps(payload, indent=2)}\n"
+    )
+    try:
+        res = subprocess.run(
+            [claude, "-p", "--model", model, "--output-format", "json", "--setting-sources", ""],
+            input=prompt, capture_output=True, text=True, encoding="utf-8", errors="replace",
+            cwd=repo, timeout=300, creationflags=NO_WINDOW)
+        if res.returncode != 0:
+            return set()
+        result = res.stdout
+        try:
+            result = json.loads(res.stdout).get("result", res.stdout)
+        except ValueError:
+            pass
+        m = re.search(r"\[.*\]", result, re.DOTALL)
+        if not m:
+            return set()
+        confirmed = set()
+        for v in json.loads(m.group(0)):
+            # Require an explicit resolves=true; ignore low confidence (the risky end — err toward the
+            # ping-back fallback rather than a premature unblock).
+            if v.get("resolves") and v.get("confidence") in ("high", "medium"):
+                confirmed.add(v.get("id"))
+        return confirmed
+    except (subprocess.SubprocessError, ValueError, OSError):
+        return set()
+
+
+def reverse_unblock_check(all_new, providers, cfg, repo, seen_by_source):
+    """Match this cycle's inbound replies against open ⏳ Waiting cards; surface a matched card as a
+    needs-you item (mutating `all_new` in place). Returns the count surfaced. No-op unless a trello
+    provider exposing open_waiting_index is enabled and there are inbound items to match."""
+    trello = next((p for p in providers if p.name == "trello"
+                   and hasattr(p, "open_waiting_index")), None)
+    inbound = [it for it in all_new if it["_source"] in _INBOUND_SOURCES]
+    if not trello or not inbound:
+        return 0
+    try:
+        waiting = trello.open_waiting_index()
+    except Exception as e:  # a Trello read blip here must never abort the cycle — just skip the check
+        print(f"reverse-unblock: skipped (waiting-index read failed: {e})")
+        return 0
+    if not waiting:
+        return 0
+    # Pre-filter: candidate (reply, card) pairs where the reply's sender matches a person the card waits
+    # on. Each card remembers the channel it expected (for the AI's same-channel signal).
+    pairs = []
+    for it in inbound:
+        for card in waiting:
+            for person in card.get("_waitingFor", []):
+                if _person_matches_item(person, it):
+                    card = dict(card)  # per-pair copy so _waitingChannel reflects the matched person
+                    card["_waitingChannel"] = person.get("channel")
+                    pairs.append((it, card))
+                    break  # one hit per card is enough to escalate
+    if not pairs:
+        return 0
+    providers_by_name = {p.name: p for p in providers}
+    confirmed = _reverse_confirm(pairs, repo, cfg["triage_model"], providers_by_name)
+    if not confirmed:
+        print(f"reverse-unblock: {len(pairs)} sender match(es), 0 confirmed as the awaited reply.")
+        return 0
+    trello_seen = seen_by_source.get("trello", {})
+    existing_ids = {it.get("_id") for it in all_new}
+    surfaced = 0
+    seen_cards = set()
+    for i in confirmed:
+        it, card = pairs[i]
+        cid = card["cardId"]
+        if cid in seen_cards:
+            continue
+        seen_cards.add(cid)
+        # The reply context the worker needs to verify + resolve, and log on the card.
+        prov = providers_by_name.get(it["_source"])
+        preview = (prov.triage_text(it) if prov else (it.get("preview") or ""))[:600]
+        card["_reverseMatch"] = {
+            "from": it.get("from"),
+            "channel": _SOURCE_CHANNEL.get(it["_source"], it["_source"]),
+            "source": it["_source"],
+            "subject": it.get("subject"),
+            "url": it.get("url") or it.get("permalink") or "",
+            "received": it.get("received"),
+            "preview": preview,
+        }
+        card["_source"] = "trello"
+        card["_id"] = trello.stable_id(card)
+        if card["_id"] in existing_ids:
+            # The card is ALSO enumerating normally this cycle (its ping-back already arrived): enrich
+            # that item with the reply context instead of adding a duplicate.
+            for existing in all_new:
+                if existing.get("_id") == card["_id"]:
+                    existing["_reverseMatch"] = card["_reverseMatch"]
+                    break
+            print(f"reverse-unblock: reply from {it.get('from')} enriches already-queued card "
+                  f"\"{card.get('name')}\".")
+            surfaced += 1
+            continue
+        if card["_id"] in trello_seen:
+            # Already surfaced on a prior cycle (worker tab open / resolved) — don't re-dispatch.
+            print(f"reverse-unblock: card \"{card.get('name')}\" already surfaced earlier; skipping.")
+            continue
+        all_new.append(card)
+        existing_ids.add(card["_id"])
+        print(f"reverse-unblock: reply from {it.get('from')} on "
+              f"{_SOURCE_CHANNEL.get(it['_source'], it['_source'])} surfaces waiting card "
+              f"\"{card.get('name')}\" (ahead of its ping-back date).")
+        surfaced += 1
+    return surfaced
+
+
 # ---------------------------------------------------------------------------- dispatch
 
 def _item_bits(json_file):
@@ -571,6 +771,16 @@ def main():
     if not all_new:
         print("0 new items across all sources. Nothing to dispatch.")
         return
+
+    # --- reverse reply-unblock: surface any ⏳ Waiting card whose awaited reply just landed ---
+    # Runs after all providers have enumerated (so both the inbound replies and the Trello waiting
+    # cards are in hand) and before triage, so a surfaced card rides the deterministic trello->needs-you
+    # path below. Mutates all_new in place (appends/enriches). Gated by a kill-switch for the live loop.
+    if cfg.get("reverse_unblock", True):
+        try:
+            reverse_unblock_check(all_new, providers, cfg, repo, seen_by_source)
+        except Exception as e:  # never let the reverse-check abort a cycle that would otherwise drain
+            print(f"reverse-unblock: step failed, continuing without it: {e}")
 
     # --- deterministic pre-triage: every active Trello card is always needs-you ---
     # The adapter only enumerates cards in play — due now-or-earlier, or with no due date at all. A

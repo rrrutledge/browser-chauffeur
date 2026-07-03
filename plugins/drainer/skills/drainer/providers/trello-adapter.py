@@ -53,6 +53,9 @@ class Provider(ProviderBase):
         # the superset held out of contact classification (a ⛔/⏳ label is never a contact name).
         self.skip_labels = {"blocked"}
         self.status_labels = {"blocked", "waiting"}
+        # The ⏳ Waiting label token: cards wearing it are the reverse reply-matcher's watch list
+        # (open_waiting_index), matched case-insensitively as a substring so "⏳ Waiting" hits.
+        self.waiting_label_substr = "waiting"
         self.channels = []
         self.features = []
         # Board name → default initiative slug (from a board's `initiative:` field in the registry);
@@ -280,6 +283,82 @@ class Provider(ProviderBase):
         except (ValueError, TypeError):
             return None
 
+    def _card_item(self, card, bname, bid, list_name, sort_dt):
+        """Build the poller item dict for a card. Shared by enumerate (in-play cards) and
+        open_waiting_index (⏳ cards regardless of date), so both produce the same shape and a
+        reverse-matched Waiting card can be surfaced as an ordinary needs-you item."""
+        channel, feats, contacts, initiative_label = self._classify_labels(card)
+        # A per-card initiative label wins over the board's default initiative. The slug is the
+        # initiative label's name slugified (→ initiatives/<slug>.md); board defaults are already
+        # slugs in the registry.
+        initiative = slug(initiative_label, 60) if initiative_label \
+            else self.board_initiatives.get(bname)
+        who = ", ".join(contacts) if contacts else bname
+        return {
+            "cardId": card["id"],
+            "board": bname,
+            "boardId": bid,  # so the reverse-match cascade knows which board to scan on resolve
+            "list": list_name,
+            "name": card.get("name", ""),
+            "due": card.get("due"),
+            "start": card.get("start"),
+            "url": card.get("shortUrl") or card.get("url"),
+            "desc": card.get("desc", ""),
+            "channelLabel": channel,
+            "features": feats,
+            "contacts": contacts,
+            "initiative": initiative,
+            # Triage payload fields (mirror the inbox adapters):
+            "from": who,
+            "subject": card.get("name", ""),
+            # `received` carries the card's date for the cross-source ordering; an undated card
+            # uses its creation date, so it sorts by age alongside email/Slack and dated cards.
+            "received": card.get("due") or (sort_dt.isoformat() if sort_dt else "(no due date)"),
+            "preview": f"[{bname} / {list_name}] {(card.get('desc') or '').strip()[:200]}",
+            "_due_sort": sort_dt,
+        }
+
+    def _is_waiting(self, card):
+        """True if the card wears a ⏳ Waiting status label (blocked on a person's reply)."""
+        for l in card.get("labels", []):
+            if self.waiting_label_substr in (l.get("name") or "").lower():
+                return True
+        return False
+
+    def open_waiting_index(self):
+        """Every open ⏳ Waiting card across the drained boards, with the people it waits on parsed off
+        its `Waiting-for:` line — the watch spec the reverse reply-matcher (Phase 2) consults.
+
+        Unlike enumerate, this IGNORES the Start-date gate: a ⏳ card's Start is its ping-back date,
+        usually in the FUTURE, so it would not enumerate until then — yet a reply can land earlier and
+        should resolve it immediately. So we return every ⏳ card sitting in an active (non-skip) list,
+        each as a full poller item (so a matched one can be surfaced verbatim) carrying an extra
+        `_waitingFor` = [{name, channel}]. Cards with no parseable Waiting-for line are omitted (nothing
+        to match on). Read-only; runs once per cycle only when inbound items are present to match."""
+        if not self.boards:
+            return []
+        out = []
+        for board in self.boards:
+            bid, bname = board["id"], board.get("name", board["id"])
+            lists = {l["id"]: l["name"] for l in self._utils.get_board_lists(bid, self.session)}
+            for card in self._utils.get_board_cards(bid, self.session, fields="all"):
+                list_name = lists.get(card.get("idList"))
+                if not list_name:
+                    continue
+                if any(tok in list_name.lower() for tok in self.skip_lists):
+                    continue
+                if not self._is_waiting(card):
+                    continue
+                waiting_for = self._utils.parse_waiting_for(card.get("desc"))
+                if not waiting_for:
+                    continue
+                sort_dt = self._due_dt(card.get("start")) or self._due_dt(card.get("due")) \
+                    or self._created_dt(card["id"])
+                item = self._card_item(card, bname, bid, list_name, sort_dt)
+                item["_waitingFor"] = waiting_for
+                out.append(item)
+        return out
+
     # --------------------------------------------------------------- the ProviderBase contract
     def enumerate(self, limit):
         if not self.boards:
@@ -339,35 +418,7 @@ class Provider(ProviderBase):
                 # Sort rank: a dated card ranks by its go-live date (the earliest of start/due); an
                 # undated card ranks by its creation date (always in the past).
                 sort_dt = min(gate_dts) if gate_dts else self._created_dt(card["id"])
-                channel, feats, contacts, initiative_label = self._classify_labels(card)
-                # A per-card initiative label wins over the board's default initiative. The slug is the
-                # initiative label's name slugified (→ initiatives/<slug>.md); board defaults are already
-                # slugs in the registry.
-                initiative = slug(initiative_label, 60) if initiative_label \
-                    else self.board_initiatives.get(bname)
-                who = ", ".join(contacts) if contacts else bname
-                items.append({
-                    "cardId": card["id"],
-                    "board": bname,
-                    "list": list_name,
-                    "name": card.get("name", ""),
-                    "due": card.get("due"),
-                    "start": card.get("start"),
-                    "url": card.get("shortUrl") or card.get("url"),
-                    "desc": card.get("desc", ""),
-                    "channelLabel": channel,
-                    "features": feats,
-                    "contacts": contacts,
-                    "initiative": initiative,
-                    # Triage payload fields (mirror the inbox adapters):
-                    "from": who,
-                    "subject": card.get("name", ""),
-                    # `received` carries the card's date for the cross-source ordering; an undated card
-                    # uses its creation date, so it sorts by age alongside email/Slack and dated cards.
-                    "received": card.get("due") or (sort_dt.isoformat() if sort_dt else "(no due date)"),
-                    "preview": f"[{bname} / {list_name}] {(card.get('desc') or '').strip()[:200]}",
-                    "_due_sort": sort_dt,
-                })
+                items.append(self._card_item(card, bname, bid, list_name, sort_dt))
         # Ranked by sort date, most recent first (an undated card sorts by its creation date, set above).
         # This is also the truncation order: when more than `limit` cards are in play the oldest ones are
         # dropped and resurface on a later cycle. A card whose sort date couldn't be derived falls back to
@@ -387,13 +438,34 @@ class Provider(ProviderBase):
         stamp = "".join(c for c in stamp_src if c.isdigit())[:8] or "nodue"
         return f"{self.name}-{slug(item.get('name'), 40)}-{item['cardId'][-6:]}-{stamp}".strip("-")[:72]
 
+    @staticmethod
+    def _reverse_match_md(rm):
+        """The reply-detected banner a reverse-matched card leads with, so the worker sees FIRST that
+        this ⏳ card was surfaced early because its awaited reply landed — and what to do about it."""
+        if not rm:
+            return ""
+        link = f"\nLink: {rm.get('url')}" if rm.get("url") else ""
+        return (
+            "## ⚡ Reply detected — this card was surfaced ahead of its ping-back date\n\n"
+            f"An inbound message from **{rm.get('from')}** on **{rm.get('channel')}** looks like the "
+            "reply this ⏳ Waiting card was waiting on.\n"
+            f"Subject: {rm.get('subject') or '(none)'}{link}\n\n"
+            f"> {(rm.get('preview') or '').strip()[:600]}\n\n"
+            "**Do:** open the thread and confirm it resolves the ask. If it does — resolve this ⏳ card "
+            "(advance/finish it, post a dated comment noting the reply + thread link) and it will "
+            "unblock its downstream ⛔ cards. If it does NOT (unrelated message from the same person), "
+            "leave the card on its ping-back date and just handle the message. See the trello provider "
+            "doc's REVERSE-MATCH section.\n\n")
+
     def capture(self, item, iid, runtime_dir):
         items_dir = os.path.join(runtime_dir, "items")
         os.makedirs(items_dir, exist_ok=True)
         body_file = os.path.join(items_dir, f"{iid}.trello.md")
         comments = self._fetch_comments(item["cardId"])
+        reverse_md = self._reverse_match_md(item.get("_reverseMatch"))
         with open(body_file, "w", encoding="utf-8") as f:
             f.write(f"# {item.get('name')}\n\n"
+                    f"{reverse_md}"
                     f"Board: {item.get('board')} / List: {item.get('list')}\n"
                     f"Next-action (start): {item.get('start') or '(none)'}\n"
                     f"Deadline (due): {item.get('due') or '(none)'}\n"
@@ -405,10 +477,12 @@ class Provider(ProviderBase):
         record = {
             "id": iid, "source": self.name, "triage": item.get("_bucket", "needs-you"),
             "kind": item.get("_kind"), "cardId": item["cardId"], "board": item.get("board"),
+            "boardId": item.get("boardId"),
             "list": item.get("list"), "name": item.get("name"), "due": item.get("due"),
             "start": item.get("start"),
             "url": item.get("url"), "contacts": item.get("contacts") or [],
             "channelLabel": item.get("channelLabel"), "initiative": item.get("initiative"),
+            "reverseMatch": item.get("_reverseMatch"),  # the detected reply, when surfaced by Phase 2
             "bodyFile": body_file,
             "ts": datetime.now(timezone.utc).isoformat(),
         }
