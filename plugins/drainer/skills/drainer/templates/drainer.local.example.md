@@ -44,9 +44,9 @@ max_messages_per_cycle: 50   # how many inbox items each cycle enumerates (newes
 # Worker model per item — the poller picks by triage complexity (simple -> worker_model,
 # complex -> worker_model_complex). Set an EXPLICIT model so workers don't inherit a 1M-context
 # session default the account may lack credits for. Use standard-context ids (no [1m]).
-worker_model: claude-sonnet-4-6          # simple items (quick replies, trivial actions)
+worker_model: claude-sonnet-5            # simple items (quick replies, trivial actions)
 worker_model_complex: claude-opus-4-8    # complex items (multi-step work, code, delicate messages)
-triage_model: claude-sonnet-4-6          # the per-cycle batched triage call (also pinned, standard context)
+triage_model: claude-sonnet-5            # the per-cycle batched triage call (also pinned, standard context)
 
 # EOD digest (run-digest.py) — the once-a-day interactive slow loop.
 digest_model: claude-opus-4-8   # the digest session (summarize fyi, group junk, reconciliation); standard context

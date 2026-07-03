@@ -11,14 +11,20 @@ from safe_compounds.shell import (  # noqa: E402
     ASSIGNMENT_ONLY, extract_substitutions, first_word, split_segments, strip_var_assignment,
 )
 from safe_compounds import config  # noqa: E402
-from safe_compounds.commands import is_git_command_safe, is_curl_safe, is_sed_command_safe  # noqa: E402
+from safe_compounds.commands import (  # noqa: E402
+    is_git_command_safe, is_curl_safe, is_sed_command_safe, is_start_safe, strip_safe_redirections,
+)
 from safe_compounds.mcp import classify_mcp_tool  # noqa: E402
 from safe_compounds.enforce import detect_complex_bash, detect_simple_expansion, detect_cd_compound, enforce_bash  # noqa: E402
 from safe_compounds.scripts import check_node_segment  # noqa: E402
+from safe_compounds.workflow import classify_workflow_tool  # noqa: E402
 
 
 def set_config(**kwargs):
-    base = {"trusted_commands": [], "curl_domains": [], "mcp_blanket_servers": [], "trusted_script_dirs": []}
+    base = {
+        "trusted_commands": [], "curl_domains": [], "mcp_blanket_servers": [],
+        "trusted_script_dirs": [], "workflow_blanket_names": [],
+    }
     base.update(kwargs)
     config._CONFIG = base
 
@@ -174,6 +180,39 @@ class TestSed:
         assert is_sed_command_safe("sed -ni s/a/b/ f") is False
 
 
+class TestStripSafeRedirections:
+    def test_stderr_merge_suffix(self):
+        assert strip_safe_redirections('start report.docx 2>&1').strip() == 'start report.docx'
+
+    def test_stderr_merge_before_pipe(self):
+        # split_segments() already separates "| head -2" into its own segment;
+        # this is the "start ... 2>&1" segment as approve.py sees it.
+        assert strip_safe_redirections('start report.docx 2>&1 ').strip() == 'start report.docx'
+
+    def test_devnull_merge(self):
+        assert strip_safe_redirections('cmd >/dev/null 2>&1').strip() == 'cmd'
+
+    def test_no_redirect_unchanged(self):
+        assert strip_safe_redirections('start report.docx') == 'start report.docx'
+
+    def test_preserves_quoted_spaces(self):
+        seg = 'start "" "C:/some dir/My File.docx" 2>&1'
+        assert strip_safe_redirections(seg).strip() == 'start "" "C:/some dir/My File.docx"'
+
+
+class TestStartSafe:
+    def test_bare_docx(self):
+        assert is_start_safe('start report.docx') is True
+
+    def test_stderr_merge_does_not_defeat_target_check(self):
+        # Regression: a trailing "2>&1" used to become the last token, so
+        # is_start_safe read it as the launch target and rejected the command.
+        assert is_start_safe(strip_safe_redirections('start report.docx 2>&1')) is True
+
+    def test_unsafe_extension_still_rejected_with_redirect(self):
+        assert is_start_safe(strip_safe_redirections('start evil.exe 2>&1')) is False
+
+
 class TestMcp:
     def test_read(self):
         assert classify_mcp_tool("mcp__s__get_thing") is True
@@ -196,6 +235,31 @@ class TestMcp:
     def test_unknown_verb(self):
         set_config()
         assert classify_mcp_tool("mcp__s__frobnicate_thing") is False
+
+
+class TestWorkflow:
+    def test_named_blanket(self):
+        set_config(workflow_blanket_names=["code-review"])
+        assert classify_workflow_tool({"name": "code-review"}) is True
+
+    def test_named_not_blanket(self):
+        set_config(workflow_blanket_names=["code-review"])
+        assert classify_workflow_tool({"name": "other"}) is False
+
+    def test_no_config(self):
+        set_config()
+        assert classify_workflow_tool({"name": "code-review"}) is False
+
+    def test_inline_script_never_blanket_even_if_it_claims_the_name(self):
+        # An inline/dynamic script's own text is unverified at call time, so a
+        # self-declared meta.name must never grant blanket trust.
+        set_config(workflow_blanket_names=["code-review"])
+        script = "export const meta = {\n  name: 'code-review',\n  description: 'x',\n}\nlog('hi')"
+        assert classify_workflow_tool({"script": script}) is False
+
+    def test_no_name_or_script(self):
+        set_config(workflow_blanket_names=["code-review"])
+        assert classify_workflow_tool({}) is False
 
 
 class TestComplexBash:

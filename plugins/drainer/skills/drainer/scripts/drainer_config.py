@@ -59,11 +59,11 @@ def read_config(repo):
         # Worker tabs need an explicit model — otherwise they inherit the session default, which may be
         # a 1M-context model the account can't use. The poller picks per item by triage complexity:
         # simple -> worker_model, complex -> worker_model_complex (both standard context).
-        "worker_model": scalar("worker_model", "claude-sonnet-4-6"),
+        "worker_model": scalar("worker_model", "claude-sonnet-5"),
         "worker_model_complex": scalar("worker_model_complex", "claude-opus-4-8"),
         # The triage call must also pin a model — under the scheduled task it has no parent session,
         # so it would otherwise inherit a 1M-context default the account can't use. Standard Sonnet.
-        "triage_model": scalar("triage_model", "claude-sonnet-4-6"),
+        "triage_model": scalar("triage_model", "claude-sonnet-5"),
         # The once-a-day digest session. It summarizes fyi, groups junk with source-stop proposals,
         # and runs the reconciliation scan — judgment-heavy, so a stronger standard-context model.
         "digest_model": scalar("digest_model", "claude-opus-4-8"),
@@ -78,3 +78,24 @@ def read_config(repo):
         # Wall-clock time (HH:MM, 24h) the daily digest task fires; consumed by the installer.
         "digest_time": scalar("digest_time", "17:00"),
     }
+
+
+def provider_search_dirs(plugin_providers_dir, local_dir):
+    """Where a provider's files are looked up, in order: the plugin's own `providers/`, then the
+    machine-local `<local_dir>/providers/`. The plugin ships the generic, identity-free providers; a
+    machine keeps work- or personal-specific providers (that shouldn't live in the shared plugin) in
+    `<local_dir>/providers/` and enables them by name in drainer.local.md exactly like a shipped one."""
+    dirs = [plugin_providers_dir]
+    if local_dir:
+        dirs.append(os.path.join(local_dir, "providers"))
+    return dirs
+
+
+def find_provider_file(plugin_providers_dir, local_dir, name, suffix):
+    """Resolve `<name><suffix>` (e.g. `-adapter.py` / `-provider.md`) across the search dirs above.
+    Returns the first existing path, or None if no dir has it."""
+    for d in provider_search_dirs(plugin_providers_dir, local_dir):
+        path = os.path.join(d, f"{name}{suffix}")
+        if os.path.exists(path):
+            return path
+    return None

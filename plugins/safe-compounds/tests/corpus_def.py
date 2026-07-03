@@ -30,7 +30,9 @@ CASES = [
     {"id": "git_reset_soft", "tool": "Bash", "command": "git reset --soft HEAD~1", "expect": "ALLOW"},
     {"id": "git_checkout_branch", "tool": "Bash", "command": "git checkout -b feature", "expect": "ALLOW"},
     {"id": "git_push_force", "tool": "Bash", "command": "git push --force", "expect": "PROMPT"},
-    {"id": "git_reset_hard", "tool": "Bash", "command": "git reset --hard origin/main", "expect": "PROMPT"},
+    {"id": "git_reset_hard_origin", "tool": "Bash", "command": "git reset --hard origin/main", "expect": "ALLOW"},
+    {"id": "git_reset_hard_head", "tool": "Bash", "command": "git reset --hard HEAD", "expect": "PROMPT"},
+    {"id": "git_reset_hard_pathspec", "tool": "Bash", "command": "git reset --hard -- origin/main", "expect": "PROMPT"},
     {"id": "git_checkout_dot", "tool": "Bash", "command": "git checkout .", "expect": "ALLOW"},
     {"id": "git_branch_delete", "tool": "Bash", "command": "git branch -D old", "expect": "ALLOW"},
     {"id": "git_rebase_not_listed", "tool": "Bash", "command": "git rebase main", "expect": "ALLOW"},
@@ -104,10 +106,34 @@ CASES = [
     {"id": "start_docx", "tool": "Bash", "command": "start report.docx", "expect": "ALLOW"},
     {"id": "start_exe", "tool": "Bash", "command": "start evil.exe", "expect": "PROMPT"},
     {"id": "wt_claude", "tool": "Bash", "command": "wt new-tab claude --version", "expect": "ALLOW"},
+    # A full path to wt.exe (not the bare `wt` on PATH) launching the known
+    # handoff-session script must still be recognized: first_word() collapses
+    # any "*wt.exe" path down to bare "wt" before dispatch, so the exe-path
+    # check has to live inside is_wt_safe rather than a separate word.endswith
+    # branch (which is unreachable once .exe is stripped).
+    {"id": "wt_exe_fullpath_launch_session", "tool": "Bash",
+     "command": ('"{HOME}/AppData/Local/Microsoft/WindowsApps/wt.exe" -w 0 new-tab -d "{CWD}" '
+                 '--title "x" powershell -NoExit -NoProfile -File '
+                 '"{HOME}/Dev/rrrutledge/rrrutledge-claude-code-plugins/scripts/launch-session.ps1" '
+                 '-Model "claude-sonnet-4-6" -SeedFile "{CWD}/.tmp/handoff-seed.txt"'),
+     "expect": "ALLOW"},
+    # Same full-path wt.exe shape but not launching the known script — must
+    # still fall through to the untrusted-program prompt.
+    {"id": "wt_exe_fullpath_untrusted", "tool": "Bash",
+     "command": '"{HOME}/AppData/Local/Microsoft/WindowsApps/wt.exe" -w 0 new-tab powershell -NoExit -Command x',
+     "expect": "PROMPT"},
+    # A trailing stream-merge redirect (added to silence terminal noise) must
+    # not defeat is_start_safe's target-extension check.
+    {"id": "start_docx_stderr_merge", "tool": "Bash", "command": "start report.docx 2>&1", "expect": "ALLOW"},
+    {"id": "start_docx_stderr_pipe_head", "tool": "Bash",
+     "command": 'start report.docx 2>&1 | head -2', "expect": "ALLOW"},
+    {"id": "start_exe_stderr_merge", "tool": "Bash", "command": "start evil.exe 2>&1", "expect": "PROMPT"},
 
     # --- CWD-scoped file ops ------------------------------------------------
     {"id": "cp_within", "tool": "Bash", "command": "cp a.txt b.txt", "files": {"a.txt": "x"}, "expect": "ALLOW"},
     {"id": "cp_outside", "tool": "Bash", "command": "cp a.txt /etc/passwd", "files": {"a.txt": "x"}, "expect": "PROMPT"},
+    {"id": "cp_within_stderr_merge", "tool": "Bash", "command": "cp a.txt b.txt 2>&1",
+     "files": {"a.txt": "x"}, "expect": "ALLOW"},
 
     # --- scripts (deny-by-default; trusted dir vs elsewhere) ----------------
     {"id": "pyfile_tmp", "tool": "Bash", "command": "python .tmp/run.py",
@@ -133,6 +159,15 @@ CASES = [
     {"id": "mcp_destructive", "tool": "mcp__server__delete_thing", "expect": "PROMPT"},
     {"id": "mcp_blanket_configured", "tool": "mcp__myserver__whatever", "expect": "ALLOW"},
     {"id": "mcp_unknown_verb", "tool": "mcp__server__frobnicate_thing", "expect": "PROMPT"},
+
+    # --- Workflow -------------------------------------------------------------
+    {"id": "workflow_named_blanket", "tool": "Workflow", "name": "myworkflow", "expect": "ALLOW"},
+    {"id": "workflow_named_not_blanket", "tool": "Workflow", "name": "otherworkflow", "expect": "PROMPT"},
+    # An inline script's self-declared meta.name is never trusted, however it names itself.
+    {"id": "workflow_inline_script_claiming_blanket_name", "tool": "Workflow",
+     "script": "export const meta = {\n  name: 'myworkflow',\n  description: 'x',\n}\nlog('hi')",
+     "expect": "PROMPT"},
+    {"id": "workflow_no_name_or_script", "tool": "Workflow", "expect": "PROMPT"},
 
     # --- Read ---------------------------------------------------------------
     {"id": "read_claude_rules", "tool": "Read", "file_path": "{CWD}/.claude/rules/architecture.md", "expect": "ALLOW"},

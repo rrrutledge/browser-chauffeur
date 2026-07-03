@@ -175,7 +175,6 @@ GIT_TRUSTED_SUBCOMMANDS = {
 GIT_CONDITIONAL_SUBCOMMANDS = {
     'push':   {'--force', '-f', '--delete'},
     'tag':    {'-d', '--delete'},
-    'reset':  {'--hard'},
     'switch': {'--discard-changes', '-f', '--force'},
 }
 
@@ -199,11 +198,24 @@ def _git_clean_ok(args):
     return any(a in ('-n', '--dry-run') for a in args)
 
 
+def _git_reset_ok(args):
+    if '--hard' not in args:
+        return True
+    # Reject if -- appears: tokens after it are pathspecs, not refs.
+    if '--' in args:
+        return False
+    # Allow --hard only when syncing to a remote tracking ref (origin/...).
+    # The target commits exist on the remote; committed local work is recoverable via reflog.
+    # Note: uncommitted working-tree changes are NOT recoverable — --hard always discards them.
+    non_flag_args = [a for a in args if not a.startswith('-')]
+    return bool(non_flag_args) and non_flag_args[0].startswith('origin/')
+
+
 GIT_SPEC = {
     'command': 'git',
     'trusted': GIT_TRUSTED_SUBCOMMANDS,
     'conditional': GIT_CONDITIONAL_SUBCOMMANDS,
-    'specials': {'checkout': _git_checkout_ok, 'clean': _git_clean_ok},
+    'specials': {'checkout': _git_checkout_ok, 'clean': _git_clean_ok, 'reset': _git_reset_ok},
     'global_opts': GIT_GLOBAL_OPTS_WITH_ARG,
     'allow_empty': True,
     'category': None,  # no AI fallback: unknown git subcommands prompt
@@ -228,7 +240,7 @@ SCHTASKS_TRUSTED_SUBCOMMANDS = {'/query', '//query', '/change', '//change', '/di
 
 # ------------------------------------------------------------------ gh --------
 GH_TRUSTED_SUBCOMMANDS = {
-    'pr':       {'view', 'list', 'diff', 'checks', 'create', 'edit', 'close', 'reopen', 'ready', 'comment', 'review'},
+    'pr':       {'view', 'list', 'diff', 'checks', 'create', 'edit', 'close', 'reopen', 'ready', 'comment', 'review', 'checkout'},
     'issue':    {'view', 'list', 'create', 'edit', 'close', 'reopen', 'comment'},
     'repo':     {'view'},
     'run':      {'view', 'list', 'cancel', 'rerun'},
@@ -436,7 +448,15 @@ def is_wt_exe_path_safe(seg):
 
 
 def is_wt_safe(seg, trusted):
-    """Approve `wt` only if the program it ultimately launches is trusted."""
+    """Approve `wt` if it launches the known-safe Claude session script, or if
+    the program it ultimately launches is trusted.
+
+    first_word() collapses any path (bare `wt` or a full `.../wt.exe` path)
+    down to `wt`, so the exe-path-specific check has to happen here rather
+    than as a separate dispatch branch in approve.py.
+    """
+    if is_wt_exe_path_safe(seg):
+        return True
     tokens = shell_tokenize(seg)
     if len(tokens) < 2:
         return False
@@ -587,6 +607,43 @@ def is_output_redirection_safe(segment):
     if target == '/dev/null':
         return True
     return False
+
+
+# enforce_bash's own redirect detector (enforce.py: detect_output_redirection)
+# runs before any segment reaches this module, and blocks every '>' / '>>'
+# redirect except stream merges/discards (2>&1, >&2, 2>/dev/null, >/dev/null,
+# ...). So a stream-merge/discard clause is the only kind of redirect that can
+# still be present on a segment by the time per-command checkers run.
+_SAFE_REDIRECT_CLAUSE = re.compile(r'(?:^|\s)\d*>>?\s*(?:/dev/null|&\d+)')
+
+
+def strip_safe_redirections(segment):
+    """Remove stream-merge/discard redirect clauses from a segment string.
+
+    Per-command checkers (is_start_safe, check_cwd_file_command, ...) tokenize
+    a segment and look at positional arguments (last token, first non-flag
+    arg). A trailing clause like "2>&1" left in the string reads as a real
+    argument — e.g. "start file.html 2>&1" picks "2>&1" as the launch target
+    instead of "file.html", failing a check that would otherwise pass. These
+    clauses never write to a new location, so they're always safe to drop
+    before positional analysis runs.
+    """
+    masked = re.sub(
+        r'"[^"\\]*(?:\\.[^"\\]*)*"|\'[^\'\\]*(?:\\.[^\'\\]*)*\'',
+        lambda m: '\0' * len(m.group(0)),
+        segment,
+    )
+    spans = [m.span() for m in _SAFE_REDIRECT_CLAUSE.finditer(masked)]
+    if not spans:
+        return segment
+    parts = []
+    last = 0
+    for start, end in spans:
+        parts.append(segment[last:start])
+        parts.append(' ')
+        last = end
+    parts.append(segment[last:])
+    return ''.join(parts)
 
 
 # --------------------------------------------------- unknown commands --------

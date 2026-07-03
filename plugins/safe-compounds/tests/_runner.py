@@ -64,4 +64,8 @@ def setup_case(root, case):
         payload["tool_input"]["command"] = resolve(case["command"])
     if "file_path" in case:
         payload["tool_input"]["file_path"] = resolve(case["file_path"])
+    if "name" in case:
+        payload["tool_input"]["name"] = case["name"]
+    if "script" in case:
+        payload["tool_input"]["script"] = case["script"]
     return cwd_path, payload

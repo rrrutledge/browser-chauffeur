@@ -124,6 +124,7 @@ are promoted back to the plugin source via a GitHub PR on a rolling branch
 | `mcp_blanket_servers` | MCP server names to blanket-allow |
 | `trusted_script_dirs` | Directories containing safe scripts |
 | `learned_sync_exclude` | Learned commands to exclude from PR sync |
+| `workflow_blanket_names` | Saved workflow names (`tool_input.name`) to blanket-allow — never matches an inline/dynamic script |
 
 ---
 
@@ -143,6 +144,7 @@ are promoted back to the plugin source via a GitHub PR on a rolling branch
    | Subcommand safe only without certain flags | `conditional` dict in the tool's spec in `commands.py` |
    | `curl` to a new domain | `curl_domains` in `~/.claude/safe-compounds-config.json` |
    | Private/company command (don't want in public PR) | `trusted_commands` in `~/.claude/safe-compounds-config.json` |
+   | A specific `/code-review`-style Workflow you want to always run | `workflow_blanket_names` in `~/.claude/safe-compounds-config.json` |
 
 3. **Consider reversibility** — if the operation is reversible (can be undone), it
    belongs in the allowlist. If it's irreversible or unknowable, it should remain a
@@ -162,5 +164,6 @@ are promoted back to the plugin source via a GitHub PR on a rolling branch
 | `plugins/safe-compounds/safe_compounds/commands.py` | All per-tool safety checkers + `SUBCOMMAND_SPECS` |
 | `plugins/safe-compounds/safe_compounds/enforce.py` | Bash form validation + block messages |
 | `plugins/safe-compounds/safe_compounds/learned.py` | Machine-local learned store read/write |
+| `plugins/safe-compounds/safe_compounds/workflow.py` | Classifies Workflow tool calls against `workflow_blanket_names` |
 | `plugins/safe-compounds/tools/sync_learned.py` | Promotes learned approvals to a GitHub PR |
 | `plugins/safe-compounds/safe_compounds/config.py` | Config file schema + loader |

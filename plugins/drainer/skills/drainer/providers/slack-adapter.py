@@ -1,4 +1,4 @@
-"""slack poller adapter — InnerSource Commons Slack via the slack skill's slack.js (Web API).
+"""slack poller adapter — a Slack workspace via the slack skill's slack.js (Web API).
 
 All slack mechanics live HERE, alongside the prose contract in `slack-provider.md`: locating slack.js,
 the `--list-unread --json` enumerate, the `<channel>:<ts>` id scheme, and the captured item shape. The
@@ -97,6 +97,7 @@ class Provider(ProviderBase):
             "snippet": item.get("preview"), "url": permalink, "messageId": f"{channel}:{ts}",
             "channel": channel, "ts": ts, "threadTs": thread_ts,
             "channelType": item.get("channelType"), "channelName": item.get("channelName"),
+            "teamId": os.environ.get("SLACK_TEAM_ID"),
             "bodyFile": body_file,
             "ts_captured": datetime.now(timezone.utc).isoformat(),
         }
