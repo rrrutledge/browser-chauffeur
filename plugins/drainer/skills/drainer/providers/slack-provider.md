@@ -76,7 +76,9 @@ or a newer message re-surfaces it). Narrate it. Never delete messages.
 Add an emoji reaction to a message: `node slack.js --react --channel=<channel> --ts=<ts> --emoji=<name>`
 (`reactions.add`). Emoji name without colons — e.g. `thumbsup`, `tada`, `white_check_mark`. Irreversible
 (reactions cannot be removed by the drainer), so propose and execute only when the reaction is clearly
-warranted. Reactions are visible to everyone in the workspace.
+warranted. Reactions are visible to everyone in the workspace. One case where it's clearly warranted:
+closing out a needs-you thread with nothing new to add (worker-core §4) — react instead of drafting a
+reply that would only restate what the other person already said.
 
 ## AUTO-HANDLE
 Standing rules where Russell has decided the answer in advance, so the poller triages the item

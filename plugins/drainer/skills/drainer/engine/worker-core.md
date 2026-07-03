@@ -135,6 +135,22 @@ user to edit + send it themselves and come back when they have.
 
 If no message is needed (automated reminder, pure action item), skip to step 6.
 
+**Closing a thread with nothing new to add → react, don't reply.** When the other person's message
+just confirmed something, thanked you, or wrapped up a topic, and a worded reply would only restate
+information they already gave you, skip the drafted text entirely and add a reaction instead, on
+any surface that supports one (Slack, Teams, and some email threads all do). This is a
+**source-agnostic call** — the decision belongs here regardless of which provider the item came
+from; each provider's own doc only supplies the mechanic (how to actually add a reaction on that
+surface — see its DRAFT-MODE / REACT section).
+
+**Pick the emoji from Russell's sentiment palette, not a fixed default** — the
+**document-authoring** skill's Emoji table maps sentiment to symbol (✅ for a logistics item now
+handled, 👍 for a light acknowledgment, 🎉 for genuine celebration, etc.); read it and match the
+tone of what's being closed out rather than always reaching for 👍. A reaction closes the loop
+without manufacturing a sentence that has nothing to say. Reserve a worded acknowledgment for when
+there's genuinely something to add — new information, a question, or warmth the situation calls for
+(see the personal-outreach and relationship-maintenance rules elsewhere in the shared brain).
+
 **Deeply personal messages: don't draft — surface them for the user to write.** When the message is
 genuinely personal — a friend venting about their job or boss, a hard life update, grief, family or
 relationship matters, anything where the right words depend on shared history you don't have — a staged
