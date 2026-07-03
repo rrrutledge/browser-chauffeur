@@ -72,6 +72,12 @@ or a newer message re-surfaces it). Narrate it. Never delete messages.
 - **Thread item** — `node slack.js --mark --channel=<channel> --ts=<ts> --thread-ts=<threadTs>`
   (`subscriptions.thread.mark`) — advances the thread's own read cursor.
 
+## REACT
+Add an emoji reaction to a message: `node slack.js --react --channel=<channel> --ts=<ts> --emoji=<name>`
+(`reactions.add`). Emoji name without colons — e.g. `thumbsup`, `tada`, `white_check_mark`. Irreversible
+(reactions cannot be removed by the drainer), so propose and execute only when the reaction is clearly
+warranted. Reactions are visible to everyone in the workspace.
+
 ## AUTO-HANDLE
 Standing rules where Russell has decided the answer in advance, so the poller triages the item
 **`auto-handle`** (per `../engine/triage.md`) and the worker executes it autonomously — no tab, no wait —

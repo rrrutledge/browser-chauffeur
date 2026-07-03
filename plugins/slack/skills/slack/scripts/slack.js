@@ -12,6 +12,8 @@
 //                 replies, newest-first; muted conversations are skipped; --json emits a structured array)
 // Show one:      node slack.js --show --channel=<C> --ts=<ts> [--thread-ts=<tts>] [--json]
 //                (the message text + a chat.getPermalink url; pass --thread-ts for a threaded reply)
+// React:         node slack.js --react --channel=<C> --ts=<ts> --emoji=<name>
+//                (reactions.add; emoji name without colons, e.g. "thumbsup", "+1", "tada")
 // Mark read:     node slack.js --mark --channel=<C> --ts=<ts> [--thread-ts=<tts>]
 //                (conversations.mark up to <ts>, or subscriptions.thread.mark when --thread-ts is given —
 //                 the conversation/thread's "gone"; reversible, never deletes)
@@ -263,6 +265,13 @@ async function show() {
   console.log(`\n${text || '(no text)'}`);
 }
 
+async function react() {
+  if (!args.channel || !args.ts || !args.emoji) throw new Error('--react requires --channel, --ts, and --emoji');
+  const name = args.emoji.replace(/^:|:$/g, '');
+  await call('reactions.add', { channel: args.channel, timestamp: args.ts, name });
+  console.log(`Reacted :${name}: on message ${args.ts} in ${args.channel}.`);
+}
+
 async function mark() {
   if (!args.channel || !args.ts) throw new Error('--mark requires --channel and --ts');
   if (args['thread-ts']) {
@@ -285,6 +294,7 @@ async function check() {
   if (args.check) return await check();
   if (args['list-unread']) return await listUnread();
   if (args.show) return await show();
+  if (args.react) return await react();
   if (args.mark) return await mark();
-  throw new Error('Specify --check, --list-unread, --show, or --mark');
+  throw new Error('Specify --check, --list-unread, --show, --react, or --mark');
 })().catch(e => { console.error('Error:', e.message); process.exit(1); });
