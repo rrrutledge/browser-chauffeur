@@ -54,12 +54,13 @@ shape the worker can rely on:
   (from `slack.js --show --json`).
 - `items/<id>.json` — `{ "id","source":"slack","triage","kind","from","subject","received","snippet",`
   `"url":"<permalink>","messageId":"<channel>:<ts>","channel","ts","threadTs","channelType",`
-  `"channelName","bodyFile","ts_captured" }`.
+  `"channelName","teamId","bodyFile","ts_captured" }`.
 
 `channel` + `ts` (also joined as `messageId`) are the load-bearing fields — the worker needs them for
 SITUATIONAL-CHECK (`--show`) and CLEAR (`--mark`). For a **thread** item, `threadTs` is also set and is
 required for both `--show` and `--mark`. `channelType` is `im` / `mpim` / `channel` / `thread`. `url` is
-the message permalink, openable in Slack.
+the message permalink, openable in Slack. `teamId` is the workspace's `SLACK_TEAM_ID`, captured for workspace-identity use (e.g. differentiating
+workspaces if a second is ever added).
 
 ## CLEAR
 Advance the read cursor (the Slack "gone") — reversible and non-destructive (nothing is deleted; re-reading
@@ -70,6 +71,12 @@ or a newer message re-surfaces it). Narrate it. Never delete messages.
   on the next cycle — that is expected, not an error).
 - **Thread item** — `node slack.js --mark --channel=<channel> --ts=<ts> --thread-ts=<threadTs>`
   (`subscriptions.thread.mark`) — advances the thread's own read cursor.
+
+## REACT
+Add an emoji reaction to a message: `node slack.js --react --channel=<channel> --ts=<ts> --emoji=<name>`
+(`reactions.add`). Emoji name without colons — e.g. `thumbsup`, `tada`, `white_check_mark`. Irreversible
+(reactions cannot be removed by the drainer), so propose and execute only when the reaction is clearly
+warranted. Reactions are visible to everyone in the workspace.
 
 ## AUTO-HANDLE
 Standing rules where Russell has decided the answer in advance, so the poller triages the item
