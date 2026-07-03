@@ -1,7 +1,7 @@
 {
   "name": "trello-outreach",
   "version": "1.2.0",
-  "description": "Create and update Trello cards, checklists, and labels on any tracking board — outreach funnels or one-off personal/life-admin cards. Board IDs and configuration come from the project's trello-boards.yaml registry.",
+  "description": "Create and update Trello cards, checklists, and labels on any Trello tracking board. Board IDs and configuration come from the project's trello-boards.yaml registry.",
   "author": {
     "name": "Russell Rutledge"
   },

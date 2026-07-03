@@ -1,13 +1,12 @@
 ---
 skill: trello-outreach
-description: Create and update Trello cards, checklists, and labels on any tracking board — outreach funnels or one-off personal/life-admin cards (appeals, filings, multi-step tasks). Board IDs and per-board configuration come from the project's trello-boards.yaml registry — check there first.
+description: Create and update Trello cards, checklists, and labels on any Trello tracking board. Board IDs and per-board configuration come from the project's trello-boards.yaml registry — check there first.
 instructions: |-
   ## Trello Skill
 
-  Works on any Trello tracking board — the outreach funnels as well as one-off personal/life-admin
-  cards (a multi-step task tracked on a single card with a checklist). It's the mechanics layer:
-  card/checklist/label CRUD plus the Trello gotchas. When and why to open a card is project policy
-  (e.g. personal-ai-pod's CLAUDE.md and initiatives), not this skill.
+  Works on any Trello tracking board. It's the mechanics layer: card/checklist/label CRUD plus the
+  Trello gotchas. When and why to open a card is project policy (e.g. personal-ai-pod's CLAUDE.md and
+  initiatives), not this skill.
 
   Board configuration — board names, IDs, purposes, per-board lists/labels, and template-card notes —
   lives in the project's `trello-boards.yaml` registry (the single source of truth, shared with the
