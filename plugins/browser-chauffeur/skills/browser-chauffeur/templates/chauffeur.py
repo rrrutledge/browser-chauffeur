@@ -1,8 +1,13 @@
-"""Launch or reuse a persistent Edge/Chrome instance with CDP enabled.
+"""Manage the persistent chauffeur browser: bring it up, sweep it, tidy its tabs.
 
-Default (persistent) mode:
-    python launch-browser.py
-    python launch-browser.py --url https://example.com
+The entry point for the dedicated Edge/Chrome automation instance. Its default
+mode launches or reuses the browser (and sweeps stale tabs on reuse); other
+modes act on an already-running one (e.g. `--close-owned` closes this session's
+tabs). A noun-named multitool, so every mode reads sensibly — not just launch.
+
+Default (persistent) mode — launch or reuse:
+    python chauffeur.py
+    python chauffeur.py --url https://example.com
 
   Checks ~/.claude/browser-chauffeur/state.json for an already-running browser.
   If alive (CDP port responds), prints the existing info and exits. Otherwise
@@ -13,7 +18,7 @@ Default (persistent) mode:
   manually - this preserves your logged-in sessions for future tasks.
 
 Fresh mode (one-off, temporary browser):
-    python launch-browser.py --fresh --port 9222 --url https://example.com
+    python chauffeur.py --fresh --port 9222 --url https://example.com
 
   Always launches a new browser with a unique timestamped profile.
   For --fresh mode only: caller is responsible for killing the PID and
@@ -387,7 +392,7 @@ def run_persistent(url: str) -> int:
         print("2. Run: taskkill /F /IM msedge.exe", file=sys.stderr)
         print("3. Try launching again", file=sys.stderr)
         print(f"\nIf that doesn't work, try --fresh mode with a different port:", file=sys.stderr)
-        print(f"  python launch-browser.py --fresh --port 9226 --url {url}", file=sys.stderr)
+        print(f"  python chauffeur.py --fresh --port 9226 --url {url}", file=sys.stderr)
         return 1
 
     save_state(pid, port, PERSISTENT_PROFILE)

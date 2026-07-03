@@ -63,7 +63,7 @@ Adjust `plugins/browser-chauffeur/...` to the actual path where the skill is mou
 **Step 1 — Ensure the persistent browser is running**
 
 ```bash
-python plugins/browser-chauffeur/skills/browser-chauffeur/templates/launch-browser.py
+python plugins/browser-chauffeur/skills/browser-chauffeur/templates/chauffeur.py
 ```
 
 Adjust the path to wherever your skill is mounted. This auto-detects Edge first (better Windows SSO integration), falls back to Chrome, and manages port selection and profile automatically. If a persistent browser is already running, it prints the existing connection info and exits immediately. If not, it launches a new one with a persistent profile at `~/.claude/browser-chauffeur/profile/`. The state is stored globally at `~/.claude/browser-chauffeur/state.json` so all Claude instances can discover and reuse the same browser.
@@ -153,11 +153,11 @@ This ensures the AI is always watching the road, not just handing off directions
 
 Two layers keep this reliable:
 
-1. **Root cause — keep the tab count low.** Scripts create every tab with `openTab` (from `browser-chauffeur-helpers`), which registers it against the owning Claude session, and `closeTab` unregisters on clean close; `launch-browser.py` reclaims tabs whose owning session has ended on every reuse. A tab opened without `openTab` is never registered, so it isn't tied to a session — which is why `openTab` is the only sanctioned way to open a tab (see Phase 1). As a backstop for any tab that outlives its session or slips through unregistered, the same sweep ages out idle tabs past the TTL and enforces a hard ceiling on total tabs (evicting the least-recently-active). So a healthy profile stays small and `connectOverCDP` stays fast — this is what makes it reliable, not just recoverable.
+1. **Root cause — keep the tab count low.** Scripts create every tab with `openTab` (from `browser-chauffeur-helpers`), which registers it against the owning Claude session, and `closeTab` unregisters on clean close; `chauffeur.py` reclaims tabs whose owning session has ended on every reuse. A tab opened without `openTab` is never registered, so it isn't tied to a session — which is why `openTab` is the only sanctioned way to open a tab (see Phase 1). As a backstop for any tab that outlives its session or slips through unregistered, the same sweep ages out idle tabs past the TTL and enforces a hard ceiling on total tabs (evicting the least-recently-active). So a healthy profile stays small and `connectOverCDP` stays fast — this is what makes it reliable, not just recoverable.
 
 2. **Backstop — fail fast, never hang.** `connectBrowser()` in `script-template.js` races `connectOverCDP` against a 30s hard timeout (`Promise.race`), so if the profile is still wedged the script gets an actionable error instead of hanging forever. Every ad-hoc script you generate must use this hardened `connectBrowser()` — never call `chromium.connectOverCDP(...)` bare.
 
-**If the connect times out anyway:** re-run `launch-browser.py` (it sweeps orphans), then retry the script once. If it still times out, the overload is from tabs the sweep won't touch — an active session's tabs or the user's own. **Do not reset the shared browser to fix your own connect** — `cleanup-browser.py --reset` kills the browser for every concurrent session and wipes all logins. Instead, surface the situation to the user via `AskUserQuestion` and let them decide whether to close tabs or reset.
+**If the connect times out anyway:** re-run `chauffeur.py` (it sweeps orphans), then retry the script once. If it still times out, the overload is from tabs the sweep won't touch — an active session's tabs or the user's own. **Do not reset the shared browser to fix your own connect** — `cleanup-browser.py --reset` kills the browser for every concurrent session and wipes all logins. Instead, surface the situation to the user via `AskUserQuestion` and let them decide whether to close tabs or reset.
 
 ---
 
@@ -312,7 +312,7 @@ Some SPAs (Articulate Rise, OpenSesame, content platforms) load page sections as
    }
    // Tabs you FOUND (didn't create) are never passed to closeTab — leave them open.
    ```
-   **Why:** Other Claude sessions may be using other tabs. The user may need to review the results. Only close tabs you explicitly created for this specific task. `openTab`/`closeTab` bundle registration so it can't be forgotten: if this script crashes before `finally`, the next `launch-browser.py` reclaims the orphaned tab (it closes a tracked tab only when its creating process is gone) — see **Resilient Connection**. `closeTab` also parks on `about:blank` instead of closing when it's the last tab, so it never exits the persistent browser. The `script-template.js` reference already wires this in.
+   **Why:** Other Claude sessions may be using other tabs. The user may need to review the results. Only close tabs you explicitly created for this specific task. `openTab`/`closeTab` bundle registration so it can't be forgotten: if this script crashes before `finally`, the next `chauffeur.py` reclaims the orphaned tab (it closes a tracked tab only when its creating process is gone) — see **Resilient Connection**. `closeTab` also parks on `about:blank` instead of closing when it's the last tab, so it never exits the persistent browser. The `script-template.js` reference already wires this in.
    
    **When to leave tabs open:**
    - User needs to log in (can't automate)
@@ -322,7 +322,7 @@ Some SPAs (Articulate Rise, OpenSesame, content platforms) load page sections as
 
    **Closing all your session's tabs at the end (level-1 self-cleanup).** `closeTab` handles the tab one script opened. When a whole **session** is finished with the browser — every task done and the user no longer needs any staged tab open — close everything it opened in one call:
    ```bash
-   python plugins/browser-chauffeur/skills/browser-chauffeur/templates/launch-browser.py --close-owned
+   python plugins/browser-chauffeur/skills/browser-chauffeur/templates/chauffeur.py --close-owned
    ```
    It closes only tabs owned by this session (matched on `BROWSER_CHAUFFEUR_OWNER_PID`) — never another session's, never the user's, never the browser's last page. This is the ideal: sessions clean up after themselves, so the sweep (owner reap → idle age-out → count cap) stays the rare backstop it's meant to be. Only leave a tab open while the user still needs it (a login, a review, an in-progress form).
 
@@ -435,7 +435,7 @@ When errors are detected, **you are the debugger**. Do not show the user an erro
    - **UI changed** (different label, restructured DOM, new element) → inspect the current page state to find the new selector, update the script, re-run.
    - **New required step** (e.g., a consent prompt, a "What's new" tour) → add handling for it, re-run.
    - **Selector timing issues** (element not yet visible), **elements scrolled out of view**, or **the expected element is in a different frame** → take a fresh screenshot, read it, find the correct selector or frame.
-   - **connectOverCDP timeout** — output contains `connectOverCDP did not complete within ...ms` → the persistent profile is overloaded or has a wedged renderer (see **Resilient Connection** above). Re-run `launch-browser.py` to sweep orphaned tabs, then retry the script once. If it still times out, the overload is from tabs the sweep won't touch (an active session's or the user's) — escalate via `AskUserQuestion`. Do NOT auto-reset the shared browser; that kills every concurrent session and wipes all logins.
+   - **connectOverCDP timeout** — output contains `connectOverCDP did not complete within ...ms` → the persistent profile is overloaded or has a wedged renderer (see **Resilient Connection** above). Re-run `chauffeur.py` to sweep orphaned tabs, then retry the script once. If it still times out, the overload is from tabs the sweep won't touch (an active session's or the user's) — escalate via `AskUserQuestion`. Do NOT auto-reset the shared browser; that kills every concurrent session and wipes all logins.
    - **Media still playing** — if the script's stuck-detection fired but the page has active audio/video (`!audio.paused && !audio.ended && audio.duration > 1`), the page isn't stuck — narration is in progress. Wait for the media's remaining duration plus a buffer before re-evaluating. Only declare genuinely stuck when both conditions are true: no advance button AND no active media.
    - **None of the above looks right** → the failure may be a known anti-pattern. **Read `anti-patterns.md`** and check whether your symptoms match: a locator returning multiple matches in strict mode, a `page.evaluate` click that updates the UI but doesn't persist server-side, a click that "succeeds" but produces no DOM change, a `[role="dialog"]` presence check that returns true after the dialog closed, or a `getByRole('button')` returning nothing for a visibly-clickable element. Each entry has a tested fix.
 

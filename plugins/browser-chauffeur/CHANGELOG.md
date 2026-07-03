@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.9.1] - 2026-07-03
+
+### Changed
+- **Renamed `templates/launch-browser.py` → `templates/chauffeur.py`.** The script is the browser-lifecycle multitool — it launches/reuses, sweeps, and closes owned tabs (`--close-owned`) — so the verb "launch" clashed with the shutdown-style modes. `chauffeur` names the thing rather than one action, so every mode reads sensibly, and it's distinctive to this plugin rather than a generic word another project might collide with. All references updated (SKILL.md, `tab-registry.js`, drainer `worker-core.md` + `run-poller.py`).
+
 ## [1.9.0] - 2026-07-03
 
 Stops the persistent browser accumulating tabs until it crashes. Tabs are now owned by the Claude session that opened them and cleaned up promptly when that session's window closes; an idle age-out (12h) and a hard tab-count ceiling (15) back that up for tabs that outlive their session or were opened without the `openTab` helper.
