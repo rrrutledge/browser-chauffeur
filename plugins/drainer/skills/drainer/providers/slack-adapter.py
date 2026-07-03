@@ -97,8 +97,6 @@ class Provider(ProviderBase):
             "snippet": item.get("preview"), "url": permalink, "messageId": f"{channel}:{ts}",
             "channel": channel, "ts": ts, "threadTs": thread_ts,
             "channelType": item.get("channelType"), "channelName": item.get("channelName"),
-            # The workspace this item belongs to. Carried so the ENGAGE disposition and any future
-            # multi-workspace logic can confirm scope from the captured record.
             "teamId": os.environ.get("SLACK_TEAM_ID"),
             "bodyFile": body_file,
             "ts_captured": datetime.now(timezone.utc).isoformat(),

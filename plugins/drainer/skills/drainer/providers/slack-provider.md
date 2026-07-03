@@ -98,25 +98,6 @@ auto-handle — it falls back to the normal needs-you/fyi/junk triage.
    - **Digest note:** "Auto-rejected Slack Connect request: *[channel/org]* (requested by *[requester]*)."
    - **Then** CLEAR the item (mark read) and write `.done` immediately.
 
-## ISC COMMUNITY POSTS (ED engagement)
-
-Russell is the Executive Director of InnerSource Commons, whose community lives in this Slack workspace.
-A public post worth his visible engagement as ED — event or CFP announcement, new-member intro or welcome,
-someone sharing their work or a win, an open question to the community, a milestone or gratitude post —
-is **something to do**, not passive fyi. The action is lightweight but real: react with an emoji and,
-when it adds value, drop a short encouraging thread comment. That is how leadership is modeled.
-
-These posts triage as **`needs-you`** per `engine/triage.md` ("community activity on a platform where
-Russell leads"). The worker handles them as any reply item:
-
-1. **SITUATIONAL-CHECK first** — re-read the post (`node slack.js --show --channel=<C> --ts=<ts>`) to
-   confirm no one has already reacted or replied on Russell's behalf.
-2. **Propose an emoji reaction** — pick one that fits the post's tone: 🎉 (events / wins), 👍
-   (announcements / approvals), ✅ (completed milestones). `slack.js` has no `--react` verb, so note the
-   proposed emoji for Russell to click himself in Slack.
-3. **Draft a comment when a pure emoji isn't enough** — a short (1–3 sentence), warm, in-voice thread
-   reply staged via DRAFT-MODE (un-sent in the Slack composer). Skip if the emoji alone is sufficient.
-
 ## JUNK-LEARNING
 Stop this noise arriving again, in **priority order** (best outcome = it never pings) — propose, never
 apply without the user's OK:

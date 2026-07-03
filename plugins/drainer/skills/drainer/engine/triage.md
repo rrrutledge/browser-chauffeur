@@ -40,14 +40,6 @@ carries the whole story and asks nothing — a recording notice with no notes �
   "reply") even when it's just a short remark or a closing "sounds good"; the minimum action is a quick
   acknowledgment or 👍 reaction on their message. A group or meeting message that names Russell directly
   counts the same way; only automated, mass, or not-aimed-at-him chatter stays fyi.
-- **community activity on a platform where Russell leads** — in a workspace where he is the community's
-  Executive Director or equivalent (currently ISC Slack), a public post worth his visible engagement as
-  leader is something to do: reacting with an emoji or dropping a short encouraging comment models the
-  engagement others need to see from leadership. Qualifying posts: event or CFP announcements, new-member
-  intros or welcomes, someone sharing their work or a win, open questions to the community, milestone or
-  gratitude posts. A 1:1 DM from a community member is still **needs-you (reply)** as personal outreach;
-  an @-mention asking Russell something is still **needs-you (reply)** as a direct ask; bot/integration
-  messages and automated churn stay **fyi**/**junk**. → **`needs-you` (hint: `reply`)**.
 - a **dated to-do** comes due — a Trello tracker or outreach card, any dated item, the moment its due
   date arrives or passes. The due date IS the queue: a due item is the action surfacing when it was
   scheduled for.
@@ -87,5 +79,3 @@ carries the whole story and asks nothing — a recording notice with no notes �
   ask once than to auto-act on something that wasn't actually a standing decision.
 - Unsure whether there's something to do → treat it as **needs-you** (prefer acting).
 - Nothing to do, unsure between **fyi** and **junk** → **fyi** (prefer keeping eyes on it).
-- For community posts on ISC Slack: unsure whether a post is worth visible engagement → **fyi** (a few
-  high-value nudges per day, not blanket reactions).
