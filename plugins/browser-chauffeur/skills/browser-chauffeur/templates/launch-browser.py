@@ -55,16 +55,16 @@ STATE_FILE = str(CHAUFFEUR_DIR / "state.json")
 PERSISTENT_PROFILE = str(CHAUFFEUR_DIR / "profile")
 TAB_REGISTRY = CHAUFFEUR_DIR / "created-tabs.json"
 
-# Backstop tab hygiene. This is a dedicated automation browser (separate from
-# the user's personal browser), so idle tabs carry no user browsing to protect
-# and can be reaped on age and count. This catches leaks the owner-based reap
-# structurally can't: a tab opened without the openTab helper is never
-# registered, so it has no owning session and the owner check can't see it.
-# TTL ages out tabs idle past the threshold; MAX_TABS is a hard ceiling
-# that closes the least-recently-active first — so the browser can never
-# accumulate enough tabs to crash. Both are env-overridable without a code change.
-TAB_TTL_SECONDS = int(os.environ.get("BROWSER_CHAUFFEUR_TAB_TTL", 15 * 60))
-MAX_TABS = int(os.environ.get("BROWSER_CHAUFFEUR_MAX_TABS", 10))
+# Backstop tab hygiene. The primary cleanup is the owner reap — a tab is closed
+# promptly when its owning session ends (see sweep_tabs). These two are the
+# safety nets under that: TAB_TTL_SECONDS ages out a tab that's been idle a long
+# time (default 12h — comfortably past a browser login and any lunch/afk gap, so
+# it only catches genuinely abandoned tabs); MAX_TABS is a hard ceiling that
+# closes the least-recently-active until back under it, so the browser can never
+# accumulate enough tabs to crash (default 15 — well under the ~20 where the
+# browser starts to struggle). Both are env-overridable without a code change.
+TAB_TTL_SECONDS = int(os.environ.get("BROWSER_CHAUFFEUR_TAB_TTL", 12 * 60 * 60))
+MAX_TABS = int(os.environ.get("BROWSER_CHAUFFEUR_MAX_TABS", 15))
 
 
 def is_port_available(port: int) -> bool:
@@ -104,24 +104,26 @@ def is_cdp_alive(port: int) -> bool:
 def sweep_tabs(port: int) -> None:
     """Keep the persistent browser's tab count low and healthy.
 
-    Three layers, applied in order:
-      1. Owner reap — a tab whose owning session has ended (its recorded owner
-         process is gone) is closed. For ad-hoc use that owner is the script
-         that opened the tab; for a launched Claude session it's the session's
-         long-lived host process, so the tab lives as long as that window.
+    Reclaiming is driven by idleness; ownership only lets us clean up promptly
+    instead of waiting. Three layers, applied in order:
+      1. Owner reap (the courtesy) — a tab whose owning session has ended is
+         closed right away, rather than waiting for it to age out or become the
+         idlest under the cap. The owner is the Claude session that opened the
+         tab (its long-lived host process; see the launcher's OWNER_PID env), so
+         a tab lives as long as that session's window is open and is cleaned up
+         when it closes. A tab opened without the openTab helper has no owner —
+         it's cleaned up by layers 2–3 instead.
       2. Age-out (TTL) — any tab idle (no activity) longer than TAB_TTL_SECONDS
-         is closed. This includes tabs opened WITHOUT the openTab helper — those
-         are never registered, so layer 1 can't see them. They're adopted into
-         the registry on first sight so their activity can be tracked from then
-         on. Activity = a tab created/reused via the openTab/findTab helpers, or
-         a URL/title change the sweep notices between runs.
-      3. Count cap — if more than MAX_TABS remain, the least-recently-active are
-         closed until the count is back at the ceiling; idle/unowned tabs go
-         before a live session's tabs, which are touched only as a last resort.
+         is closed, regardless of owner, catching genuinely abandoned tabs.
+         Activity = a tab created/reused via the openTab/findTab helpers, or a
+         URL/title change the sweep notices between runs. Tabs opened without
+         openTab are adopted on first sight so their idleness can be tracked.
+      3. Count cap — if more than MAX_TABS remain, close the least-recently-
+         active until back under the ceiling. Pure idleness, ownership-agnostic:
+         an actively-used tab has recent activity so it's never the one closed.
 
     Never touched: the browser's last remaining page (closing it would exit the
-    browser and lose all logins), and any tab whose owning session is still
-    alive. This is a dedicated automation browser
+    browser and lose all logins). This is a dedicated automation browser
     separate from the user's personal browser, so idle tabs carry no user
     browsing to protect. Uses the raw CDP HTTP endpoints (/json, /json/close),
     which never auto-attach to targets and so never hang the way
@@ -197,41 +199,33 @@ def sweep_tabs(port: int) -> None:
         # ownerPid is the current field; nodePid is the pre-1.9 name.
         return e.get("ownerPid") or e.get("nodePid")
 
-    def owned_by_live_owner(e: dict) -> bool:
-        pid = owner_pid(e)
-        return bool(pid) and is_pid_running(pid)
-
     closed = 0
-    # Layers 1 & 2 — owner reap + age-out, least-recently-active first.
+    # Layers 1 & 2 — owner reap (session ended) + age-out (idle past TTL),
+    # least-recently-active first. Both apply regardless of whether some other
+    # session is alive: a tab is reclaimed on its owner ending OR on its own
+    # idleness, never held open just because unrelated sessions are running.
     for e in sorted(reg.values(), key=recency):
         tid = e["targetId"]
-        if tid not in open_ids or owned_by_live_owner(e):
+        if tid not in open_ids:
             continue
-        is_orphan = owner_pid(e) is not None  # had an owner, now gone
+        pid = owner_pid(e)
+        owner_ended = pid is not None and not is_pid_running(pid)
         is_idle = (now_ms - recency(e)) >= TAB_TTL_SECONDS * 1000
-        if is_orphan or is_idle:
+        if owner_ended or is_idle:
             if close(tid):
                 closed += 1
 
-    # Layer 3 — hard ceiling. Prefer evicting idle/unowned tabs; only if still
-    # over the cap (everything left belongs to a live session) evict the
-    # least-recently-active owned tab as a last resort, because exceeding the
-    # ceiling risks the crash the whole sweep exists to prevent.
-    def trim(candidates):
-        nonlocal closed
-        for e in candidates:
-            if len(open_ids) <= MAX_TABS:
-                break
-            tid = e["targetId"]
-            if tid not in open_ids:
-                continue
-            if close(tid):
-                closed += 1
-
-    if len(open_ids) > MAX_TABS:
-        ordered = sorted(reg.values(), key=recency)
-        trim([e for e in ordered if not owned_by_live_owner(e)])
-        trim([e for e in ordered if owned_by_live_owner(e)])
+    # Layer 3 — hard ceiling. Close the least-recently-active until back under
+    # the cap, ownership-agnostic: an actively-used tab has recent activity so
+    # it's never the one chosen; whatever's been idle longest goes first.
+    for e in sorted(reg.values(), key=recency):
+        if len(open_ids) <= MAX_TABS:
+            break
+        tid = e["targetId"]
+        if tid not in open_ids:
+            continue
+        if close(tid):
+            closed += 1
 
     try:
         TAB_REGISTRY.parent.mkdir(parents=True, exist_ok=True)
