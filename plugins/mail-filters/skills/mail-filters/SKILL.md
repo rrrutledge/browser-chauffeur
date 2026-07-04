@@ -28,12 +28,6 @@ only one question: **does this mail ever need to reach the drainer at all?** Whe
 a whole category, a filter removes that work entirely — which beats processing it quickly, because the
 best per-message cost is zero.
 
-> Historical note for context only: these rules were born when email was the primary channel and a
-> human had to answer within hours, so they once sorted *human urgency* into inbox / low-priority /
-> junk tiers. With immediate AI processing, the low-priority tier is obsolete — there is no "read it
-> eventually," only "process it now" or "never process it." Treat any surviving low-priority routing
-> in the live rule sets as cruft to retire, not a pattern to copy.
-
 ## The craft: choosing the phrase (the heart of the skill)
 
 The whole strategy turns on one skill: **never build a filter for a single sender's single message.**
@@ -94,23 +88,28 @@ fragment, scoped to where it is reliable.
 Both platforms solve the same tension — broad enough to not need a filter per company, narrow enough
 to never archive good mail — with different tools. Match the shape to whichever mailbox the junk hit.
 
-### Gmail — one filter per pattern, scoped to the subject
+### Gmail — subject-scoped buckets, consolidated with OR-lists
 
 Gmail's fence is **subject-scoping**. A Gmail filter matches a search query; scope the query to
 `subject:(…)` so a phrase in a footer or quoted body can't trigger it. Reserve a body match
 (`has the words`, i.e. an unscoped query) for a phrase so distinctive it could not appear anywhere you
 care.
 
-- **Type-level subject catch** (covers every sender of the type): `subject:(One Time Passcode)`,
-  `subject:(Your shipment was delivered)`, `subject:(statement is available)`,
-  `subject:(Automatic reply:)`.
+A single Gmail filter can hold **many phrases**, OR'd together inside the parentheses — so consolidate
+a whole type into one filter the way an Outlook bucket does, rather than one filter per phrase:
+
+- **Type bucket** (covers every sender of the type):
+  `subject:("One Time Passcode" OR "verification code" OR "Code for signing in")` → Skip Inbox, Mark as
+  read. Add a new variant by appending ` OR "…"` to the same filter — including the German, Dutch,
+  French, and Spanish forms of an auto-reply or delivery notice, which live as siblings in the same
+  OR-list.
 - **Company-scoped combo** when the phrase isn't a universal type but the sender is a known noise
-  source: `from:eventbrite subject:(Your event is published)`,
-  `from:techcu subject:(Scheduled System Maintenance)`.
+  source: `from:eventbrite subject:("Your event is published" OR "Just added!")`.
+- **Sender exclusion.** Gmail supports negation, so a broad subject bucket can carry the same
+  real-people fence Outlook uses: `subject:(…) -from:(gmail.com OR outlook.com OR icloud.com OR <your
+  family and school domains>)`.
 - **Action:** for pure noise, **Skip the Inbox (Archive it)** plus **Mark as read**. For mail you want
   archived but not marked read, just Skip the Inbox.
-- **Multilingual variants** are their own siblings — the German, Dutch, French, and Spanish forms of an
-  auto-reply or a delivery notice each get their own `subject:(…)` filter.
 
 ### Outlook — consolidated buckets fenced by a sender-domain exclusion whitelist
 
@@ -188,8 +187,9 @@ re-deriving it each time. When the drainer reaches the filter step for a piece o
 1. **Generalize on sight.** Run the phrase-selection method above on the single sample — name the type,
    find the intrinsic boilerplate, apply the two-sided test, tighten until safe. Propose the *type*
    phrase, not a filter for this one sender.
-2. **Match the shape to the mailbox** — the Gmail subject-scoped form for a Gmail account, the Outlook
-   consolidated-bucket-plus-exclusion form for an Outlook account.
+2. **Match the shape to the mailbox** — append the type phrase to the right existing bucket where one
+   fits (a Gmail `subject:(… OR …)` filter, an Outlook consolidated rule) rather than spawning a new
+   single-phrase filter; start a fresh bucket only for a genuinely new category.
 3. **Propose, then create on Russell's OK.** A filter is reversible, searchable config, so once Russell
    approves the proposed phrase, create it via the mechanics above — no need to leave it as a manual
    to-do. (This is distinct from outward messages, which are always staged for Russell to send
