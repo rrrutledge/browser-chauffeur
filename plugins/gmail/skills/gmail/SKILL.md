@@ -29,9 +29,15 @@ stage drafts) flows through. Simpler to set up and headless-safe (no token to re
    letters. Capture all 16 letters (no spaces).
 4. **Set secrets as env vars** (never in a file): `GMAIL_ADDRESS` (the full address) and
    `GMAIL_APP_PASSWORD` (the 16 letters, no spaces).
+5. **Optional signature** — set `GMAIL_SIGNATURE_HTML` to an HTML snippet (e.g.
+   `Name<br>Title<br><a href="...">...</a>`) and `--draft-new`/`--reply` append it to every staged
+   draft automatically. IMAP has no way to read the account's Gmail-configured signature (that's a
+   webmail-only setting with no IMAP equivalent), so this env var is the closest available substitute —
+   set it once from whatever your Gmail signature actually says, and update it by hand if that changes.
 
 **Secrets stay machine-local.** The plugin code is shared via the marketplace; `GMAIL_ADDRESS` /
-`GMAIL_APP_PASSWORD` are per-machine, so the mailbox is only reachable where you've set them.
+`GMAIL_APP_PASSWORD` / `GMAIL_SIGNATURE_HTML` are per-machine, so the mailbox is only reachable (and
+signed the same way) where you've set them.
 
 ## Scripts
 

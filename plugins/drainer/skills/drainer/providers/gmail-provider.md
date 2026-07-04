@@ -21,7 +21,9 @@ mechanisms.
 ## Config (in `.claude/drainer.local.md` → `providers.gmail`)
 No config — auth is by environment variables. Credentials: `GMAIL_ADDRESS` (the full address) and
 `GMAIL_APP_PASSWORD` (the 16-character Google App Password) in the environment. The mailbox must have
-2-Step Verification on and IMAP enabled (Workspace: the admin must also allow IMAP).
+2-Step Verification on and IMAP enabled (Workspace: the admin must also allow IMAP). Optionally
+`GMAIL_SIGNATURE_HTML` (an HTML snippet) — when set, `gmail.js` appends it to every staged draft
+automatically, since IMAP has no way to read the account's actual Gmail-configured signature.
 
 The `gmail` `gmail.js` lives at `<gmail-skill>/scripts/gmail.js` — run it with `node`.
 

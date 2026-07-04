@@ -4,6 +4,12 @@
 // Password — requires 2-Step Verification on the account, and IMAP enabled in Gmail settings).
 // No OAuth app, no Cloud project, no browser.
 //
+// Signature: optionally set GMAIL_SIGNATURE_HTML in the environment (an HTML snippet, e.g.
+// "Name<br>Title<br><a href=\"...\">...</a>"). IMAP has no API for the account's Gmail-configured
+// signature (that's a webmail-only setting), so there's no way to read it automatically — this env
+// var is a manually-set stand-in. When set, --draft-new and --reply append it to every staged draft
+// (after a blank line; before the quoted original on replies) so it isn't retyped by hand each time.
+//
 // List inbox:    node gmail.js --list-inbox [--top=50] [--json]
 //                (inbox, newest-first; --json emits a structured array for scripts)
 // List sent:     node gmail.js --list-sent [--top=50] [--json]
@@ -19,10 +25,12 @@
 //                 prior draft on the same thread; prints a draft-id for --send-draft. <id> is looked up
 //                 in the inbox and All Mail — pass the most recent message in the thread, even one the
 //                 user sent; a reply to the user's own message keeps its recipients instead of self.
-//                 --body-file is Markdown — bold, links, lists all work; HTML tags pass through.)
+//                 --body-file is Markdown — bold, links, lists all work; HTML tags pass through.
+//                 Appends GMAIL_SIGNATURE_HTML, if set, after the body and before the quoted original.)
 // Draft new:     node gmail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.md [--cc=c@z] [--attach=a.pdf,b.png]
 //                (appends a fresh DRAFT to [Gmail]/Drafts; never sends; prints a draft-id.
-//                 --body-file is Markdown — bold, links, lists all work; HTML tags pass through.)
+//                 --body-file is Markdown — bold, links, lists all work; HTML tags pass through.
+//                 Appends GMAIL_SIGNATURE_HTML, if set, after the body.)
 //                (--attach takes one path or a comma-separated list; files ride along on the draft)
 // Send a draft:  node gmail.js --send-draft --draft-id=<draft-message-id>
 //                (promotes one already-staged draft: transmits its exact bytes via SMTP, then removes
@@ -68,6 +76,11 @@ function client() {
     host: 'imap.gmail.com', port: 993, secure: true,
     auth: { user: USER, pass: PASS }, logger: false,
   });
+}
+
+function withSignature(html) {
+  const sig = process.env.GMAIL_SIGNATURE_HTML;
+  return sig ? `${html}<br><br>${sig}` : html;
 }
 
 const addr = (a) => a ? `${a.name || ''} <${a.address}>`.trim() : '?';
@@ -273,7 +286,7 @@ async function reply(c) {
     ? [...new Set([args.cc, ...allRecips])].join(', ')
     : allRecips.join(', ');
   const { raw, messageId } = await buildMime({
-    to, cc: ccList || undefined, subject, html: html + quoted,
+    to, cc: ccList || undefined, subject, html: withSignature(html) + quoted,
     inReplyTo: orig.messageId, references: refs,
   });
   await c.append(DRAFTS, raw, ['\\Draft']);
@@ -287,7 +300,7 @@ async function draftNew(c) {
     throw new Error('--draft-new requires --to, --subject, and --body-file');
   }
   const html = marked.parse(fs.readFileSync(args['body-file'], 'utf8'));
-  const { raw, messageId } = await buildMime({ to: args.to, cc: args.cc || undefined, subject: args.subject, html });
+  const { raw, messageId } = await buildMime({ to: args.to, cc: args.cc || undefined, subject: args.subject, html: withSignature(html) });
   await c.append(DRAFTS, raw, ['\\Draft']);
   console.log(`Draft staged in [Gmail]/Drafts to ${args.to}. Review in Gmail; never sent.`);
   if (messageId) console.log(`draft-id: ${messageId}`);
