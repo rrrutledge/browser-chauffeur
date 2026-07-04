@@ -63,11 +63,10 @@ carries the whole story and asks nothing — a recording notice with no notes �
   it. Common cases that land here:
   - **Delivery-failure bounces** (MAILER-DAEMON / Postmaster) — they report that an email didn't reach
     him, but there's nothing for him to do about the bounce itself.
-  - **"Review and confirm" notices and confirmations of a completed event** — a notice whose only outcome
-    is "yes, that looks right" is awareness, not work, and an automated confirmation of an account action
-    (a token regenerated, a password changed, a setting updated, a new device added, a sign-in confirmed)
-    just reports something that already happened. It would become an action only if the review revealed
-    something unexpected, and Russell catches that in the digest and escalates himself.
+  - **Completed-event notices** — an automated notification that something already finished (a token
+    regenerated, a password changed, a setting updated, a sign-in confirmed); reading it changes nothing
+    Russell would do. It would become an action only if the notice revealed something unexpected, and
+    Russell catches that in the digest and escalates himself.
 - **junk** — not even worth surfacing: automated noise, newsletters, pure marketing, CI/build
   notifications, duplicate status churn, chatter not aimed at the user. Junk is also a signal to stop it
   arriving again; *how* to stop it is provider mechanics — each provider's **JUNK-LEARNING** section owns
