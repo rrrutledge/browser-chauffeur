@@ -6,6 +6,11 @@ drainer treats one meeting as **N action items + 1 recap**: the sibling **`zoom-
 poller drives) talks to the Zoom REST API directly and fans out one candidate per owner-assigned next step
 (recap folded into each for context) plus one recap candidate for the meeting as a whole.
 
+It finds meetings by listing the **authenticated account's own past meetings** (`/v2/users/me/meetings?
+type=previousMeetings`) — the OAuth token fixes *whose* meetings are visible (always the account that owns
+the credentials) — and reads each one's AI Companion summary. `owner_names` (below) is a separate filter:
+which *next steps within those meetings* count as the owner's action items.
+
 Everything Zoom-specific — the REST calls, the OAuth token refresh, the meeting walk, the parsing — lives
 in `zoom-adapter.py`. It is **self-contained**: no external script, no assumption about who is running it.
 Anyone with a Zoom account that produces AI Companion summaries can enable it by filling in the config
@@ -51,20 +56,6 @@ Credentials (environment):
 - **`ZOOM_REFRESH_TOKEN`** (bootstrap) — a valid refresh token for the first run; after that the adapter
   caches and rotates it in `token_cache`, so this is only needed until the cache exists.
 
-## De-dup & efficiency (how it avoids reprocessing the same meeting)
-Two layers keep the source from redoing work across the frequent poll cycles:
-- **No repeated tabs — shared seen-state.** Every dispatched item's `stable_id` is recorded in the
-  poller's `seen.json`; already-seen ids are dropped on every future cycle, permanently. So an action item
-  becomes a tab exactly once — the `lookback_hours` window is only the *scan* range, not a reprocess range.
-- **No repeated fetches — a client-side finalized-summary cache.** A meeting summary is FINAL after the
-  cooldown, so the adapter caches it (`<runtime_dir>/zoom-summary-cache.json`, keyed by occurrence uuid)
-  and never re-fetches that meeting's summary again — the counterpart to the teams provider's per-conversation
-  message horizons. Candidates are still rebuilt from the cached summary every cycle, so seen-state stays the
-  single authority on dispatch (an item held at the concurrency cap still resurfaces); the cache only skips
-  the network call. The cache is bounded to the current window.
-- **Cheaper meeting walk.** Only *recurring* meetings (Zoom type 3/8) get a per-template `/instances` call;
-  a one-time meeting's occurrence is its own `start_time`, so its instances call is skipped.
-
 ## AUTH-GLANCE
 The adapter manages Zoom OAuth itself: it reads the access token from `token_cache` and **auto-refreshes**
 it (POST `https://zoom.us/oauth/token`, Basic auth with `client_id`:`ZOOM_CLIENT_SECRET`, `grant_type=
@@ -91,15 +82,6 @@ Load-bearing: `meetingTopic` + `stepText` (what the action is), `url` (the Zoom 
 action item — `tasks.zoom.us?meetingId=…&stepId=…` — else the summary doc), `meetingId` (the occurrence
 uuid). `stepId` is a convenience only (it lives solely in the summary HTML and can change as the AI refines
 the summary) — never treat it as identity.
-
-## SITUATIONAL-CHECK (do this BEFORE drafting or doing the work)
-A summary can be hours or days old by the time it's triaged, so the action may already be handled. Before
-acting, check whether it's still open:
-- If the action is **send/reply to someone** (an intro, an email, a chat update): search that channel in
-  BOTH directions (already sent? already replied?). For email, include Archive/Deleted — a prior drain may
-  have swept the thread out of the inbox. Act only on what's still open; if it's done, CLEAR it and move on.
-- If the action is **do a piece of work** (prepare slides, check a config, fill a template): confirm it
-  isn't already done, then do it (or draft/stage what you can) and present the result.
 
 ## CLEAR
 Zoom exposes **no public API to mark a Tasks step complete** (the `tasks.zoom.us` links are a UI surface,
