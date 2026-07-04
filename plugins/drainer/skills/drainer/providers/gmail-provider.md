@@ -56,9 +56,11 @@ matters.
 After exhausting unsubscribe and source-app options (see `email-base.md`): propose a **Gmail
 filter**, using the **`mail-filters`** skill to choose the phrase and shape (Gmail's fence is
 `subject:(…)` scoping so a footer phrase can't trigger the filter; `from:X subject:Y` for
-company-specific noise). IMAP can't create Gmail filters, so `mail-filters` creates it through the
-browser (Advanced search options → criteria → Skip the Inbox / Mark as read) once Russell OKs the
-phrase.
+company-specific noise). Once Russell OKs the phrase, append it to the right mechanism bucket with the
+**`gmail`** skill's `filters.js` (the OAuth settings path):
+`node filters.js --append-filter=<id> --add-subject='"<phrase>"'` for a subject phrase, or `--add-body`
+for a body phrase — `--list-filters` first to find the bucket's id. Create a new bucket with
+`--create-filter --query='…' --archive --mark-read` only for a genuinely new mechanism.
 
 ## DRAFT-MODE CLI commands
 Follow all voice and reply-vs-fresh rules in `email-base.md`, then use these Gmail commands:

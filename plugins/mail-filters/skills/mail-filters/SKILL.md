@@ -189,29 +189,29 @@ Outlook rules can hold many conditions and run top-to-bottom, which enables a ri
 
 ## Creating and deleting a filter
 
-Both platforms are driven through the browser. Invoke the **browser-chauffeur** skill so the recovery
-loop is active, complete its Phase 0 to get a validated CDP port, then run the automation against that
-port.
+Both platforms are managed programmatically, each through its own skill's REST wrapper — Gmail through
+the **`gmail`** skill's `filters.js` (the Gmail settings API, OAuth), Outlook through the **`ms-graph`**
+skill's `mail.js` (the Graph rules API). Each returns and writes the full, untruncated filter, so a whole
+mechanism's OR-list stays intact.
 
 ### Gmail (filters)
 
-The right Google account matters — verify it before mutating. `mail.google.com/mail/u/1/` and
-`u/0/` are different accounts; read the active account label
-(`a[aria-label*="Google Account"]`) and confirm it is the intended mailbox first.
+Manage Gmail filters through the **`gmail`** skill's `filters.js`, which wraps
+`users.settings.filters`. It uses a settings-only OAuth path (scope `gmail.settings.basic`, additive to
+the IMAP mail path) that must be signed in once — see the gmail skill's **Filter management** section.
+The token is account-specific, so the mailbox it touches is whichever account the sign-in used (for ISC,
+`russ@innersourcecommons.org`).
 
-- **Read all filters:** open `https://mail.google.com/mail/u/<n>/#settings/filters` and collect every
-  filter row — each row's text carries its `Matches:` criteria and `Do this:` actions. (Selecting all
-  filters and using Gmail's **Export** yields the same set as a `mailFilters` XML file.)
-- **Create a filter:** click the **Advanced search options** control (its `aria-label` is
-  "Advanced search options"; the visible tooltip "Show search options" is misleading). If the criteria
-  form is already open the toggle is hidden — reload to reset. The criteria inputs are label-less; fill
-  each by matching its row's visible label (From, To, Subject, Has the words, Doesn't have) to the
-  input on the same row by vertical position, set the value, and dispatch `input`/`change` events.
-  Click **Create filter**, then in the actions panel check **Skip the Inbox (Archive it)** and, for
-  pure noise, **Mark as read**; click the blue **Create filter** to finalize and wait for the panel to
-  detach.
-- **Delete a filter:** the per-row `delete` link does not fire Gmail's handler through automation. What
-  works: **check the filter row's checkbox, click the bottom "Delete" button, and confirm the dialog.**
+- **Read all filters:** `node filters.js --list-filters` (add `--json` for the raw objects, each with its
+  `id`). Do this first when consolidating, so you're editing the current truth.
+- **Create a bucket:** `node filters.js --create-filter --query='subject:("A" OR "B") -from:(gmail.com OR outlook.com OR icloud.com OR <family/school domains>)' --archive [--mark-read]` — `--query` is the raw
+  Gmail search, so the OR-list and the master `-from:` fence go in verbatim; `--archive` is Skip the
+  Inbox, `--mark-read` also marks read.
+- **Append a phrase to a bucket:** `node filters.js --append-filter=<id> --add-subject='"D"'` (splices
+  inside `subject:(…)`), or `--add-body='"E"'` (splices inside the leading `(…)` group) — the everyday
+  "add to the right bucket" op. Gmail can't edit a filter in place, so this reads the query, splices, then
+  deletes and recreates the filter, and the **id changes** (the command reports the new one).
+- **Delete a filter:** `node filters.js --delete-filter=<id>`.
 
 ### Outlook (rules)
 
