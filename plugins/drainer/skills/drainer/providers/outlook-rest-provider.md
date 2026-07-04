@@ -16,7 +16,7 @@ id prefix: `outlook-rest-`; body file: `<id>.email.md`.
 > ms-graph/MSAL. It reads whatever account is signed into Outlook web (so it suits a work mailbox that
 > has no personal Graph app).
 
-**Shared email rules:** See `email-provider.md` for CAPTURE shape, SITUATIONAL-CHECK decision logic,
+**Shared email rules:** See `email-base.md` for CAPTURE shape, SITUATIONAL-CHECK decision logic,
 DRAFT-MODE voice rules, and JUNK-LEARNING priority order. This file covers only the REST-specific
 mechanisms.
 
@@ -44,7 +44,7 @@ Items — covering both directions and **paginating each fully** (follow `@odata
 matching on the contact's name/address and thread subject.
 
 ## CAPTURE
-See `email-provider.md` for the shared two-file shape. REST-specific: `messageId` is the Outlook REST
+See `email-base.md` for the shared two-file shape. REST-specific: `messageId` is the Outlook REST
 id (opaque API handle). Both `id` (stable slug) and `messageId` (API handle) are persisted in the JSON.
 
 ## CLEAR
@@ -52,16 +52,16 @@ id (opaque API handle). Both `id` (stable slug) and `messageId` (API handle) are
 (reversible; narrate it). Never a permanent purge.
 
 ## JUNK-LEARNING (step 3 — Outlook work mailbox-specific)
-After exhausting unsubscribe and source-app options (see `email-provider.md`): propose an **Outlook
+After exhausting unsubscribe and source-app options (see `email-base.md`): propose an **Outlook
 rule** (a sender/subject/body match that files or deletes the class going forward). Prefer extending an
 existing rule bucket over a new standalone rule. Describe the rule for the user to add via the Outlook
 Rules UI.
 
 ## DRAFT-MODE CLI commands
-Follow all voice and reply-vs-fresh rules in `email-provider.md`, then use these `ms-rest` REST commands:
+Follow all voice and reply-vs-fresh rules in `email-base.md`, then use these `ms-rest` REST commands:
 
 - **Reply-all on the thread:** `node <ms-rest>/outlook-mail.js create-reply <messageId> --json <path>`
   — creates the reply draft in **Drafts** with the quoted original below the new text and all To+CC
-  recipients preserved. Thread off the most recent message (see `email-provider.md`). JSON: `{ "comment": "<p>HTML body</p>" }`.
+  recipients preserved. Thread off the most recent message (see `email-base.md`). JSON: `{ "comment": "<p>HTML body</p>" }`.
 - **Fresh note:** `node <ms-rest>/outlook-mail.js create-draft --json <path>` — JSON:
   `{ "subject", "body": "<p>HTML</p>", "to": ["addr"], "cc": [], "bodyType": "HTML" }`.
