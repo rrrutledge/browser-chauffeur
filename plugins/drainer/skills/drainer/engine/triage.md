@@ -24,7 +24,7 @@ carries the whole story and asks nothing — a recording notice with no notes �
 **Then, for the content in front of you, there's something to do when:**
 
 - it's **an action Russell himself would take** — not what the sender wants him to do, but what he'd
-  decide to act on: a reply to write, a form to return, a survey to fill, an RSVP, a decision to make,
+  decide to act on: a reply to write, a form to return, a document to sign, a survey to fill, an RSVP, a decision to make,
   work to kick off (code, a doc, a ticket, a lookup, a system update…), or delegating it to the team. A
   training deadline he'd complete is an action; a security alert for a failed login he already knows
   about is not — reading it changes nothing he'd do.
@@ -67,7 +67,9 @@ carries the whole story and asks nothing — a recording notice with no notes �
     is "yes, that looks right" is awareness, not work, and an automated confirmation of an account action
     (a token regenerated, a password changed, a setting updated, a new device added, a sign-in confirmed)
     just reports something that already happened. It would become an action only if the review revealed
-    something unexpected, and Russell catches that in the digest and escalates himself.
+    something unexpected, and Russell catches that in the digest and escalates himself. A "please review
+    and sign" prompt — DocuSign, Adobe Acrobat Sign, or any e-signature request asking Russell to sign —
+    is a form to return, so it's **needs-you** (hint: `work`).
 - **junk** — not even worth surfacing: automated noise, newsletters, pure marketing, CI/build
   notifications, duplicate status churn, chatter not aimed at the user. Junk is also a signal to stop it
   arriving again; *how* to stop it is provider mechanics — each provider's **JUNK-LEARNING** section owns
