@@ -83,6 +83,26 @@ human never writes and only the notification carries:
 The through-line: match the phrase the sending machine puts there by template, as a distinctive
 fragment, scoped to where it is reliable.
 
+## Organizing rule: one bucket per mechanism, not per topic
+
+Group filters by the **mechanism that catches the mail — the field you matched and the action you take
+— not by the topic of the mail.** Whether a batch of subjects is "shipping" or "payments" is
+irrelevant; what they share is that they are *subjects you archive*. So the whole strategy collapses to
+a handful of rules keyed by mechanism:
+
+- all **subjects to archive** → one rule
+- all **body phrases to archive** → one rule (fenced — see the safety mechanisms below)
+- the parallel **subjects to delete** / **bodies to delete**, if you delete rather than archive some
+
+Fewer rules is the goal, for one concrete reason: when you find a new junk phrase you already know the
+two things that place it — which field it lives in (subject or body) and what you want done (archive or
+delete) — so you know the exact rule to open and append to, with no "which category is this?" decision.
+A new rule is created only for a genuinely new *mechanism*, never a new topic.
+
+A rule grows until it hits the platform's query/condition length limit, then spills into a numbered
+sibling of the **same** mechanism (`… Subjects 2`, `3`). The number is pure length overflow, never a
+category.
+
 ## Platform mechanics — how each platform fences a broad match
 
 Both platforms solve the same tension — broad enough to not need a filter per company, narrow enough
@@ -95,19 +115,21 @@ Gmail's fence is **subject-scoping**. A Gmail filter matches a search query; sco
 (`has the words`, i.e. an unscoped query) for a phrase so distinctive it could not appear anywhere you
 care.
 
-A single Gmail filter can hold **many phrases**, OR'd together inside the parentheses — so consolidate
-a whole type into one filter the way an Outlook bucket does, rather than one filter per phrase:
+A single Gmail filter can hold **many phrases**, OR'd together inside the parentheses — so a whole
+mechanism lives in one filter:
 
-- **Type bucket** (covers every sender of the type):
-  `subject:("One Time Passcode" OR "verification code" OR "Code for signing in")` → Skip Inbox, Mark as
-  read. Add a new variant by appending ` OR "…"` to the same filter — including the German, Dutch,
-  French, and Spanish forms of an auto-reply or delivery notice, which live as siblings in the same
-  OR-list.
-- **Company-scoped combo** when the phrase isn't a universal type but the sender is a known noise
-  source: `from:eventbrite subject:("Your event is published" OR "Just added!")`.
-- **Sender exclusion.** Gmail supports negation, so a broad subject bucket can carry the same
-  real-people fence Outlook uses: `subject:(…) -from:(gmail.com OR outlook.com OR icloud.com OR <your
-  family and school domains>)`.
+- **Subjects-to-archive rule** — every archive-worthy subject phrase in one filter:
+  `subject:("One Time Passcode" OR "Your shipment was delivered" OR "Automatic reply:" OR "Accepted:" OR
+  …)` → Skip Inbox, Mark as read. A new phrase, whatever its topic, is appended with ` OR "…"` — the
+  German, Dutch, French, and Spanish forms of an auto-reply or delivery notice are just more siblings in
+  the same list. Spill into a second filter only when the query hits Gmail's length limit.
+- **Bodies-to-archive rule** — the parallel filter for phrases matched anywhere (an unscoped query).
+  Gmail supports negation, so fence it with the same real-people exclusion Outlook uses:
+  `("<distinctive body phrase>" OR …) -from:(gmail.com OR outlook.com OR icloud.com OR <your family and
+  school domains>)`.
+- **Company-scoped combo** — a separate small filter only when a subject phrase isn't safe on its own
+  and needs its sender pinned: `from:eventbrite subject:("where to send your payout")`. A subject that
+  is distinctive by itself belongs in the subjects rule, not here.
 - **Action:** for pure noise, **Skip the Inbox (Archive it)** plus **Mark as read**. For mail you want
   archived but not marked read, just Skip the Inbox.
 
@@ -115,10 +137,12 @@ a whole type into one filter the way an Outlook bucket does, rather than one fil
 
 Outlook rules can hold many conditions and run top-to-bottom, which enables a richer shape:
 
-- **Consolidated, numbered buckets.** Pack many subject phrases of the same kind into one rule rather
-  than one rule per phrase (e.g. a single "Corporate Subjects" rule with dozens of subject strings).
-  When a rule fills up, spill into the next-numbered sibling ("Corporate Subjects 2", "3", …). Adding a
-  new junk phrase then means appending a string to the current bucket, not creating a new rule.
+- **One rule per mechanism, numbered only for overflow.** All archive-worthy subjects live in the
+  subjects rule ("Corporate Subjects"), all archive-worthy body phrases in the bodies rule ("Corporate
+  Bodies") — the names mark the *mechanism* (subject match vs. body match), not a topic. When a rule
+  hits Outlook's condition-length limit, spill into the next-numbered sibling of the same mechanism
+  ("Corporate Subjects 2", "3", …). Adding a new junk phrase means appending a string to the matching
+  rule, not creating a new one.
 - **The sender-domain exclusion whitelist — the load-bearing safety mechanism.** Every broad
   subject-or-body bucket ends with *"…except when the sender's address contains:"* a list of
   **real-person and family/school domains** — `outlook.com`, `gmail.com`, `hotmail.com`, `yahoo.com`,
@@ -187,9 +211,10 @@ re-deriving it each time. When the drainer reaches the filter step for a piece o
 1. **Generalize on sight.** Run the phrase-selection method above on the single sample — name the type,
    find the intrinsic boilerplate, apply the two-sided test, tighten until safe. Propose the *type*
    phrase, not a filter for this one sender.
-2. **Match the shape to the mailbox** — append the type phrase to the right existing bucket where one
-   fits (a Gmail `subject:(… OR …)` filter, an Outlook consolidated rule) rather than spawning a new
-   single-phrase filter; start a fresh bucket only for a genuinely new category.
+2. **Append by mechanism.** Decide the field (subject or body) and action (archive or delete), then
+   append the phrase to the one existing rule for that mechanism — the subjects-to-archive filter, the
+   bodies-to-archive rule — rather than spawning a new single-phrase filter. Create a new rule only for
+   a genuinely new mechanism, or a numbered spillover when the current one is full.
 3. **Propose, then create on Russell's OK.** A filter is reversible, searchable config, so once Russell
    approves the proposed phrase, create it via the mechanics above — no need to leave it as a manual
    to-do. (This is distinct from outward messages, which are always staged for Russell to send
