@@ -234,7 +234,8 @@ def triage(items, repo, local_dir, model, providers_by_name):
 
 def _item_bits(json_file):
     """(display-label, subject/name, who) parsed from a captured item json; ('', '', '') on error."""
-    labels = {"outlook-graph": "Outlook", "gmail": "Gmail", "slack": "Slack", "trello": "Trello"}
+    labels = {"outlook-graph": "Outlook", "gmail": "Gmail", "slack": "Slack", "trello": "Trello",
+              "zoom": "Zoom"}
     try:
         with open(json_file, encoding="utf-8") as f:
             rec = json.load(f)
