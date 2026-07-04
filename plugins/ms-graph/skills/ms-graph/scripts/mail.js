@@ -21,6 +21,19 @@
 //                (sends a plain-text mail to your own inbox; handy for phone copy-paste)
 // Delete one:    node mail.js --delete=<messageId>
 //                (moves the message to Deleted Items — reversible, never a permanent purge)
+//
+// --- Inbox rules (server-side filters; needs the MailboxSettings.ReadWrite scope) ---
+// List rules:    node mail.js --list-rules [--json]
+// Create rule:   node mail.js --create-rule --name="Corporate Subjects" \
+//                  --subject-contains="A||B||C" [--body-contains=..] [--from-contains=..] \
+//                  [--subject-or-body=..] [--except-from="gmail.com||outlook.com||icloud.com"] \
+//                  --move-to=archive [--mark-read] [--delete-msg] [--no-stop]
+//                (move-to takes a well-known folder id: 'archive' or 'deleteditems'.
+//                 --except-from is the personal-domain fence. Multi-value flags split on `||`.
+//                 Rules stop-processing by default; --no-stop disables that.)
+// Append phrase: node mail.js --append-rule="Corporate Subjects" --subject-contains="D||E"
+//                (adds phrases to an existing rule by id or display name — the "add to bucket" op)
+// Delete rule:   node mail.js --delete-rule="<ruleId or name>"
 
 const fs = require('fs');
 const path = require('path');
@@ -207,6 +220,90 @@ async function sendSelf(client) {
   console.log(`Sent to self (${me_addr}): "${args.subject}"`);
 }
 
+// --- Inbox rules (server-side filters) — needs the MailboxSettings.ReadWrite scope ---
+// Multi-value fields are split on `||`, so a whole bucket goes in one flag:
+//   --subject-contains="One Time Passcode||Your shipment was delivered||Accepted:"
+const splitList = (v) => (v && v !== true)
+  ? String(v).split('||').map(s => s.trim()).filter(Boolean) : undefined;
+
+async function listRules(client) {
+  const data = await client.api('/me/mailFolders/inbox/messageRules').get();
+  const rules = data.value || [];
+  if (args.json) { console.log(JSON.stringify(rules, null, 2)); return; }
+  if (!rules.length) { console.log('No inbox rules.'); return; }
+  console.log(`${rules.length} inbox rule(s), in run order:`);
+  for (const r of rules) {
+    console.log(`\n--- [${r.sequence}] ${r.displayName}${r.isEnabled ? '' : '  (disabled)'}`);
+    console.log(`    id:     ${r.id}`);
+    if (r.conditions) console.log(`    when:   ${JSON.stringify(r.conditions)}`);
+    if (r.exceptions) console.log(`    except: ${JSON.stringify(r.exceptions)}`);
+    if (r.actions) console.log(`    do:     ${JSON.stringify(r.actions)}`);
+  }
+}
+
+// Build a conditions/exceptions/actions rule body from CLI flags.
+function ruleBodyFromArgs() {
+  const conditions = {};
+  const subj = splitList(args['subject-contains']); if (subj) conditions.subjectContains = subj;
+  const body = splitList(args['body-contains']); if (body) conditions.bodyContains = body;
+  const from = splitList(args['from-contains']); if (from) conditions.senderContains = from;
+  const subjOrBody = splitList(args['subject-or-body']); if (subjOrBody) conditions.subjectOrBodyContains = subjOrBody;
+  const exceptions = {};
+  const exc = splitList(args['except-from']); if (exc) exceptions.senderContains = exc;
+  const actions = {};
+  if (args['move-to']) actions.moveToFolder = args['move-to']; // well-known id: 'archive', 'deleteditems'
+  if (args['mark-read']) actions.markAsRead = true;
+  if (args['delete-msg']) actions.delete = true;
+  actions.stopProcessingRules = args['no-stop'] ? false : true;
+  return { conditions, exceptions, actions };
+}
+
+async function createRule(client) {
+  if (!args.name) throw new Error('--create-rule requires --name');
+  const { conditions, exceptions, actions } = ruleBodyFromArgs();
+  if (!conditions.subjectContains && !conditions.bodyContains && !conditions.senderContains && !conditions.subjectOrBodyContains) {
+    throw new Error('need a condition: --subject-contains, --body-contains, --subject-or-body, or --from-contains');
+  }
+  if (!actions.moveToFolder && !actions.markAsRead && !actions.delete) {
+    throw new Error('need an action: --move-to=archive, --mark-read, or --delete-msg');
+  }
+  // Graph requires a positive sequence (run-order position); append after the last rule.
+  const existing = await client.api('/me/mailFolders/inbox/messageRules').select('sequence').get();
+  const maxSeq = (existing.value || []).reduce((m, r) => Math.max(m, r.sequence || 0), 0);
+  const sequence = args.sequence ? parseInt(args.sequence, 10) : maxSeq + 1;
+  const rule = { displayName: args.name, sequence, isEnabled: true, conditions, actions };
+  if (Object.keys(exceptions).length) rule.exceptions = exceptions;
+  const created = await client.api('/me/mailFolders/inbox/messageRules').post(rule);
+  console.log(`Created rule "${created.displayName}" (id ${created.id}, sequence ${created.sequence}).`);
+}
+
+async function findRule(client, idOrName) {
+  const data = await client.api('/me/mailFolders/inbox/messageRules').get();
+  return (data.value || []).find(r => r.id === idOrName || r.displayName === idOrName);
+}
+
+// Append subject/body phrases to an existing rule's conditions — the "add a phrase to the bucket" op.
+async function appendRule(client) {
+  const rule = await findRule(client, args['append-rule']);
+  if (!rule) throw new Error(`rule not found (by id or name): ${args['append-rule']}`);
+  const conditions = rule.conditions || {};
+  const addSubj = splitList(args['subject-contains']);
+  const addBody = splitList(args['body-contains']);
+  if (!addSubj && !addBody) throw new Error('--append-rule needs --subject-contains and/or --body-contains');
+  if (addSubj) conditions.subjectContains = [...(conditions.subjectContains || []), ...addSubj];
+  if (addBody) conditions.bodyContains = [...(conditions.bodyContains || []), ...addBody];
+  await client.api(`/me/mailFolders/inbox/messageRules/${rule.id}`).patch({ conditions });
+  console.log(`Appended to "${rule.displayName}": subjectContains=${(conditions.subjectContains || []).length}, bodyContains=${(conditions.bodyContains || []).length}.`);
+}
+
+async function deleteRule(client) {
+  const id = args['delete-rule'];
+  const rule = await findRule(client, id);
+  const target = rule ? rule.id : id;
+  await client.api(`/me/mailFolders/inbox/messageRules/${target}`).delete();
+  console.log(`Deleted rule ${rule ? `"${rule.displayName}"` : id}.`);
+}
+
 module.exports = { createDraft };
 
 // --- CLI (only when run directly, so `require` of this file is side-effect-free) ---
@@ -222,6 +319,10 @@ if (require.main === module) {
     if (args['draft-new']) return draftNew(client);
     if (args['send-self']) return sendSelf(client);
     if (args.delete) return del(client);
-    throw new Error('Specify --list-unread, --list-inbox, --list-drafts, --search, --show, --reply, --draft-new, --send-self, or --delete');
+    if (args['list-rules']) return listRules(client);
+    if (args['create-rule']) return createRule(client);
+    if (args['append-rule']) return appendRule(client);
+    if (args['delete-rule']) return deleteRule(client);
+    throw new Error('Specify --list-unread, --list-inbox, --list-drafts, --search, --show, --reply, --draft-new, --send-self, --delete, --list-rules, --create-rule, --append-rule, or --delete-rule');
   })().catch(e => { console.error('Error:', e.message); process.exit(1); });
 }

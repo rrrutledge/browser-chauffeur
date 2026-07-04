@@ -47,9 +47,9 @@ Never a permanent purge.
 After exhausting unsubscribe and source-app options (see `email-provider.md`): propose an **Outlook.com
 inbox rule**, using the **`mail-filters`** skill to choose the phrase and shape (append the type phrase
 to the right consolidated bucket, keep the sender-domain exclusion whitelist that fences every broad
-bucket, and pin any body match to its sender). Graph's `/me/mailFolders/inbox/messageRules` needs the
-`MailboxSettings.ReadWrite` scope the personal app registration lacks, so `mail-filters` creates the
-rule through the OWA Rules UI once Russell OKs the phrase.
+bucket, and pin any body match to its sender). Create it via `ms-graph`'s
+`mail.js --append-rule`/`--create-rule` (the `MailboxSettings.ReadWrite` scope is wired in) once Russell
+OKs the phrase.
 
 ## DRAFT-MODE CLI commands
 Follow all voice and reply-vs-fresh rules in `email-provider.md`, then use these Graph commands:
