@@ -31,7 +31,7 @@ const { buildApp, SCOPES, REDIRECT_URI } = require('./graph-client');
       }
     });
     server.listen(8080, () => console.log('Listening on http://localhost:8080/callback'));
-    setTimeout(() => { server.close(); reject(new Error('Auth flow timed out after 5 min')); }, 300000);
+    setTimeout(() => { server.close(); reject(new Error('Auth flow timed out after 15 min')); }, 900000);
   });
 
   await app.acquireTokenByCode({ code, scopes: SCOPES, redirectUri: REDIRECT_URI });

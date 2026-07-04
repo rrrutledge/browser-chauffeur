@@ -1,4 +1,4 @@
-# email-provider — shared logic for all email providers
+# email-base — shared logic for all email providers
 
 All email providers (gmail, outlook-graph, outlook-rest) inherit these rules. Each provider's own
 file covers only the provider-specific bits: CONFIG, AUTH-GLANCE, SITUATIONAL-CHECK mechanism,
@@ -76,5 +76,10 @@ through when the step above isn't available:
 2. **Turn it off at the source app** — if there's no unsubscribe but the sender is an app whose
    notifications the user controls (GitHub notification settings, LinkedIn email preferences, …),
    propose adjusting that app's settings so the email is never sent.
-3. **Provider-specific filter/rule** — only when neither above applies. See your provider file for
-   the exact mechanism (Gmail filter vs Outlook inbox rule).
+3. **Provider-specific filter/rule** — only when neither above applies. Defer to the **`mail-filters`**
+   skill for the breadth decision: it owns the phrase-selection craft (generalize from this one sample
+   to the type-level boilerplate phrase — broad enough to recur across senders, strict enough to never
+   bury wanted mail) and the per-platform create/delete mechanics. Propose the *type* phrase, not a
+   filter for this one sender; match the shape to the mailbox (Gmail subject-scoped vs Outlook
+   consolidated bucket); and once Russell OKs the phrase, create the filter (it is reversible,
+   searchable config). See your provider file for the platform pointer.
