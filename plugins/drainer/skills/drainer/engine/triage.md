@@ -24,7 +24,7 @@ carries the whole story and asks nothing — a recording notice with no notes �
 **Then, for the content in front of you, there's something to do when:**
 
 - it's **an action Russell himself would take** — not what the sender wants him to do, but what he'd
-  decide to act on: a reply to write, a form to return, a document to sign, a survey to fill, an RSVP, a decision to make,
+  decide to act on: a reply to write, a form to return, a survey to fill, an RSVP, a decision to make,
   work to kick off (code, a doc, a ticket, a lookup, a system update…), or delegating it to the team. A
   training deadline he'd complete is an action; a security alert for a failed login he already knows
   about is not — reading it changes nothing he'd do.
