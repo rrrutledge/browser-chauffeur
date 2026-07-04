@@ -14,7 +14,7 @@ id prefix: `gmail-`; body file: `<id>.email.md`.
 > This is the IMAP counterpart to the Graph-based `outlook-graph-provider.md`. Use it for a Google
 > account where you can mint an app password (2-Step Verification on, IMAP enabled).
 
-**Shared email rules:** See `email-provider.md` for CAPTURE shape, SITUATIONAL-CHECK decision logic,
+**Shared email rules:** See `email-base.md` for CAPTURE shape, SITUATIONAL-CHECK decision logic,
 DRAFT-MODE voice rules, and JUNK-LEARNING priority order. This file covers only the Gmail-specific
 mechanisms.
 
@@ -38,7 +38,7 @@ the contact sent after capture is always findable here. Also run `node gmail.js 
 for an existing draft before staging a new one.
 
 ## CAPTURE
-See `email-provider.md` for the shared two-file shape. Gmail-specific: `messageId` is the RFC822
+See `email-base.md` for the shared two-file shape. Gmail-specific: `messageId` is the RFC822
 Message-ID header (with angle brackets). The `url` opens the message in Gmail by that id.
 
 ## CLEAR
@@ -51,7 +51,7 @@ message is still in the inbox or has already been archived — archive order rel
 matters.
 
 ## JUNK-LEARNING (step 3 — Gmail-specific)
-After exhausting unsubscribe and source-app options (see `email-provider.md`): propose a **Gmail
+After exhausting unsubscribe and source-app options (see `email-base.md`): propose a **Gmail
 filter**, using the **`mail-filters`** skill to choose the phrase and shape (Gmail's fence is
 `subject:(…)` scoping so a footer phrase can't trigger the filter; `from:X subject:Y` for
 company-specific noise). IMAP can't create Gmail filters, so `mail-filters` creates it through the
@@ -59,11 +59,11 @@ browser (Advanced search options → criteria → Skip the Inbox / Mark as read)
 phrase.
 
 ## DRAFT-MODE CLI commands
-Follow all voice and reply-vs-fresh rules in `email-provider.md`, then use these Gmail commands:
+Follow all voice and reply-vs-fresh rules in `email-base.md`, then use these Gmail commands:
 
 - **Reply-all on the thread:** `node gmail.js --reply --message-id=<messageId> --body-file=<file>`
   — sets In-Reply-To/References, appends the quoted original, and CCs all original To+CC recipients.
-  Thread off the **most recent message** (see `email-provider.md`). Pass the latest message-id even
+  Thread off the **most recent message** (see `email-base.md`). Pass the latest message-id even
   when that message is one the user sent; `--reply` searches All Mail so no inbox restore is needed.
 - **Fresh note:** `node gmail.js --draft-new --to="<addr>" --subject="<subj>" --body-file=<file>
   [--cc="<addrs>"]`

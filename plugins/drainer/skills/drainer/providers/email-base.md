@@ -1,4 +1,4 @@
-# email-provider — shared logic for all email providers
+# email-base — shared logic for all email providers
 
 All email providers (gmail, outlook-graph, outlook-rest) inherit these rules. Each provider's own
 file covers only the provider-specific bits: CONFIG, AUTH-GLANCE, SITUATIONAL-CHECK mechanism,

@@ -13,7 +13,7 @@ id prefix: `outlook-graph-`; body file: `<id>.email.md`.
 > This is the API counterpart to the browser `outlook-provider.md` (which is for **enterprise** Outlook
 > on the web). Use this one for a personal Microsoft account: it's cheaper, faster, and browser-free.
 
-**Shared email rules:** See `email-provider.md` for CAPTURE shape, SITUATIONAL-CHECK decision logic,
+**Shared email rules:** See `email-base.md` for CAPTURE shape, SITUATIONAL-CHECK decision logic,
 DRAFT-MODE voice rules, and JUNK-LEARNING priority order. This file covers only the Graph-specific
 mechanisms.
 
@@ -36,7 +36,7 @@ Items — covering both directions and **paginating each fully**. Use `node mail
 — verify it covers Deleted Items and do not stop at the first page.
 
 ## CAPTURE
-See `email-provider.md` for the shared two-file shape. Graph-specific: `messageId` is the opaque Graph
+See `email-base.md` for the shared two-file shape. Graph-specific: `messageId` is the opaque Graph
 message id.
 
 ## CLEAR
@@ -44,17 +44,17 @@ message id.
 Never a permanent purge.
 
 ## JUNK-LEARNING (step 3 — Outlook.com-specific)
-After exhausting unsubscribe and source-app options (see `email-provider.md`): propose an **Outlook.com
+After exhausting unsubscribe and source-app options (see `email-base.md`): propose an **Outlook.com
 inbox rule**, using the **`mail-filters`** skill to choose the phrase and shape (append the type phrase
 to the right consolidated bucket, keep the sender-domain exclusion whitelist that fences every broad
 bucket, and pin any body match to its sender). Create it via `ms-graph`'s
 `mail.js --append-rule`/`--create-rule` once Russell OKs the phrase.
 
 ## DRAFT-MODE CLI commands
-Follow all voice and reply-vs-fresh rules in `email-provider.md`, then use these Graph commands:
+Follow all voice and reply-vs-fresh rules in `email-base.md`, then use these Graph commands:
 
 - **Reply-all on the thread:** `node mail.js --reply --message-id=<messageId> --body-file=<file>`
   — Graph's reply-all keeps the thread quote below your text automatically and preserves all To+CC
-  recipients. Thread off the most recent message (see `email-provider.md`).
+  recipients. Thread off the most recent message (see `email-base.md`).
 - **Fresh note:** `node mail.js --draft-new --to="<addr>" --subject="<subj>" --body-file=<file>
   [--cc="<addrs>"]`
