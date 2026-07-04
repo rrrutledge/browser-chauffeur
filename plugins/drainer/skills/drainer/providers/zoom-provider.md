@@ -19,7 +19,7 @@ below and setting one environment secret. Implements `../engine/provider.md`; cl
 
 > Two-file provider: the **reading** mechanics (enumerate, OAuth, fan-out, stable id, capture-writing) live
 > in `zoom-adapter.py`. This doc is the **worker-facing** prose — AUTH-GLANCE, the captured item shape,
-> SITUATIONAL-CHECK, CLEAR, JUNK-LEARNING, DRAFT-MODE.
+> CLEAR, JUNK-LEARNING, DRAFT-MODE.
 
 ## What is an item
 - **action-item** — one `next_steps[]` entry whose **assignee** (the "Name:" prefix) is the account owner.
