@@ -14,6 +14,39 @@ instructions: |-
 
   ---
 
+  ## Before creating a card — search the boards first
+
+  When the thing to track is a **named entity** — a sponsor, a company, a contact, a target role —
+  it very likely already has a card somewhere in the funnel; that's what the outreach boards are.
+  So before creating one, **search every board in `trello-boards.yaml` for an existing card for that
+  entity, and update that card instead.** Creating is the fallback once the search comes up empty,
+  never the first move. (This applies to any card keyed to a person or organization; a genuinely new
+  one-off admin task with no entity behind it can skip straight to creating.)
+
+  ```python
+  from trello_utils import get_trello_session, get_board_cards
+  s = get_trello_session()
+  BOARDS = {  # from trello-boards.yaml — every board, so the search is complete
+      'Summit Sponsorship Outreach': 'mvL6EGtH',
+      'Executive Director Outreach': 'hpvdRw3G',
+      # ...the rest of the registry...
+  }
+  entity = 'JetBrains'
+  hits = [(b, c) for b, bid in BOARDS.items()
+          for c in get_board_cards(bid, s)
+          if entity.lower() in (c.get('name', '') + ' ' + c.get('desc', '')).lower()]
+  ```
+
+  - **A card exists → update it, don't duplicate.** Fold the new development into the existing card:
+    advance/reschedule it, post a dated comment recording what happened, and set the next due date.
+    The existing card is the source of truth and carries the entity's whole history — keep it there.
+  - **Nothing matches → create on the entity's OWN board.** A sponsor/company or its contact belongs
+    on that campaign's outreach board (match by the registry `purpose`/`initiative`), not as a generic
+    reminder on a catch-all board. Put the card where that entity's funnel lives so it isn't orphaned
+    from its history.
+
+  ---
+
   ## Scripts
 
   All scripts are in the `scripts/` directory next to this SKILL.md file.
