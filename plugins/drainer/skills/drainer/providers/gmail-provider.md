@@ -52,8 +52,11 @@ matters.
 
 ## JUNK-LEARNING (step 3 — Gmail-specific)
 After exhausting unsubscribe and source-app options (see `email-provider.md`): propose a **Gmail
-filter** (Gmail → Settings → Filters → a sender/subject match that archives or deletes the sender going
-forward). IMAP can't create Gmail filters directly, so describe the filter for the user to add.
+filter**, using the **`mail-filters`** skill to choose the phrase and shape (Gmail's fence is
+`subject:(…)` scoping so a footer phrase can't trigger the filter; `from:X subject:Y` for
+company-specific noise). IMAP can't create Gmail filters, so `mail-filters` creates it through the
+browser (Advanced search options → criteria → Skip the Inbox / Mark as read) once Russell OKs the
+phrase.
 
 ## DRAFT-MODE CLI commands
 Follow all voice and reply-vs-fresh rules in `email-provider.md`, then use these Gmail commands:

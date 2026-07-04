@@ -28,7 +28,7 @@ Read and write a **personal** Outlook.com mailbox and calendar directly through 
 
 ## Entra app registration
 
-A delegated app supporting "personal Microsoft accounts" with redirect URI (Web) `http://localhost:8080/callback` and delegated scopes `Mail.ReadWrite Mail.Send Calendars.ReadWrite User.Read offline_access`. The `consumers` authority targets the personal mailbox. Recreate the client secret in the portal before it expires and update `GRAPH_CLIENT_SECRET`.
+A delegated app supporting "personal Microsoft accounts" with redirect URI (Web) `http://localhost:8080/callback` and delegated scopes `Mail.ReadWrite Mail.Send Calendars.ReadWrite MailboxSettings.ReadWrite User.Read offline_access`. The `consumers` authority targets the personal mailbox. Recreate the client secret in the portal before it expires and update `GRAPH_CLIENT_SECRET`.
 
 ## Scripts
 
@@ -54,6 +54,11 @@ All under `scripts/`:
   - Send to self: `node mail.js --send-self --subject="..." --body-file=note.txt`
   - Delete one (reversible): `node mail.js --delete=<messageId>` (moves to Deleted Items, never a permanent purge)
   - Reusable from other scripts: `require('<…>/mail.js')` exports `createDraft(client, {to, subject, body, cc, attach, replace, contentType})` (CLI is `require.main`-guarded).
+  - **Inbox rules** (server-side filters):
+    - List: `node mail.js --list-rules [--json]` (full, untruncated conditions/exceptions/actions — the API returns every phrase, unlike the OWA UI which caps the visible list)
+    - Create: `node mail.js --create-rule --name="Corporate Subjects" --subject-contains="A||B||C" [--body-contains=] [--from-contains=] [--subject-or-body=] [--except-from="gmail.com||outlook.com||icloud.com"] --move-to=archive [--mark-read] [--delete-msg] [--no-stop]` (multi-value flags split on `||`; `--move-to` takes a well-known folder id like `archive`; `--except-from` is the personal-domain fence; sequence is auto-assigned to the end)
+    - Append phrases to a bucket: `node mail.js --append-rule="<id or name>" --subject-contains="D||E" [--body-contains=]`
+    - Delete: `node mail.js --delete-rule="<id or name>"`
 
 ## Auth-error handling (do without being asked)
 
