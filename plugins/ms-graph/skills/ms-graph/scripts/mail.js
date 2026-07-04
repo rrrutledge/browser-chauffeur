@@ -22,7 +22,7 @@
 // Delete one:    node mail.js --delete=<messageId>
 //                (moves the message to Deleted Items — reversible, never a permanent purge)
 //
-// --- Inbox rules (server-side filters; needs the MailboxSettings.ReadWrite scope) ---
+// --- Inbox rules (server-side filters) ---
 // List rules:    node mail.js --list-rules [--json]
 // Create rule:   node mail.js --create-rule --name="Corporate Subjects" \
 //                  --subject-contains="A||B||C" [--body-contains=..] [--from-contains=..] \
@@ -220,7 +220,7 @@ async function sendSelf(client) {
   console.log(`Sent to self (${me_addr}): "${args.subject}"`);
 }
 
-// --- Inbox rules (server-side filters) — needs the MailboxSettings.ReadWrite scope ---
+// --- Inbox rules (server-side filters) ---
 // Multi-value fields are split on `||`, so a whole bucket goes in one flag:
 //   --subject-contains="One Time Passcode||Your shipment was delivered||Accepted:"
 const splitList = (v) => (v && v !== true)

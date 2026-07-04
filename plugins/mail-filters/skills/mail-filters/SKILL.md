@@ -213,21 +213,15 @@ The right Google account matters — verify it before mutating. `mail.google.com
 - **Delete a filter:** the per-row `delete` link does not fire Gmail's handler through automation. What
   works: **check the filter row's checkbox, click the bottom "Delete" button, and confirm the dialog.**
 
-### Outlook (rules) — Graph API, primary
+### Outlook (rules)
 
 Manage personal-Outlook rules through the **`ms-graph`** skill's `mail.js`, which wraps
-`/me/mailFolders/inbox/messageRules`. This is the reliable path — the API returns and writes the
-**full, untruncated** rule (the OWA UI caps the visible phrase list at "…or…"). It needs the
-`MailboxSettings.ReadWrite` scope, granted by re-running `ms-graph`'s `auth.js` after that scope is in
-`SCOPES` (consumer accounts consent dynamically — no portal change).
+`/me/mailFolders/inbox/messageRules` and returns and writes the full, untruncated rule.
 
 - **Read every rule:** `node mail.js --list-rules` (add `--json` for the raw objects).
 - **Create a bucket:** `node mail.js --create-rule --name="Corporate Subjects" --subject-contains="A||B||C" --except-from="gmail.com||outlook.com||icloud.com||<family/school domains>" --move-to=archive [--mark-read]` — `--except-from` is the master fence; multi-value flags split on `||`; the run-order sequence is auto-assigned to the end.
 - **Append a phrase to a bucket:** `node mail.js --append-rule="Corporate Subjects" --subject-contains="D"` — the everyday "add to the right bucket" operation.
 - **Delete a rule:** `node mail.js --delete-rule="<id or name>"`.
-
-The OWA rules UI (`https://outlook.live.com/mail/0/options/mail/rules`, **Add rule** / **Show all
-descriptions**) remains as a manual fallback.
 
 ## Wiring the drainer
 
