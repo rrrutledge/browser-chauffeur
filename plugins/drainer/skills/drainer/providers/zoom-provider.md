@@ -51,6 +51,20 @@ Credentials (environment):
 - **`ZOOM_REFRESH_TOKEN`** (bootstrap) — a valid refresh token for the first run; after that the adapter
   caches and rotates it in `token_cache`, so this is only needed until the cache exists.
 
+## De-dup & efficiency (how it avoids reprocessing the same meeting)
+Two layers keep the source from redoing work across the frequent poll cycles:
+- **No repeated tabs — shared seen-state.** Every dispatched item's `stable_id` is recorded in the
+  poller's `seen.json`; already-seen ids are dropped on every future cycle, permanently. So an action item
+  becomes a tab exactly once — the `lookback_hours` window is only the *scan* range, not a reprocess range.
+- **No repeated fetches — a client-side finalized-summary cache.** A meeting summary is FINAL after the
+  cooldown, so the adapter caches it (`<runtime_dir>/zoom-summary-cache.json`, keyed by occurrence uuid)
+  and never re-fetches that meeting's summary again — the counterpart to the teams provider's per-conversation
+  message horizons. Candidates are still rebuilt from the cached summary every cycle, so seen-state stays the
+  single authority on dispatch (an item held at the concurrency cap still resurfaces); the cache only skips
+  the network call. The cache is bounded to the current window.
+- **Cheaper meeting walk.** Only *recurring* meetings (Zoom type 3/8) get a per-template `/instances` call;
+  a one-time meeting's occurrence is its own `start_time`, so its instances call is skipped.
+
 ## AUTH-GLANCE
 The adapter manages Zoom OAuth itself: it reads the access token from `token_cache` and **auto-refreshes**
 it (POST `https://zoom.us/oauth/token`, Basic auth with `client_id`:`ZOOM_CLIENT_SECRET`, `grant_type=

@@ -228,6 +228,12 @@ class Provider(ProviderBase):
             st = m.get("start_time")
             if st and from_ts <= st <= to_ts and m.get("uuid") not in out:
                 out[m["uuid"]] = {"topic": m.get("topic"), "uuid": m["uuid"], "id": m.get("id"), "start_time": st}
+            # Only recurring meetings (Zoom type 3/8) have separate past instances; a one-time meeting's
+            # occurrence is its own start_time (added just above), so skip its per-template instances call.
+            # Unknown type -> call it anyway (safe fallback).
+            mtype = m.get("type")
+            if mtype is not None and mtype not in (3, 8):
+                continue
             status, body = self._get(token, f"/v2/past_meetings/{m.get('id')}/instances")
             if status == 200:
                 for inst in body.get("meetings", []) or []:
@@ -276,6 +282,60 @@ class Provider(ProviderBase):
             json.dump({"last_run": datetime.now(timezone.utc).isoformat()}, f)
         os.replace(tmp, p)
 
+    # --------------------------------------------------------------- finalized-summary cache
+    # A once-a-meeting summary is FINAL after the cooldown (Zoom stops refining it), so there's no reason to
+    # re-fetch it every cycle for the whole lookback window. This client-side cache keeps each finalized
+    # summary keyed by occurrence uuid — the drainer's own "already processed this meeting" record, the
+    # counterpart to the teams provider's per-conversation message horizons. Candidates are still rebuilt
+    # from the cached summary every cycle, so the poller's seen-state stays the single authority on what
+    # gets dispatched (an item held at the concurrency cap still resurfaces) — the cache only skips the
+    # network fetch, never the dedup.
+    def _summary_cache_path(self):
+        return os.path.join(self.runtime_dir, "zoom-summary-cache.json") if self.runtime_dir else None
+
+    def _load_summary_cache(self):
+        p = self._summary_cache_path()
+        try:
+            with open(p, encoding="utf-8") as f:
+                data = json.load(f)
+            return data if isinstance(data, dict) else {}
+        except (OSError, ValueError, TypeError):
+            return {}
+
+    def _save_summary_cache(self, cache):
+        p = self._summary_cache_path()
+        if not p:
+            return
+        os.makedirs(self.runtime_dir, exist_ok=True)
+        tmp = f"{p}.tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(cache, f)
+        os.replace(tmp, p)
+
+    def _meeting_items(self, inst, s, owner_tokens):
+        """Build the candidates for one meeting from its summary `s`: one recap + one per owner-assigned
+        next step. Works identically whether `s` came from the network or the finalized-summary cache."""
+        raw_steps = s.get("next_steps")
+        all_steps = raw_steps if isinstance(raw_steps, list) else \
+            [l for l in str(raw_steps or "").split("\n") if l.strip()]
+        step_ids = self._step_ids(s.get("summary_content"))
+        base = {
+            "meetingId": inst["uuid"], "meetingNumericId": inst.get("id"), "topic": inst.get("topic"),
+            "meetingStart": inst.get("start_time"), "meetingEnd": s.get("meeting_end_time"),
+            "summaryModified": s.get("summary_last_modified_time") or s.get("summary_created_time"),
+            "recap": s.get("summary_overview") or "", "allNextSteps": all_steps,
+            "summaryDetails": s.get("summary_details") or [], "docUrl": s.get("summary_doc_url"),
+        }
+        out = [self._to_item({**base, "kind": "recap"})]
+        for raw in [l for l in all_steps if self._assignee_is_owner(l, owner_tokens)]:
+            step = re.sub(r"^[•\-*\s]+", "",
+                          re.sub(r"^[•\-*\s]*[A-Za-z][\w .'-]*:\s*", "", raw)).strip()
+            hit = step_ids.get(re.sub(r"\s+", " ", step).strip())
+            task_url = f"https://tasks.zoom.us?meetingId={hit[1]}&stepId={hit[0]}" if hit else None
+            out.append(self._to_item({**base, "kind": "action-item", "stepText": step,
+                                      "stepId": hit[0] if hit else None, "taskUrl": task_url}))
+        return out
+
     # --------------------------------------------------------------- the ProviderBase contract
     def enumerate(self, limit):
         if self._throttled():
@@ -287,39 +347,30 @@ class Provider(ProviderBase):
         from_iso = datetime.fromtimestamp(from_ts, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         to_iso = now.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        items = []
+        cache = self._load_summary_cache()
+        items, in_window = [], set()
         for inst in self._collect_instances(token, from_iso, to_iso):
-            enc = urllib.parse.quote(urllib.parse.quote(inst["uuid"], safe=""), safe="")
-            status, s = self._get(token, f"/v2/meetings/{enc}/meeting_summary")
-            if status == 404 or not isinstance(s, dict):
-                continue
-            if status != 200:
-                continue
-            modified = s.get("summary_last_modified_time") or s.get("summary_created_time")
-            # Finality gate: the AI keeps refining a summary for tens of minutes after a meeting; capturing
-            # early would miss next_steps added later. Skip until it's been quiet for cooldown_minutes.
-            if modified and self._age_seconds(modified) < self.cooldown_minutes * 60:
-                continue
-            next_steps = s.get("next_steps")
-            all_steps = next_steps if isinstance(next_steps, list) else \
-                [l for l in str(next_steps or "").split("\n") if l.strip()]
-            step_ids = self._step_ids(s.get("summary_content"))
-            base = {
-                "meetingId": inst["uuid"], "meetingNumericId": inst.get("id"), "topic": inst.get("topic"),
-                "meetingStart": inst.get("start_time"), "meetingEnd": s.get("meeting_end_time"),
-                "summaryModified": modified, "recap": s.get("summary_overview") or "",
-                "allNextSteps": all_steps, "summaryDetails": s.get("summary_details") or [],
-                "docUrl": s.get("summary_doc_url"),
-            }
-            items.append(self._to_item({**base, "kind": "recap"}))
-            for raw in [l for l in all_steps if self._assignee_is_owner(l, owner_tokens)]:
-                step = re.sub(r"^[•\-*\s]+", "",
-                              re.sub(r"^[•\-*\s]*[A-Za-z][\w .'-]*:\s*", "", raw)).strip()
-                hit = step_ids.get(re.sub(r"\s+", " ", step).strip())
-                task_url = f"https://tasks.zoom.us?meetingId={hit[1]}&stepId={hit[0]}" if hit else None
-                items.append(self._to_item({**base, "kind": "action-item", "stepText": step,
-                                            "stepId": hit[0] if hit else None, "taskUrl": task_url}))
+            uuid = inst["uuid"]
+            in_window.add(uuid)
+            s = (cache.get(uuid) or {}).get("summary")
+            if s is None:  # not cached — fetch it
+                enc = urllib.parse.quote(urllib.parse.quote(uuid, safe=""), safe="")
+                status, fetched = self._get(token, f"/v2/meetings/{enc}/meeting_summary")
+                if status != 200 or not isinstance(fetched, dict):
+                    continue  # 404 = no AI summary; other non-200 = transient, retry next cycle
+                modified = fetched.get("summary_last_modified_time") or fetched.get("summary_created_time")
+                # Finality gate: the AI keeps refining a summary for tens of minutes after a meeting;
+                # capturing early would miss next_steps added later. Until it's been quiet for
+                # cooldown_minutes, don't cache it and don't emit — re-fetch next cycle until it settles.
+                if modified and self._age_seconds(modified) < self.cooldown_minutes * 60:
+                    continue
+                s = fetched
+                cache[uuid] = {"cached_at": to_iso, "summary": s}  # finalized -> never re-fetched
+            items.extend(self._meeting_items(inst, s, owner_tokens))
 
+        # Bound the cache to the current window — finalized summaries never change, and a meeting that has
+        # aged out of the lookback window is done, so drop it rather than let the cache grow forever.
+        self._save_summary_cache({u: e for u, e in cache.items() if u in in_window})
         items.sort(key=lambda it: it.get("received") or "", reverse=True)
         self._mark_run()
         return items[:limit]
