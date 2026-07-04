@@ -117,25 +117,34 @@ Key patterns:
 - Wrap main content in `<div class="content">` for consistent spacing
 - Use `<div class="footnote">` for attribution at bottom
 
-### Step 5: Check for Content Overflow
+### Step 5: Check for Content Overflow — REQUIRED before commit
+
+**Never skip this.** Run the overflow checker and fix every flagged slide before moving on.
 
 ```bash
 node <path-to-skill>/scripts/check-overflow.js presentation.html
 ```
 
-### Step 6: Visual Review with Screenshots
+### Step 6: Visual Review with Screenshots — REQUIRED before commit
 
-**CRITICAL: Review screenshots of EVERY SINGLE SLIDE.**
+**Never skip this.** Take a screenshot of every slide and read each one with the Read tool. Do not declare the presentation done until you have visually confirmed every slide looks correct.
 
 ```bash
 npx decktape reveal "presentation.html?export" output.pdf \
   --screenshots \
-  --screenshots-directory "screenshots/$(date +%Y%m%d_%H%M%S)"
+  --screenshots-directory screenshots/
 ```
 
-The `?export` parameter disables chart animations for cleaner rendering. Use the Read tool to examine each screenshot image.
+The `?export` parameter disables chart animations for cleaner rendering.
 
-Watch for: color inheritance in containers, icons not rendering, unexpected text wrap in column layouts.
+On each screenshot, verify:
+- No content is cut off at the bottom or sides of the slide
+- No text overlaps other text or images
+- All images load (no broken-image icons)
+- Multi-column layouts aren't collapsing
+- Photo-bg slides have legible text contrast
+
+Fix any issues — tighten `margin-bottom` on list items, reduce `font-size` on the list, or shorten bullet text — then re-screenshot the affected slides to confirm the fix before committing.
 
 ### Step 7: Suggest Browser Editing
 
