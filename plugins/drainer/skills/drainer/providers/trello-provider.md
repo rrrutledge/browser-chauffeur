@@ -169,7 +169,15 @@ it are freed (⛔ stripped, Start set to today) on the spot.
 
 ### Nudge cadence
 
-Pick the tier based on how closely the user works with the contact:
+**A stated timeframe beats the fixed tiers below.** When the counterparty already gave a concrete
+expected response time, follow up relative to that time instead of picking a tier:
+- **Personal contact named their own timeline** ("I'll get back to you by Friday") — bump to a little
+  *after* that time, giving them some grace past their own estimate.
+- **Business or process gave an upper-bound estimate** ("may take up to 10 business days") — bump to a
+  little *before* that bound, so the check-in lands inside their stated window instead of waiting for
+  it to expire.
+
+Otherwise, when no such timeframe was given, pick the tier based on how closely the user works with the contact:
 
 **Frequent collaborator** — someone the user works with regularly who would treat this as a normal part of their day:
 - After sending → bump **3 business days**
