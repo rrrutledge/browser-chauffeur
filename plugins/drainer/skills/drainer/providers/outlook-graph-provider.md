@@ -45,9 +45,11 @@ Never a permanent purge.
 
 ## JUNK-LEARNING (step 3 — Outlook.com-specific)
 After exhausting unsubscribe and source-app options (see `email-provider.md`): propose an **Outlook.com
-inbox rule** (Settings → Rules: a sender/subject match that deletes or files the sender going forward).
-Graph can create rules via `/me/mailFolders/inbox/messageRules`; until that's wired into `mail.js`,
-describe the rule for the user to add.
+inbox rule**, using the **`mail-filters`** skill to choose the phrase and shape (append the type phrase
+to the right consolidated bucket, keep the sender-domain exclusion whitelist that fences every broad
+bucket, and pin any body match to its sender). Graph's `/me/mailFolders/inbox/messageRules` needs the
+`MailboxSettings.ReadWrite` scope the personal app registration lacks, so `mail-filters` creates the
+rule through the OWA Rules UI once Russell OKs the phrase.
 
 ## DRAFT-MODE CLI commands
 Follow all voice and reply-vs-fresh rules in `email-provider.md`, then use these Graph commands:
