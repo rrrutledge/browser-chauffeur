@@ -1,6 +1,6 @@
 {
   "name": "gmail",
-  "version": "1.6.2",
+  "version": "1.6.3",
   "description": "Read/draft/clear a personal Gmail or Google Workspace mailbox via IMAP using an app password — no OAuth app or browser. List the inbox, show a message, archive mail, and stage reply/new drafts in the Drafts folder. Staging is draft-only; a reviewed draft is sent only on explicit per-message say-so via --send-draft.",
   "author": {
     "name": "Russell Rutledge"
