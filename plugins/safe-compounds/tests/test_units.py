@@ -219,6 +219,14 @@ class TestTaskkill:
         monkeypatch.setattr(procs, "self_tab_host_pid", lambda: 16552)
         assert is_taskkill_safe("taskkill /pid 16552 /t /f") is True
 
+    def test_msys_double_slash_approved(self, monkeypatch):
+        monkeypatch.setattr(procs, "self_tab_host_pid", lambda: 16552)
+        assert is_taskkill_safe("taskkill //PID 16552 //T //F") is True
+
+    def test_msys_double_slash_other_pid_rejected(self, monkeypatch):
+        monkeypatch.setattr(procs, "self_tab_host_pid", lambda: 16552)
+        assert is_taskkill_safe("taskkill //PID 9999 //T //F") is False
+
 
 class TestSelfTabHostPid:
     def _snapshot(self):
