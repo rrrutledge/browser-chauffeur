@@ -18,7 +18,8 @@
 //                (search for messages matching query; --folder defaults to "all" ([Gmail]/All Mail);
 //                 matches headers + body via IMAP TEXT search; newest-first)
 // Show one:      node gmail.js --show=<message-id>
-//                (<message-id> is the RFC822 Message-ID header, e.g. <abc@mail.gmail.com>)
+//                (<message-id> is the RFC822 Message-ID header, e.g. <abc@mail.gmail.com>; looked up
+//                 in All Mail, so it shows regardless of whether the message is still in the inbox)
 // List drafts:   node gmail.js --list-drafts [--top=30]
 // Draft a reply: node gmail.js --reply --message-id=<id> --body-file=reply.md [--attach=a.pdf,b.png]
 //                (appends a DRAFT reply in the thread to [Gmail]/Drafts; never sends; replaces any
@@ -167,19 +168,22 @@ async function search(c) {
 }
 
 async function show(c) {
-  const lock = await c.getMailboxLock('INBOX');
+  // All Mail is a superset of INBOX (everything except Trash/Spam/Drafts), so one lookup there finds
+  // a message whether it's still in the inbox or was already archived.
+  const lock = await c.getMailboxLock(ALLMAIL);
+  let msg;
   try {
     const uid = await findUid(c, args.show);
-    if (!uid) { console.log('Message not found in inbox.'); return; }
-    const msg = await c.fetchOne(String(uid), { source: true }, { uid: true });
-    const parsed = await simpleParser(msg.source);
-    console.log(`Subject: ${parsed.subject || ''}`);
-    console.log(`From: ${parsed.from ? parsed.from.text : ''}`);
-    console.log(`To: ${parsed.to ? parsed.to.text : ''}`);
-    if (parsed.cc) console.log(`Cc: ${parsed.cc.text}`);
-    console.log(`Date: ${parsed.date ? parsed.date.toISOString() : ''}`);
-    console.log('\n' + (parsed.text || clean(parsed.html) || '(no body)'));
+    if (uid) msg = await c.fetchOne(String(uid), { source: true }, { uid: true });
   } finally { lock.release(); }
+  if (!msg) { console.log('Message not found.'); return; }
+  const parsed = await simpleParser(msg.source);
+  console.log(`Subject: ${parsed.subject || ''}`);
+  console.log(`From: ${parsed.from ? parsed.from.text : ''}`);
+  console.log(`To: ${parsed.to ? parsed.to.text : ''}`);
+  if (parsed.cc) console.log(`Cc: ${parsed.cc.text}`);
+  console.log(`Date: ${parsed.date ? parsed.date.toISOString() : ''}`);
+  console.log('\n' + (parsed.text || clean(parsed.html) || '(no body)'));
 }
 
 async function listDrafts(c) {
