@@ -89,6 +89,9 @@ CASES = [
     {"id": "taskkill_bogus_pid", "tool": "Bash", "command": "taskkill /PID 999999 /T /F", "expect": "PROMPT"},
     {"id": "taskkill_image_name", "tool": "Bash", "command": "taskkill /IM chrome.exe /F", "expect": "PROMPT"},
     {"id": "taskkill_remote_host", "tool": "Bash", "command": "taskkill /S otherhost /PID 1 /F", "expect": "PROMPT"},
+    # MSYS/Git-Bash doubles the leading slash (//PID, //T, //F) to escape its
+    # path-mangling — same negative case, doubled-slash form.
+    {"id": "taskkill_bogus_pid_msys", "tool": "Bash", "command": "taskkill //PID 999999 //T //F", "expect": "PROMPT"},
 
     # --- enforcement (can't statically validate -> rewrite) -----------------
     {"id": "heredoc", "tool": "Bash", "command": "cat << EOF\nhi\nEOF", "expect": "BLOCK"},
