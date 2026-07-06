@@ -38,6 +38,23 @@ words carry a link, so the reviewer can't tell what's anchored. Spell it out —
 anchor text, e.g. "right on my calendar (links to https://calendly.com/russell-rutledge)" — so the
 reviewer sees exactly which words are clickable before approving.
 
+**Link every person, event, or document a message references — resolve it, don't leave it bare.**
+Whenever a draft names a specific person, event, or document, find the right link for it and embed it,
+rather than mentioning the name/title in plain text:
+- **A person on the same platform as the message** (a Slack teammate, a Teams colleague, anyone with a
+  presence in the app you're drafting in): use that platform's native mention/link mechanism — a real
+  @-mention (see the Conversational-writing "Addresses people by name" rule) or a permalink to their
+  profile/message — not an external link.
+- **A person not on that platform**: link their name to their LinkedIn profile.
+- **An event**: link its name to the event's page.
+- **A document**: link its title to the document itself.
+Apply the platform's actual anchoring capability: Confluence/Word/email/Markdown/Slack/Teams all support
+anchoring a link to descriptive text (see **Implementation by format** above) — use that. Some composers
+have no rich-text anchoring at all (e.g., LinkedIn's own DM composer): there, put the plain URL right
+after the name in parentheses — `Birgitta Boeckeler (https://www.linkedin.com/in/birgittaboeckeler/)` —
+matching Russell's own established pattern in LinkedIn DMs, rather than dropping the link because it
+can't be a true anchor.
+
 ---
 
 ## Asks
