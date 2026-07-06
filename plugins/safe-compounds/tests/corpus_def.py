@@ -81,6 +81,15 @@ CASES = [
     {"id": "sed_inplace", "tool": "Bash", "command": "sed -i s/a/b/ file.txt", "expect": "BLOCK"},
     {"id": "sed_plain", "tool": "Bash", "command": "sed s/a/b/ file.txt", "expect": "ALLOW"},
 
+    # --- taskkill (self-close-my-own-tab only; anything else prompts) -------
+    # A real self-target ALLOW depends on the live process tree at test time
+    # (not a static literal), so it's covered by test_units.py's
+    # TestTaskkill/TestSelfTabHostPid instead — these cases pin the negative
+    # (never blanket-approved) forms.
+    {"id": "taskkill_bogus_pid", "tool": "Bash", "command": "taskkill /PID 999999 /T /F", "expect": "PROMPT"},
+    {"id": "taskkill_image_name", "tool": "Bash", "command": "taskkill /IM chrome.exe /F", "expect": "PROMPT"},
+    {"id": "taskkill_remote_host", "tool": "Bash", "command": "taskkill /S otherhost /PID 1 /F", "expect": "PROMPT"},
+
     # --- enforcement (can't statically validate -> rewrite) -----------------
     {"id": "heredoc", "tool": "Bash", "command": "cat << EOF\nhi\nEOF", "expect": "BLOCK"},
     {"id": "output_redirect", "tool": "Bash", "command": "echo hi > out.txt", "expect": "BLOCK"},
