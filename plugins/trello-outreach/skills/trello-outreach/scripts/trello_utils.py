@@ -233,7 +233,13 @@ def parse_blocked_by(desc):
     for m in _BLOCKED_BY_RE.finditer(desc or ''):
         seg = m.group(1)
         out.extend(_URL_SHORTLINK_RE.findall(seg))
-        out.extend(_BARE_SHORTLINK_RE.findall(_URL_SHORTLINK_RE.sub(' ', seg)))
+        # Bare 8-char tokens are a fallback for a shortlink pasted without its full URL, but an 8-letter
+        # plain-English word (e.g. "finalize" in a human-written parenthetical aside on the same line)
+        # matches the same shape and would become an unresolvable phantom blocker that never clears.
+        # Real Trello shortlinks are drawn from a mixed-case+digit alphabet and are essentially never
+        # all-lowercase, so require at least one non-lowercase char to filter plain words out.
+        bare = _BARE_SHORTLINK_RE.findall(_URL_SHORTLINK_RE.sub(' ', seg))
+        out.extend(b for b in bare if not b.islower())
     seen, res = set(), []
     for x in out:
         if x not in seen:
@@ -287,6 +293,53 @@ def cascade_unblock(board_id, finished_card_id, session,
         for label in card.get('labels', []):
             if blocked_label_substr in (label.get('name') or '').lower():
                 remove_label_from_card(card['id'], label['id'], session)
+        update_card(card['id'], {'start': today}, session)
+        unblocked.append(card['id'])
+    return unblocked
+
+
+def sweep_unblock(board_ids, session,
+                   blocked_label_substr='blocked',
+                   done_substrs=('finished', 'abandoned', 'adopted', 'done')):
+    """Pull-unblock backstop across MULTIPLE boards: a blocker and the card it blocks are often on
+    different boards (e.g. a resume-prep task on Personal Follow-Up blocking an application card on Job
+    Search Outreach) — cascade_unblock and a single-board sweep are both blind to that, since they only
+    look up shortlinks within one board's own card list. This does one combined pass over every board in
+    `board_ids` (2 read calls per board, not per blocker) and frees any card whose named blockers are ALL
+    already done, regardless of which board they live on or how/when they finished.
+
+    cascade_unblock is a PUSH triggered at the moment a worker finishes a specific card; it's blind to an
+    upstream card finished any other way (Russell moving it by hand in the Trello UI, a card closed
+    outside any worker session). This is the PULL half: safe to call every poll cycle since it's a no-op
+    scan when nothing needs freeing, so a blocked card resurfaces on its own next drain no matter who or
+    how its blocker actually finished. `board_ids` should be every board in play (e.g. the drainer's full
+    registry) so a cross-board blocker is always resolvable. Returns the list of unblocked card ids.
+    """
+    if isinstance(board_ids, str):
+        board_ids = [board_ids]
+    all_cards, lists_by_id = [], {}
+    for board_id in board_ids:
+        all_cards.extend(get_board_cards(board_id, session, fields='all'))
+        lists_by_id.update({l['id']: l['name'] for l in get_board_lists(board_id, session)})
+    by_shortlink = {c.get('shortLink'): c for c in all_cards if c.get('shortLink')}
+    today = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
+    unblocked = []
+    for card in all_cards:
+        blockers = parse_blocked_by(card.get('desc'))
+        if not blockers:
+            continue
+        all_done = all(
+            by_shortlink.get(sl) is not None and _card_is_done(by_shortlink[sl], lists_by_id, done_substrs)
+            for sl in blockers
+        )
+        if not all_done:
+            continue
+        blocked_labels = [l for l in card.get('labels', [])
+                          if blocked_label_substr in (l.get('name') or '').lower()]
+        if not blocked_labels:
+            continue  # already unblocked (label previously stripped) - nothing to do
+        for label in blocked_labels:
+            remove_label_from_card(card['id'], label['id'], session)
         update_card(card['id'], {'start': today}, session)
         unblocked.append(card['id'])
     return unblocked

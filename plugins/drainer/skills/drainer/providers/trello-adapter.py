@@ -306,6 +306,16 @@ class Provider(ProviderBase):
         now = datetime.now(timezone.utc)
         my_id = self._my_id()
         items = []
+        # Pull-unblock backstop, once per cycle across EVERY board: cascade_unblock only fires when a
+        # worker finishes a specific card (a push, triggered at that moment, scoped to one board); it
+        # never catches a blocker finished by hand in the Trello UI, in a session that forgot the call,
+        # or living on a different board than the card it blocks (a resume-prep task on Personal
+        # Follow-Up blocking an application card on Job Search Outreach, say). This combined sweep is a
+        # no-op when nothing needs freeing, so it's safe to run every cycle and guarantees a blocked card
+        # resurfaces on its own once its blockers are done, regardless of who/how/where they finished.
+        unblocked = self._utils.sweep_unblock([b["id"] for b in self.boards], self.session)
+        if unblocked:
+            print(f"  sweep_unblock freed {len(unblocked)} card(s): {unblocked}")
         for board in self.boards:
             bid, bname = board["id"], board.get("name", board["id"])
             lists = {l["id"]: l["name"] for l in self._utils.get_board_lists(bid, self.session)}
