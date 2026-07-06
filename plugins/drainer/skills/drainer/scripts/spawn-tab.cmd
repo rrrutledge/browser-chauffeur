@@ -17,7 +17,12 @@ set "PFILE=%~3"
 set "MODEL=%~4"
 set "SFILE=%~5"
 set "WT=%LOCALAPPDATA%\Microsoft\WindowsApps\wt.exe"
-set "LAUNCHER=%USERPROFILE%\Dev\rrrutledge\rrrutledge-claude-code-plugins\scripts\launch-session.ps1"
+REM Run the resolver shipped NEXT TO this file in the installed plugin (%~dp0 = this
+REM script's own dir), NOT a working-clone path. run-poller.py invokes this .cmd from
+REM the version-pinned plugin cache, so %~dp0launch-session.ps1 is the pinned resolver;
+REM it forwards to the newest installed real launcher (in the session-mgr plugin). A
+REM worker is never launched from whatever branch the dev clone sits on.
+set "LAUNCHER=%~dp0launch-session.ps1"
 REM -w drainer: always collect worker tabs in a single, consistently-named "drainer" window, rather
 REM than -w 0 (most-recently-used), which is unpredictable when the scheduled task creates the window.
 REM No --no-focus here: it governs only NEW-window creation, not a tab added to an existing window, so

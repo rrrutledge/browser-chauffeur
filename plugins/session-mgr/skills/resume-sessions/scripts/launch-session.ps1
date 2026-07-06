@@ -9,6 +9,16 @@ param(
   [string]$Resume       # resume mode: session ID of an existing session to resume (no seed needed)
 )
 # Shared primitive: launch a fresh Claude session inside a Windows Terminal tab.
+# This is the REAL launcher — the single copy — living inside the session-mgr
+# plugin (the "session launcher" home; the resume-sessions skill uses it) so it
+# ships version-pinned with the plugin. Reference THIS file:
+#   - the handoff launcher, resume-sessions, and other cloud-file refs point at
+#     this path directly (in the working clone).
+#   - the drainer plugin ships a thin resolver (skills/drainer/scripts/launch-session.ps1,
+#     run by spawn-tab.cmd via %~dp0) that finds the newest INSTALLED copy of this
+#     file and forwards to it, so a worker is never launched from a floating
+#     dev-clone branch. Keep that resolver's param block in sync with the one below
+#     — a param not declared there is silently dropped instead of forwarded.
 # Both callers route through here:
 #   - drainer/spawn-tab.cmd  -> -PromptFile (browser loop; model = session default)
 #   - the handoff launcher   -> -SeedFile -Model "claude-opus-4-8[1m]"

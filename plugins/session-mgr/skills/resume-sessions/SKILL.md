@@ -109,7 +109,7 @@ instructions: |-
     -d "<cwd_with_forward_slashes>" \
     --title "<short title (≤30 chars)>" \
     powershell -NoExit -NoProfile \
-    -File "$HOME/Dev/rrrutledge/rrrutledge-claude-code-plugins/scripts/launch-session.ps1" \
+    -File "$HOME/Dev/rrrutledge/rrrutledge-claude-code-plugins/plugins/session-mgr/skills/resume-sessions/scripts/launch-session.ps1" \
     -Resume "<session_id>"
   ```
 
@@ -129,8 +129,11 @@ instructions: |-
 
   ## Notes
 
-  - `launch-session.ps1` lives at `~/Dev/rrrutledge/rrrutledge-claude-code-plugins/scripts/launch-session.ps1`. Its `-Resume`
-    flag runs `claude --resume <session_id>` in the correct working directory.
+  - `launch-session.ps1` lives inside this plugin at
+    `~/Dev/rrrutledge/rrrutledge-claude-code-plugins/plugins/session-mgr/skills/resume-sessions/scripts/launch-session.ps1`
+    (the command above points there). Its `-Resume` flag runs `claude --resume <session_id>` in the
+    correct working directory. The drainer plugin ships a thin resolver of its own that finds the
+    newest *installed* copy of this launcher, so drainer workers aren't tied to a working-clone branch.
   - `claude --resume <session_id>` resumes an existing session by its UUID, picking up the full
     conversation history.
   - There are ~1,300 JSONL session files total; the script scans them all but only reads the tail
