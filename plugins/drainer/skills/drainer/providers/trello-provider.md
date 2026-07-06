@@ -57,7 +57,8 @@ Two facts live in native Trello fields, two in labels + a description convention
   matcher reads it).
 - **⛔ Blocked** (label) = blocked on **another card** finishing. Suppressed entirely (`skip_labels`)
   until unblocked. Record `Blocked-by: <upstream-shortlink>[, …]` in the description; optionally attach
-  the upstream card for a human-visible link.
+  the upstream card for a human-visible link. (`trello-outreach`'s SKILL.md owns applying this at
+  creation time — it's the mechanics layer every Trello write goes through.)
 
 **Unblock is a push.** When an upstream card is finished (moved to a terminal/skip list or archived),
 call `trello_utils.cascade_unblock(board_id, finished_card_id, session)`: it scans the board once,
