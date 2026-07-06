@@ -38,6 +38,11 @@
 //                 it from Drafts — Gmail files the sent copy in Sent. The <draft-message-id> is the
 //                 Message-ID that --reply / --draft-new printed when it staged the draft. SENDS REAL MAIL —
 //                 only invoke on Russ's explicit per-message say-so after he has reviewed that exact draft.)
+// Delete a draft: node gmail.js --delete-draft=<draft-message-id>
+//                (discards one staged draft that's no longer wanted — e.g. the outreach it belonged to
+//                 was abandoned. Removes it from [Gmail]/Drafts entirely; drafts have no other home, so
+//                 this isn't recoverable the way --archive is. The <draft-message-id> is the same id
+//                 --reply / --draft-new printed when the draft was staged.)
 // Archive one:   node gmail.js --archive=<message-id>
 //                (removes the message from the inbox but keeps it in All Mail — the way mail is cleared)
 // Auth glance:   node gmail.js --check
@@ -342,6 +347,17 @@ async function sendDraft(c) {
   console.log(`Sent to ${rcpt.join(', ')} (subject: "${clean(parsed.subject || '').slice(0, 60)}"). Draft removed; copy is in [Gmail]/Sent.`);
 }
 
+async function deleteDraft(c) {
+  const id = stripId(args['delete-draft']);
+  const lock = await c.getMailboxLock(DRAFTS);
+  try {
+    const uids = await c.search({ header: { 'message-id': id } }, { uid: true });
+    if (!uids || !uids.length) { console.log(`No draft with Message-ID <${id}> in [Gmail]/Drafts (already deleted?).`); return; }
+    await c.messageDelete(uids, { uid: true });
+    console.log(`Deleted draft <${id}> from [Gmail]/Drafts.`);
+  } finally { lock.release(); }
+}
+
 async function archive(c) {
   const lock = await c.getMailboxLock('INBOX');
   try {
@@ -370,10 +386,11 @@ async function check(c) {
     if (args.reply) return await reply(c);
     if (args['draft-new']) return await draftNew(c);
     if (args['send-draft']) return await sendDraft(c);
+    if (args['delete-draft']) return await deleteDraft(c);
     if (args.archive) return await archive(c);
     if (args['list-sent']) return await listFolder(c, '[Gmail]/Sent Mail');
     if (args.search) return await search(c);
     if (args.check) return await check(c);
-    throw new Error('Specify --list-inbox, --list-sent, --search, --list-drafts, --show, --reply, --draft-new, --send-draft, --archive, or --check');
+    throw new Error('Specify --list-inbox, --list-sent, --search, --list-drafts, --show, --reply, --draft-new, --send-draft, --delete-draft, --archive, or --check');
   } finally { await c.logout(); }
 })().catch(e => { console.error('Error:', e.message); process.exit(1); });

@@ -160,7 +160,9 @@ up, silently bump the due date (CLEAR) and surface no tab.
 Only **after** the user confirms they sent/handled the message, advance the card via `trello-outreach`:
 - **nudge** — bump the due date out N days (they haven't replied; follow up later). Use the cadence below.
 - **advance** — move to a later stage + set the next due date (it progressed).
-- **stop** — move to Abandoned + clear the due date (not pursuing).
+- **stop** — move to Abandoned + clear the due date (not pursuing). If a message draft was staged for
+  this card and never sent, discard it too (e.g. `node gmail.js --delete-draft=<draft-id>` for a Gmail
+  draft) — an abandoned card means the draft is dead weight, not a reminder to revisit.
 Each advance also posts a dated comment recording what happened, so the board reflects reality.
 
 For **task cards** (startable model), a ⏳ Waiting card also nudges by bumping its **Start** (ping-back
