@@ -39,6 +39,8 @@ go through the **`trello-outreach`** skill (don't reimplement the Trello API her
     Matched as a case-insensitive substring, so `blocked` catches `⛔ Blocked`.
   - `status_labels` — dependency-state labels held out of contact classification (default
     `[Blocked, Waiting]`), so a ⛔/⏳ label is never read as a person's name.
+  - `auto_handle_labels` — the auto-handle marker (default `[auto-handle]`, substring-matched so
+    `🤖 Auto-handle` qualifies), held out of contact classification the same way. See AUTO-HANDLE below.
   - `label_vocab` — `{channels: [...], features: [...]}`; any label not in those is a contact name.
 Credentials: `TRELLO_API_KEY` / `TRELLO_TOKEN` in the environment (used by `trello-outreach`).
 
@@ -79,7 +81,9 @@ Start out; an outreach CLEAR bumps its Due out), and seen-state keeps a drained 
 the stamp a card would be marked seen on its first drain and never resurface. Parse each card's labels
 with `label_vocab` into channel / features / contacts (⛔/⏳ status labels are held out) so the worker
 knows where the conversation lives, and resolve the card's `initiative` (the initiative-colored label's
-slug, else the board default).
+slug, else the board default). Also detect the `auto_handle_labels` marker (e.g. 🤖 Auto-handle) — the
+poller's deterministic Trello pre-triage reads this to bucket the card `auto-handle` instead of the
+usual `needs-you` (see AUTO-HANDLE below).
 
 ## CAPTURE (needs-you)
 The card itself is the item, and **we own it** — unlike inbound mail/Teams, the same card recurs every
@@ -192,6 +196,35 @@ When unsure, default to infrequent. When the ask requires real commitment or int
 
 If the situational check finds **nothing to do right now** (it's not yet time to follow up, or they
 replied and the user already answered), silently bump the due date and finish — surface no tab.
+
+## AUTO-HANDLE
+Unlike other sources, this bucket is decided **deterministically in code**, not by the AI triage step:
+`run-poller.py`'s Trello pre-triage buckets a card `auto-handle` the moment its adapter-parsed labels
+include the `auto_handle_labels` marker (default 🤖 Auto-handle), and `needs-you` otherwise — no model
+judgment call, no risk of a false match. This section is the worker-facing rule that decision implies.
+
+**Condition:** the card wears the 🤖 Auto-handle label. That's the whole test — Russell applies this
+label himself, per card, to opt a specific recurring item into standing-rule autonomy. It's for cards
+whose entire action is safe/reversible and produces nothing for Russell to approve or send — a
+recurring research/board sweep, a bookkeeping refresh of Russell's own tracker — never a card whose
+action is contacting another person (an outreach card in the normal Identified→…→Finished funnel stays
+`needs-you` even if labeled this by mistake; if the card's own description asks you to draft or send
+anything to someone else, treat that as a sign the label was misapplied and fall back to `needs-you`
+instead of drafting silently).
+
+**Action:** the card's description IS the standing rule — follow it exactly as written (e.g. a weekly
+job-board sweep names the boards to check and what counts as a hit; a recurring data refresh names the
+source and target). Use whatever other skills the description calls for (browser-chauffeur,
+trello-outreach, etc.) to carry it out.
+
+**Then, in place of the normal CLEAR:**
+1. Post a dated comment on the card (via `trello-outreach`) summarizing what was done — this is the
+   record Russell reads if he ever opens the card, and the cache-back-to-card practice from CAPTURE.
+2. Advance the card per its **own stated cadence** — most recurring cards name it directly (e.g.
+   "bump this card +7 days"); if none is stated, use the normal CLEAR nudge cadence. The card stays in
+   its list (do not move it to a different stage) — it's a standing recurring rule, not a funnel card.
+3. Queue a digest entry and write `.done` immediately — no presentation, no wait for acknowledgment,
+   per `worker-core.md`'s auto-handle branch.
 
 ## JUNK-LEARNING
 N/A — outreach cards are curated, not inbound noise.

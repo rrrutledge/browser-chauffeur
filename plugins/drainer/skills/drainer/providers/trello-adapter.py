@@ -13,6 +13,10 @@ per board). The drainer drains EVERY board in that registry. Per-drainer knobs (
 `label_vocab`) stay in that repo's drainer.local.md. If no registry file is present, it falls back to a
 legacy `providers.trello.boards` block in drainer.local.md.
 
+A card wearing the auto-handle marker label (default: any label matching "auto-handle", e.g.
+"🤖 Auto-handle") is bucketed `auto-handle` instead of `needs-you` by the poller's Trello pre-triage —
+see `trello-provider.md`'s AUTO-HANDLE section for the worker-facing rule this implements.
+
 The **go-live date IS the queue** (startable-task model): the native Start date is a card's
 "work-on-it-next / ping-back" date and the native Due date is a real deadline. enumerate returns cards
 in active lists that are startable — Start now-or-earlier, OR Due now-or-earlier (a slipped deadline
@@ -53,6 +57,11 @@ class Provider(ProviderBase):
         # the superset held out of contact classification (a ⛔/⏳ label is never a contact name).
         self.skip_labels = {"blocked"}
         self.status_labels = {"blocked", "waiting"}
+        # A card wearing one of these labels (substring match, e.g. "🤖 Auto-handle") carries a standing
+        # rule: Russell has pre-decided the card's own description IS the whole action, so it auto-handles
+        # instead of opening a needs-you tab (see run-poller.py's Trello pre-triage and this provider's
+        # AUTO-HANDLE section). Held out of contact classification like the other status-ish labels.
+        self.auto_handle_labels = {"auto-handle"}
         self.channels = []
         self.features = []
         # Board name → default initiative slug (from a board's `initiative:` field in the registry);
@@ -139,6 +148,9 @@ class Provider(ProviderBase):
             status_labels = self._parse_inline_list(block, "status_labels")
             if status_labels:
                 self.status_labels = {s.lower() for s in status_labels}
+            auto_handle_labels = self._parse_inline_list(block, "auto_handle_labels")
+            if auto_handle_labels:
+                self.auto_handle_labels = {s.lower() for s in auto_handle_labels}
             self.channels = self._parse_inline_list(block, "channels")
             self.features = self._parse_inline_list(block, "features")
         # Boards: the shared registry is authoritative; drainer.local.md's boards block is the fallback.
@@ -243,11 +255,12 @@ class Provider(ProviderBase):
         initiative = next((l.get("name") for l in labels
                            if (l.get("color") or "").lower() == "yellow" and l.get("name")),
                           None)
-        # Hold status labels (⛔ Blocked / ⏳ Waiting) out of the name pool so they're never read as a
-        # contact — they carry dependency state, not a person.
+        # Hold status labels (⛔ Blocked / ⏳ Waiting) and the auto-handle marker out of the name pool so
+        # they're never read as a contact — they carry dependency/triage state, not a person.
+        held_out = self.status_labels | self.auto_handle_labels
         names = [l.get("name") for l in labels
                  if l.get("name") and l.get("name") != initiative
-                 and not any(tok in l.get("name").lower() for tok in self.status_labels)]
+                 and not any(tok in l.get("name").lower() for tok in held_out)]
         channel = next((n for n in names if n in self.channels), None)
         feats = [n for n in names if n in self.features]
         contacts = [n for n in names if n not in self.channels and n not in self.features]
@@ -258,6 +271,16 @@ class Provider(ProviderBase):
         for l in card.get("labels", []):
             nm = (l.get("name") or "").lower()
             if nm and any(tok in nm for tok in self.skip_labels):
+                return True
+        return False
+
+    def _has_auto_handle_label(self, card):
+        """True if the card wears the auto-handle marker (default: "🤖 Auto-handle", substring-matched
+        like skip/status labels). Russell applies this himself to opt a specific recurring card into
+        standing-rule autonomy — see this provider's AUTO-HANDLE section."""
+        for l in card.get("labels", []):
+            nm = (l.get("name") or "").lower()
+            if nm and any(tok in nm for tok in self.auto_handle_labels):
                 return True
         return False
 
@@ -359,6 +382,9 @@ class Provider(ProviderBase):
                     "features": feats,
                     "contacts": contacts,
                     "initiative": initiative,
+                    # Deterministic auto-handle marker, consumed by run-poller.py's Trello pre-triage
+                    # (a labeled card buckets to auto-handle instead of the usual needs-you).
+                    "_autoHandleLabel": self._has_auto_handle_label(card),
                     # Triage payload fields (mirror the inbox adapters):
                     "from": who,
                     "subject": card.get("name", ""),
@@ -409,6 +435,7 @@ class Provider(ProviderBase):
             "start": item.get("start"),
             "url": item.get("url"), "contacts": item.get("contacts") or [],
             "channelLabel": item.get("channelLabel"), "initiative": item.get("initiative"),
+            "autoHandleLabel": bool(item.get("_autoHandleLabel")),
             "bodyFile": body_file,
             "ts": datetime.now(timezone.utc).isoformat(),
         }

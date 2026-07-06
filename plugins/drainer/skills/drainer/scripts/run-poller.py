@@ -580,17 +580,23 @@ def main():
         print("0 new items across all sources. Nothing to dispatch.")
         return
 
-    # --- deterministic pre-triage: every active Trello card is always needs-you ---
+    # --- deterministic pre-triage: every active Trello card is needs-you, UNLESS labeled auto-handle ---
     # The adapter only enumerates cards in play — due now-or-earlier, or with no due date at all. A
     # due card's moment has arrived ("the due date IS the queue"); an undated card is on the board
     # precisely because it needs a look — at minimum to give it a date — so it must not be sidelined
     # to the digest. Either way the answer is needs-you, so skip the AI call: it's a tautology the
-    # model sometimes gets wrong (it mis-filed undated cards to fyi).
+    # model sometimes gets wrong (it mis-filed undated cards to fyi). The one deterministic exception is
+    # a card Russell has explicitly labeled auto-handle (adapter sets `_autoHandleLabel`): he's already
+    # decided that card's own description is the whole standing rule, so it buckets to auto-handle here
+    # instead — still no AI call, still no judgment left to make.
     pre_triaged = []
     ai_triage = []
     for it in all_new:
         if it["_source"] == "trello":
-            it["_bucket"], it["_kind"] = "needs-you", "work"
+            if it.get("_autoHandleLabel"):
+                it["_bucket"], it["_kind"] = "auto-handle", "work"
+            else:
+                it["_bucket"], it["_kind"] = "needs-you", "work"
             it["_complexity"] = "simple"
             pre_triaged.append(it)
         else:
@@ -607,7 +613,10 @@ def main():
         it["_bucket"], it["_kind"] = v.get("bucket", "needs-you"), v.get("kind")
         it["_complexity"] = v.get("complexity", "simple")
     if pre_triaged:
-        print(f"  {len(pre_triaged)} trello card(s) -> needs-you (deterministic, skipped AI)")
+        auto_ct = sum(1 for it in pre_triaged if it["_bucket"] == "auto-handle")
+        needs_ct = len(pre_triaged) - auto_ct
+        print(f"  {len(pre_triaged)} trello card(s) pre-triaged (deterministic, skipped AI): "
+              f"{needs_ct} needs-you, {auto_ct} auto-handle")
 
     # --- global open count across ALL sources ---
     global_oc = sum(open_count(s) for s in seen_by_source.values())
