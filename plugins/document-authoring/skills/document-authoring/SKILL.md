@@ -38,14 +38,16 @@ words carry a link, so the reviewer can't tell what's anchored. Spell it out —
 anchor text, e.g. "right on my calendar (links to https://calendly.com/russell-rutledge)" — so the
 reviewer sees exactly which words are clickable before approving.
 
-**Link every person, event, or document a message references — resolve it, don't leave it bare.**
-Whenever a draft names a specific person, event, or document, find the right link for it and embed it,
-rather than mentioning the name/title in plain text:
-- **A person on the same platform as the message** (a Slack teammate, a Teams colleague, anyone with a
-  presence in the app you're drafting in): use that platform's native mention/link mechanism — a real
-  @-mention (see the Conversational-writing "Addresses people by name" rule) or a permalink to their
-  profile/message — not an external link.
-- **A person not on that platform**: link their name to their LinkedIn profile.
+**Represent every person, event, or document a message references — never leave it as bare text.**
+Whenever a draft names a specific person, event, or document, resolve it to the right mechanism instead
+of plain text:
+- **A person you want notified** — tagging a Slack teammate or Teams colleague into the message body
+  ("Jane Doe here is the information…", "Thanks for looking at this, Alex"): use a real @-mention via
+  the platform's mention picker (Teams/Slack — see **Core voice** below), not plain text. A typed
+  `@Name` with no picker selection is not a real mention and doesn't notify them.
+- **A person referenced but not being addressed/notified, or not on that platform**: link their name —
+  to their profile/permalink if they're on the same platform as the message, otherwise to their LinkedIn
+  profile.
 - **An event**: link its name to the event's page.
 - **A document**: link its title to the document itself.
 Apply the platform's actual anchoring capability: Confluence/Word/email/Markdown/Slack/Teams all support
@@ -164,7 +166,7 @@ If the message is a single clear sentence ending in a question, that is usually 
 - **Document a sequence as short bullets, and open with the current status — not a framing line.** When laying out a timeline or "here's what happened from my side," break it into terse factual bullets rather than a dense recap paragraph, and lead the message with the concrete current state rather than a defensive frame. Real edit: a draft that opened "I'd gently push back on the idea that I haven't responded - I've been working this in good faith the whole way through" followed by a prose recap was rewritten to open with the live status ("I reached out to Casey both Friday and today and also called to leave a message but haven't heard back") and to convert the recap into a bulleted list of dated events. Let the record carry the point; skip the "in good faith" / "I've been responsive" editorializing.
 - Opens groups with "Hey guys", "Hey folks", or "Hey everyone" — **but skip the opener when replying to a specific quoted message** in a group chat. The reply-to context replaces the group greeting; adding one reads as redundant.
 - 1:1s often open with no greeting at all, or the person's name.
-- Addresses people by name mid-message: "Jane Doe here is the information…", "Thanks for looking at this, Alex". In chat platforms (Teams, Slack, etc.), this means @tagging them using the platform's mention mechanism — not just writing their name as plain text — so they get notified.
+- Addresses people by name mid-message: "Jane Doe here is the information…", "Thanks for looking at this, Alex" — see **Links** above for how to represent the name itself (a real @-mention in chat platforms when you want them notified, a link otherwise).
 - **Address someone who outranks you by their title, not their first name** — pointedly in church contexts. Replying to his Bishop (Michael Smith), Russell changed "Thanks, Michael" to "Thanks, Bishop". And keep thanks to a superior to a single word — he cut the trailing "Appreciate you tracking the numbers down." because piling extra gratitude on someone who outranks him reads as patronizing. A bare "Thanks," carries it.
 - Ellipses for softening: "If you need to leave you can just say so ... especially if we're going over time."
 - Apologizes genuinely and briefly: "Sorry this is taking so long.", "I'm sorry I have to move this again."
