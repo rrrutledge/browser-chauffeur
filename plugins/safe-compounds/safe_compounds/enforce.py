@@ -282,6 +282,8 @@ def detect_complex_bash(command):
         return True, "for loop"
     if re.search(r'\bwhile\s+', command):
         return True, "while loop"
+    if re.search(r'\buntil\s+', command):
+        return True, "until loop"
     if re.search(r'\bif\s+(\[|\[\[|test\b)', command):
         return True, "if conditional"
 

@@ -269,6 +269,9 @@ class TestComplexBash:
     def test_for(self):
         assert detect_complex_bash("for x in a; do echo $x; done")[0] is True
 
+    def test_until(self):
+        assert detect_complex_bash("until grep -q x file; do break; done")[0] is True
+
     def test_plain(self):
         assert detect_complex_bash("grep x file")[0] is False
 
