@@ -56,9 +56,9 @@ Two facts live in native Trello fields, two in labels + a description convention
   worker can re-nudge. Record `Waiting-for: <name> · <channel>` in the description (Phase 2's reply
   matcher reads it).
 - **⛔ Blocked** (label) = blocked on **another card** finishing. Suppressed entirely (`skip_labels`)
-  until unblocked. Apply the label together with a `Blocked-by: <upstream-shortlink>[, …]` line in the
-  description, both at creation time — ENUMERATE only checks the label, never the description text.
-  Optionally attach the upstream card for a human-visible link.
+  until unblocked. Record `Blocked-by: <upstream-shortlink>[, …]` in the description; optionally attach
+  the upstream card for a human-visible link. (`trello-outreach`'s SKILL.md owns applying this at
+  creation time — it's the mechanics layer every Trello write goes through.)
 
 **Unblock is a push.** When an upstream card is finished (moved to a terminal/skip list or archived),
 call `trello_utils.cascade_unblock(board_id, finished_card_id, session)`: it scans the board once,

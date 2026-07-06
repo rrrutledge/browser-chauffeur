@@ -81,6 +81,13 @@ instructions: |-
 
   ---
 
+  ## Blocked cards
+
+  Creating or editing a card that's blocked on another card finishing: apply the ⛔ Blocked label and add
+  a `Blocked-by: <upstream-shortlink>` line to the description, together, in the same operation.
+
+  ---
+
   ## Checklists
 
   Checklists aren't in trello_utils — use `trello_request` directly:
