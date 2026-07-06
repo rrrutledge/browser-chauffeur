@@ -436,7 +436,17 @@ def is_powershell_safe(seg):
 # where every PID given is proven — via a live OS process-ancestry walk, not a
 # trusted argument — to be this session's own tab host. Anything else defers to
 # a manual prompt.
+#
+# The Bash tool runs Git Bash, whose MSYS layer treats a single leading slash
+# as a POSIX path and mangles it — so commands built for that tool arrive as
+# `//PID`, `//T`, `//F` (doubled slash escapes the mangling) rather than the
+# Windows-native `/PID`. Normalize away the doubling before comparing so both
+# forms are recognized.
 TASKKILL_NO_ARG_FLAGS = {'/t', '/f'}
+
+
+def _normalize_taskkill_flag(flag):
+    return re.sub(r'^/+', '/', flag.lower())
 
 
 def is_taskkill_safe(seg):
@@ -446,7 +456,7 @@ def is_taskkill_safe(seg):
     pids = []
     i = 1
     while i < len(tokens):
-        flag = tokens[i].lower()
+        flag = _normalize_taskkill_flag(tokens[i])
         if flag == '/pid':
             if i + 1 >= len(tokens) or not tokens[i + 1].isdigit():
                 return False
