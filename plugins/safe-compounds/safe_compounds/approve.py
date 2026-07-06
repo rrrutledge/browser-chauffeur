@@ -66,6 +66,8 @@ def is_segment_trusted(seg, trusted):
         return commands.is_start_safe(seg)
     if word == 'powershell':
         return commands.is_powershell_safe(seg)
+    if word.lower() == 'taskkill':
+        return commands.is_taskkill_safe(seg)
     if word == 'wt':
         return commands.is_wt_safe(seg, trusted)
     if word.lower().endswith('.cmd'):

@@ -12,8 +12,10 @@ from safe_compounds.shell import (  # noqa: E402
 )
 from safe_compounds import config  # noqa: E402
 from safe_compounds.commands import (  # noqa: E402
-    is_git_command_safe, is_curl_safe, is_sed_command_safe, is_start_safe, strip_safe_redirections,
+    is_git_command_safe, is_curl_safe, is_sed_command_safe, is_start_safe, is_taskkill_safe,
+    strip_safe_redirections,
 )
+from safe_compounds import procs  # noqa: E402
 from safe_compounds.mcp import classify_mcp_tool  # noqa: E402
 from safe_compounds.enforce import detect_complex_bash, detect_simple_expansion, detect_cd_compound, enforce_bash  # noqa: E402
 from safe_compounds.scripts import check_node_segment  # noqa: E402
@@ -178,6 +180,80 @@ class TestSed:
 
     def test_inplace_combined(self):
         assert is_sed_command_safe("sed -ni s/a/b/ f") is False
+
+
+class TestTaskkill:
+    def test_self_pid_approved(self, monkeypatch):
+        monkeypatch.setattr(procs, "self_tab_host_pid", lambda: 16552)
+        assert is_taskkill_safe("taskkill /PID 16552 /T /F") is True
+
+    def test_other_pid_rejected(self, monkeypatch):
+        monkeypatch.setattr(procs, "self_tab_host_pid", lambda: 16552)
+        assert is_taskkill_safe("taskkill /PID 9999 /T /F") is False
+
+    def test_undetermined_host_rejected(self, monkeypatch):
+        monkeypatch.setattr(procs, "self_tab_host_pid", lambda: None)
+        assert is_taskkill_safe("taskkill /PID 16552 /T /F") is False
+
+    def test_image_name_rejected(self, monkeypatch):
+        monkeypatch.setattr(procs, "self_tab_host_pid", lambda: 16552)
+        assert is_taskkill_safe("taskkill /IM chrome.exe /F") is False
+
+    def test_remote_machine_rejected(self, monkeypatch):
+        monkeypatch.setattr(procs, "self_tab_host_pid", lambda: 16552)
+        assert is_taskkill_safe("taskkill /S remotehost /PID 16552 /F") is False
+
+    def test_no_pid_rejected(self, monkeypatch):
+        monkeypatch.setattr(procs, "self_tab_host_pid", lambda: 16552)
+        assert is_taskkill_safe("taskkill /F") is False
+
+    def test_non_numeric_pid_rejected(self, monkeypatch):
+        monkeypatch.setattr(procs, "self_tab_host_pid", lambda: 16552)
+        assert is_taskkill_safe("taskkill /PID abc /F") is False
+
+    def test_multiple_pids_all_must_match(self, monkeypatch):
+        monkeypatch.setattr(procs, "self_tab_host_pid", lambda: 16552)
+        assert is_taskkill_safe("taskkill /PID 16552 /PID 9999 /F") is False
+
+    def test_case_insensitive_flags(self, monkeypatch):
+        monkeypatch.setattr(procs, "self_tab_host_pid", lambda: 16552)
+        assert is_taskkill_safe("taskkill /pid 16552 /t /f") is True
+
+
+class TestSelfTabHostPid:
+    def _snapshot(self):
+        # hook.py (pid 100) -> sh.exe (200) -> claude.exe (300) -> powershell.exe
+        # (400, the tab host) -> WindowsTerminal.exe (500) -> services.exe (600)
+        return {
+            100: (200, 'python.exe'),
+            200: (300, 'sh.exe'),
+            300: (400, 'claude.exe'),
+            400: (500, 'powershell.exe'),
+            500: (600, 'windowsterminal.exe'),
+            600: (0, 'services.exe'),
+        }
+
+    def test_finds_immediate_parent_of_claude(self):
+        assert procs.self_tab_host_pid(start_pid=100, snapshot=self._snapshot()) == 400
+
+    def test_stops_at_nearest_claude_in_nested_sessions(self):
+        snap = self._snapshot()
+        # An outer claude.exe further up must not be selected over the inner one.
+        snap[500] = (700, 'claude.exe')
+        snap[700] = (800, 'powershell.exe')
+        assert procs.self_tab_host_pid(start_pid=100, snapshot=snap) == 400
+
+    def test_no_claude_in_chain_returns_none(self):
+        snap = self._snapshot()
+        del snap[300]
+        assert procs.self_tab_host_pid(start_pid=100, snapshot=snap) is None
+
+    def test_empty_snapshot_returns_none(self):
+        assert procs.self_tab_host_pid(start_pid=100, snapshot={}) is None
+
+    def test_cycle_returns_none(self):
+        snap = {100: (200, 'python.exe'), 200: (100, 'sh.exe')}
+        assert procs.self_tab_host_pid(start_pid=100, snapshot=snap) is None
 
 
 class TestStripSafeRedirections:
