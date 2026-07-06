@@ -74,6 +74,11 @@ Under `scripts/` (run with `node`):
     `[Gmail]/Sent`). See **Sending** below — this runs only on Russ's explicit per-message say-so.
   - Archive one (reversible): `node gmail.js --archive=<message-id>` (removes from the inbox, keeps it in
     `[Gmail]/All Mail` — the way mail is cleared: handled and out of the inbox, never discarded)
+  - Delete a draft: `node gmail.js --delete-draft=<draft-message-id>` (discards a staged draft that's no
+    longer wanted — e.g. the outreach it belonged to was abandoned. Takes the same `draft-id` that
+    `--reply`/`--draft-new` printed when it was staged. Drafts have no other home, so this isn't
+    recoverable the way `--archive` is — only delete a draft once its underlying card/thread is truly
+    closed out, not as a routine cleanup step.)
 
 ## Sending
 
