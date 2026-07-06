@@ -54,6 +54,19 @@ The setup script installs `playwright-core` to `~/.claude/browser-chauffeur/` if
 
 Adjust `plugins/browser-chauffeur/...` to the actual path where the skill is mounted if needed.
 
+**Every ad-hoc script goes in the project's `.tmp/` — never in `~/.claude/browser-chauffeur/` itself.** That shared directory only exists to hold the fallback `node_modules`; it is not a script workspace, and dropping scripts there breaks the calling project's permission-auto-approval (which is scoped to the project directory) and clutters a directory other sessions share. Because Node's module resolution walks up from the *requiring file's own directory* — not from the current working directory — a script sitting in `.tmp/` cannot resolve a bare `require('browser-chauffeur-helpers')` or `require('playwright-core')` against the fallback install; there is no `node_modules` between `.tmp/` and the shared directory for Node to find. **Always use the try/catch fallback pattern from `templates/script-template.js`** (never a bare `require(...)`), which resolves from the project's own `node_modules` first and falls back to the shared install:
+
+```js
+const { chromium } = (() => {
+  try { return require('playwright-core'); }
+  catch { return require(require('path').join(require('os').homedir(), '.claude', 'browser-chauffeur', 'node_modules', 'playwright-core')); }
+})();
+const { openTab, findTab, closeTab } = (() => {
+  try { return require('browser-chauffeur-helpers'); }
+  catch { return require(require('path').join(require('os').homedir(), '.claude', 'browser-chauffeur', 'node_modules', 'browser-chauffeur-helpers')); }
+})();
+```
+
 ---
 
 ## Phase 0: Browser Launch (do this before Phase 1)
@@ -174,7 +187,7 @@ Before touching anything:
    
 2. **Get and save your tab reference** — target the specific tab you need by URL pattern, never by position:
    ```javascript
-   const { findTab, openTab } = require('browser-chauffeur-helpers');
+   const { findTab, openTab } = require('browser-chauffeur-helpers'); // resolve via the try/catch pattern in Prerequisite Check / templates/script-template.js
 
    // Reuse an existing tab by URL — findTab also marks it active, so a tab you
    // keep returning to isn't reaped as idle by the sweep.
@@ -303,7 +316,7 @@ Some SPAs (Articulate Rise, OpenSesame, content platforms) load page sections as
 
 2. **Tab cleanup** — close only tabs you created, using the paired `openTab`/`closeTab` helpers:
    ```javascript
-   const { openTab, closeTab } = require('browser-chauffeur-helpers');
+   const { openTab, closeTab } = require('browser-chauffeur-helpers'); // resolve via the try/catch pattern in Prerequisite Check / templates/script-template.js
    const myTab = await openTab(context, 'https://example.com');  // create + register
    try {
      // Your automation work

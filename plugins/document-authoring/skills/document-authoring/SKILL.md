@@ -121,6 +121,8 @@ Messages are **short**. Default to the fewest sentences that carry the point. Be
 
 If the message is a single clear sentence ending in a question, that is usually the whole message. Resist padding it.
 
+- **A simple thank-you for a small favor is a name and an exclamation - nothing else.** When acknowledging something small and already complete (someone wrote a LinkedIn recommendation, sent a quick file, did a one-off favor), don't add a clause explaining why you're grateful. Real edit (thanking Yuki for writing him a LinkedIn recommendation): draft "Thanks so much, Yuki - really appreciate you taking the time to write that." was sent as "Thanks so much, Yuki !" - the appreciation clause cut entirely, leaving just the name and an exclamation point.
+
 - **Name the specific thing, not the category.** Replace vague nouns with the concrete one: "token cost" not just "cost", "the deploy" not just "it". Real edit: draft said "having the cost front and center" → sent said "having the token cost front and center."
 
 - **When specific people own the answer, route to them — don't explain the architecture.** If a question is about a system or process that has identified owners, name the owners and one concrete next step; drop the conceptual overview. Hedge with "that I know of" when not fully certain. Real edit (Michael asked if there's a base build for the command center): draft explained the composed-layer pattern and microapp approach at length; sent said "No base build yet that I know of - but you can ask Vivek Pissay or Jim Higgins about it.  Once you have it, you can deploy it as a SkyStage microapp."
