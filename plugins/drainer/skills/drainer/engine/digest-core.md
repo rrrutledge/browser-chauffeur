@@ -38,6 +38,13 @@ miss. Then continue to the queue below.
 
 ## 1. Gather (deterministic — just read state)
 
+**Snapshot once — work the batch, don't chase the queue.** Take the `queue-list` and `stale-list`
+results below at the start of the run as *the* batch for this digest, and process only that fixed set.
+The headless poller keeps draining in the background — anything it adds *after* this snapshot belongs to
+the **next** daily digest, so leave those items to ride. Re-run `queue-list` only to confirm what you've
+already cleared, never to pull freshly-arrived items into the current pass. A digest ends when the
+snapshot it opened with is handled, not when the live queue happens to read empty.
+
 - **The digest queue:** `node <seen-state.js> queue-list <runtime_dir>` → a JSON array of
   `{ id, source, item }`. Each `item` carries at least `triage` (`fyi` | `junk` | `auto-handle`), `from`,
   `subject`, and `snippet`, plus whatever else that provider's capture recorded (e.g. a `url` and the ids
