@@ -59,6 +59,17 @@ Two facts live in native Trello fields, two in labels + a description convention
   until unblocked. Record `Blocked-by: <upstream-shortlink>[, …]` in the description; optionally attach
   the upstream card for a human-visible link.
 
+**Apply the label at creation, not just prose.** ENUMERATE (below) only ever checks the actual ⛔ label —
+it never parses the description. A card created with "blocked on X" written into its description but no
+⛔ label and no `Blocked-by:` line is invisible to that check: the very next poll treats it as startable
+and dispatches it as `needs-you`, even though a human reading the card can see it isn't ready. Whenever
+`trello-outreach` creates or edits a card that's blocked on another card, apply the label and write the
+`Blocked-by:` line in that same operation — never prose alone. The line's shape matters too: `parse_blocked_by()`
+matches `^\s*blocked-by\s*:` (case-insensitive) followed by a shortlink (the 8-char code from
+`https://trello.com/c/<shortlink>`, or a bare 8-char token) — a differently-worded reference (e.g.
+"Blocker: ...") won't be picked up, so `cascade_unblock` will never auto-free that card once its
+dependency finishes.
+
 **Unblock is a push.** When an upstream card is finished (moved to a terminal/skip list or archived),
 call `trello_utils.cascade_unblock(board_id, finished_card_id, session)`: it scans the board once,
 finds cards whose `Blocked-by:` names the finished card, and for each whose **last** blocker just
