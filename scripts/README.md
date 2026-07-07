@@ -22,11 +22,14 @@ handoff launcher, a drainer worker delegating to another repo, or any agent) use
 Opens a new Windows Terminal tab running a fresh `claude` session. Two modes:
 
 - **Prompt-file mode** (`-PromptFile <path>`): the full instructions live on disk; the session is
-  seeded with a one-line pointer to them. Writes two sidecar files next to the prompt file:
+  seeded with a one-line pointer to them. Writes a sidecar file next to the prompt file:
   - `<prompt>.session` — the session id (so `peek.py` can find the transcript).
-  - `<prompt>.hostpid` — the PID hosting the tab (so a self-resolving worker can close its own tab).
 - **Seed mode** (`-SeedFile <path>`): the seed text itself lives in the file and is passed verbatim
   (used by the handoff launcher). Add `-Model "<id>"` to pin a model; omit to inherit the session default.
+
+Both modes invoke `powershell` without `-NoProfile`, so the tab loads the user's `$PROFILE` — that's
+where `$env:CLAUDE_HOST_PID` (the PID hosting the tab, for a self-resolving session to close its own
+tab) and `$env:BROWSER_CHAUFFEUR_OWNER_PID` come from, not from this script.
 
 All prose is passed via a FILE, never on the command line — an embedded quote or `;` would break `wt`
 tokenization. Only paths, titles, model ids, and guids cross the command line.
