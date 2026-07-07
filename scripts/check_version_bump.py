@@ -7,10 +7,18 @@ plugins/<name>/.claude-plugin/plugin.json keeps the same version, so
 `claude plugin update` (which keys off the version number) never re-pulls the
 new source and the fix silently never ships.
 
+For skill plugins the behavior IS markdown — `skills/**/SKILL.md` and
+`commands/*.md` are the payload, not documentation. So a blanket "*.md is docs"
+exemption would wave through exactly the changes that most need to ship (this is
+the bug that let a SKILL.md voice-loop edit merge without a bump). The exemption
+is therefore narrow: only genuine meta-docs (README, CHANGELOG, CONTRIBUTING,
+LICENSE) and anything under a docs/ directory are bump-free. Everything else —
+including any SKILL.md and command markdown — requires a bump.
+
 Run in PR CI. Compares the PR head against the merge base:
   - Group changed files by their plugin directory.
-  - Documentation-only changes (*.md) do not require a bump.
-  - For every plugin with at least one non-doc change, the `version` in its
+  - Only genuine meta-doc changes (see is_doc_only) do not require a bump.
+  - For every plugin with at least one behavior change, the `version` in its
     plugin.json must differ from the base. Brand-new plugins (no plugin.json in
     the base) are exempt.
 
@@ -36,6 +44,19 @@ def file_at(ref, path):
         return None
 
 
+# Genuine meta-docs that don't change plugin behavior — safe to edit without a
+# version bump. Everything else under a plugin (SKILL.md, commands/*.md, scripts,
+# hooks, plugin.json) is treated as behavior and requires a bump.
+DOC_BASENAMES = {'readme.md', 'changelog.md', 'contributing.md', 'license', 'license.md'}
+
+
+def is_doc_only(path):
+    parts = path.lower().split('/')
+    if 'docs' in parts:
+        return True
+    return parts[-1] in DOC_BASENAMES
+
+
 def version_of(ref, plugin):
     raw = file_at(ref, f'plugins/{plugin}/.claude-plugin/plugin.json')
     if raw is None:
@@ -58,8 +79,7 @@ def main():
         if len(parts) < 2 or parts[0] != 'plugins':
             continue
         plugin = parts[1]
-        is_doc = f.lower().endswith('.md')
-        touched[plugin] = touched.get(plugin, False) or not is_doc
+        touched[plugin] = touched.get(plugin, False) or not is_doc_only(f)
 
     failures = []
     for plugin, has_code_change in sorted(touched.items()):
