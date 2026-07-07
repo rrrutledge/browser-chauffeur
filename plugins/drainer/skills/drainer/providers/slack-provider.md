@@ -41,11 +41,14 @@ and re-set `SLACK_BOT_TOKEN` / `SLACK_COOKIE_D`. There is no refresh-token flow;
 error to the user.
 
 ## SITUATIONAL-CHECK (do this BEFORE drafting any reply)
-The captured item is the message as it arrived; the conversation may have moved on. Re-read it with
-`node slack.js --show --channel=<C> --ts=<ts>` (add `--thread-ts=<threadTs>` for a thread item; open the
-permalink for full thread context) to confirm there's not already a reply and the ask is still open. The
-`message-draft` slack mode stages drafts in the Slack composer — check the conversation in Slack so you
-don't stack a second draft. Reply only to what is still open.
+The captured item is the message as it arrived; the conversation may have moved on. Re-read the full
+surrounding context with `node slack.js --history --channel=<C>` (add `--thread-ts=<threadTs>` for a
+thread item) — not `--show` alone, which returns only the single captured message. `--history` surfaces
+everything posted since, in both directions: the counterparty may have already replied, or — easy to
+miss — Russell may have posted his own follow-up that's still unanswered, which means the item is
+blocked on them, not ready to act on. Confirm there's not already a reply and the ask is still open
+before drafting. The `message-draft` slack mode stages drafts in the Slack composer — check the
+conversation in Slack so you don't stack a second draft. Reply only to what is still open.
 
 ## CAPTURE (the item shape the worker reads)
 The adapter writes these two files for each dispatched item (`slack-adapter.py` → `capture`); this is the

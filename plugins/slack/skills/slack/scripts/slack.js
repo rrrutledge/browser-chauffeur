@@ -12,6 +12,11 @@
 //                 replies, newest-first; muted conversations are skipped; --json emits a structured array)
 // Show one:      node slack.js --show --channel=<C> --ts=<ts> [--thread-ts=<tts>] [--json]
 //                (the message text + a chat.getPermalink url; pass --thread-ts for a threaded reply)
+// History:       node slack.js --history --channel=<C> [--thread-ts=<tts>] [--limit=50] [--json]
+//                (recent messages, oldest first — a whole thread when --thread-ts is given, else the
+//                 channel/DM/group-DM timeline; use this before deciding a move so you see anything
+//                 posted after the one message a captured item happens to link to, including your own
+//                 follow-up)
 // React:         node slack.js --react --channel=<C> --ts=<ts> --emoji=<name>
 //                (reactions.add; emoji name without colons, e.g. "thumbsup", "+1", "tada")
 // Mark read:     node slack.js --mark --channel=<C> --ts=<ts> [--thread-ts=<tts>]
@@ -265,6 +270,39 @@ async function show() {
   console.log(`\n${text || '(no text)'}`);
 }
 
+// Recent messages, oldest first: a whole thread (conversations.replies) when --thread-ts is given,
+// else the channel/DM/group-DM timeline (conversations.history). Unlike --show, this surfaces
+// everything around a captured message — including a reply posted after capture, in either direction —
+// so a situational check never mistakes one linked message for the whole conversation.
+async function history() {
+  if (!args.channel) throw new Error('--history requires --channel');
+  const limit = String(args.limit || '50');
+  let msgs;
+  if (args['thread-ts']) {
+    const r = await call('conversations.replies', { channel: args.channel, ts: args['thread-ts'], limit });
+    msgs = r.messages || [];
+  } else {
+    const r = await call('conversations.history', { channel: args.channel, limit });
+    msgs = (r.messages || []).slice().reverse();
+  }
+  const out = [];
+  for (const m of msgs) {
+    out.push({
+      ts: m.ts, threadTs: m.thread_ts || '', replyCount: m.reply_count || 0,
+      from: await userName(m.user), fromId: m.user,
+      received: tsToIso(m.ts), text: await renderText(m.text),
+    });
+  }
+  if (args.json) { console.log(JSON.stringify(out, null, 2)); return; }
+  if (!out.length) { console.log('No messages.'); return; }
+  console.log(`${out.length} message(s), oldest first:`);
+  for (const m of out) {
+    console.log(`\n--- ${m.received.slice(0, 16)} | ${m.from} (ts=${m.ts}` +
+      `${m.threadTs ? `, thread=${m.threadTs}` : ''}${m.replyCount ? `, replies=${m.replyCount}` : ''})`);
+    console.log(m.text || '(no text)');
+  }
+}
+
 async function react() {
   if (!args.channel || !args.ts || !args.emoji) throw new Error('--react requires --channel, --ts, and --emoji');
   const name = args.emoji.replace(/^:|:$/g, '');
@@ -294,7 +332,8 @@ async function check() {
   if (args.check) return await check();
   if (args['list-unread']) return await listUnread();
   if (args.show) return await show();
+  if (args.history) return await history();
   if (args.react) return await react();
   if (args.mark) return await mark();
-  throw new Error('Specify --check, --list-unread, --show, --react, or --mark');
+  throw new Error('Specify --check, --list-unread, --show, --history, --react, or --mark');
 })().catch(e => { console.error('Error:', e.message); process.exit(1); });
