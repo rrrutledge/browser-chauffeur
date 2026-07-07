@@ -74,14 +74,21 @@ answered?) That changes the right action. For an unknown mechanism internal to t
 organization, consult the user's designated internal knowledge source first (if their `context.md`
 names one) before asking the user directly.
 
-**For email items specifically:** read the whole thread (sent + inbox) before drafting anything.
-The captured item is the inbound message, but the user may have replied after it was captured. If
-the user's most recent message on the thread is already a reply to this sender, the item is done —
-close it without a new draft. Each provider's SITUATIONAL-CHECK describes how to pull the full
-thread for that source. **When you DO draft (a reply or a follow-up nudge), thread it off the most
-recent message in the thread — even when that latest message is one the user sent.** A follow-up
-answers where the conversation actually stands, so quote and thread on the newest message, not an
-older inbound one; provider DRAFT-MODE notes how to target a sent message.
+**Read the whole thread, for any source — not just the one message captured.** A captured item's `url`/
+`ts` is a pointer into a conversation, not the conversation itself, whichever source it's from (email,
+Slack, Teams, a Trello card's linked message). The state at capture time is stale by the time you act on
+it: the contact may have replied since, or — easy to miss — the user may have posted their own follow-up
+that changes what's actually being waited on (a clarifying question they asked but hasn't been answered
+yet turns a "ready to act" item into a blocked one). Before drafting or deciding the move, pull the full
+recent thread/history, not just the linked message, and check both directions. If the user's most recent
+message on the thread is already a reply to this sender, the item is done — close it without a new draft.
+If it's a question of theirs still unanswered, the item is blocked on the other party, not ready to act.
+Each provider's SITUATIONAL-CHECK/CAPTURE section describes how to pull full context for that source (for
+email: search sent + inbox in both directions; for Slack: `slack.js --history`, not just `--show` on the
+one linked message). **When you DO draft (a reply or a follow-up nudge), thread it off the most recent
+message in the thread — even when that latest message is one the user sent.** A follow-up answers where
+the conversation actually stands, so quote and thread on the newest message, not an older inbound one;
+provider DRAFT-MODE notes how to target a sent message.
 
 ## 2b. If the item is a pointer, open the real content yourself
 If your item is a **notification that points to content living elsewhere** — a LinkedIn/Facebook

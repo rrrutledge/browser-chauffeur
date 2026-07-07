@@ -50,6 +50,12 @@ Under `scripts/` (run with `node`):
   - Show one: `node slack.js --show --channel=<C> --ts=<ts> [--thread-ts=<tts>] [--json]` — the message
     text plus a `chat.getPermalink` url. Pass `--thread-ts` to read a threaded reply. `--json` emits
     `{channel,ts,threadTs,from,fromId,received,text,permalink}`.
+  - History: `node slack.js --history --channel=<C> [--thread-ts=<tts>] [--limit=50] [--json]` — recent
+    messages, oldest first: a whole thread (`conversations.replies`) when `--thread-ts` is given, else
+    the channel/DM/group-DM timeline (`conversations.history`). Use this for a situational check — a
+    captured item's `url`/`ts` points at one message, not the whole conversation, so pull the history
+    around it to see anything posted after capture, in either direction (the contact's reply, or your
+    own follow-up). `--json` emits an array of `{ts,threadTs,replyCount,from,fromId,received,text}`.
   - Mark read: `node slack.js --mark --channel=<C> --ts=<ts> [--thread-ts=<tts>]` — `conversations.mark`
     up to `<ts>`, or `subscriptions.thread.mark` when `--thread-ts` is given (the conversation/thread's
     "gone"; reversible — re-reading re-surfaces it, never deletes).
