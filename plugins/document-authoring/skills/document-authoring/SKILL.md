@@ -50,6 +50,11 @@ of plain text:
   profile.
 - **An event**: link its name to the event's page.
 - **A document**: link its title to the document itself.
+- **A meeting or call you're offering to set up**: anchor the offer to Russell's public booking page
+  (https://calendly.com/russell-rutledge) so the recipient can self-book a time, rather than a bare offer
+  like "we could set up a call" with no way to act on it. Include the link the first time a call is
+  proposed on a thread; once it's already gone out, a later nudge on the same thread drops it per the
+  "Don't re-paste" rule below rather than repeating it.
 Apply the platform's actual anchoring capability: Confluence/Word/email/Markdown/Slack/Teams all support
 anchoring a link to descriptive text (see **Implementation by format** above) — use that. Some composers
 have no rich-text anchoring at all (e.g., LinkedIn's own DM composer): there, put the plain URL right
