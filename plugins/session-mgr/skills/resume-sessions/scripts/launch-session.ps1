@@ -31,6 +31,10 @@ param(
 # or `;` in a seed closes the quote early and wt re-tokenizes the leftover words as a
 # program to launch (observed: "file not found"). So ALL prose arrives via a FILE
 # (-PromptFile / -SeedFile); only paths, titles, model ids, and guids cross the wt line.
+#
+# Self-close: a session that wants to close its own tab reads $env:CLAUDE_HOST_PID, set by the
+# user's PowerShell $PROFILE when the caller's `powershell` invocation loads it (both current
+# callers do).
 
 $seed = $null
 if ($Resume) {
@@ -51,10 +55,6 @@ if ($PromptFile) {
   # transcript is locatable by item (peek.py depends on this).
   if (-not $SessionId) { $SessionId = [guid]::NewGuid().Guid }
   Set-Content -LiteralPath ($PromptFile + ".session") -Value $SessionId -Encoding ascii
-  # Record THIS powershell's PID (the process hosting the WT pane) next to the prompt file. A drainer
-  # worker that finishes an auto-handle item (no human to wait for) closes its own tab by killing this
-  # process tree (taskkill /T), so a self-resolved tab doesn't linger as "finished" needing a manual look.
-  Set-Content -LiteralPath ($PromptFile + ".hostpid") -Value $PID -Encoding ascii
   Write-Host "launch-session id: $SessionId"
   # Lead with a one-line item summary (if supplied) so Claude names the tab off it — a descriptive
   # title like "Handle Gmail security message" instead of "Review prompt-file instructions" — while the

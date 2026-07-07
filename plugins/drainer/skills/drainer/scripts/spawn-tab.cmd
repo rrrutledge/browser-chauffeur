@@ -37,8 +37,13 @@ REM Only pass -SummaryFile when a 5th arg was actually given. An EMPTY "%SFILE%"
 REM tokenizer, leaving a dangling "-SummaryFile" with no value, which makes launch-session.ps1 fail with
 REM "Missing an argument for parameter 'SummaryFile'". The digest spawns with no summary, so it must omit
 REM the flag entirely rather than pass it empty.
+REM
+REM The worker's PowerShell host loads the user's $PROFILE like any other tab, which sets
+REM $env:CLAUDE_HOST_PID (self-close) and $env:BROWSER_CHAUFFEUR_OWNER_PID (browser tab ownership)
+REM automatically, with no per-launcher wiring. Safe for this unattended path — it's an ordinary
+REM PowerShell host startup, no different from an interactively-opened tab.
 if "%SFILE%"=="" (
-  "%WT%" -w drainer new-tab --title "%TITLE%" --startingDirectory "%REPO%" powershell -NoExit -NoProfile -File "%LAUNCHER%" -PromptFile "%PFILE%" -Model "%MODEL%"
+  "%WT%" -w drainer new-tab --title "%TITLE%" --startingDirectory "%REPO%" powershell -NoExit -File "%LAUNCHER%" -PromptFile "%PFILE%" -Model "%MODEL%"
 ) else (
-  "%WT%" -w drainer new-tab --title "%TITLE%" --startingDirectory "%REPO%" powershell -NoExit -NoProfile -File "%LAUNCHER%" -PromptFile "%PFILE%" -Model "%MODEL%" -SummaryFile "%SFILE%"
+  "%WT%" -w drainer new-tab --title "%TITLE%" --startingDirectory "%REPO%" powershell -NoExit -File "%LAUNCHER%" -PromptFile "%PFILE%" -Model "%MODEL%" -SummaryFile "%SFILE%"
 )

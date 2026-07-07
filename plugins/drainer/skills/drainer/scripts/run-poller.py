@@ -397,11 +397,11 @@ def spawn_worker(iid, json_file, repo, runtime_dir, worker_model, local_dir):
             "instead: execute the standing rule autonomously, CLEAR the source, queue a digest entry, "
             "and write .done IMMEDIATELY — no presentation, no wait. Then CLOSE UP as your very last step: "
             "first close any browser tabs you opened with browser-chauffeur's `chauffeur.py "
-            "--close-owned`, then read the hosting PID from "
-            f"`{prompt_file}.hostpid` and run "
-            f"`taskkill /PID <pid> /T /F` (PowerShell) to terminate this session and close its tab, so a "
-            "self-resolved item never lingers as a finished tab you must check. Do this ONLY for "
-            "auto-handle — needs-you items always stay open and wait for the user.\n"
+            "--close-owned`, then via the Bash tool reveal the literal PID (`echo $CLAUDE_HOST_PID`) and "
+            "run `taskkill /PID <that number> /T /F` (the number written out literally, not the variable "
+            "reference — the auto-approval hook only recognizes a literal PID) to terminate this session "
+            "and close its tab, so a self-resolved item never lingers as a finished tab you must check. "
+            "Do this ONLY for auto-handle — needs-you items always stay open and wait for the user.\n"
         )
     # A one-line summary leads the seed so the worker's Claude session self-titles the tab descriptively
     # while keeping its attention star (the launcher prepends this; see launch-session.ps1 -SummaryFile).

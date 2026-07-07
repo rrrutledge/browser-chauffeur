@@ -37,7 +37,7 @@ def spawn_silent(prompt_file, model, cwd):
     """Run a Claude worker silently with no visible window or terminal tab.
 
     Uses `claude --print` (single-turn non-interactive mode): Claude runs tools, completes the task,
-    and exits automatically. No WT tab is created, no hostpid kill is needed.
+    and exits automatically. No WT tab is created, no self-close needed.
     For background maintenance tasks (e.g. Teams mark-read) that need no human review.
     """
     seed = (
