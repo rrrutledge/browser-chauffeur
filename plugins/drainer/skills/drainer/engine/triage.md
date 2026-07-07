@@ -36,10 +36,14 @@ carries the whole story and asks nothing — a recording notice with no notes �
   corporate/automated/mass announcement. Replying *is* the thing to do even when it asks nothing
   explicitly: acknowledging that he got it and appreciates it counts. The personal tone is the signal;
   the warmth of what they shared is the reason to write back. **Treat a 1:1 direct message from a real
-  person as this case by default** — a private DM is personal outreach, so it's **needs-you** (hint:
-  "reply") even when it's just a short remark or a closing "sounds good"; the minimum action is a quick
-  acknowledgment or 👍 reaction on their message. A group or meeting message that names Russell directly
-  counts the same way; only automated, mass, or not-aimed-at-him chatter stays fyi.
+  person as this case by default** — exactly two participants, Russell and the other person; a private
+  one-on-one DM is personal outreach, so it's **needs-you** (hint: "reply") even when it's just a short
+  remark or a closing "sounds good"; the minimum action is a quick acknowledgment or 👍 reaction on their
+  message. **This default does not extend to a group DM** (three or more participants) — a closing remark
+  or agreement there may be aimed at someone else in the thread, not Russell, so treat it as fyi unless it
+  names Russell directly or leaves an actual open ask. A group or meeting message that names Russell
+  directly counts the same as the 1:1 case; only automated, mass, or not-aimed-at-him chatter (including a
+  closing remark addressed to someone else in a group thread) stays fyi.
 - a **dated to-do** comes due — a Trello tracker or outreach card, any dated item, the moment its due
   date arrives or passes. The due date IS the queue: a due item is the action surfacing when it was
   scheduled for.
