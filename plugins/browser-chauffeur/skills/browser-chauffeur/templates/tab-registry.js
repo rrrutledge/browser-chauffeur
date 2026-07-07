@@ -32,6 +32,14 @@
 // session owns — unlike a context-level 'page' listener, which fires for every
 // new tab in the shared browser with no way to tell which one you opened.
 //
+// OWNER-SCOPED REUSE — the only way to get a tab is openTab (a fresh tab you
+// own) or findTab (one you ALREADY own). findTab returns a tab only when its
+// registry entry is owned by this session; a tab another session opened, or one
+// the user opened by hand (unregistered), is never returned — findTab yields
+// null so the caller opens its own. So a session can never navigate a tab it
+// doesn't own and clobber another session's work. Only openTab and popup
+// registration ever create ownership; findTab never adopts a tab it finds.
+//
 // registerTab/unregisterTab remain exported as the lower-level primitives, but
 // prefer openTab/closeTab.
 //
@@ -104,25 +112,22 @@ async function registerTab(context, page) {
   }
 }
 
-// Mark a tab active for the current session and claim its ownership; adopt it
-// into the registry if it wasn't opened via openTab. Bumps lastActive so the
-// sweep doesn't treat the tab as idle while you're using it. findTab calls this
-// for you on the reuse path, so you rarely call it directly. Returns the tab's
-// CDP targetId (null on failure). Best-effort.
+// Mark a tab THIS SESSION OWNS active — bump lastActive so the sweep doesn't
+// treat it as idle while you're using it. Only refreshes a tab already
+// registered to this session; it never adopts an unregistered tab or claims one
+// owned by another session (that would hijack another session's or the user's
+// tab). findTab calls this for you on its already-owner-checked result, so you
+// rarely call it directly. Returns the tab's CDP targetId, or null (not ours /
+// failure). Best-effort.
 async function touchTab(context, page) {
   try {
     const targetId = await targetIdOf(context, page);
-    const now = Date.now();
     const { ownerPid } = ownerInfo();
     const entries = load();
     const existing = entries.find(e => e.targetId === targetId);
-    if (existing) {
-      existing.lastActive = now;
-      existing.url = page.url();
-      existing.ownerPid = ownerPid;
-    } else {
-      entries.push({ targetId, ownerPid, url: page.url(), ts: now, lastActive: now });
-    }
+    if (!existing || existing.ownerPid !== ownerPid) return targetId;
+    existing.lastActive = Date.now();
+    existing.url = page.url();
     save(entries);
     return targetId;
   } catch {
@@ -161,7 +166,7 @@ function trackPopups(context, page) {
   popupTracked.add(page);
   page.on('popup', async (popup) => {
     try {
-      const id = await touchTab(context, popup);  // register, owned by this session
+      const id = await registerTab(context, popup);  // create ownership under this session
       if (id) tabIds.set(popup, id);
       trackPopups(context, popup);
     } catch {
@@ -170,17 +175,45 @@ function trackPopups(context, page) {
   });
 }
 
-// Find an existing tab by predicate and mark it active, so a tab a worker keeps
-// returning to keeps its place in the eviction order and isn't reaped as idle.
-// Returns the matching page, or null (caller then opens one with openTab).
-// Prefer this over a bare context.pages().find(...) on the tab-reuse path.
+// Find a tab THIS SESSION OWNS that matches the predicate, and mark it active so
+// a tab a worker keeps returning to holds its place in the eviction order and
+// isn't reaped as idle. Returns that page, or null when this session owns no
+// matching tab — the caller then opens its own with openTab.
+//
+// Owner-scoped so one session never grabs and navigates another session's (or
+// the user's) tab that happens to match the same URL. Among predicate matches
+// it keeps only those whose registry entry is owned by this session (ownerPid
+// equality, which also excludes dead-owner tabs — their PID isn't ours) and
+// returns the most-recently-active, since a session can own several matching
+// tabs (repeated openTab, or a popup a click spawned). The URL predicate is just
+// a coarse filter; the registry's targetId is the true tab identity.
+//
+// Perf: resolve targetIds (one CDP session each) only for the predicate matches,
+// not every tab.
 async function findTab(context, predicate) {
-  const page = context.pages().find(predicate);
-  if (page) {
-    await touchTab(context, page);
-    trackPopups(context, page);
+  const { ownerPid } = ownerInfo();
+  const candidates = context.pages().filter(predicate);
+  if (candidates.length === 0) return null;
+
+  const byTarget = new Map(load().map(e => [e.targetId, e]));
+  let best = null;  // { page, lastActive }
+  for (const page of candidates) {
+    let targetId;
+    try {
+      targetId = await targetIdOf(context, page);
+    } catch {
+      continue;
+    }
+    const entry = byTarget.get(targetId);
+    if (!entry || entry.ownerPid !== ownerPid) continue;  // not ours — never adopt
+    const lastActive = entry.lastActive || entry.ts || 0;
+    if (!best || lastActive > best.lastActive) best = { page, lastActive };
   }
-  return page || null;
+  if (!best) return null;
+
+  await touchTab(context, best.page);
+  trackPopups(context, best.page);
+  return best.page;
 }
 
 // Open a new tab, register it, and (optionally) navigate to url. Returns the

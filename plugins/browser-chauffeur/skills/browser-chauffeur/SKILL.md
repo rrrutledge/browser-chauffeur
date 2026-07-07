@@ -189,19 +189,22 @@ Before touching anything:
    ```javascript
    const { findTab, openTab } = require('browser-chauffeur-helpers'); // resolve via the try/catch pattern in Prerequisite Check / templates/script-template.js
 
-   // Reuse an existing tab by URL — findTab also marks it active, so a tab you
-   // keep returning to isn't reaped as idle by the sweep.
+   // Reuse YOUR OWN session's tab by URL — findTab returns only a tab this
+   // session opened, and marks it active so a tab you keep returning to isn't
+   // reaped as idle. A tab another session (or the user) opened is never
+   // returned, so you can't grab and clobber someone else's work.
    let myTab = await findTab(context, p => p.url().includes('example.com/my-section'));
 
-   // Or create a new tab for complete isolation — openTab creates AND registers
-   // it in one step (so the orphan sweep can reclaim it if this script crashes).
+   // Own no matching tab yet → findTab returned null → open your own. openTab
+   // creates AND registers it in one step (so the orphan sweep can reclaim it if
+   // this script crashes).
    if (!myTab) {
      myTab = await openTab(context, 'https://example.com/my-section');
    }
 
    // Save this reference - it stays valid even if other tabs open/close
    ```
-   **Why:** Tab positions shift as tabs are created/closed. Other Claude sessions may be working in parallel. Targeting by index is unreliable. Save the page object reference and reuse it throughout the script. **Create every tab with `openTab(context, url)`** — it bundles registration so the tab is tracked and reclaimable (see **Resilient Connection**), and it navigates for you when you pass a URL. Tabs you *found* (didn't create) are not yours — don't register or close them.
+   **Why:** Tab positions shift as tabs are created/closed. Other Claude sessions may be working in parallel — possibly on the very same URL. Targeting by index is unreliable, and a bare `context.pages().find(...)` would hand you whichever session's tab matched first, so you could navigate another session's tab out from under it. **Get a tab only two ways: `openTab(context, url)` for a fresh one you own, or `findTab(context, predicate)` to reuse one you already own** — never a bare `pages().find(...)`. `openTab` bundles registration so the tab is tracked and reclaimable (see **Resilient Connection**) and navigates for you; `findTab` is owner-scoped so it can only ever return your own tab. Save the page object reference and reuse it throughout the script. Tabs you *found* (didn't create) are not yours — don't register or close them.
 
    **Never open a tab with `context.newPage()` or by calling `page.goto()` on a fresh page you created yourself** — an unregistered tab escapes the orphan sweep entirely, so it lingers until the TTL/count backstop reaps it or the browser crashes under the accumulated count. `openTab` is the only sanctioned way to create a tab.
 

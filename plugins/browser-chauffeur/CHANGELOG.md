@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.10.0] - 2026-07-06
+
+Stops one Claude session from grabbing and navigating another session's tab. Previously two sessions on the same site (e.g. both editing the same LinkedIn profile) could clobber each other's work when one session's tab reuse matched the other's tab by URL.
+
+### Changed
+- **`findTab` is now owner-scoped.** It returns a matching tab only when that tab's registry entry is owned by the current session; a tab another session opened, or one the user opened by hand (unregistered), is never returned even when it matches the predicate — `findTab` yields `null` instead, so the caller opens its own tab with `openTab`. When the session owns several matching tabs (repeated `openTab`, or a click-spawned popup), it returns the most-recently-active. Predicate matches are filtered first, so only the few matches pay the per-tab CDP targetId lookup. Every existing call site is safe unchanged — a caller that owns no match simply opens a fresh tab as before.
+- **`findTab` no longer adopts the tab it finds.** Ownership is created only by `openTab` and by popup registration; the reuse path never claims a tab it didn't open. `touchTab` correspondingly refreshes only a tab already owned by this session and never adopts an unregistered tab or claims one owned by another session.
+
 ## [1.9.1] - 2026-07-03
 
 ### Changed

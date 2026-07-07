@@ -83,15 +83,14 @@ Closes a tab opened with `openTab` and unregisters it. Parks on `about:blank` in
 
 ### `findTab(context, predicate)`
 
-Finds an existing tab by predicate and marks it active, so a tab a worker keeps returning to keeps its place in the eviction order and isn't reaped as idle. Use this on the tab-reuse path instead of a bare `context.pages().find(...)`.
+Reuses **your own session's** tab that matches the predicate, and marks it active so a tab you keep returning to holds its place in the eviction order and isn't reaped as idle. It only ever returns a tab this session opened; a tab another Claude session opened, or one the user opened by hand, is never returned even when it matches the predicate — so two sessions on the same URL never grab each other's tab. When you own no matching tab it returns `null`, and you open your own with `openTab`. **Get a tab only via `openTab` (a new one) or `findTab` (one you already own) — never a bare `context.pages().find(...)`, which would hand you another session's tab.**
 
 - **Parameters**: `context` - Playwright browser context; `predicate` - `(page) => boolean`
-- **Returns**: Promise<Page | null> — the matching page, or `null` (then open one with `openTab`)
-- **Note**: purely an eviction-ordering optimization — if you skip it and use `pages().find(...)`, nothing breaks; the tab just isn't marked active on that reuse.
+- **Returns**: Promise<Page | null> — your own matching tab (the most-recently-active if you own several), or `null` (then open one with `openTab`)
 
 ### `touchTab(context, page)`
 
-Marks a tab active (the lower-level primitive `findTab` uses). Call it directly when you hold a page you'll keep using across a long flow and want to refresh its activity.
+Marks a tab **you own** active (the lower-level primitive `findTab` uses). Call it directly when you hold a page you'll keep using across a long flow and want to refresh its activity. It refreshes only a tab already registered to this session — it never adopts an unregistered tab or claims one another session owns.
 
 - **Parameters**: `context` - Playwright browser context; `page` - the Playwright page
 - **Returns**: Promise<void>
