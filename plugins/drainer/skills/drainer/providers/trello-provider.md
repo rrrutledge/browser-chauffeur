@@ -99,23 +99,17 @@ re-discovering anything. Write `items/<id>.json`:
 `{ "id","source":"trello","triage":"needs-you","kind":"reply|work","cardId","board","list","name",`
 `"due","url","contacts":[...],"channelLabel":"<Email|Teams|Slack|...>","initiative":"<slug|null>","ts":"<ISO now>" }`
 Then find the relevant **thread** (email / Teams / Slack) for the contact + channel and read it to
-decide the move. A card's `url`/description may link to one specific message — that's a pointer into
-the conversation, not the whole thing, so pull the surrounding context before deciding the move; the
-user may have posted a follow-up after the link was captured (a clarifying question left unanswered
-turns a "ready to act" card into one blocked on the other party — don't miss that). For **email**
-threads, follow the SITUATIONAL-CHECK guidance in the matching provider doc and search the whole
-mailbox in both directions (incoming from the contact AND your sent replies) — recent messages may
-have been swept out of the inbox by a prior drain cycle:
+decide the move — a card's `url`/description links to one specific message, not the whole conversation,
+so pull full context per **that source's own SITUATIONAL-CHECK guidance** before deciding the move
+(the counterparty may have replied since capture, or the user's own follow-up may still be unanswered —
+a clarifying question left hanging turns a "ready to act" card into one blocked on the other party;
+don't miss that). For **email** threads, additionally search the whole mailbox in both directions
+(incoming from the contact AND your sent replies) — recent messages may have been swept out of the
+inbox by a prior drain cycle:
 - **outlook-rest / outlook-graph**: search inbox + Archive + **Deleted Items** (paginated) — CLEAR
   moves handled messages to Deleted Items.
 - **gmail**: search All Mail with no `in:` filter — CLEAR archives (not trashes), so everything is
   in All Mail.
-- **slack**: a linked message is one `channel:ts`, not the conversation — pull the surrounding history
-  with `node slack.js --history --channel=<C> --thread-ts=<tts>` (a threaded reply) or
-  `node slack.js --history --channel=<C>` (channel/DM/group-DM timeline) to see anything posted after
-  it, in either direction, before deciding the move.
-- **teams**: `teams-chat.js`'s conversation read already returns recent history, not a single message —
-  use it as-is; per its SKILL.md, read a chat's full unread history when more than one message is unread.
 
 **Cache back to the card.** Anything you learn that the next pass would otherwise re-derive — the
 thread deep link, the contact's role/handle, where they are in the outreach, the last message
