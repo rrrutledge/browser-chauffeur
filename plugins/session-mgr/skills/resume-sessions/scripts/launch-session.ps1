@@ -32,9 +32,9 @@ param(
 # program to launch (observed: "file not found"). So ALL prose arrives via a FILE
 # (-PromptFile / -SeedFile); only paths, titles, model ids, and guids cross the wt line.
 #
-# Self-close: a session that wants to close its own tab needs $env:CLAUDE_HOST_PID, which is set
-# by the user's PowerShell $PROFILE — NOT by this script. That only reaches the session if the
-# caller invokes `powershell` without `-NoProfile` (both current callers do, on purpose).
+# Self-close: a session that wants to close its own tab reads $env:CLAUDE_HOST_PID, set by the
+# user's PowerShell $PROFILE when the caller's `powershell` invocation loads it (both current
+# callers do).
 
 $seed = $null
 if ($Resume) {

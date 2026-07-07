@@ -38,10 +38,10 @@ REM tokenizer, leaving a dangling "-SummaryFile" with no value, which makes laun
 REM "Missing an argument for parameter 'SummaryFile'". The digest spawns with no summary, so it must omit
 REM the flag entirely rather than pass it empty.
 REM
-REM No -NoProfile: the worker's PowerShell host loads the user's $PROFILE like any other tab, which is
-REM what sets $env:CLAUDE_HOST_PID (self-close) and $env:BROWSER_CHAUFFEUR_OWNER_PID (browser tab
-REM ownership) automatically, with no per-launcher wiring. Safe for this unattended path exactly because
-REM it's an ordinary PowerShell host startup, no different from an interactively-opened tab.
+REM The worker's PowerShell host loads the user's $PROFILE like any other tab, which sets
+REM $env:CLAUDE_HOST_PID (self-close) and $env:BROWSER_CHAUFFEUR_OWNER_PID (browser tab ownership)
+REM automatically, with no per-launcher wiring. Safe for this unattended path — it's an ordinary
+REM PowerShell host startup, no different from an interactively-opened tab.
 if "%SFILE%"=="" (
   "%WT%" -w drainer new-tab --title "%TITLE%" --startingDirectory "%REPO%" powershell -NoExit -File "%LAUNCHER%" -PromptFile "%PFILE%" -Model "%MODEL%"
 ) else (
