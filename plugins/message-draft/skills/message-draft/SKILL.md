@@ -1,6 +1,6 @@
 ---
 name: message-draft
-description: Draft a message and NEVER send it. Four modes — `teams` (a Teams chat, staged in the web composer via browser-chauffeur), `slack` (a Slack message/reply, typed into the Slack composer via browser-chauffeur and left as an auto-saved draft), `outlook` (a work-email reply or new email, created as an Outlook draft via the `ms-rest` skill's REST API), and `linkedin` (a LinkedIn DM reply, typed into the messaging composer via browser-chauffeur and left un-sent). Use whenever staging a Teams chat, a Slack message, a work Outlook email, or a LinkedIn message for human review. (Supersedes teams-message and slack-message.)
+description: Draft a message and NEVER send it. Three modes — `teams` (a Teams chat, staged in the web composer via browser-chauffeur), `slack` (a Slack message/reply, typed into the Slack composer via browser-chauffeur and left as an auto-saved draft), and `outlook` (a work-email reply or new email, created as an Outlook draft via the `ms-rest` skill's REST API). Use whenever staging a Teams chat, a Slack message, or a work Outlook email for human review. LinkedIn is never automated — hand the drafted text to the user to paste in himself. (Supersedes teams-message and slack-message.)
 ---
 
 # message-draft
@@ -14,8 +14,11 @@ Stage a **draft** and stop — a human reviews and sends. Pick a mode:
   confuse it with the personal `ms-graph` skill.
 - **`slack`** — a Slack DM, group DM, channel message, or threaded reply, typed into the Slack composer
   (you drive **browser-chauffeur**) and left as Slack's auto-saved draft.
-- **`linkedin`** — a LinkedIn DM reply, typed into the messaging composer via **browser-chauffeur**
-  and left un-sent for the user to review and send.
+
+**LinkedIn is never automated.** LinkedIn suspended Russell's account for automation in July 2026 —
+never drive browser-chauffeur/Playwright against linkedin.com for any reason. For a LinkedIn reply,
+write the message text (through the `document-authoring` voice pass below) and hand it to the user
+to paste into the LinkedIn composer and send himself.
 
 **Voice:** Before composing any message, invoke the **`document-authoring`** skill to write the
 content in Russell's voice. Pass the drafted text to the mode steps below for staging.
@@ -168,35 +171,10 @@ through the cache glob (run the newest if several are cached) from the repo root
    stale one with `delete <draftId>` if needed).
 6. **Leave as draft.** Never send. Report where the draft lives (Drafts; `webLink` is the deep link).
 
-## Mode: `linkedin`
-
-Stages a reply in the **LinkedIn messaging composer** for a DM thread. LinkedIn has no draft API — typing
-into the composer and stopping leaves the text in place for the user to review and send. You drive
-**browser-chauffeur**; never Playwright directly.
-
-Inputs: the conversation (navigate to `linkedin.com/messaging/` and open the right thread), the message body.
-
-1. **Navigate to the thread.** Open `https://www.linkedin.com/messaging/` via browser-chauffeur and locate
-   the thread with the intended recipient. Confirm the conversation header matches before typing.
-2. **Identity-gate.** Read the conversation header and confirm it matches the intended recipient BEFORE
-   the first keystroke.
-3. **Compose — inject via evaluate, never pressSequentially.**
-   **Critical:** LinkedIn's composer sends on bare Enter — `pressSequentially` with newlines in the text
-   will fire send mid-draft. Instead, inject the full text in one shot via `page.evaluate`:
-   ```js
-   const el = await page.$('.msg-form__contenteditable[contenteditable="true"]');
-   await page.evaluate((el, text) => {
-     el.focus();
-     el.innerText = text;
-     el.dispatchEvent(new Event('input', { bubbles: true }));
-   }, el, draftText);
-   ```
-   This sets the text without triggering keyboard shortcuts.
-4. **Voice-gate.** Read the composer back (`el.innerText`) and verify the full body is present.
-5. **Leave as draft.** Do NOT press Enter or click Send. Report the conversation the draft is staged in.
-
 ## Done-criteria (report this back)
 
-`mode=<teams|slack|outlook|linkedin> recipient=<who> drafted=true sent=false voice-gate=passed links=<n>` plus a
-one-line note of where the draft lives (Outlook: the `webLink`/draftId; Teams/Slack/LinkedIn: the conversation the
+`mode=<teams|slack|outlook> recipient=<who> drafted=true sent=false voice-gate=passed links=<n>` plus a
+one-line note of where the draft lives (Outlook: the `webLink`/draftId; Teams/Slack: the conversation the
 draft is staged in). If identity-gate failed or sign-in was needed, say so and that nothing was staged.
+For a LinkedIn reply, report `mode=linkedin drafted=true staged_for_manual_send=true` and give the user
+the composed text to paste in himself.

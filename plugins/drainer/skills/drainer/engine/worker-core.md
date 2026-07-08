@@ -94,17 +94,20 @@ the conversation actually stands, so quote and thread on the newest message, not
 provider DRAFT-MODE notes how to target a sent message.
 
 ## 2b. If the item is a pointer, open the real content yourself
-If your item is a **notification that points to content living elsewhere** — a LinkedIn/Facebook
-"X just messaged you", a meeting-recording notice, a forum "you have a reply" — it is NOT the content,
-only a pointer. **Go open and read the underlying message yourself before doing anything else**, using
-the right tool for that surface: for a web service like LinkedIn, drive **browser-chauffeur** to the
-link in the captured item and read the actual message. Reading it is YOUR job; never hand the lookup
-back to the user ("go read the message yourself").
+If your item is a **notification that points to content living elsewhere** — a meeting-recording
+notice, a forum "you have a reply" — it is NOT the content, only a pointer. **Go open and read the
+underlying message yourself before doing anything else**, using the right tool for that surface.
+Reading it is YOUR job; never hand the lookup back to the user ("go read the message yourself").
 
-Then **triage what you find with `triage.md`** (the same rubric the poller uses, in this engine/ folder),
-exactly as if that content had arrived as email:
-- **needs-you** → proceed through the steps below; stage any reply draft-only in that surface's composer
-  (for LinkedIn, the LinkedIn web composer via browser-chauffeur), never send.
+**Exception: LinkedIn/Facebook "X just messaged you" pointers.** Never drive browser-chauffeur to
+linkedin.com or facebook.com for any reason — LinkedIn suspended Russell's account for automation in
+July 2026. Route the pointer straight to **needs-you** without opening it, so Russell reads and
+replies himself.
+
+Then, for every other pointer, **triage what you find with `triage.md`** (the same rubric the poller
+uses, in this engine/ folder), exactly as if that content had arrived as email:
+- **needs-you** → proceed through the steps below; stage any reply draft-only in that surface's composer,
+  never send.
 - **fyi / junk** → do NOT bug the user. Route it to the digest queue so the daily digest handles it
   (junk also gets a source-stop proposal) instead of being lost: run
   `node <skill>/scripts/seen-state.js queue-add <runtime_dir> <source> <id> <path to items/<id>.json>`
