@@ -57,6 +57,13 @@ When the two sides conflict, **tighten**, in this order:
    is safe. Reach for this only when needed: scoping to a sender means the *same* junk from other
    senders slips through, so a self-sufficient phrase always belongs in the plain archive rule instead.
 
+Watch for the inverse trap: a subject can *read* like a clean, self-sufficient phrase yet be safe
+**only** because it is pinned to its sender. A person's name (`Russell`), `Invoice`, `Document shared`,
+`receipt` all look like tidy standalone subject matches — but unpinned they bury exactly the mail you
+most want to see: recruiter and personal mail, a real bill, a genuine shared file. Keep these in a
+sender-scoped bucket (or give the name its own dedicated sender rule); never lift them into the general
+subjects rule just because they look distinctive.
+
 Erring strict is deliberate: a too-narrow phrase that misses a variant costs you one more sibling
 phrase later; a too-broad phrase buries real mail. This is why the real rule sets contain near-duplicate
 phrasings — variants captured over time, rather than one phrase broadened past the safety line.
