@@ -97,6 +97,11 @@ CASES = [
     {"id": "heredoc", "tool": "Bash", "command": "cat << EOF\nhi\nEOF", "expect": "BLOCK"},
     {"id": "output_redirect", "tool": "Bash", "command": "echo hi > out.txt", "expect": "BLOCK"},
     {"id": "append_redirect", "tool": "Bash", "command": "echo hi >> out.txt", "expect": "BLOCK"},
+    # Regression: a quoted redirect target used to be stripped to nothing
+    # before the target-detection regex ran, so it never matched and the
+    # command fell through to a plain permission prompt instead of BLOCK.
+    {"id": "quoted_output_redirect", "tool": "Bash",
+     "command": 'echo hi > "C:\\Users\\some dir\\out.txt"', "expect": "BLOCK"},
     {"id": "input_redirect", "tool": "Bash", "command": "sort < in.txt", "expect": "BLOCK"},
     {"id": "var_expansion", "tool": "Bash", "command": "echo $MYTOKEN", "expect": "BLOCK"},
     {"id": "var_assignment", "tool": "Bash", "command": "X=1 && echo done", "expect": "BLOCK"},
