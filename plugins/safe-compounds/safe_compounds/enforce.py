@@ -154,7 +154,10 @@ def detect_inline_script(command):
 
 def detect_output_redirection(command):
     for seg in split_segments(command):
-        unquoted = re.sub(r'"[^"\\]*(?:\\.[^"\\]*)*"|\'[^\'\\]*(?:\\.[^\'\\]*)*\'', '', seg)
+        # Replace quoted spans with a placeholder (not erase them) so a quoted
+        # redirect target like `> "some path.txt"` still matches as a target
+        # instead of vanishing and hiding the redirection.
+        unquoted = re.sub(r'"[^"\\]*(?:\\.[^"\\]*)*"|\'[^\'\\]*(?:\\.[^\'\\]*)*\'', 'Q', seg)
         for m in re.finditer(r'(\d*)(>>?)\s*([^\s;&|]+)', unquoted):
             fd = m.group(1)
             target = m.group(3).strip().strip('"\'')
