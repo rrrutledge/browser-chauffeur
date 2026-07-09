@@ -101,8 +101,9 @@ Reading it is YOUR job; never hand the lookup back to the user ("go read the mes
 
 **Exception: LinkedIn/Facebook "X just messaged you" pointers.** Never drive browser-chauffeur to
 linkedin.com or facebook.com for any reason — LinkedIn suspended Russell's account for automation in
-July 2026. Route the pointer straight to **needs-you** without opening it, so Russell reads and
-replies himself.
+July 2026. Pull the deep link out of the notification and present it as a clickable link in the
+terminal, routed straight to **needs-you** — Russell clicks it and reads/replies himself; you never
+open it.
 
 Then, for every other pointer, **triage what you find with `triage.md`** (the same rubric the poller
 uses, in this engine/ folder), exactly as if that content had arrived as email:
