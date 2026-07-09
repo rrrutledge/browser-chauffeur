@@ -1,6 +1,6 @@
 ---
 name: ms-graph
-description: Read/write a personal Microsoft account's Outlook mail and calendar via the Microsoft Graph API (official @azure/msal-node + @microsoft/microsoft-graph-client). Use to list/create/update calendar events, search/read mail, draft replies, or send yourself a note — no browser needed after a one-time sign-in. For personal (consumer) Microsoft accounts.
+description: Read/write a personal Microsoft account's Outlook mail, calendar, and contacts via the Microsoft Graph API (official @azure/msal-node + @microsoft/microsoft-graph-client). Use to list/create/update calendar events, search/read mail, draft replies, send yourself a note, or list/create People contacts — no browser needed after a one-time sign-in. For personal (consumer) Microsoft accounts.
 ---
 
 # Microsoft Graph — Personal Outlook Mail & Calendar
@@ -11,7 +11,7 @@ Microsoft account (consumer Outlook.com) via MSAL + Graph SDK. For the **work** 
 ruled out there, so it rides the live Outlook-web token instead. Different auth path, different
 mailbox.
 
-Read and write a **personal** Outlook.com mailbox and calendar directly through the Microsoft Graph REST API, no browser automation. Built on Microsoft's own libraries:
+Read and write a **personal** Outlook.com mailbox, calendar, and contacts directly through the Microsoft Graph REST API, no browser automation. Built on Microsoft's own libraries:
 
 - **`@azure/msal-node`** — handles auth, the token cache, and silent access-token refresh. It owns the refresh token internally; there is no manual refresh handling.
 - **`@microsoft/microsoft-graph-client`** — the official Graph request builder.
@@ -28,7 +28,7 @@ Read and write a **personal** Outlook.com mailbox and calendar directly through 
 
 ## Entra app registration
 
-A delegated app supporting "personal Microsoft accounts" with redirect URI (Web) `http://localhost:8080/callback` and delegated scopes `Mail.ReadWrite Mail.Send Calendars.ReadWrite MailboxSettings.ReadWrite User.Read offline_access`. The `consumers` authority targets the personal mailbox. Recreate the client secret in the portal before it expires and update `GRAPH_CLIENT_SECRET`.
+A delegated app supporting "personal Microsoft accounts" with redirect URI (Web) `http://localhost:8080/callback` and delegated scopes `Mail.ReadWrite Mail.Send Calendars.ReadWrite MailboxSettings.ReadWrite Contacts.ReadWrite User.Read offline_access`. The `consumers` authority targets the personal mailbox. Recreate the client secret in the portal before it expires and update `GRAPH_CLIENT_SECRET`. When a new scope is added to `SCOPES` in `graph-client.js`, add the matching Microsoft Graph delegated permission in the Entra app registration's API permissions, then re-run `auth.js` — the existing token cache won't carry the new scope until Russell re-consents.
 
 ## Scripts
 
@@ -59,6 +59,10 @@ All under `scripts/`:
     - Create: `node mail.js --create-rule --name="Corporate Subjects" --subject-contains="A||B||C" [--body-contains=] [--from-contains=] [--subject-or-body=] [--except-from="gmail.com||outlook.com||icloud.com"] --move-to=archive [--mark-read] [--delete-msg] [--no-stop]` (multi-value flags split on `||`; `--move-to` takes a well-known folder id like `archive`; `--except-from` is the personal-domain fence; sequence is auto-assigned to the end)
     - Append phrases to a bucket: `node mail.js --append-rule="<id or name>" --subject-contains="D||E" [--body-contains=]`
     - Delete: `node mail.js --delete-rule="<id or name>"`
+- **`contacts.js`**
+  - List: `node contacts.js --list [--top=50]` (alphabetical by display name)
+  - Search: `node contacts.js --search="Foster"` (prefix match on display name)
+  - Create: `node contacts.js --create --name="Stuart Foster" [--email=a@x] [--phone=555-1234] [--company=Acme] [--job-title=Director]`
 
 ## Auth-error handling (do without being asked)
 

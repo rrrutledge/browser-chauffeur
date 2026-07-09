@@ -1,6 +1,6 @@
 {
   "name": "ms-graph",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Read/write a personal Microsoft account's Outlook mail and calendar via the Microsoft Graph API, using the official @azure/msal-node + @microsoft/microsoft-graph-client libraries. No browser needed after a one-time sign-in.",
   "author": {
     "name": "Russell Rutledge"
