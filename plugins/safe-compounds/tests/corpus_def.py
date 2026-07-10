@@ -81,10 +81,27 @@ CASES = [
     {"id": "sed_inplace", "tool": "Bash", "command": "sed -i s/a/b/ file.txt", "expect": "BLOCK"},
     {"id": "sed_plain", "tool": "Bash", "command": "sed s/a/b/ file.txt", "expect": "ALLOW"},
 
+    # --- taskkill (self-close-my-own-tab only; anything else prompts) -------
+    # A real self-target ALLOW depends on the live process tree at test time
+    # (not a static literal), so it's covered by test_units.py's
+    # TestTaskkill/TestSelfTabHostPid instead — these cases pin the negative
+    # (never blanket-approved) forms.
+    {"id": "taskkill_bogus_pid", "tool": "Bash", "command": "taskkill /PID 999999 /T /F", "expect": "PROMPT"},
+    {"id": "taskkill_image_name", "tool": "Bash", "command": "taskkill /IM chrome.exe /F", "expect": "PROMPT"},
+    {"id": "taskkill_remote_host", "tool": "Bash", "command": "taskkill /S otherhost /PID 1 /F", "expect": "PROMPT"},
+    # MSYS/Git-Bash doubles the leading slash (//PID, //T, //F) to escape its
+    # path-mangling — same negative case, doubled-slash form.
+    {"id": "taskkill_bogus_pid_msys", "tool": "Bash", "command": "taskkill //PID 999999 //T //F", "expect": "PROMPT"},
+
     # --- enforcement (can't statically validate -> rewrite) -----------------
     {"id": "heredoc", "tool": "Bash", "command": "cat << EOF\nhi\nEOF", "expect": "BLOCK"},
     {"id": "output_redirect", "tool": "Bash", "command": "echo hi > out.txt", "expect": "BLOCK"},
     {"id": "append_redirect", "tool": "Bash", "command": "echo hi >> out.txt", "expect": "BLOCK"},
+    # Regression: a quoted redirect target used to be stripped to nothing
+    # before the target-detection regex ran, so it never matched and the
+    # command fell through to a plain permission prompt instead of BLOCK.
+    {"id": "quoted_output_redirect", "tool": "Bash",
+     "command": 'echo hi > "C:\\Users\\some dir\\out.txt"', "expect": "BLOCK"},
     {"id": "input_redirect", "tool": "Bash", "command": "sort < in.txt", "expect": "BLOCK"},
     {"id": "var_expansion", "tool": "Bash", "command": "echo $MYTOKEN", "expect": "BLOCK"},
     {"id": "var_assignment", "tool": "Bash", "command": "X=1 && echo done", "expect": "BLOCK"},

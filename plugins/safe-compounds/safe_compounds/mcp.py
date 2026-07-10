@@ -32,6 +32,10 @@ def classify_mcp_tool(tool_name):
     server = parts[1] if len(parts) > 1 else ''
     operation = parts[-1] if len(parts) > 2 else ''
 
+    if tool_name in config.get_config().get('mcp_blanket_tools', []):
+        log_debug(f"MCP {tool_name}: tool blanket-approved (configured)")
+        return True
+
     if server in config.get_config().get('mcp_blanket_servers', []):
         log_debug(f"MCP {tool_name}: server blanket-approved (configured)")
         return True

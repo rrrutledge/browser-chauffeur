@@ -54,6 +54,19 @@ The setup script installs `playwright-core` to `~/.claude/browser-chauffeur/` if
 
 Adjust `plugins/browser-chauffeur/...` to the actual path where the skill is mounted if needed.
 
+**Every ad-hoc script goes in the project's `.tmp/` — never in `~/.claude/browser-chauffeur/` itself.** That shared directory only exists to hold the fallback `node_modules`; it is not a script workspace, and dropping scripts there breaks the calling project's permission-auto-approval (which is scoped to the project directory) and clutters a directory other sessions share. Because Node's module resolution walks up from the *requiring file's own directory* — not from the current working directory — a script sitting in `.tmp/` cannot resolve a bare `require('browser-chauffeur-helpers')` or `require('playwright-core')` against the fallback install; there is no `node_modules` between `.tmp/` and the shared directory for Node to find. **Always use the try/catch fallback pattern from `templates/script-template.js`** (never a bare `require(...)`), which resolves from the project's own `node_modules` first and falls back to the shared install:
+
+```js
+const { chromium } = (() => {
+  try { return require('playwright-core'); }
+  catch { return require(require('path').join(require('os').homedir(), '.claude', 'browser-chauffeur', 'node_modules', 'playwright-core')); }
+})();
+const { openTab, findTab, closeTab } = (() => {
+  try { return require('browser-chauffeur-helpers'); }
+  catch { return require(require('path').join(require('os').homedir(), '.claude', 'browser-chauffeur', 'node_modules', 'browser-chauffeur-helpers')); }
+})();
+```
+
 ---
 
 ## Phase 0: Browser Launch (do this before Phase 1)
@@ -71,7 +84,7 @@ Adjust the path to wherever your skill is mounted. This auto-detects Edge first 
 **Automatic tab sweep.** When reusing an existing browser, this script keeps the tab count low. Reclaiming is driven by idleness; ownership just lets it clean up promptly. Three layers: (1) **owner reap** — a tab whose owning Claude session has ended is closed right away. Each tab is tied to the session that opened it, not the short-lived script (a session fires many scripts), so a tab stays alive as long as its session's window is open and is cleaned up when that window closes. (2) **Idle age-out** — any tab idle longer than the TTL (default 12h, override with `BROWSER_CHAUFFEUR_TAB_TTL`) is closed, regardless of owner, catching genuinely abandoned tabs. (3) **Count cap** — if more than `MAX_TABS` (default 15, override with `BROWSER_CHAUFFEUR_MAX_TABS`) remain, close the least-recently-active until back under it. Activity is tracked automatically — a tab created or reused via `openTab`/`findTab`, or one whose URL/title the sweep sees change between runs, counts as recently active, so an in-use tab is never the one closed. It never closes the browser's last page. Layers 2–3 also cover tabs opened without the `openTab` helper (which have no owner to reap). This keeps `connectOverCDP` fast and reliable and stops the browser accumulating enough tabs to crash (see **Resilient Connection**). It's automatic — you don't invoke it directly.
 
 **Tying tab ownership to a session.** A tab's owner is read from one env var: `BROWSER_CHAUFFEUR_OWNER_PID` — the long-lived process whose liveness the sweep checks. There are two ways it gets set:
-- **Launched sessions** (drainer workers, handoffs via `scripts/launch-session.ps1`) get it automatically — the host tab's PID.
+- **Launched sessions** (drainer workers, handoffs via the session-mgr plugin's `launch-session.ps1`) get it automatically — the host tab's PID.
 - **A session you start yourself** (open a terminal, type `claude`) needs the PID set once by your shell. Add to your PowerShell `$PROFILE`: `$env:BROWSER_CHAUFFEUR_OWNER_PID = $PID` — process-scoped so each terminal owns the tabs opened from it (do **not** promote it to a persistent User env var, which would freeze one terminal's PID). Takes effect in the next new terminal.
 
 When neither var is set, ownership falls back to the node script, so a tab is reclaimed shortly after the script that opened it exits — still correct, just not session-lifetime.
@@ -174,21 +187,24 @@ Before touching anything:
    
 2. **Get and save your tab reference** — target the specific tab you need by URL pattern, never by position:
    ```javascript
-   const { findTab, openTab } = require('browser-chauffeur-helpers');
+   const { findTab, openTab } = require('browser-chauffeur-helpers'); // resolve via the try/catch pattern in Prerequisite Check / templates/script-template.js
 
-   // Reuse an existing tab by URL — findTab also marks it active, so a tab you
-   // keep returning to isn't reaped as idle by the sweep.
+   // Reuse YOUR OWN session's tab by URL — findTab returns only a tab this
+   // session opened, and marks it active so a tab you keep returning to isn't
+   // reaped as idle. A tab another session (or the user) opened is never
+   // returned, so you can't grab and clobber someone else's work.
    let myTab = await findTab(context, p => p.url().includes('example.com/my-section'));
 
-   // Or create a new tab for complete isolation — openTab creates AND registers
-   // it in one step (so the orphan sweep can reclaim it if this script crashes).
+   // Own no matching tab yet → findTab returned null → open your own. openTab
+   // creates AND registers it in one step (so the orphan sweep can reclaim it if
+   // this script crashes).
    if (!myTab) {
      myTab = await openTab(context, 'https://example.com/my-section');
    }
 
    // Save this reference - it stays valid even if other tabs open/close
    ```
-   **Why:** Tab positions shift as tabs are created/closed. Other Claude sessions may be working in parallel. Targeting by index is unreliable. Save the page object reference and reuse it throughout the script. **Create every tab with `openTab(context, url)`** — it bundles registration so the tab is tracked and reclaimable (see **Resilient Connection**), and it navigates for you when you pass a URL. Tabs you *found* (didn't create) are not yours — don't register or close them.
+   **Why:** Tab positions shift as tabs are created/closed. Other Claude sessions may be working in parallel — possibly on the very same URL. Targeting by index is unreliable, and a bare `context.pages().find(...)` would hand you whichever session's tab matched first, so you could navigate another session's tab out from under it. **Get a tab only two ways: `openTab(context, url)` for a fresh one you own, or `findTab(context, predicate)` to reuse one you already own** — never a bare `pages().find(...)`. `openTab` bundles registration so the tab is tracked and reclaimable (see **Resilient Connection**) and navigates for you; `findTab` is owner-scoped so it can only ever return your own tab. Save the page object reference and reuse it throughout the script. Tabs you *found* (didn't create) are not yours — don't register or close them.
 
    **Never open a tab with `context.newPage()` or by calling `page.goto()` on a fresh page you created yourself** — an unregistered tab escapes the orphan sweep entirely, so it lingers until the TTL/count backstop reaps it or the browser crashes under the accumulated count. `openTab` is the only sanctioned way to create a tab.
 
@@ -303,7 +319,7 @@ Some SPAs (Articulate Rise, OpenSesame, content platforms) load page sections as
 
 2. **Tab cleanup** — close only tabs you created, using the paired `openTab`/`closeTab` helpers:
    ```javascript
-   const { openTab, closeTab } = require('browser-chauffeur-helpers');
+   const { openTab, closeTab } = require('browser-chauffeur-helpers'); // resolve via the try/catch pattern in Prerequisite Check / templates/script-template.js
    const myTab = await openTab(context, 'https://example.com');  // create + register
    try {
      // Your automation work

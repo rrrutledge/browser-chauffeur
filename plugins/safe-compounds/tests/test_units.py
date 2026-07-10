@@ -8,12 +8,15 @@ PLUGIN_DIR = os.path.dirname(TESTS_DIR)
 sys.path.insert(0, PLUGIN_DIR)
 
 from safe_compounds.shell import (  # noqa: E402
-    ASSIGNMENT_ONLY, extract_substitutions, first_word, split_segments, strip_var_assignment,
+    ASSIGNMENT_ONLY, extract_substitutions, first_word, has_unquoted_windows_drive_path,
+    split_segments, strip_var_assignment,
 )
 from safe_compounds import config  # noqa: E402
 from safe_compounds.commands import (  # noqa: E402
-    is_git_command_safe, is_curl_safe, is_sed_command_safe, is_start_safe, strip_safe_redirections,
+    is_git_command_safe, is_curl_safe, is_sed_command_safe, is_start_safe, is_taskkill_safe,
+    strip_safe_redirections,
 )
+from safe_compounds import procs  # noqa: E402
 from safe_compounds.mcp import classify_mcp_tool  # noqa: E402
 from safe_compounds.enforce import detect_complex_bash, detect_simple_expansion, detect_cd_compound, enforce_bash  # noqa: E402
 from safe_compounds.scripts import check_node_segment, get_block_reason, reset_block_reason  # noqa: E402
@@ -23,7 +26,7 @@ from safe_compounds.workflow import classify_workflow_tool  # noqa: E402
 def set_config(**kwargs):
     base = {
         "trusted_commands": [], "curl_domains": [], "mcp_blanket_servers": [],
-        "trusted_script_dirs": [], "workflow_blanket_names": [],
+        "mcp_blanket_tools": [], "trusted_script_dirs": [], "workflow_blanket_names": [],
     }
     base.update(kwargs)
     config._CONFIG = base
@@ -180,6 +183,88 @@ class TestSed:
         assert is_sed_command_safe("sed -ni s/a/b/ f") is False
 
 
+class TestTaskkill:
+    def test_self_pid_approved(self, monkeypatch):
+        monkeypatch.setattr(procs, "self_tab_host_pid", lambda: 16552)
+        assert is_taskkill_safe("taskkill /PID 16552 /T /F") is True
+
+    def test_other_pid_rejected(self, monkeypatch):
+        monkeypatch.setattr(procs, "self_tab_host_pid", lambda: 16552)
+        assert is_taskkill_safe("taskkill /PID 9999 /T /F") is False
+
+    def test_undetermined_host_rejected(self, monkeypatch):
+        monkeypatch.setattr(procs, "self_tab_host_pid", lambda: None)
+        assert is_taskkill_safe("taskkill /PID 16552 /T /F") is False
+
+    def test_image_name_rejected(self, monkeypatch):
+        monkeypatch.setattr(procs, "self_tab_host_pid", lambda: 16552)
+        assert is_taskkill_safe("taskkill /IM chrome.exe /F") is False
+
+    def test_remote_machine_rejected(self, monkeypatch):
+        monkeypatch.setattr(procs, "self_tab_host_pid", lambda: 16552)
+        assert is_taskkill_safe("taskkill /S remotehost /PID 16552 /F") is False
+
+    def test_no_pid_rejected(self, monkeypatch):
+        monkeypatch.setattr(procs, "self_tab_host_pid", lambda: 16552)
+        assert is_taskkill_safe("taskkill /F") is False
+
+    def test_non_numeric_pid_rejected(self, monkeypatch):
+        monkeypatch.setattr(procs, "self_tab_host_pid", lambda: 16552)
+        assert is_taskkill_safe("taskkill /PID abc /F") is False
+
+    def test_multiple_pids_all_must_match(self, monkeypatch):
+        monkeypatch.setattr(procs, "self_tab_host_pid", lambda: 16552)
+        assert is_taskkill_safe("taskkill /PID 16552 /PID 9999 /F") is False
+
+    def test_case_insensitive_flags(self, monkeypatch):
+        monkeypatch.setattr(procs, "self_tab_host_pid", lambda: 16552)
+        assert is_taskkill_safe("taskkill /pid 16552 /t /f") is True
+
+    def test_msys_double_slash_approved(self, monkeypatch):
+        monkeypatch.setattr(procs, "self_tab_host_pid", lambda: 16552)
+        assert is_taskkill_safe("taskkill //PID 16552 //T //F") is True
+
+    def test_msys_double_slash_other_pid_rejected(self, monkeypatch):
+        monkeypatch.setattr(procs, "self_tab_host_pid", lambda: 16552)
+        assert is_taskkill_safe("taskkill //PID 9999 //T //F") is False
+
+
+class TestSelfTabHostPid:
+    def _snapshot(self):
+        # hook.py (pid 100) -> sh.exe (200) -> claude.exe (300) -> powershell.exe
+        # (400, the tab host) -> WindowsTerminal.exe (500) -> services.exe (600)
+        return {
+            100: (200, 'python.exe'),
+            200: (300, 'sh.exe'),
+            300: (400, 'claude.exe'),
+            400: (500, 'powershell.exe'),
+            500: (600, 'windowsterminal.exe'),
+            600: (0, 'services.exe'),
+        }
+
+    def test_finds_immediate_parent_of_claude(self):
+        assert procs.self_tab_host_pid(start_pid=100, snapshot=self._snapshot()) == 400
+
+    def test_stops_at_nearest_claude_in_nested_sessions(self):
+        snap = self._snapshot()
+        # An outer claude.exe further up must not be selected over the inner one.
+        snap[500] = (700, 'claude.exe')
+        snap[700] = (800, 'powershell.exe')
+        assert procs.self_tab_host_pid(start_pid=100, snapshot=snap) == 400
+
+    def test_no_claude_in_chain_returns_none(self):
+        snap = self._snapshot()
+        del snap[300]
+        assert procs.self_tab_host_pid(start_pid=100, snapshot=snap) is None
+
+    def test_empty_snapshot_returns_none(self):
+        assert procs.self_tab_host_pid(start_pid=100, snapshot={}) is None
+
+    def test_cycle_returns_none(self):
+        snap = {100: (200, 'python.exe'), 200: (100, 'sh.exe')}
+        assert procs.self_tab_host_pid(start_pid=100, snapshot=snap) is None
+
+
 class TestStripSafeRedirections:
     def test_stderr_merge_suffix(self):
         assert strip_safe_redirections('start report.docx 2>&1').strip() == 'start report.docx'
@@ -236,6 +321,14 @@ class TestMcp:
         set_config()
         assert classify_mcp_tool("mcp__s__frobnicate_thing") is False
 
+    def test_blanket_tool_configured(self):
+        set_config(mcp_blanket_tools=["mcp__s__frobnicate_thing"])
+        assert classify_mcp_tool("mcp__s__frobnicate_thing") is True
+
+    def test_blanket_tool_does_not_affect_other_tools_on_same_server(self):
+        set_config(mcp_blanket_tools=["mcp__s__frobnicate_thing"])
+        assert classify_mcp_tool("mcp__s__other_thing") is False
+
 
 class TestWorkflow:
     def test_named_blanket(self):
@@ -269,6 +362,9 @@ class TestComplexBash:
     def test_for(self):
         assert detect_complex_bash("for x in a; do echo $x; done")[0] is True
 
+    def test_until(self):
+        assert detect_complex_bash("until grep -q x file; do break; done")[0] is True
+
     def test_plain(self):
         assert detect_complex_bash("grep x file")[0] is False
 
@@ -294,6 +390,63 @@ class TestCheckNodeSegment:
     def test_check_flag_with_extra_spacing(self):
         set_config()
         assert check_node_segment("node  --check  foo.mjs") is True
+
+    def test_unquoted_windows_path_gets_actionable_block(self):
+        # A bare C:\...\script.js argument gets its backslashes stripped by
+        # shell word-splitting before node ever sees it (real bash does this
+        # identically to shlex — it isn't shlex-specific). The missing-file
+        # case should be turned into a clear, actionable deny instead of a
+        # silent fall-through to a manual prompt.
+        set_config()
+        reset_block_reason()
+        seg = r'node C:\definitely\not\a\real\path\script.js'
+        assert check_node_segment(seg) is False
+        reason = get_block_reason()
+        assert reason is not None
+        assert "BLOCKED" in reason
+        assert "unquoted" in reason.lower()
+
+    def test_missing_file_without_windows_path_gets_generic_block(self):
+        # A plain missing file (no Windows-path hazard) still denies, with the
+        # generic "use the full path" message instead of the mangled-path one.
+        set_config()
+        reset_block_reason()
+        assert check_node_segment("node /definitely/not/a/real/script.js") is False
+        reason = get_block_reason()
+        assert reason is not None
+        assert "BLOCKED" in reason
+        assert "unquoted" not in reason.lower()
+        assert "full absolute path" in reason
+
+    def test_double_quoted_windows_path_not_flagged_as_mangled(self):
+        # Double-quoting preserves backslashes, so this isn't the mangled-path
+        # hazard — it should fail for the ordinary "file not found" reason.
+        set_config()
+        reset_block_reason()
+        seg = r'node "C:\definitely\not\a\real\path\script.js"'
+        assert check_node_segment(seg) is False
+        reason = get_block_reason()
+        assert reason is not None
+        assert "unquoted" not in reason.lower()
+        assert "full absolute path" in reason
+
+
+class TestHasUnquotedWindowsDrivePath:
+    def test_bare_path_flagged(self):
+        assert has_unquoted_windows_drive_path(r'node C:\Users\russe\script.js') is True
+
+    def test_double_quoted_path_not_flagged(self):
+        assert has_unquoted_windows_drive_path(r'node "C:\Users\russe\script.js"') is False
+
+    def test_forward_slash_path_not_flagged(self):
+        assert has_unquoted_windows_drive_path('node C:/Users/russe/script.js') is False
+
+    def test_posix_style_path_not_flagged(self):
+        assert has_unquoted_windows_drive_path('node /c/Users/russe/script.js') is False
+
+    def test_flags_mid_command_occurrence(self):
+        seg = r'node script.js C:\Users\russe\Dev\out'
+        assert has_unquoted_windows_drive_path(seg) is True
 
 
 class TestMissingScriptBlocks(object):

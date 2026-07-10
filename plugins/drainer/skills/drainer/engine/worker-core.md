@@ -41,10 +41,13 @@ Russell decided in advance — do the action without presenting or waiting, then
       them: invoke browser-chauffeur to run `chauffeur.py --close-owned`, which closes only the
       tabs your session opened (never the user's, never another session's). Cleaning up your own tabs
       here means they never reach the browser sweep.
-   2. **Your session tab** — your launcher wrote the hosting terminal's PID to
-      `<your-prompt-file>.hostpid` (the seed names the path); read it and run `taskkill /PID <pid> /T /F`,
-      which kills the session and its tab together. If that file is missing (an older launcher that
-      didn't record it), just stop normally — don't hunt for the process.
+   2. **Your session tab** — the terminal's hosting PID is in the `CLAUDE_HOST_PID` environment variable
+      (set by the user's PowerShell profile, loaded automatically when this tab launched). Via the Bash
+      tool, first reveal the literal value (`echo $CLAUDE_HOST_PID`), then run `taskkill /PID <that number>
+      /T /F` with the number written out literally — not the variable reference — since the auto-approval
+      hook only recognizes a literal PID. This kills the session and its tab together. If the variable is
+      unset (a session launched without loading the profile), just stop normally — don't hunt for the
+      process.
 
    This whole step is **auto-handle only** — needs-you items stay open for the user (see §6 for how they
    close their browser tabs).
@@ -74,27 +77,38 @@ answered?) That changes the right action. For an unknown mechanism internal to t
 organization, consult the user's designated internal knowledge source first (if their `context.md`
 names one) before asking the user directly.
 
-**For email items specifically:** read the whole thread (sent + inbox) before drafting anything.
-The captured item is the inbound message, but the user may have replied after it was captured. If
-the user's most recent message on the thread is already a reply to this sender, the item is done —
-close it without a new draft. Each provider's SITUATIONAL-CHECK describes how to pull the full
-thread for that source. **When you DO draft (a reply or a follow-up nudge), thread it off the most
-recent message in the thread — even when that latest message is one the user sent.** A follow-up
-answers where the conversation actually stands, so quote and thread on the newest message, not an
-older inbound one; provider DRAFT-MODE notes how to target a sent message.
+**Read the whole thread, for any source — not just the one message captured.** A captured item's `url`/
+`ts` is a pointer into a conversation, not the conversation itself, whichever source it's from (email,
+Slack, Teams, a Trello card's linked message). The state at capture time is stale by the time you act on
+it: the contact may have replied since, or — easy to miss — the user may have posted their own follow-up
+that changes what's actually being waited on (a clarifying question they asked but hasn't been answered
+yet turns a "ready to act" item into a blocked one). Before drafting or deciding the move, pull the full
+recent thread/history, not just the linked message, and check both directions. If the user's most recent
+message on the thread is already a reply to this sender, the item is done — close it without a new draft.
+If it's a question of theirs still unanswered, the item is blocked on the other party, not ready to act.
+Each provider's SITUATIONAL-CHECK/CAPTURE section describes how to pull full context for that source (for
+email: search sent + inbox in both directions; for Slack: `slack.js --history`, not just `--show` on the
+one linked message). **When you DO draft (a reply or a follow-up nudge), thread it off the most recent
+message in the thread — even when that latest message is one the user sent.** A follow-up answers where
+the conversation actually stands, so quote and thread on the newest message, not an older inbound one;
+provider DRAFT-MODE notes how to target a sent message.
 
 ## 2b. If the item is a pointer, open the real content yourself
-If your item is a **notification that points to content living elsewhere** — a LinkedIn/Facebook
-"X just messaged you", a meeting-recording notice, a forum "you have a reply" — it is NOT the content,
-only a pointer. **Go open and read the underlying message yourself before doing anything else**, using
-the right tool for that surface: for a web service like LinkedIn, drive **browser-chauffeur** to the
-link in the captured item and read the actual message. Reading it is YOUR job; never hand the lookup
-back to the user ("go read the message yourself").
+If your item is a **notification that points to content living elsewhere** — a meeting-recording
+notice, a forum "you have a reply" — it is NOT the content, only a pointer. **Go open and read the
+underlying message yourself before doing anything else**, using the right tool for that surface.
+Reading it is YOUR job; never hand the lookup back to the user ("go read the message yourself").
 
-Then **triage what you find with `triage.md`** (the same rubric the poller uses, in this engine/ folder),
-exactly as if that content had arrived as email:
-- **needs-you** → proceed through the steps below; stage any reply draft-only in that surface's composer
-  (for LinkedIn, the LinkedIn web composer via browser-chauffeur), never send.
+**Exception: LinkedIn/Facebook "X just messaged you" pointers.** Never drive browser-chauffeur to
+linkedin.com or facebook.com for any reason — LinkedIn suspended Russell's account for automation in
+July 2026. Pull the deep link out of the notification and present it as a clickable link in the
+terminal, routed straight to **needs-you** — Russell clicks it and reads/replies himself; you never
+open it.
+
+Then, for every other pointer, **triage what you find with `triage.md`** (the same rubric the poller
+uses, in this engine/ folder), exactly as if that content had arrived as email:
+- **needs-you** → proceed through the steps below; stage any reply draft-only in that surface's composer,
+  never send.
 - **fyi / junk** → do NOT bug the user. Route it to the digest queue so the daily digest handles it
   (junk also gets a source-stop proposal) instead of being lost: run
   `node <skill>/scripts/seen-state.js queue-add <runtime_dir> <source> <id> <path to items/<id>.json>`
@@ -116,8 +130,9 @@ to see, close the tab silently:
    `node <skill>/scripts/seen-state.js queue-add <runtime_dir> <source> <id> <path to items/<id>.json>`
 4. **Write `.done` immediately** with a one-line reason (e.g.
    "fyi: spam digest — both messages genuine spam, auto-discarded by Google").
-5. **Close this tab** — read the PID from `<your-prompt-file>.hostpid` and run
-   `taskkill /PID <pid> /T /F` in PowerShell. If the file is missing, stop normally.
+5. **Close this tab** — via the Bash tool, reveal the literal PID (`echo $CLAUDE_HOST_PID`) and run
+   `taskkill /PID <that number> /T /F` with the number written out literally. If `CLAUDE_HOST_PID` is
+   unset, stop normally.
 
 Do not present anything to Russell. The digest is how he learns about it.
 
@@ -177,6 +192,9 @@ date / clear without surfacing a tab or beep.
   to lose track. Create a follow-up tracker card (the user's board, per `context.md`) before marking
   done, so it stays visible instead of relying on memory.
 
+**Before presenting, check whether there's anything left TO present** — see §6a. If there genuinely
+isn't, self-close there instead of continuing below.
+
 Then **present your result to the user** — give the final briefing (per §1: restate the incoming item,
 what you did, and any draft you staged). **Write `items/<id>.done` proactively as soon as you judge the
 work complete** — the same turn you present is fine; you need not wait for the user to acknowledge. Use a
@@ -190,10 +208,47 @@ direction you keep working in the same session and update the source/card again 
 the work looks done rather than waiting on acknowledgment. (Tab-close can't be detected reliably, so
 `.done` is the advance signal.)
 
+## 6a. If the completed work leaves nothing for Russell, self-close like auto-handle
+An item can be genuinely `needs-you` at triage time — there really was something to do — and still end
+with nothing for Russell to look at, once step 3's work is actually done: a recurring research/bookkeeping
+sweep (visit some sources, create or update tracking cards on his own board), a lookup that answered
+itself, a form that only needed data he'd already supplied. No pre-existing label or rule predicted this
+in advance (that's what `auto-handle` is for, per the branch at the top of this file) — you're only
+discovering it now, after doing the work, exactly because some things can't be known until you've done
+the situational check or the work itself.
+
+When that's the case, treat the close-out like `auto-handle`'s (steps 4–6 in the branch at the top) even
+though this item was never labeled or triaged that way: log what happened somewhere Russell will find it
+later — a dated comment on the source item (a Trello card, e.g.), or a digest queue-add. **When you queue
+a digest entry, first re-tag the item's `triage` to `"auto-handle"` in `items/<id>.json` (Edit tool)
+before the `queue-add` — the same re-tag §2c makes for an FYI downgrade.** This files the entry under the
+digest's **"Auto-handled"** section (already done, dismiss-only), so a finished item is shown as handled
+rather than resurfacing as a live needs-you. Queue it via
+`node <skill>/scripts/seen-state.js queue-add <runtime_dir> <source> <id> <path to items/<id>.json>`,
+write `.done` immediately, and close the tab (reveal the literal PID with `echo $CLAUDE_HOST_PID`, then
+`taskkill /PID <that number> /T /F`) instead of presenting-and-waiting.
+
+**This is judgment, not a checklist — hold the same bar the other silent-resolution cases in this file
+already use: unsure → stay needs-you and present as normal (§1).** Self-close here only when ALL of
+these are unambiguously true:
+- the work is genuinely done (step 3's deliverable is complete, not partial or blocked)
+- nothing produced awaits Russell's review, edit, or send — no draft was staged for him (if step 4 staged
+  one, this rule doesn't apply; go present it as usual)
+- no decision remains that only he could make (which option to pursue, whether to escalate, how to word
+  something delicate, whether an ambiguous match is good enough)
+- nothing outbound-to-others or irreversible is pending his OK
+
+A card whose entire action was safe/reversible bookkeeping on Russell's own systems — nothing sent,
+nothing decided that needed him — is the clearest example, and it applies the same way whether or not
+the item happened to carry a label; the worker recognizes it from the finished work, every time, with no
+per-item setup required. Most needs-you items still end with the normal step 6 presentation — this rule
+is narrower than it looks, and reaches only the cases above.
+
 Items you resolve WITHOUT surfacing them for the user's attention — a pointer re-triaged to fyi/junk
-(§2b), a content re-triage to FYI (§2c), or a situational no-op close (nothing to do right now) —
-likewise write `.done` at once AND close the tab (read `.hostpid`, `taskkill /PID <pid> /T /F`). A
-silently-resolved tab is just noise in the taskbar; close it.
+(§2b), a content re-triage to FYI (§2c), a situational no-op close (nothing to do right now), or
+completed work that left nothing for Russell (§6a) — likewise write `.done` at once AND close the tab
+(`echo $CLAUDE_HOST_PID`, then `taskkill /PID <that number> /T /F`). A silently-resolved tab is just
+noise in the taskbar; close it.
 
 **Close your browser tabs when you and the user are truly finished with the item.** If you opened tabs in
 the browser (read a card, drove a web composer, clicked through a link), close them as your last act once

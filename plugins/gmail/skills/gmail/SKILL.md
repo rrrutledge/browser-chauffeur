@@ -1,6 +1,6 @@
 ---
 name: gmail
-description: Read/draft/clear a personal Gmail or Google Workspace mailbox via IMAP using a Google App Password — no OAuth app, no Cloud project, no browser. Use to list the inbox, show a message, archive mail, or stage reply/new drafts in the Drafts folder. Staging is draft-only; a reviewed draft is sent only on Russ's explicit per-message say-so via --send-draft. For a Google account where you can mint an app password (2-Step Verification on, IMAP enabled).
+description: Read/draft/clear a personal Gmail or Google Workspace mailbox via IMAP using a Google App Password — no OAuth app, no Cloud project, no browser. Use to list the inbox, show a message, archive mail, or stage reply/new drafts in the Drafts folder. Staging is draft-only; a reviewed draft is sent only on Russ's explicit per-message say-so via --send-draft. For a Google account where you can mint an app password (2-Step Verification on, IMAP enabled). Also manages Gmail filters programmatically (list/create/append/delete) through a separate, additive OAuth settings-only path — filters.js.
 ---
 
 # Gmail — Personal/Workspace Mail via IMAP + App Password
@@ -74,6 +74,11 @@ Under `scripts/` (run with `node`):
     `[Gmail]/Sent`). See **Sending** below — this runs only on Russ's explicit per-message say-so.
   - Archive one (reversible): `node gmail.js --archive=<message-id>` (removes from the inbox, keeps it in
     `[Gmail]/All Mail` — the way mail is cleared: handled and out of the inbox, never discarded)
+  - Delete a draft: `node gmail.js --delete-draft=<draft-message-id>` (discards a staged draft that's no
+    longer wanted — e.g. the outreach it belonged to was abandoned. Takes the same `draft-id` that
+    `--reply`/`--draft-new` printed when it was staged. Drafts have no other home, so this isn't
+    recoverable the way `--archive` is — only delete a draft once its underlying card/thread is truly
+    closed out, not as a routine cleanup step.)
 
 ## Sending
 
@@ -93,11 +98,66 @@ Hold the line on these — they are what keep send safe:
 - An autonomous or `auto-handle` drain never sends. `--send-draft` is human-in-the-loop only; in any
   non-interactive run, stop at the staged draft.
 
+## Filter management (OAuth settings path)
+
+Managing Gmail **filters** lives in the Gmail settings REST API, which IMAP can't reach — so filters use
+a **second, additive path** alongside the app-password path above. It is **settings-only**: its single
+scope is `https://www.googleapis.com/auth/gmail.settings.basic`, which lists/creates/deletes filters and
+grants **no** mail read or send. The IMAP + app-password path still owns all message access; this path
+only adds filters. Together they make Gmail a peer of Outlook, whose rules are managed programmatically
+through `ms-graph`'s `mail.js`.
+
+Use the **`mail-filters`** skill to choose *what* a filter should match (the phrase-selection craft and
+the master `-from:` fence); use these commands to *create* it.
+
+### Setup (per machine, one-time)
+
+1. **Deps** — `node <skill>/scripts/setup.js` also installs `google-auth-library` (the OAuth client)
+   into `~/.claude/gmail/node_modules`.
+2. **Google Cloud OAuth client** — in a Google Cloud project with the **Gmail API** enabled, create an
+   OAuth client of type **Desktop app** (a desktop client allows the loopback redirect this flow uses
+   without pre-registering a URI). Capture its id/secret into env vars (never a file):
+   `GMAIL_OAUTH_CLIENT_ID`, `GMAIL_OAUTH_CLIENT_SECRET`.
+3. **One-time sign-in** — `node <skill>/scripts/gmail-auth.js`, driven via **browser-chauffeur**: it
+   prints an `AUTH_URL:` line, serves `http://localhost:8710/callback`, and on consent exchanges the code
+   and caches the token to `~/.claude/gmail/oauth-token.json` (machine-local). Approve consent as the
+   intended account — for ISC that's the Workspace account `russ@innersourcecommons.org`. After this,
+   `filters.js` runs silently (the client auto-refreshes the access token).
+
+**Secrets stay machine-local**, like the app password — the mailbox's filters are reachable only where
+`GMAIL_OAUTH_CLIENT_ID` / `GMAIL_OAUTH_CLIENT_SECRET` are set and the token is cached.
+
+### Commands — `filters.js`
+
+- **List filters:** `node filters.js --list-filters [--json]` — every filter with its `criteria.query`
+  and action; `--json` emits the raw array (each item carries its `id`).
+- **Create a filter:**
+  `node filters.js --create-filter --query='subject:("A" OR "B") -from:(gmail.com OR outlook.com)' --archive [--mark-read]`
+  — `--query` is the raw Gmail search, so OR-lists and the `-from:` fence work verbatim. `--archive`
+  removes the `INBOX` label (Skip the Inbox); `--mark-read` also removes `UNREAD`; `--trash` routes to
+  Trash instead. `--name` is an optional human label for output only.
+- **Append a phrase to a bucket:**
+  `node filters.js --append-filter=<id> --add-subject='"C" OR "D"'` (splices inside the `subject:(…)`
+  group), `--add-body='"E"'` (splices inside the leading `(…)` group), or `--add='"F"'` (appends
+  ` OR "F"` at top level). This is the everyday "add to the right bucket" op.
+- **Delete a filter:** `node filters.js --delete-filter=<id>` — reversible: re-create it with
+  `--create-filter`. It does not touch mail the filter already archived.
+
+**Gmail filters are anonymous** — identified server-side by `id` + criteria, never a name; read the id
+from `--list-filters`. And they **can't be edited in place**, so `--append-filter` reads the query,
+splices the addition, **deletes** the old filter, and **creates** a new one — meaning the **id changes**.
+The command reports the new id.
+
 ## Auth-error handling
 
 `--check` is the cheap glance. An auth failure (`AUTHENTICATIONFAILED` / "Invalid credentials") means
 the app password is wrong/revoked or IMAP is disabled — re-mint the app password and re-set
 `GMAIL_APP_PASSWORD`, and confirm IMAP is enabled. There is no token to refresh.
+
+For the **OAuth filter path**, a `filters.js` "Not signed in" or an `invalid_grant` (the refresh token was
+revoked or expired) means the one-time sign-in must be re-run: `node scripts/gmail-auth.js` via
+browser-chauffeur. If Google declines to return a refresh token, revoke prior access at
+`https://myaccount.google.com/permissions` first, then re-run so a fresh one is issued.
 
 ## Notes
 

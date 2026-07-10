@@ -9,6 +9,16 @@ param(
   [string]$Resume       # resume mode: session ID of an existing session to resume (no seed needed)
 )
 # Shared primitive: launch a fresh Claude session inside a Windows Terminal tab.
+# This is the REAL launcher — the single copy — living inside the session-mgr
+# plugin (the "session launcher" home; the resume-sessions skill uses it) so it
+# ships version-pinned with the plugin. Reference THIS file:
+#   - the handoff launcher, resume-sessions, and other cloud-file refs point at
+#     this path directly (in the working clone).
+#   - the drainer plugin ships a thin resolver (skills/drainer/scripts/launch-session.ps1,
+#     run by spawn-tab.cmd via %~dp0) that finds the newest INSTALLED copy of this
+#     file and forwards to it, so a worker is never launched from a floating
+#     dev-clone branch. Keep that resolver's param block in sync with the one below
+#     — a param not declared there is silently dropped instead of forwarded.
 # Both callers route through here:
 #   - drainer/spawn-tab.cmd  -> -PromptFile (browser loop; model = session default)
 #   - the handoff launcher   -> -SeedFile -Model "claude-opus-4-8[1m]"
@@ -21,6 +31,10 @@ param(
 # or `;` in a seed closes the quote early and wt re-tokenizes the leftover words as a
 # program to launch (observed: "file not found"). So ALL prose arrives via a FILE
 # (-PromptFile / -SeedFile); only paths, titles, model ids, and guids cross the wt line.
+#
+# Self-close: a session that wants to close its own tab reads $env:CLAUDE_HOST_PID, set by the
+# user's PowerShell $PROFILE when the caller's `powershell` invocation loads it (both current
+# callers do).
 
 $seed = $null
 if ($Resume) {
@@ -41,10 +55,6 @@ if ($PromptFile) {
   # transcript is locatable by item (peek.py depends on this).
   if (-not $SessionId) { $SessionId = [guid]::NewGuid().Guid }
   Set-Content -LiteralPath ($PromptFile + ".session") -Value $SessionId -Encoding ascii
-  # Record THIS powershell's PID (the process hosting the WT pane) next to the prompt file. A drainer
-  # worker that finishes an auto-handle item (no human to wait for) closes its own tab by killing this
-  # process tree (taskkill /T), so a self-resolved tab doesn't linger as "finished" needing a manual look.
-  Set-Content -LiteralPath ($PromptFile + ".hostpid") -Value $PID -Encoding ascii
   Write-Host "launch-session id: $SessionId"
   # Lead with a one-line item summary (if supplied) so Claude names the tab off it — a descriptive
   # title like "Handle Gmail security message" instead of "Review prompt-file instructions" — while the

@@ -44,7 +44,7 @@ await deleteBtn.click();
 
 ## ✅ REQUIRED: Get tabs via `openTab` / `findTab`
 
-Create every tab with `openTab(context, url)`, and reuse an existing one with `findTab(context, predicate)` — never bare `context.newPage()` or `context.pages().find(...)`. These register the tab against its owning session so the sweep can reclaim it; an unregistered tab has no owner and is only cleaned up once it goes idle or the count cap is hit. Close tabs you created with `closeTab` in a `finally`; never pass a tab you only *found* to `closeTab`. **SKILL.md Phase 1 has the full rationale** — this is the one place it's spelled out.
+Create every tab with `openTab(context, url)`, and reuse **your own session's** tab with `findTab(context, predicate)` — never bare `context.newPage()` or `context.pages().find(...)`. `openTab` registers the tab against its owning session so the sweep can reclaim it; an unregistered tab has no owner and is only cleaned up once it goes idle or the count cap is hit. `findTab` is owner-scoped: it returns only a tab this session opened (`null` otherwise, so you `openTab` a fresh one), so parallel sessions on the same URL never grab each other's tab — a bare `pages().find(...)` would. Close tabs you created with `closeTab` in a `finally`; never pass a tab you only *found* to `closeTab`. **SKILL.md Phase 1 has the full rationale** — this is the one place it's spelled out.
 
 ## ✅ REQUIRED: Verification Code
 

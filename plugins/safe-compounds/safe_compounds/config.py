@@ -10,6 +10,7 @@ Example ~/.claude/safe-compounds-config.json:
       "trusted_commands": ["mycli"],
       "curl_domains": ["atlassian.net", "mycorp.sharepoint.com"],
       "mcp_blanket_servers": ["plugin_product-management_atlassian"],
+      "mcp_blanket_tools": ["mcp__claude_ai_Gmail__apply_sensitive_message_label"],
       "trusted_script_dirs": ["my-plugins/"],
       "learned_sync_exclude": ["my-internal-cli"],
       "workflow_blanket_names": ["code-review"]
@@ -33,6 +34,13 @@ workflow name (`tool_input.name` — a built-in workflow or one saved under
 blanket-allowed, however it names itself, since nothing in that text is
 proof of what it does. Everything not listed still prompts, since a
 workflow can spin up many subagents.
+
+`mcp_blanket_tools` auto-allows individual MCP tool calls by their full
+name (`mcp__<server>__<operation>`), regardless of what verb the operation
+name starts with. Use this when one specific tool on a server is safe to
+run unattended but the server as a whole isn't (e.g. a Gmail label/trash
+tool whose effect is private and reversible, without blanket-trusting
+every other Gmail tool too).
 """
 import json
 import os
@@ -41,6 +49,7 @@ _DEFAULTS = {
     "trusted_commands": [],
     "curl_domains": [],
     "mcp_blanket_servers": [],
+    "mcp_blanket_tools": [],
     "trusted_script_dirs": [],
     "learned_sync_exclude": [],
     "workflow_blanket_names": [],

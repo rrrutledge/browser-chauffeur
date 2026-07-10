@@ -429,6 +429,51 @@ def is_powershell_safe(seg):
     return bool(POWERSHELL_ENV_PATTERN.match(seg.strip()))
 
 
+# ------------------------------------------------------------ taskkill --------
+# A drainer worker closes its own tab by killing the terminal's hosting process
+# (see plugins/drainer/skills/drainer/engine/worker-core.md). Approve ONLY the
+# narrow self-close shape: `/PID <n>` (never `/IM`, `/S`, `/U`, `/P`, `/FI`, ...)
+# where every PID given is proven — via a live OS process-ancestry walk, not a
+# trusted argument — to be this session's own tab host. Anything else defers to
+# a manual prompt.
+#
+# The Bash tool runs Git Bash, whose MSYS layer treats a single leading slash
+# as a POSIX path and mangles it — so commands built for that tool arrive as
+# `//PID`, `//T`, `//F` (doubled slash escapes the mangling) rather than the
+# Windows-native `/PID`. Normalize away the doubling before comparing so both
+# forms are recognized.
+TASKKILL_NO_ARG_FLAGS = {'/t', '/f'}
+
+
+def _normalize_taskkill_flag(flag):
+    return re.sub(r'^/+', '/', flag.lower())
+
+
+def is_taskkill_safe(seg):
+    tokens = shell_tokenize(seg)
+    if len(tokens) < 2:
+        return False
+    pids = []
+    i = 1
+    while i < len(tokens):
+        flag = _normalize_taskkill_flag(tokens[i])
+        if flag == '/pid':
+            if i + 1 >= len(tokens) or not tokens[i + 1].isdigit():
+                return False
+            pids.append(int(tokens[i + 1]))
+            i += 2
+            continue
+        if flag in TASKKILL_NO_ARG_FLAGS:
+            i += 1
+            continue
+        return False
+    if not pids:
+        return False
+    from . import procs
+    host_pid = procs.self_tab_host_pid()
+    return host_pid is not None and all(pid == host_pid for pid in pids)
+
+
 # ------------------------------------------------------------------ wt --------
 WT_SUBCOMMANDS = {
     'new-tab', 'nt', 'split-pane', 'sp', 'focus-tab', 'ft', 'move-focus', 'mf',

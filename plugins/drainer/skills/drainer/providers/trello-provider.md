@@ -60,12 +60,22 @@ Two facts live in native Trello fields, two in labels + a description convention
   the upstream card for a human-visible link. (`trello-outreach`'s SKILL.md owns applying this at
   creation time — it's the mechanics layer every Trello write goes through.)
 
-**Unblock is a push.** When an upstream card is finished (moved to a terminal/skip list or archived),
-call `trello_utils.cascade_unblock(board_id, finished_card_id, session)`: it scans the board once,
-finds cards whose `Blocked-by:` names the finished card, and for each whose **last** blocker just
-cleared, strips its ⛔ label and sets **Start = today** so it surfaces on the next drain. Nothing polls
-the blocked card. (Phase 2 will add a second trigger — an inbound reply resolving a ⏳ card — to this
-same cascade.)
+**Unblock has a push and a pull.** When an upstream card is finished (moved to a terminal/skip list or
+archived), call `trello_utils.cascade_unblock(board_id, finished_card_id, session)`: it scans the board
+once, finds cards whose `Blocked-by:` names the finished card, and for each whose **last** blocker just
+cleared, strips its ⛔ label and sets **Start = today** so it surfaces on the next drain. (Phase 2 will
+add a second trigger — an inbound reply resolving a ⏳ card — to this same cascade.)
+
+The push only fires when *a worker* finishes the upstream card through this flow, and only looks within
+that one board — it's blind to a blocker finished any other way (Russell moving it by hand in Trello, a
+session that forgot the call) or living on a *different* board than the card it blocks (e.g. a
+resume-prep task on Personal Follow-Up blocking an application card on Job Search Outreach — a real case
+that surfaced in practice). The poller adapter's `_enumerate` therefore also runs
+`trello_utils.sweep_unblock(board_ids, session)` **once per cycle across every board in the registry**
+(not per board) as a pull backstop: one combined scan (2 read calls per board, not one per blocker) that
+frees any card whose *every* named blocker is already done, wherever it lives. It's a no-op when nothing
+needs freeing, so a blocked card is guaranteed to resurface once its blockers finish — no one has to
+remember to call cascade_unblock, and cross-board blocking just works.
 
 ## ENUMERATE
 Via `trello-outreach`, list cards across the configured boards that sit in an **active** list (not in
@@ -89,11 +99,16 @@ re-discovering anything. Write `items/<id>.json`:
 `{ "id","source":"trello","triage":"needs-you","kind":"reply|work","cardId","board","list","name",`
 `"due","url","contacts":[...],"channelLabel":"<Email|Teams|Slack|...>","initiative":"<slug|null>","ts":"<ISO now>" }`
 Then find the relevant **thread** (email / Teams / Slack) for the contact + channel and read it to
-decide the move. For **email** threads, follow the SITUATIONAL-CHECK guidance in the matching
-provider doc and search the whole mailbox in both directions (incoming from the contact AND your sent
-replies) — recent messages may have been swept out of the inbox by a prior drain cycle:
-- **outlook-rest / outlook-graph**: search inbox + Archive + **Deleted Items** (paginated) — CLEAR
-  moves handled messages to Deleted Items.
+decide the move — a card's `url`/description links to one specific message, not the whole conversation,
+so pull full context per **that source's own SITUATIONAL-CHECK guidance** before deciding the move
+(the counterparty may have replied since capture, or the user's own follow-up may still be unanswered —
+a clarifying question left hanging turns a "ready to act" card into one blocked on the other party;
+don't miss that). For **email** threads, additionally search the whole mailbox in both directions
+(incoming from the contact AND your sent replies) — recent messages may have been swept out of the
+inbox by a prior drain cycle:
+- **outlook-rest / outlook-graph**: search inbox + Archive + Deleted Items (paginated) — CLEAR
+  moves handled messages to **Archive** (older items cleared before this behavior changed may still
+  sit in Deleted Items).
 - **gmail**: search All Mail with no `in:` filter — CLEAR archives (not trashes), so everything is
   in All Mail.
 
@@ -160,7 +175,9 @@ up, silently bump the due date (CLEAR) and surface no tab.
 Only **after** the user confirms they sent/handled the message, advance the card via `trello-outreach`:
 - **nudge** — bump the due date out N days (they haven't replied; follow up later). Use the cadence below.
 - **advance** — move to a later stage + set the next due date (it progressed).
-- **stop** — move to Abandoned + clear the due date (not pursuing).
+- **stop** — move to Abandoned + clear the due date (not pursuing). If a message draft was staged for
+  this card and never sent, discard it too (e.g. `node gmail.js --delete-draft=<draft-id>` for a Gmail
+  draft) — an abandoned card means the draft is dead weight, not a reminder to revisit.
 Each advance also posts a dated comment recording what happened, so the board reflects reality.
 
 For **task cards** (startable model), a ⏳ Waiting card also nudges by bumping its **Start** (ping-back

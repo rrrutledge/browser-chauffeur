@@ -36,9 +36,10 @@ needs a signed-in tab to sniff from: open `https://outlook.office.com/mail/` (or
 stop reading mail until the token sniffs clean. Never surface a raw auth error to the user.
 
 ## SITUATIONAL-CHECK mechanism
-The inbox is drained and emptied by the poller, so recent replies live in **Deleted Items** (where CLEAR
-moves handled messages), not the inbox or Archive. Search all three folders — inbox, Archive, Deleted
-Items — covering both directions and **paginating each fully** (follow `@odata.nextLink`). Use the
+The inbox is drained and emptied by the poller, so recently-handled messages live in **Archive** (where
+CLEAR moves them), not the inbox. Search all three folders — inbox, Archive, Deleted Items — covering
+both directions and **paginating each fully** (follow `@odata.nextLink`; older items cleared before this
+behavior changed may still sit in Deleted Items). Use the
 `ms-rest` skill's `outlook-core.js` `apiCall` helper to query
 `/me/mailfolders/<folder>/messages` filtered by `receivedDateTime ge <cutoff>`, ordered newest-first,
 matching on the contact's name/address and thread subject.
@@ -48,8 +49,8 @@ See `email-base.md` for the shared two-file shape. REST-specific: `messageId` is
 id (opaque API handle). Both `id` (stable slug) and `messageId` (API handle) are persisted in the JSON.
 
 ## CLEAR
-`node <ms-rest>/outlook-mail.js delete <messageId>` — moves the message to **Deleted Items**
-(reversible; narrate it). Never a permanent purge.
+`node <ms-rest>/outlook-mail.js delete <messageId>` — moves the message to **Archive**
+(reversible; keeps it searchable later; narrate it). Never a permanent purge.
 
 ## JUNK-LEARNING (step 3 — Outlook work mailbox-specific)
 After exhausting unsubscribe and source-app options (see `email-base.md`): propose an **Outlook

@@ -14,7 +14,7 @@ import re
 from . import ai, config
 from .log import log_debug
 from .paths import is_in_trusted_script_dir, read_script_file, resolve_against_cwd
-from .shell import ASSIGNMENT_ONLY, shell_tokenize
+from .shell import ASSIGNMENT_ONLY, has_unquoted_windows_drive_path, shell_tokenize
 from .trust import get_trusted
 
 # When a script is judged DANGEROUS, the orchestrator turns the silent prompt
@@ -53,6 +53,17 @@ def _record_missing_script(filename, language):
         'which doesn\'t exist. A relative filename resolves against the current working directory, not '
         'wherever the script actually lives, so it could not be read and safety-checked. Rerun the command '
         'using the script\'s full absolute path instead of a bare or relative filename.'
+    )
+
+
+def _record_mangled_path_block(filename, seg):
+    global _last_block_reason
+    _last_block_reason = (
+        f'BLOCKED: could not find "{filename}" to safety-check it. The command has an unquoted '
+        'Windows drive-letter path (e.g. C:\\Users\\...) — the shell only preserves backslashes '
+        'literally inside double quotes, so an unquoted one is silently mangled before the '
+        'program ever sees it (C:\\Users\\... becomes C:Users...). Quote the path '
+        '("C:\\Users\\...\\script.js") or use forward slashes (C:/Users/.../script.js) and retry.'
     )
 
 
@@ -166,7 +177,10 @@ def _check_segment(seg, command, language, inline_flag):
             return True
         content = read_script_file(filename)
         if content is None:
-            _record_missing_script(filename, language)
+            if has_unquoted_windows_drive_path(seg):
+                _record_mangled_path_block(filename, seg)
+            else:
+                _record_missing_script(filename, language)
             return False
         verdict, reason = ask_ai_about_script(content, language, command_line=seg)
         if verdict is False:
@@ -198,7 +212,10 @@ def check_direct_script_segment(seg, language):
         return True
     content = read_script_file(filename)
     if content is None:
-        _record_missing_script(filename, language)
+        if has_unquoted_windows_drive_path(seg):
+            _record_mangled_path_block(filename, seg)
+        else:
+            _record_missing_script(filename, language)
         return False
     verdict, reason = ask_ai_about_script(content, language, command_line=seg)
     if verdict is False:

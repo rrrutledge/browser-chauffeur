@@ -68,7 +68,8 @@ For each tool call the hook produces one of:
   and files inside a git repo's working tree; redirects stray temp-named files
   into `.tmp/`.
 - **MCP** — approves read-only and reversible-write verbs; prompts on destructive
-  verbs (`delete`, `purge`, …). Whole servers can be blanket-approved via config.
+  verbs (`delete`, `purge`, …). Whole servers can be blanket-approved via config,
+  and individual tools (by full name) can be blanket-approved too.
 
 ## Configuration
 
@@ -83,6 +84,7 @@ blanket-approved, etc.).
   "trusted_commands": ["mycli"],
   "curl_domains": ["atlassian.net", "mycorp.sharepoint.com"],
   "mcp_blanket_servers": ["plugin_product-management_atlassian"],
+  "mcp_blanket_tools": ["mcp__claude_ai_Gmail__apply_sensitive_message_label"],
   "trusted_script_dirs": ["my-plugins/"]
 }
 ```
@@ -136,7 +138,9 @@ safe_compounds/
   learned.py             machine-local store of AI-approved commands
   scripts.py             node/python script safety analysis (deny-by-default)
   commands.py            subcommand engine (git/gh/npm/yarn/pip/pnpm/bun via a
-                         spec table) + bespoke checkers (curl/sed/start/wt/cmd/file ops)
+                         spec table) + bespoke checkers (curl/sed/start/wt/cmd/file ops/taskkill)
+  procs.py               live Windows process-ancestry walk (ctypes, no deps) —
+                         backs the taskkill self-close-my-own-tab checker
   enforce.py             the BLOCK rules ("rewrite into a validatable form")
   approve.py             per-segment trust decision
   mcp.py                 MCP tool classification
@@ -149,8 +153,8 @@ Subcommand-shaped tools (git, gh, the package managers) share one
 `check_subcommand_tool` engine driven by `SUBCOMMAND_SPECS` in `commands.py` —
 adding a new such tool is a table entry, not new code. Tools whose safety isn't
 subcommand-shaped (curl URLs, `sed -i`, `start` extensions, `wt` program
-resolution, `.cmd` parsing, CWD-scoped file ops) stay as small purpose-built
-checkers.
+resolution, `.cmd` parsing, CWD-scoped file ops, `taskkill` self-targeting) stay
+as small purpose-built checkers.
 
 One orchestrator (not two separate hook processes) preserves the block-then-
 approve ordering, which the Write/Edit path depends on (a temp-named file

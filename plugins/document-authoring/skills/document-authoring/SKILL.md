@@ -7,70 +7,82 @@ description: Russell's personal style conventions for authoring or editing any d
 
 Apply these whenever authoring or editing a document or message in Russell's name.
 
-**Everything here applies to every medium by default** — Teams, Slack, email, Jira comments, Confluence, Word, PRs. A rule is medium- or register-specific *only* when its bullet or section says so. The **Formal writing** and **Conversational writing** sections below describe **register** (how warm, how structured) — not which rules are in scope; their guidance applies wherever you're writing in that register, across all channels.
+**Everything here applies to every medium by default** — Teams, Slack, email, Jira comments, Confluence, Word, PRs.
+A rule is medium- or register-specific *only* when its bullet or section says so.
+The **Formal writing** and **Conversational writing** sections describe **register** (how warm, how structured), not which rules are in scope; their guidance applies wherever you're writing in that register, across all channels.
 
 ## The drafting loop: Read → Write → Verify → Stage → Learn (mandatory)
 
-Every message in Russell's name — a Jira comment, an email, a Teams post, a PR — runs through these steps, in order. Skipping a step is what leaks the patterns this skill bans: reading once then composing "in the voice" is not enough.
+Every message in Russell's name — a Jira comment, an email, a Teams post, a PR — runs through these steps, in order.
+Skipping a step is what leaks the patterns this skill bans: reading once then composing "in the voice" is not enough.
 
-1. **Read** — before writing a word, identify the persona/register this message is in (`1on1`, `outreach`, `announcement`, `meeting-invite`, formal, etc.) and read that section's bullets plus the "Never do these" list. Compose against what you just read, not from memory.
-2. **Write** — draft the message. When it's on the same topic as a prior message or email thread — even if it isn't a direct response, and even when the most recent message is one Russell sent himself — anchor it there rather than composing fresh, so the follow-up answers where the conversation actually stands and the history stays together. In Teams, use Reply on a message in that topic; in email, reply into the existing thread on that subject.
-3. **Verify** — walk the same persona bullets and "Never do these" one at a time against your **actual draft text**. For each bullet, find the words it governs and confirm they comply, or revise. This is a line-by-line audit of what you wrote, not a general vibe check. **Apply the load-bearing outreach checks every time**, since these are the ones most often missed: cold/first-touch outreach opens with the *soft* ask (gauge interest, invite a conversation) and names any hard commitment only lightly and later; never restate a link, date, or detail already shared upthread; land on one ask; close with "let me/us know."
-4. **Stage, never send** — a draft that survives verify is staged for Russell's approval; by default he sends it himself. Put the text into the real UI where it'll be sent — the ticket comment box, the Teams compose box, the email reply — via `browser-chauffeur`, so he sees it in context, edits inline, and clicks the app's own Send. If the UI genuinely can't be driven, show the proposed text in chat for approval instead. The one send exception: when a channel has a programmatic send path and Russell, having reviewed the exact draft this turn, gives an explicit per-message instruction to send it, you may send that reviewed text for him (today only personal Gmail, via the `gmail` skill's `--send-draft`). Default, silence, and any autonomous run mean draft-only — never infer a send.
+1. **Read** — before writing a word, identify the persona/register this message is in (`1on1`, `outreach`, `announcement`, `meeting-invite`, formal, etc.) and read that section's bullets plus the "Never do these" list.
+   Compose against what you just read, not from memory.
+2. **Write** — draft the message.
+   When it's on the same topic as a prior message or email thread — even if it isn't a direct response, and even when the most recent message is one Russell sent himself — anchor it there rather than composing fresh, so the follow-up answers where the conversation actually stands and the history stays together.
+   In Teams, use Reply on a message in that topic; in email, reply into the existing thread on that subject.
+3. **Verify** — walk the same persona bullets and "Never do these" one at a time against your **actual draft text**. For each bullet, find the words it governs and confirm they comply, or revise.
+   This is a line-by-line audit of what you wrote, not a general vibe check.
+   **Apply the load-bearing outreach checks every time**, since these are the ones most often missed: cold/first-touch outreach opens with the *soft* ask (gauge interest, invite a conversation) and names any hard commitment only lightly and later; never restate a link, date, or detail already shared upthread; land on one ask; close with "let me/us know."
+4. **Stage, never send** — a draft that survives verify is staged for Russell's approval; by default he sends it himself.
+   Put the text into the real UI where it'll be sent — the ticket comment box, the Teams compose box, the email reply — via `browser-chauffeur`, so he sees it in context, edits inline, and clicks the app's own Send.
+   If the UI genuinely can't be driven, show the proposed text in chat for approval instead.
+   The one send exception: when a channel has a programmatic send path and Russell, having reviewed the exact draft this turn, gives an explicit per-message instruction to send it, you may send that reviewed text for him (today only personal Gmail, via the `gmail` skill's `--send-draft`). Default, silence, and any autonomous run mean draft-only — never infer a send.
 5. **Learn** — after he sends, run the **Voice learning loop** below: diff what he actually sent against your draft and update this guidance when the voice changed.
 
 A draft that reaches Russell should already read as his, because you verified it against the specific bullets — not because you intended to.
 
 ## Links
 
-Always embed links as hyperlinks on descriptive text within the sentence flow — never paste bare `https://…` URLs in prose.
+Embed every link as a hyperlink on descriptive text within the sentence — never a bare `https://…` URL in prose.
+Write "see the [incident report](URL)", not "Read here: https://…".
 
-- Good: "see the [incident report](URL)", "the [IDP-1069](URL) ticket", "documented in [the runbook](URL)"
-- Bad: "Read here: https://acme.atlassian.net/wiki/…"
+Anchor by format:
+- **Confluence**: `<a href="URL">descriptive text</a>` inside the sentence.
+- **Teams / Slack**: anchor via the link dialog (Ctrl+K).
+- **Word / email / Markdown / PRs**: anchor to natural words.
+- **Composers with no rich-text anchoring** (e.g. LinkedIn's DM composer): put the plain URL in parentheses right after the text — `Birgitta Boeckeler (https://www.linkedin.com/in/birgittaboeckeler/)`.
 
-Implementation by format:
-- **Confluence**: `<a href="URL">descriptive text</a>` inside the sentence
-- **Teams / Slack**: use the link dialog (Ctrl+K) to anchor the URL to text
-- **Word / email / Markdown / PRs**: anchor the link to natural words
-
-**When previewing a draft for approval, show where each link lands.** A rendered preview hides which
-words carry a link, so the reviewer can't tell what's anchored. Spell it out — show the URL next to its
-anchor text, e.g. "right on my calendar (links to https://calendly.com/russell-rutledge)" — so the
-reviewer sees exactly which words are clickable before approving.
+**When previewing a draft for approval, show where each link lands.**
+A rendered preview hides which words carry a link, so spell out the URL next to its anchor text — "right on my calendar (links to https://calendly.com/russell-rutledge)" — so the reviewer sees what's clickable before approving.
 
 **Represent every person, event, or document a message references — never leave it as bare text.**
-Whenever a draft names a specific person, event, or document, resolve it to the right mechanism instead
-of plain text:
-- **A person you want notified** — tagging a Slack teammate or Teams colleague into the message body
-  ("Jane Doe here is the information…", "Thanks for looking at this, Alex"): use a real @-mention via
-  the platform's mention picker (Teams/Slack — see **Core voice** below), not plain text. A typed
-  `@Name` with no picker selection is not a real mention and doesn't notify them.
-- **A person referenced but not being addressed/notified, or not on that platform**: link their name —
-  to their profile/permalink if they're on the same platform as the message, otherwise to their LinkedIn
-  profile.
-- **An event**: link its name to the event's page.
-- **A document**: link its title to the document itself.
-Apply the platform's actual anchoring capability: Confluence/Word/email/Markdown/Slack/Teams all support
-anchoring a link to descriptive text (see **Implementation by format** above) — use that. Some composers
-have no rich-text anchoring at all (e.g., LinkedIn's own DM composer): there, put the plain URL right
-after the name in parentheses — `Birgitta Boeckeler (https://www.linkedin.com/in/birgittaboeckeler/)` —
-matching Russell's own established pattern in LinkedIn DMs, rather than dropping the link because it
-can't be a true anchor.
+- **A person you want notified** — use a real @-mention via the platform's mention picker, not a typed `@Name` (which doesn't notify them).
+- **A person referenced but not being addressed, or not on that platform** — link their name to their profile/permalink on the same platform, otherwise to their LinkedIn profile.
+- **An event** — link its name to the event's page.
+- **A document** — link its title to the document itself.
+- **A meeting or call you're offering to set up** — anchor the offer to Russell's booking page (https://calendly.com/russell-rutledge) so the recipient can self-book, rather than a bare "we could set up a call". Include the link the first time a call is proposed on a thread; drop it on later nudges per "Don't re-paste".
 
 ---
 
 ## Asks
 
-**One concrete question or request per message.** Land on the single thing you actually need and ask for that. Don't present a menu of options for the reader to react to, and don't stack a numbered list of questions.
+**One concrete question or request per message.**
+Land on the single thing you actually need and ask for that.
+Don't present a menu of options or stack a numbered list of questions.
 
-- **Name the concrete need, not the options.** State the specific gap and what the help would actually involve, rather than thinking out loud about possible approaches. Real edit: a draft offering "two directions we're considering: live sessions or recorded reruns…" plus a 3-part numbered question list was cut to one question ("who could help facilitate these sessions?") and one ask ("Can you share your feedback and help us with finding a facilitator?").
-- If you genuinely have options to resolve, pick the one you'd recommend and ask about that — let the reader counter if they disagree, rather than handing them the whole menu. This applies even to a single sentence with an embedded "or": an intro-ask phrased as "Would you be able to make an introduction, or point me to the best way to reach him?" is still two asks joined by "or" — cut to the one you actually want and let them redirect if it doesn't fit. Real edit (asking a mutual connection for an intro to a keynote prospect): "Would you be able to make an introduction, or point me to the best way to reach him?" was sent as "Do you know him well enough to make an introduction?"
-- **Flag a request buried after a lot of content with a light lead-in.** When the ask comes at the end of a long, information-dense message, prefix it with a short humble flag so it doesn't get lost — Russell's go-to is "One small ask - ". Real edit: a compliance email closing that read "Could you restore our wire and ACH access…" was sent as "One small ask - could you restore our wire and ACH access…". **The flag is only for buried asks: when the message is short and the thread already carries the context, cut both the explanatory context and the lead-in and let the bare question stand.** Real edit (a later reply on that same bank thread): a draft that opened warmly, then added a context paragraph, then "One small ask - before the checking account closes, how can we move our remaining balance…" was sent as just the warm opener plus "Before the checking account closes, how can we move our remaining balance to another institution - by a mailed check or an outgoing ACH?" — the context paragraph and the lead-in both cut.
-- **Frame the ask to match the recipient's actual role.** When the person's job is to route you to a third party (find a volunteer, recommend a speaker), make the asks conditional on that handoff instead of addressing them as personal requests to the recipient — and don't narrate the follow-up's timing. Real edit (a nudge to a regional contact who'd offered to recruit a volunteer): "following up after a couple of weeks… Two things we could really use your help with… Is there someone you'd recommend — or could introduce me to —…" was sent as "If you do find someone interested here are two things we could use help with… Is there someone who would be a strong keynote voice for the region?" — the timing preamble dropped and the asks reframed as what the found volunteer would help with.
-- **When a contact declines or gives a discouraging read, accept it humbly and stop — don't tack on a new ask.** After someone you've already made several asks of gives a candid "this probably won't work," the in-voice reply defers to their judgment and ends; it does not reopen the conversation with yet another request or introduction ask. Real edit (a contact said Tencent likely won't sponsor and a key person likely isn't interested): a draft that thanked him then added "If anyone else in the region comes to mind - whether to help plan or as a keynote voice - we'd love the introduction" was sent as just "thanks for giving your perspective. You probably know the situation better than I do, so I'll go with your recommendation for now. I don't have any extra information." — the trailing ask cut entirely, the thanks plained down (no "that's really helpful"). **When someone checked on a lead for you and it didn't pan out, close with "No problem ✅" rather than "Good to know."** The former is more gracious about their effort; the latter reads as informational. Real edit (Clare checked on a contact and he wasn't a fit): draft "Thanks Clare!  Good to know." → sent "Thanks Clare!  No problem ✅"
-- **When the ask rested on your own mistake, own it plainly, release the other person, and don't pivot to a replacement ask.** If the request turns out to be based on your error (wrong person, wrong premise), say you got mixed up, tell them not to bother, and stop — don't substitute a new request in the same breath. Real edit (an intro request that turned out to target the wrong "Jake"): a draft "Thanks for checking on Jake. Since he's at DX rather than Windsurf, let's hold off on that one - it was really the Windsurf connection I was after. Do you happen to know anyone actually at Windsurf?" was sent as "You're right it looks like I got mixed up and reached out to you about the wrong Jake. I found the other one, so don't worry about reaching out to this guy." — the mistake owned as his own, the contact released, and the replacement "know anyone at Windsurf?" ask cut entirely.
-- **When asking someone to do something, just ask — don't embed instructions on how to do it.** State what you need; trust them to know how to execute. Operational guidance inside the ask — a script, a suggested approach, step-by-step notes — presumes they need coaching and should be cut. (Trailing offers after the ask are covered by the "no helper tail" rule.) Real edit (asking Yuki to intro Russell to Tomohiro Nakajima at KDDI): a draft that asked then supplied a pre-written blurb for her to send was cut to the question alone.
-- **When there's information still to gather that could change the decision, get it before committing — and don't let the wait look like stalling.** When a concrete, decision-relevant fact is still outstanding (a number, a document, a valuation), hold off on committing until it's in hand — even if the other side wants a yes now — but keep the tone positive and forward-moving: say something warm and non-committal and move straight to the substantive thing you still need, so it reads as diligence, not foot-dragging. Cut lines that lock Russell in prematurely — a stated readiness to commit, a formal request for a step he hasn't decided — which also give away negotiating leverage while an ask is open. Real edit (a reply asking WellSky to raise severance from 8 to 12 weeks): a draft opening "I've reviewed the separation agreement and I'm prepared to sign promptly. Before I do, I'd like to ask…" was sent as "I've reviewed the separation agreement and had a few things to ask. First, I'd like to ask…" — the "prepared to sign promptly" commitment cut. In the same message a formal "Please consider this my written request to enroll in the [program]" was softened to "I am considering enrolling in the [program]".
+- **Name the concrete need, not the options.**
+  State the specific gap and what the help would actually involve, rather than thinking out loud about possible approaches.
+- **When asking to change how something works, name who benefits and what friction goes away.**
+  Add a plain sentence naming the concrete beneficiary and the obstacle being removed, even when the "why" seems inferable.
+  This specifies the change's real-world effect — keep it separate from pitching why your cause deserves it.
+- **If you have options to resolve, pick the one you'd recommend and ask about that** — let the reader counter if they disagree.
+  This applies even to a single sentence with an embedded "or"; cut it to the one ask you actually want and let them redirect.
+- **Flag an ask buried after dense content with a light lead-in** — Russell's go-to is "One small ask -". But when the message is short and the thread already carries the context, cut both the context and the lead-in and let the bare question stand.
+- **Frame the ask to match the recipient's role.**
+  When their job is to route you to a third party (find a volunteer, recommend a speaker), make the asks conditional on that handoff rather than personal requests to them — and don't narrate the follow-up's timing.
+- **When a contact declines or gives a discouraging read, accept it humbly and stop** — don't tack on a new ask.
+  Defer to their judgment and end.
+  When they checked a lead that didn't pan out, close with "No problem ✅" rather than "Good to know" — the former is gracious about their effort.
+- **When the ask rested on your own mistake, own it plainly, release the other person, and don't pivot to a replacement ask.**
+  Say you got mixed up, tell them not to bother, and stop.
+- **When asking someone to do something, just ask — don't embed how-to instructions.**
+  State what you need and trust them to execute; cut a supplied script, a suggested approach, or step-by-step notes.
+- **When a decision-relevant fact is still outstanding, get it before committing — and don't let the wait look like stalling.**
+  Hold off until the number, document, or valuation is in hand even if the other side wants a yes now; keep the tone warm and move straight to what you still need, so it reads as diligence.
+  Cut lines that lock Russell in early (a stated readiness to sign, a formal request for an undecided step), which also give away leverage.
+  When he'll act only after a response, the staged message asks for the confirmation rather than announcing the action.
+  Confirm an informally-stated fact is official before building the next question on it.
 
 ---
 
@@ -78,110 +90,180 @@ can't be a true anchor.
 
 Use for: Confluence specs, how-to guides, PRDs, PR descriptions, Word docs, public announcements.
 
-- **No emoji** — warmth comes from word choice, not symbols
-- Structure with headings, bullets, and tables where they help the reader navigate
-- Neutral tone in reference data, tables, and formal specs; warm in narrative and intro sections
-- Center the reader with "you/your", use "we're" for the team or product, "I" for a personal action: "We're rolling out a new process…", "On our side I'm opening a Jira…"
-- **"We" for coordinating follow-up**: when describing next steps that involve reaching out, scheduling, or connecting — even if Russell is personally executing them — use "we'll" to frame it as collaborative. E.g., "we'll reach out to them to start coordinating" not "I'll reach out to them".
-- Short sentences. One idea per sentence. Fragments are fine for rhythm.
-- Make asks as a polite question ("Would you be willing to…?"), never a command
-- Teach with if/then: plain conditionals rather than abstract rules
-- Contractions always (we're, isn't, won't, I'll)
-- **Summarize — give the gist, hold the detail.** Even formal replies (Jira comments, email) stay short: lead with the point and the few facts that matter, and let the reader ask if they want the full technical breakdown. Resist listing every permission, every alternative, every implementation note. Real edit: a ticket reply that spelled out each API scope, every alternative, and the credential-storage mechanism should have been a few summarized sentences (approach chosen + why it beats the alternative we use today).
-- **When a document is attached, the body summarizes — it doesn't restate the attachment.** Give a few high-level points and point to the attachment for the rest; don't duplicate in prose what the attachment already carries, and end right after pointing to it — no follow-on offer. Real edit: a sponsorship reply with the prospectus PDF attached had its full "Sponsorship tiers" pricing bullet and a trailing "Happy to put together an order form…" offer both cut, leaving two summary bullets and "I've attached the full prospectus so they have everything in one place."
-- Avoid: corporate filler ("leverage", "streamline", "as per"), long compound sentences, effusive sign-offs
+- **No emoji** — warmth comes from word choice, not symbols.
+- Structure with headings, bullets, and tables where they help the reader navigate.
+- Neutral tone in reference data, tables, and specs; warm in narrative and intro sections.
+- Center the reader with "you/your"; use "we're" for the team or product, "I" for a personal action.
+- **"We" for coordinating follow-up** — next steps that involve reaching out, scheduling, or connecting are "we'll", even when Russell executes them personally.
+- Short sentences.
+  One idea per sentence.
+  Fragments are fine for rhythm.
+- Make asks as a polite question ("Would you be willing to…?"), never a command.
+- Teach with if/then: plain conditionals rather than abstract rules.
+- Contractions always (we're, isn't, won't, I'll).
+- **Summarize — give the gist, hold the detail.**
+  Even formal replies lead with the point and the few facts that matter, and let the reader ask for the full breakdown.
+  Resist listing every permission, alternative, and implementation note.
+- **When a document is attached or linked, the body summarizes — it doesn't restate what's attached.**
+  Applies equally to a chat link that auto-unfurls a rich preview (Slack, Teams). Give a few high-level points, point to the document, and end there — no follow-on offer, no restated checklist.
+- Avoid corporate filler ("leverage", "streamline", "as per"), long compound sentences, and effusive sign-offs.
 
 ### Reports, reviews & status updates
 
-Use for: self-evaluations, quarterly/weekly R&D reviews, stakeholder and status updates — first-person reports measured against goals or competencies. Builds on the formal-writing basics above.
+Use for: self-evaluations, quarterly/weekly R&D reviews, stakeholder and status updates — first-person reports measured against goals or competencies.
+Builds on the formal-writing basics above.
 
-- **Evidence-led.** Outcome → metric → proof (a link, a screenshot, a quote); lead each point with the outcome tied to a business objective.
-- **Honest, defensible numbers.** Prefer the actual observed figure over a percentage delta; call an estimate a conservative floor and link the source. An honest number beats an inflated one — readers probe.
-- **Balance strengths with genuine growth areas.** In a self-assessment, pair confident accomplishments with real, specific gaps (a conflict avoided, a hire that didn't fit, a strategy gap) — credible, not humble-brags.
-- **Continuity.** Tie back to the prior period's report: what you said you'd do → what you did.
-- **Right altitude.** Frame work in the language of the role or competencies it's measured against — but only where true.
-- **Bullets with bold lead-ins.** Start each bullet with a **bold 4–7 word key phrase**, then " — " and the detail; put an intro sentence above a list with a blank line before the list.
+- **Evidence-led.**
+  Outcome → metric → proof (a link, a screenshot, a quote); lead each point with the outcome tied to a business objective.
+- **Honest, defensible numbers.**
+  Prefer the actual observed figure over a percentage delta; call an estimate a conservative floor and link the source.
+  Readers probe, so an honest number beats an inflated one.
+- **Balance strengths with genuine growth areas.**
+  Pair confident accomplishments with real, specific gaps (a conflict avoided, a hire that didn't fit) — credible, not humble-brags.
+- **Continuity.**
+  Tie back to the prior period's report: what you said you'd do → what you did.
+- **Right altitude.**
+  Frame work in the language of the role or competencies it's measured against — but only where true.
+- **Bullets with bold lead-ins.**
+  Start each bullet with a **bold 4–7 word key phrase**, then " — " and the detail; put an intro sentence above a list with a blank line before the list.
 
 ## Conversational writing
 
 Use for: Teams 1:1 chats, Teams channel posts, Slack messages, email replies.
 
-The goal is that the message reads like Russell wrote it. Concrete patterns and real samples beat adjectives — imitate the samples.
+The goal is that the message reads like Russell wrote it.
 
 ### Register: personal friend vs. professional contact
 
-Before drafting, read the thread for relationship signals. If the thread has personal content — asking about family or kids by name, sharing life milestones, the other person sharing personal updates in return — the contact is a personal friend and the reply register shifts significantly: drop the salutation, go much more casual ("Yup - no problem"), use emoji freely, and skip structured acknowledgment phrases. Personal friends don't get "Hi Max - Thanks for the update. I'll look forward to hearing from you next week!" — they get something much more offhand and warm. Real edit (thread had Russell asking about Max's child Gustav by name, and sharing a daughter's graduation): draft said "Hi Max - Thanks for the update. I'll look forward to hearing from you next week!" → sent as "Yup - no problem. You are great 👍"
+Before drafting, read the thread for relationship signals.
+If it carries personal content — asking about family by name, sharing life milestones, the other person sharing personal updates in return — the contact is a personal friend, and the register shifts significantly: drop the salutation, go much more casual, use emoji freely, and skip structured acknowledgment phrases.
+A personal friend gets "Yup - no problem 👍", not "Hi Max - Thanks for the update. I'll look forward to hearing from you next week!"
 
 ### Brevity (overrides everything else)
 
-Messages are **short**. Default to the fewest sentences that carry the point. Before finalizing, delete any sentence that:
-- restates something already clear from context
-- offers help or a next step that wasn't asked for and isn't needed
-- softens an already-polite message further
+Messages are **short**. Default to the fewest sentences that carry the point.
+Before finalizing, delete any sentence that restates something already clear from context, offers unrequested help or a next step, or softens an already-polite message further.
+A single clear sentence ending in a question is usually the whole message — resist padding it.
 
-If the message is a single clear sentence ending in a question, that is usually the whole message. Resist padding it.
-
-- **Name the specific thing, not the category.** Replace vague nouns with the concrete one: "token cost" not just "cost", "the deploy" not just "it". Real edit: draft said "having the cost front and center" → sent said "having the token cost front and center."
-
-- **When specific people own the answer, route to them — don't explain the architecture.** If a question is about a system or process that has identified owners, name the owners and one concrete next step; drop the conceptual overview. Hedge with "that I know of" when not fully certain. Real edit (Michael asked if there's a base build for the command center): draft explained the composed-layer pattern and microapp approach at length; sent said "No base build yet that I know of - but you can ask Vivek Pissay or Jim Higgins about it.  Once you have it, you can deploy it as a SkyStage microapp."
-
-- **Keep asks open and tentative — don't pre-commit.** Write as though the outcome is still open; give the reader lots of room to say no or redirect. Hedge with "may" and "wondering", include alternatives ("or someone he knows"), and avoid framing that pins the person to a specific action. Real edits: "I'm planning to…" → "I'm wondering if…"; "I'm thinking of reaching out and wanted to check with you first" (announces a decided course) → "I'm wondering if I should reach out and wanted to check with you first" (invites the reader to weigh in). When the ask involves the contact doing something internally — spreading the word, thinking about who might be interested — "please consider" lands even softer than a direct question; it invites reflection without demanding a yes/no. Real edit: "Is there anyone from ZF who might want to speak - or just attend?" → "Please consider if there anyone from ZF who might want to speak and also how to spread the word about attendance." In a joint ask, prefer "can" over "should" — "should" presumes an obligation the reader hasn't agreed to, "can" keeps it exploratory. Real edit (Slack thread reply asking Addie about reposters): "who we should line up to repost once these go out?" → "who we can line up to repost once these go out?" **Naming a specific prestigious slot also over-commits — soften it to the general role.** Real edit (two identical sends asking mutual connections for an intro to a keynote candidate): "possible ISC Summit keynote invite" → "possible ISC Summit speaker invite" — "keynote" presumes a level of commitment before she's even said yes; "speaker" keeps the ask open.
-
-- **First-touch outreach: keep the ask to one low-commitment thing, and warm the reference to their past work.** When re-opening contact after a long gap, ask for a single easy yes rather than stacking asks, and affirm that their earlier contribution still matters rather than just name-checking it. Real edits (a cold-ish Summit sponsorship email to a past speaker): "interested in attending and/or speaking?" → "interested in attending?" (dropped the heavier speaking ask); after referencing his old community-call talk, he added "It is still a topic that comes up in the community." Keep the warm callback plain — a simple appreciation, not an over-claimed personal sentiment — and cut any salesy bridge before the ask. Real edits (a revived 2024 Siemens thread): "I still think back to what you shared about it becoming part of the DNA…" → "it was great to hear what you shared about it becoming part of the DNA…", and the bridge "Siemens' story is exactly the kind our community loves to learn from" was deleted, leaving just the callback and one plain question.
+- **A simple thank-you for a small favor is a name and an exclamation — nothing else.**
+  Don't add a clause explaining why you're grateful — "Thanks so much, Yuki!", not "…really appreciate you taking the time."
+- **Name the specific thing, not the category** — "token cost" not "cost", "the deploy" not "it".
+- **When specific people own the answer, route to them — don't explain the architecture.**
+  Name the owners and one concrete next step; drop the conceptual overview.
+  Hedge with "that I know of" when not fully certain.
+- **Keep asks open and tentative — don't pre-commit.**
+  Write as though the outcome is still open and give room to say no: hedge with "may"/"wondering", include alternatives, and avoid pinning the person to a specific action.
+  "Please consider" lands softer than a direct question for an internal favor; prefer "can" over "should" in a joint ask; soften a named prestigious slot to the general role ("speaker", not "keynote"). When the ask could read as ungrateful — pressing a lapsed commitment, an underpayment — make the gratitude explicit, frame it as sharing the point to ask whether it helps *them*, and point to the concrete record rather than asserting the fact.
+  When asking an existing contributor for more, name a peer already committed as the nudge and hand the choice back with an explicit release ("so it's fine either way").
+- **First-touch outreach: keep the ask to one low-commitment thing, and warm the reference to their past work.**
+  After a long gap, ask for a single easy yes rather than stacking asks, and affirm that their earlier contribution still matters in plain words.
+  Cut any salesy bridge before the ask.
+- **Reporting a completed task: lead with the outcome and the link; cut the diagnostic play-by-play and the editorial wrap-up.**
+  They want the result, not the story of what was wrong, how you found it, or a closing "so this means…" they can draw themselves.
 
 ### Never do these (AI-tells that break the voice)
 
-- No corporate/AI filler: "I hope this message finds you well", "I wanted to reach out", "Please don't hesitate to", "As per", "Kindly", "Furthermore", "Moreover", "delve", "leverage" (as a verb), "streamline", "I'm excited to share"
-- No "It's not just X, it's Y" constructions, no rule-of-three flourishes, no breathless enthusiasm
-- **Prefer "good" over "great" as a descriptor.** Russell consistently dials back superlatives — "good initial response" not "great initial response", "good turnout" not "great turnout". Reserve "great" for short standalone exclamations ("Great!") or genuine singular praise, not as an amplifier on nouns.
-- **Skip vivid metaphors and set-phrase idioms — say it plainly.** Russell swaps figurative phrasing for literal; the warmth stays, the ornament goes. Real edits (a warm LinkedIn reply): "you've caught me mid-whirlwind" → "This year I've been heads-down…"; "throw your hat in — I'll send you the CFP the moment it's live" → "I will send you the CFP for sure"; "somewhere on the conference circuit" → "one way or other, sounds like 👍" (a casual emoji is welcome in a personal DM where a flourish was cut).
-- No bare URLs — always anchor links (see the Links rule above)
-- Don't over-format short messages. A quick reply is one or two plain sentences, not a structured block.
-- Don't be effusive or salesy. Russell is warm but understated. **In outreach re-engagement, lead with one open question and stop — don't pitch the offer or stack a closing CTA.** Real edits (a sponsorship re-engagement email to a quiet but warm partner): "You've been such a valued partner" → "You're a valued partner"; and he cut both the explicit ask ("what would make the summit worth your time and attention this year?") and the entire follow-on pitch ("Sponsorship is of course part of how you can be involved, and I'm happy to walk through the options (or send a quote like we've done before) whenever it's useful. But first - would you be open to a quick chat about what Analog is up to and how we can make this year's summit count for you?"), leaving just the warm partner line and a plain "Great to be in touch!" close. The invitation to participate carries the ask; naming the tier/quote and pressing for a meeting reads as a pitch.
-- **Speak as the org when you represent it, and add a brief warm aside.** When writing on behalf of an organization Russell leads (e.g., the InnerSource Commons Foundation), use "we/us" for the group's appreciation, questions, and position — not "I". And a short human acknowledgment of the other person is in-voice before getting to the point. Real edits (a reply to the Foundation's accountant): "I really appreciate it" → "we really appreciate it"; he also added "No problem on the name :)" up front, then went straight to the question.
-- **No em dash `—`** — use space-dash-space ` - ` instead. Real example: "Meeting later sounds good - let me know when you're ready."
-- **Never reference coffee, alcohol, or drinks** — not for Russell and not suggesting others do it. Pick a neutral alternative or omit.
-- **No "helper tail" — but do ask when there's a genuine open question.** When you've said the thing, stop. Don't append an offer, hint at a next step, or restate what's already obvious. The test: does this sentence give the reader something they don't already have? If not, cut it. The exception: when the situation leaves a real unresolved logistical question, ask it directly instead of closing with vague enthusiasm — "Very excited to see where this goes" is a tail; "Should I respond in English and let Nakao-san translate, or should I AI-translate on my end?" is a real question that belongs. Russell says what he wants to say and ends — often right after a question mark. A direct yes/no question already prompts a response; appending "Let me know!" is a tail and gets cut. Real edit (FINOS WG invite ending with a participation question): "…Would you or someone at Thales be interested in participating?  Let me know!" → "…Would you or someone at Thales be interested in participating?" **When Russell personally owns the next step, say "I'll" — not "we'll" — and drop the trailing offer.** Real edit (a CFP-committee update): "We'll have the committee locked and themes outlined well before July 8 - you'll hear from us as soon as we do. Let me know if you need anything on your end in the meantime!" → "I'll try to finish this week. Thanks for pushing to do it ✅." — personal ownership named directly, helper tail cut. The same ownership applies to work already done: announce it actively in first person, not agent-less passive. Real edit (Slack thread reply sharing drafts for review): "the social posts for the UN case study are drafted for review:" → "I drafted some social posts for the UN case study:" — "I drafted" over "are drafted", and the lighter "some social posts" over "the social posts".
-- **Adding a second ask mid-thread: open with the discovery, not the ask.** When tacking a new request onto an existing email thread, don't frame the opener as "one more ask while I have you" — that announces the ask before it lands. Instead, lead with what you noticed: "found one more." Real edit (adding a keynote intro-ask onto an existing Tabnine sponsorship thread): "one more ask while I have you" → "found one more."
-- **Float a candidate tentatively.** When suggesting a person as a fit, use "also may be a great fit" not "would be a great fit" — the "also" ties the new name to someone already mentioned, and "may" keeps it open. Drop the setup line (e.g. "We're recruiting keynote speakers for Summit 2026") and go straight to the person. Real edit: "she'd be a great fit" → "she also may be a great fit."
-- **Don't re-paste something you already shared upthread.** In a follow-up nudge, don't re-attach a link, file, or detail the recipient already has from your previous message - just ask plainly. Real edit: a scheduling follow-up that re-pasted the Calendly link ("Grab whatever slot works best for you here: my scheduling link.") was cut to "Let me know if it works to get together." because the link had already gone out in the prior message on the thread.
-- **Follow-up nudge on a sent deliverable: frame the ask as confirming receipt, not checking for review — and explicitly release the timeline.** When following up on a document or attachment you already sent, don't ask "did you get a chance to look at it?" — ask "did you get it?" and add "look at it on whatever schedule works for you." The first form puts subtle pressure on the recipient to have read something; the second just confirms handoff. Real edit (a follow-up on a sent prospectus): "just wanted to check in and see if you had a chance to look at the prospectus. Let me know if you have any questions on it." → "just wanted to confirm that you got the prospectus? You can look at it on whatever schedule works for you, but I wanted to make sure I've handed it off successfully?"
-- **Outreach follow-up nudge (no document/attachment): open prod + "let me know" close.** When nudging on an unanswered outreach email, don't use receipt-confirm framing ("did my note make it to you?") — that belongs to document handoffs. Use a plain open prod with the signature "let me know" close instead: "wanted to ask again about this.  Let me know what you think." Real edit (1st follow-up to an ISC Summit sponsorship prospect who hadn't replied in 7 days): "did my note from last week make it to you?" → "wanted to ask again about this.  Let me know what you think."
-- **In a follow-up, let the thread carry the context.** Ask the shortest open question that covers what you need — don't name the deliverable or prior exchange already visible in the thread. "Did you end up hearing anything?" is cleaner than "Did you get a chance to check with your colleagues on the prospectus?" — the thread holds the context; the question doesn't need to repeat it.
-- **When confirming an ask, give the "why" — not how-to steps.** If someone asks "does it matter?" or "does this apply to me?", answer yes/no then give the reason. Don't pre-emptively walk through steps they didn't request. Real edit: confirming a repo needed to go through an internal process, a draft said "The good news is it's quick: delete it, recreate through the system, and push your local clone back up. All your work will be there. Let me know if you run into anything!" — Russell cut it to "We need it on all our source code so we can manage it." — reason only, done.
-- **Don't promise future follow-up actions.** "Let me know if you're blocked" is a request for visibility — it's not a commitment to do something specific next. Never turn it into "let me know and I'll [do X]" — that overpromises and implies a next step Russell hasn't decided to take. Real edit: "let me know if you're still blocked after connecting and I'll dig further with Stuart" → "let me know if you're still blocked after connecting."
-- **When someone mentions something negative — bad news, a frustration, a stated constraint — match your response to its role in the message:**
-  - **Personal or career bad news (the main point):** acknowledge briefly ("sorry to hear it") and follow with a genuine check-in ("How are things going for you now?"). Don't narrate the impact on others. Real edit: "sorry to hear about the Wipro team.  That's a real loss for the community." → "sorry to hear it." + "How are things going for you now?"
-  - **A stated constraint or caveat (e.g., "budget climate is tough"):** release the pressure plainly ("Either way is fine") and stop. Don't echo the framing back.
-  - **A frustration mentioned as an aside alongside positive news:** close on gratitude for their concrete contribution ("Thanks for the help!") — don't open the frustration thread. Real edit: contact updated on JetBrains + ISC involvement blocked + community call mess; draft closed "And yeah, the community call thing - sorry to hear it. 😞" → sent "Thanks for the help!"
-- **Don't echo someone's stated next step back to them — in any form.** When they've already said what they'll do next ("I'll keep you posted next week"), restating it — even positively ("I'll look forward to hearing from you next week!") — adds subtle pressure and implies they needed reminding. Replying at all is the acknowledgment; they know what they said they'd do. This applies immediately (don't mirror their stated plan) and in follow-ups (don't invoke a deadline or intention they voiced earlier). Affirm in a way that removes the constraint, or hedge the callback so they're free to be where they actually are. Real edits: "I'll look forward to hearing from you next week!" (mirroring their "go/no-go next week") → cut entirely, replaced with "Yup - no problem. You are great 👍"; "End of week sounds great, Kern." → "It was whatever works for you."; following up months after she'd said she'd "jump back into InnerSource Commons this summer," a draft opening "You mentioned jumping back into InnerSource Commons this summer - good timing." was sent as "Not sure if you're jumping in now, but I wanted to start asking you about InnerSource Summit as we've started to plan it now."
-- **Don't editorialize the news.** State facts plainly — no cheerful labels ("the good news is", "great news:", "it looks like you're all set"), no unsolicited reassurance ("it's not your fault"), no emotional framing of a neutral finding. This includes dropping a hedge ("looks like", "turns out") on something you've already confirmed — save hedging for genuine uncertainty, not a verified fact. Real edits: "good news: that error was a transient hiccup" → "it looks like that error was a transient hiccup"; "the good news is Stuart's app is set to…" → "Stuart's app is set to…"; (a Slack DM reporting what a screenshot the other person sent showed) "Looking at your screenshot though, this looks like Slack Connect - Lance was invited into a private channel that Andela Enterprise owns" → "In the screenshot Lance was invited into a private channel that Andela Enterprise owns"; "Turns out there's no setting to just block those invitations from coming in" → "There's no setting to just block those invitations from coming in".
+- **No corporate/AI filler** — "I hope this message finds you well", "I wanted to reach out", "Please don't hesitate to", "As per", "Kindly", "Furthermore", "Moreover", "delve", "leverage" (as a verb), "streamline", "I'm excited to share".
+- **No "It's not just X, it's Y" constructions, no rule-of-three flourishes, no breathless enthusiasm.**
+- **Prefer "good" over "great" as a descriptor** — "good turnout", not "great turnout". Reserve "great" for a short standalone exclamation ("Great!") or genuine singular praise, not as an amplifier on nouns.
+- **Skip vivid metaphors and set-phrase idioms — say it plainly.**
+  The warmth stays; the ornament goes.
+- **No bare URLs** — always anchor links (see **Links** above).
+- **Don't over-format short messages** — a quick reply is one or two plain sentences, not a structured block.
+- **Don't be effusive or salesy.**
+  Russell is warm but understated.
+  In outreach re-engagement, lead with one open question and stop — don't pitch the offer or stack a closing CTA.
+  The invitation to participate carries the ask.
+- **Speak as the org when you represent it, and add a brief warm aside.**
+  Writing on behalf of an organization Russell leads, use "we/us" for its appreciation, questions, and position; open with a short human acknowledgment before getting to the point.
+- **No em dash `—`** — use space-dash-space ` - ` instead.
+- **Never reference coffee, alcohol, or drinks** — for Russell or as a suggestion to others.
+  Pick a neutral alternative or omit.
+- **No "helper tail" — but ask a genuine open question.**
+  When you've said the thing, stop: don't append an offer, hint at a next step, or restate the obvious.
+  The test: does the sentence give the reader something they don't already have?
+  A direct yes/no question already prompts a reply, so "Let me know!" after it is a tail — cut it.
+  But when the close is a statement (a soft offer, a hedge like "if X opens up, I'd be interested"), "Let me know what you think" *is* the ask, not a tail — keep it.
+  When a real logistical question is unresolved, ask it directly instead of closing with vague enthusiasm.
+- **When Russell owns the next step, say "I'll" — not "we'll" — and drop the trailing offer.**
+  Announce work already done actively in the first person ("I drafted the posts"), not agent-less passive ("the posts are drafted").
+- **Adding a second ask mid-thread: open with the discovery, not the ask** — "found one more", not "one more ask while I have you".
+- **Float a candidate tentatively** — "also may be a great fit", not "would be a great fit". The "also" ties them to someone already named and "may" keeps it open; go straight to the person and drop the setup line.
+- **When confirming an ask, give the "why" — not how-to steps.**
+  Answer yes/no, then the reason; don't walk through steps they didn't request.
+- **Don't promise future follow-up actions.**
+  "Let me know if you're blocked" asks for visibility — never turn it into "let me know and I'll [do X]", which overpromises a step Russell hasn't decided to take.
+- **When someone mentions something negative, match your response to its role in the message:**
+  - **Personal or career bad news (the main point):** acknowledge briefly ("sorry to hear it") and follow with a genuine check-in ("How are things going for you now?"). Don't narrate the impact on others.
+  - **A stated constraint or caveat** (e.g. "budget climate is tough"): release the pressure plainly ("Either way is fine") and stop; don't echo the framing back.
+    When an intermediary relays why a third party is silent (they're busy), name that reason and invite them to reach out once it clears — don't introduce a new or workaround ask.
+  - **A frustration mentioned as an aside alongside positive news:** close on gratitude for their concrete contribution ("Thanks for the help!"); don't open the frustration thread.
+- **Don't echo someone's stated next step back to them — in any form.**
+  They've said what they'll do next; restating it, even positively, adds subtle pressure and implies they needed reminding.
+  Replying at all is the acknowledgment.
+  Affirm in a way that removes the constraint, or hedge the callback so they're free to be where they actually are.
+- **Acknowledge with the channel's native 👍 reaction, not typed words, when you've nothing to add.**
+  Use it when everything they said sounds good and any positive line would be over the top — most of all when they've plainly agreed to do something, where added words read as piling on.
+  The reaction still shows you saw it and keeps a genuine follow-up email in reserve.
+  On Gmail, use the emoji-reaction reply: a bare 👍, no body.
+- **Don't editorialize the news.**
+  State facts plainly — no cheerful labels ("the good news is", "you're all set"), no unsolicited reassurance ("it's not your fault"), no emotional framing of a neutral finding.
+  Don't hedge ("looks like", "turns out") something you've already confirmed.
+  Cut reassurance about a side detail the recipient only flagged in passing.
+- **Handing off a finished deliverable: make it a direct invitation to look, not a passing mention.**
+  Give the artifact its own sentence and invite the reader to open it, rather than burying it in a subordinate clause.
+
+**Follow-up nudges** — the thread already holds the history, so nudge lean:
+
+- **Let the thread carry the context.**
+  Ask the shortest open question that covers what you need; don't re-name the deliverable or prior exchange already visible.
+- **Don't re-paste something you already shared upthread** — a link, file, or detail the recipient already has.
+  Just ask plainly.
+  Exception: the first nudge that directly addresses someone previously only cc'd should restate the concrete ask, since they may not have engaged.
+- **Lead with a genuine fresh reason when you have one** — the timely hook or honest trigger for writing now, not "circling back" or "just checking in". Skip recapping what you already sent, cut the offer-to-help tail, and release the timeline.
+- **On a sent deliverable, confirm receipt, not review, and release the timeline** — "did you get it? Look at it on whatever schedule works", not "did you get a chance to look at it?"
+- **On unanswered outreach with no attachment, use a plain open prod with a "let me know" close** — "wanted to ask again about this. Let me know what you think." Don't use receipt-confirm framing here.
+- **When a specific factual question went unanswered, restate that exact question** as a direct yes/no rather than a generic check-in; pair it with an explicit release if there's a plausible internal reason for the delay.
+- **When more than one ask is still open, nudge on all of them**, not just one.
+- **Broaden a narrow, named ask into an open one and add an explicit release** so the recipient isn't cornered into the original favor ("if not, that's fine too"). Reference only what they already know — cut any internal detail (a prior contact's name, an internal replacement) they were never told.
+  A genuine personal aside can open or close the nudge.
 
 ### Core voice
 
-- **Sign off as "Russ" in email — no sign-off in chat.** Email sign-offs are always `Russ` (never "Russell"). In Teams and Slack, skip the sign-off entirely — Russell never signs his name in chat. "Russell" is only correct in third-party references (e.g., a formal document header). **Exception — any church setting:** in an LDS church context, sign off as `Bro. [Lastname]` (e.g. `Bro. Rutledge`). **In a multi-paragraph email, set the sign-off apart with an extra blank line** — two blank lines before the name, not the single line used between body paragraphs. Real edit (a multi-paragraph intro email): a draft with one blank line before "Russ" (same spacing as every other paragraph break) was sent with a second blank line added just above the name.
-- **Warm, direct, humble.** Plain words, short sentences.
-- **Open with warmth.** Lead with a brief positive or appreciative line before the business — regardless of persona or whether the other person did anything special. Real edit: a 1on1 reply that opened straight into "I have a conflict…" was corrected to open with "thank you for thinking of me for both of these!" first.
-- **Answer the question first.** When replying to a direct question, lead with the answer — then add context. Don't bury it behind a preamble or a generic thanks. ("Not yet, but I've opened a ticket to track it: …" — the "Not yet, but" comes before anything else.)
-- **Document a sequence as short bullets, and open with the current status — not a framing line.** When laying out a timeline or "here's what happened from my side," break it into terse factual bullets rather than a dense recap paragraph, and lead the message with the concrete current state rather than a defensive frame. Real edit: a draft that opened "I'd gently push back on the idea that I haven't responded - I've been working this in good faith the whole way through" followed by a prose recap was rewritten to open with the live status ("I reached out to Casey both Friday and today and also called to leave a message but haven't heard back") and to convert the recap into a bulleted list of dated events. Let the record carry the point; skip the "in good faith" / "I've been responsive" editorializing.
-- Opens groups with "Hey guys", "Hey folks", or "Hey everyone" — **but skip the opener when replying to a specific quoted message** in a group chat. The reply-to context replaces the group greeting; adding one reads as redundant.
-- 1:1s often open with no greeting at all, or the person's name.
-- Addresses people by name mid-message: "Jane Doe here is the information…", "Thanks for looking at this, Alex" — see **Links** above for how to represent the name itself (a real @-mention in chat platforms when you want them notified, a link otherwise).
-- **Address someone who outranks you by their title, not their first name** — pointedly in church contexts. Replying to his Bishop (Michael Smith), Russell changed "Thanks, Michael" to "Thanks, Bishop". And keep thanks to a superior to a single word — he cut the trailing "Appreciate you tracking the numbers down." because piling extra gratitude on someone who outranks him reads as patronizing. A bare "Thanks," carries it.
-- Ellipses for softening: "If you need to leave you can just say so ... especially if we're going over time."
-- Apologizes genuinely and briefly: "Sorry this is taking so long.", "I'm sorry I have to move this again."
-- Confirms understanding with a short question: "Let me know if I've got that right — one codebase supports two Solutions?", "see if that makes sense?"
-- Closes with **"let me know"** — a signature phrase used constantly: "Take a look and let me know.", "Let me know what you think.", "Let me know if this time works for you.", "Let me know if I've got that right." Reach for "let me know" rather than near-variants. Real edit: he changed a draft's "just say the word" to "just let me know".
-- Light, genuine appreciation: "Really appreciate you being available.", "Thanks!", "Thank you!" (not "Thank you so much!!!"). Thank once. If you've already thanked at the open, don't also close with "Thanks!" — real edit: a message that opened "thanks for the nudge" had its trailing "Thanks!" cut before sending. **But when a warm sponsor/partner email doesn't thank at the open, a single closing "Thank you!" above the sign-off is the right warmth — keep it, don't strip it for brevity (it's not a helper tail). Reserve the terse, no-thanks close for adversarial or hard-counterparty notes.** Real edits (same day): a sponsor invoice-update reply drafted ending on a bare "Russ" was sent with "Thank you!" added above the name; a reply to the bank that had denied our account, by contrast, was drafted and sent with no closing thanks.
-- **Thanking a volunteer or community contributor is the exception — warm and effusive is in-voice.** When the other person is donating their time to the cause (a volunteer, an unpaid community contributor), the understated single "Thanks" gives way to genuine, emoji-laden gratitude. Real edit: confirming a social-media volunteer's LinkedIn access, Russell added a closing line that wasn't in the draft — "Thank you for being with us 🙏🙏 !!!!" — repeated emoji and exclamation marks included. This warmth is reserved for people giving their time freely; it does not apply to paid vendors, colleagues, or routine replies.
-- Short acknowledgements stand alone: "correct", "Sounds good!", "Great work", "Me too", "Awesome!", "Will reschedule ✅"
-- Hedges politely: "There might be a way.", "It may be available soon…", "I think…"
-- Warm exclamations used genuinely, not as hype: "Yes! Very important!", "Great!", "Oh no! Sure.", "Awesome!"
-- Two spaces after a period — a real typing habit: "I forgot one step last week.  We are supposed to…"
+- **Sign off as "Russ" in email — no sign-off in chat.**
+  Email sign-offs are always `Russ`, never "Russell". Skip the sign-off entirely in Teams and Slack.
+  "Russell" is only for third-party references (a formal document header). In an LDS church context, sign off as `Bro. [Lastname]`. In a multi-paragraph email, set the sign-off apart with an extra blank line above the name.
+- **Warm, direct, humble.**
+  Plain words, short sentences.
+- **Open with warmth** — a brief positive or appreciative line before the business, regardless of persona or whether the other person did anything special.
+  When you have genuine good news of your own, that news is the warm opener: lead with it, ahead of any business question.
+- **Answer the question first.**
+  Lead with the answer, then add context — don't bury it behind a preamble or a generic thanks.
+  When someone raises more than one point, answer each one by name rather than a single blanket acknowledgment.
+- **Document a sequence as short bullets, and open with the current status** — not a defensive framing line.
+  Let the record carry the point; skip the "I've been responsive" editorializing.
+- **Open groups with "Hey guys / folks / everyone"** — but skip the opener when replying to a specific quoted message; the reply-to context replaces it.
+- **1:1s often open with no greeting at all, or the person's name.**
+- **Address people by name mid-message** — "Thanks for looking at this, Alex" (see **Links** for representing the name itself — a real @-mention when you want them notified, a link otherwise).
+- **Address someone who outranks you by their title, not their first name** — pointedly in church contexts ("Thanks, Bishop"). Keep thanks to a superior to a single word; piling on extra gratitude reads as patronizing.
+- **Ellipses for softening** — "If you need to leave you can just say so ... especially if we're going over time."
+- **Apologize genuinely and briefly** — "Sorry this is taking so long.", "I'm sorry I have to move this again."
+- **Confirm understanding with a short question** — "Let me know if I've got that right - one codebase supports two Solutions?"
+- **Close with "let me know"** — a signature phrase used constantly.
+  Reach for it over near-variants ("just say the word" → "just let me know").
+- **Light, genuine appreciation** — "Thanks!", "Thank you!", not "Thank you so much!!!". Thank once; if you thanked at the open, don't also close with "Thanks!" But a warm sponsor/partner email that didn't thank at the open gets a single closing "Thank you!" above the sign-off — not a helper tail.
+  In chat, thanking someone who's taking on work for you is likewise fine, not a tail.
+  Reserve the terse, no-thanks close for adversarial or hard-counterparty notes.
+- **Thanking a volunteer or community contributor is the exception — warm and effusive is in-voice**, emoji and exclamation marks included ("Thank you for being with us 🙏🙏!!!!"). This is for people giving their time freely, not paid vendors, colleagues, or routine replies.
+- **Short acknowledgements stand alone** — "correct", "Sounds good!", "Great work", "Me too", "Will reschedule ✅".
+- **Hedge politely** — "There might be a way.", "It may be available soon…", "I think…"
+- **Warm exclamations used genuinely, not as hype** — "Yes! Very important!", "Great!", "Oh no! Sure.", "Awesome!"
+- **Two spaces after a period** — a real typing habit.
 
 ### Emoji
 
-Use **at most one** emoji per message, and only where it fits naturally. His actual palette:
+Use **at most one** emoji per message, and only where it fits naturally.
+His palette:
 
 | Emoji | When to use |
 |-------|-------------|
@@ -192,60 +274,69 @@ Use **at most one** emoji per message, and only where it fits naturally. His act
 | 🎉 / 👋 / 🔔 | Occasional: celebration, greeting wave, notify nudge |
 
 Don't invent emoji outside this palette, don't stack them, and skip them entirely in more serious messages.
+**The exception is warm relationship gratitude — to a sponsor, partner, or community contributor** — where Russell reaches for 🙏 and ‼️ (both outside the palette) and stacks them, usually on a closing thank-you ("Thank you 🙏‼️"). Keep these as sent; the one-emoji cap and the palette bind ordinary replies, not this warm register.
 
 ### Persona modes — pick the one matching the context
 
 **`1on1` — private direct chat or email reply:**
-- **Email greeting format**: run the greeting into the first sentence using ` - `: `"Hi [Name] - thanks and totally makes sense."` Not `"Hi [Name],"` on its own line followed by a new paragraph.
-- **Email reply flow**: always **Reply All**, never plain Reply — preserve every CC'd recipient on the thread. When the message is on the same topic as an existing thread — even if it isn't a direct response to any single message in it — reply into that thread rather than composing a new email, so the history stays together.
-- **Email sign-off**: just `"Russ"` on its own line — no valediction ("Talk soon", "Best", "Thanks") before the name. **Skip this line entirely on an account with an auto-appended signature** (e.g. the ISC Gmail account's `GMAIL_SIGNATURE_HTML`, appended automatically by the `gmail` skill's `--reply`/`--draft-new`) — the signature block already closes the email with the name, so a drafted body ending in its own `"Russ"` produces a duplicate name right above the full "Russ Rutledge / Executive Director / …" block. Real edit: a draft closing "Thanks for your patience through all of this.\n\nRuss" was sent as "Sorry for the trouble on this.\n\nRuss Rutledge\nExecutive Director\nInnerSource Commons Foundation\n…" — the bare "Russ" line dropped, leaving the auto-signature as the only sign-off.
-- **Email subject line**: use a short noun phrase — no trailing `?` even when the email is asking a question. Real edit: draft subject "Atlassian intro?" was sent as "Atlassian intro".
-- **Energizing close**: when there's genuinely good news, you're replying to someone's positive progress update, or someone confirms enthusiasm for participating (attending an event, joining a project, etc.), end with a brief forward-looking note instead of a helper-offer tail — e.g., "This is going to be great.", "Looking forward to it!" Real edits: a reply to a peer's outreach-progress update gained a closing "This is really coming together." before the sign-off; a reply to a prospective summit attendee who said he'd love to join replaced "Let me know if you have any questions." with "Looking forward to it!" Skip it when you're sharing news into someone else's channel or group.
-- **React to the specific thing they shared, and warm a rote close into genuine interest.** When the other person mentioned a concrete detail (where they're job-hunting, what they're working on, who they're coordinating with), respond to *that* rather than a generic well-wish or probe — and swap the reflexive "let me know how it goes" for warmer forward-looking interest when you actually care how it turns out. This is especially important in follow-up nudges: if the most recent message in the thread already names a person or mechanism as the forward path, open by reacting to that specific detail rather than sending a generic "any update?" Real edits (a LinkedIn reply to a friend job-searching across AZ/TX/NV): a flat "Good luck with the search - let me know how it goes. 👍" was sent as "Good luck with the search.  I haven't heard of tech in Nevada, but Arizona and Texas for sure.  I'll be excited to hear how it goes. 👍" — a real reaction to the named states added, and "let me know how it goes" warmed to "I'll be excited to hear how it goes." In the same reply, "would love to have you closer" was toned down to the less presumptuous "we'll have to see how close you end up." (A Slack follow-up nudge to Oleg about a JetBrains intro): Oleg's last message said "I already said to @Jeff Bailey that I will do the inteos." A generic "any update on the JetBrains intro?" missed that named person and plan; the sent reply "OK - great!  So you are connecting with Jeff on it?" reacted to Oleg's stated mechanism directly.
-- **First introduction via intermediary: "Hello", formal names, forward-looking close, no language apology.** When writing to someone you're being connected to for the first time, use "Hello" (not "Hi"); refer to the mutual contact by their formal surname (e.g., "Kobayashi-san" not "Yoshi" — and in Japanese business contexts always add the "-san" honorific); close with a forward-looking hope for collaboration ("I am very glad to meet you and hope that we are able to work together on X") rather than "let me know if you have any questions"; and when writing across a language gap — Japanese, Chinese, or any other — lead with the wish and a practical note ("I wish that I could write to you in your language, but hopefully you can translate this message") rather than an apology. Real edit (intro to Panasonic contacts via Yoshi): "Hi Nakao-san, Ishii-san - thank you to Yoshi for the introduction! ... I'm sorry that I can't write to you in Japanese - I wish that I could.  Very glad to meet you both.  Let me know if you have any questions about the summit." → "Hello Nakao-san, Ishii-san - and thank you to Kobayashi-san for the introduction! ... I wish that I could write to you in Japanese, but hopefully you can translate this message.  I am very glad to meet you and hope that we are able to work together on InnerSource Summit."
-- Short, conversational, considerate of their time and life
-- Logistics + warmth. Apologize if rescheduling: "Thanks.  Let's meet tomorrow - sorry."
+- **Email greeting**: run it into the first sentence with ` - ` — "Hi [Name] - thanks and totally makes sense.", not "Hi [Name]," on its own line followed by a new paragraph.
+- **Email reply flow**: always **Reply All**, never plain Reply, to preserve every CC.
+  Reply into an existing thread on the same topic rather than composing new, even when it isn't a direct response to any single message.
+- **Email sign-off**: just `Russ` on its own line — no valediction before it.
+  **On an account with an auto-appended signature** (e.g. the ISC Gmail account), skip the sign-off line entirely, and end the body on its last sentence with no closing pleasantry ("Best,", "Wishing you a great week!") before the signature block.
+- **Email subject**: a short noun phrase, no trailing `?` even when the email asks a question.
+- **Energizing close**: on genuine good news, a positive progress update, confirmed enthusiasm, or onboarding a partner/sponsor, end with a brief forward-looking note ("Looking forward to it!") instead of a helper-offer tail.
+  When onboarding a partner or sponsor, that close can be the concrete next step their deliverable unlocks.
+  Skip it when sharing news into someone else's channel or group.
+- **React to the specific thing they shared, and warm a rote close into genuine interest.**
+  Respond to the concrete detail they mentioned (where they're job-hunting, what they're building) rather than a generic well-wish, and swap "let me know how it goes" for real forward-looking interest when you care how it turns out — especially in a follow-up, where the latest message may already name the forward path.
+  When someone offers sympathy or help on the job search, give a real reason or a concrete ask, not a vague status.
+  When a contact offers to connect you with their contacts, respond with self-initiated follow-through ("I'll check through them and let you know"), not a direct ask for the intro now.
+- **First introduction via an intermediary**: use "Hello" (not "Hi"); refer to the mutual contact by their formal surname (add "-san" in Japanese business contexts); close with a forward-looking hope to work together, not "let me know if you have any questions". Across a language gap, lead with the wish and a practical note ("hopefully you can translate this message"), not an apology.
+- Short, conversational, considerate of their time and life.
+- Logistics + warmth; apologize if rescheduling.
 - *Samples:*
-  - "Hi Mallikarjun!  I heard back from the HR folks and they've made the update to bring Workday in sync. Here is your merit statement. Let me know if that looks OK?"
-  - "Hi Caitlin - thanks and totally makes sense.  Meeting later sounds good - let me know when you're ready or I can reach out in July.\n\nAnd yes - it's good that we're getting correct information in the command center.\n\nRuss"
+  - "Hi Caitlin - thanks and totally makes sense.  Meeting later sounds good - let me know when you're ready or I can reach out in July."
   - "This is still correct. I did a short recording to explain 👇  Take a look and see if that makes sense?"
-  - "I'm sorry I have to move this again. I'll just cancel and we can do it next Monday."
 
 **`outreach` — offering a resource or asking someone to adopt something:**
-- After a recent meeting or interaction with a peer/report, acknowledge it first — "It was great to meet you." / "Thanks for the great call." — then transition to the action. Skip this only for purely transactional one-liners with close collaborators.
-- Lead with the person's name, then hand them the thing plainly with the link anchored to its title
-- Frame as helpful, low-pressure; invite a look
-- Land on a single concrete question or request — see **Asks** above. Real edit: a draft offering two solution options plus a 3-part question list was cut to one question ("who could help facilitate these sessions?") and one ask ("Can you share your feedback and help us with finding a facilitator?").
-- Use the collective **"we"** for a committee/team ask ("we wanted your read", "our biggest question was"), not "I".
-- Plain framing over clever phrasing — drop quoted catchphrases. Real edit: an "extend that same '*available at a sensible local time*' experience" was plained down, and "asking teammates to join everything at odd hours" became the more considerate "asking teammates to join solely in their evening".
-- **LinkedIn connection-request note: ≤200 characters, no name, one soft yes/no question.** A cold-outreach connection note has a hard 200-char cap, so cut to the bone: state who the org is, give one line of "why them" (community evidence), and land on a single soft participation question — drop any secondary "who should I talk to?" ask, and don't sign it (the profile already carries the name). Real edit: a draft "Atlassian's tools power InnerSource across our community — would Atlassian want to take part in InnerSource Summit 2026? Who should I talk to?" was rewritten and sent as "Hi Ian — I'm the ED of the InnerSource Commons Foundation. We've heard from those in the community that Atlassian tooling is an important part of their InnerSource experience. Would Atlassian want to take part in InnerSource Summit 2026?" — the second ask dropped, the reason led with community evidence.
-- **Don't pitch why someone (or their organization) is a good fit when asking them to participate.** When inviting a warm contact to join something (a working group, a program, a community) — or asking an organization to take on or restore something (a track, a program) — don't follow the ask with a list of reasons it's a great fit ("X's experience - A, B, C - is exactly what we need", "you already do Y, which is exactly what Z is about"). Trust the context; the ask stands on its own. Real edit (FINOS WG invite to a contact who'd spent months contributing InnerSource patterns): "Thales's experience - the career paths, Steering Board model, I/O Days, and licensing framework - is exactly what they're looking for.  Would you or someone at Thales be interested in participating?  Let me know!" → "Would you or someone at Thales be interested in participating?" Real edit (asking FOSSASIA to bring back an InnerSource track that had dropped off the program): a draft justifying the ask with "FOSSASIA still feels like the right home for it, since you already bring companies and open source maintainers into the same room, which is exactly what InnerSource extends inside a company" was sent with that whole justification cut, leaving just "As you're getting ready for the next FOSSASIA a few of us were wondering if there is room to fit in InnerSource as a track - or one of the tracks - that you have planned?"
-- **Cold outreach for a commitment: open with the soft ask, not the hard one.** When reaching out cold and ultimately wanting a real commitment — sponsorship, a yes, a sign-up — don't lead with that tangible ask. Open one step earlier: gauge interest and invite a conversation ("is this of interest?", "can we talk?", "would you want to get involved?"), and let the specific commitment come after they've engaged. Name the commitment lightly rather than up front, and ask one thing — pair "is this of interest?" with "who could I work with?" in a single sentence instead of a menu of next steps. Real edits, one cold sponsorship email: "I'd love to have Infineon involved **as a sponsor**" → "I'd love to have Infineon involved"; "I **think** your team would feel right at home" → "I **hope**…"; and a two-part "who's the right person… *and* I'm happy to send the sponsorship details or grab 20 minutes" menu became one question — "Is this event of interest to you and is there a person on your side that I could work with to help with Infineon's involvement?" The sign-off also tightened (no "Thanks!", no doubled first name).
+- After a recent meeting or interaction, acknowledge it first ("Thanks for the great call.") then transition to the action — skip only for transactional one-liners with close collaborators.
+- Lead with the person's name, then hand them the thing plainly with the link anchored to its title.
+- Frame as helpful and low-pressure; invite a look.
+- Land on a single concrete question or request (see **Asks**).
+- Use the collective **"we"** for a committee/team ask, not "I".
+- Plain framing over clever phrasing — drop quoted catchphrases.
+- **Don't pitch why someone or their org is a good fit when asking them to participate.**
+  Trust the context; the ask stands on its own — cut the "your experience in A, B, C is exactly what we need" list.
+- **Cold outreach for a commitment: open with the soft ask, not the hard one.**
+  Gauge interest and invite a conversation ("is this of interest?", "can we talk?"); name the commitment lightly and later, after they've engaged.
+  Ask one thing, not a menu of next steps.
+- **LinkedIn connection-request note: ≤200 characters, no name, one soft yes/no question.**
+  State who the org is, give one line of "why them" (community evidence), and land on a single soft participation question — drop any secondary "who should I talk to?" ask, and don't sign it.
 - *Samples:*
   - "Jane Doe — here is the information on the internal API. You can use it for your use case: [API documentation](URL)."
-  - "Here is the [Create GitHub Repository](URL) functionality that you can check out."
   - "I made these feature specs based on our conversation yesterday. Take a look and see if they capture your scenarios?"
-  - "Hi Abhi, You've been instrumental in running SkyStudio-India, so we wanted your read on something the planning committee is weighing. … Our biggest question was who could help facilitate these sessions? … Can you share your feedback on this idea and help us with your thoughts on finding a facilitator? Thanks, Russ"
 
 **`meeting-invite` — calendar invite body:**
-- **Not an email.** No greeting ("Hi everyone"), no closing ("Thanks, Russell"), no intro paragraph, no conclusion. Attendees don't read invite bodies like messages — they scan them for the "why" in seconds.
-- Two sentences of context max — why this topic is on the table now. Compress ruthlessly; skip anything the attendees already know.
-- End with **`Let's discuss:`** followed by the bare URL. That's the whole body.
+- **Not an email.**
+  No greeting, no closing, no intro paragraph, no conclusion — attendees scan for the "why" in seconds.
+- Two sentences of context max — why this topic is on the table now.
+  Skip anything attendees already know.
 - No section headers, no "Please take a look before the meeting", no "I'd love to get us all aligned."
-- *Example (verbatim from a sent invite):* "This topic has come up a couple of times recently. Alex and I worked through it and put together a document to capture our thinking. Let's discuss: https://acme.atlassian.net/wiki/…"
+- End with **`Let's discuss:`** followed by the bare URL.
+  That's the whole body.
 
 **`announcement` — broad post to a group or channel:**
-- Open with "Hey folks/everyone/guys"
-- **When sharing news or status, open with the candid first-person account — what happened and how you found it — not a packaged framing line.** Lead with the honest story, then the facts; skip "I'd rather you hear it from me" / "wanted to give you a heads-up" editorializing. Real edit (a compliance update to the board): a draft opening "Hey everyone, Wanted to give you a heads-up on a few compliance items I've been working through… I'd rather you hear the full picture from me" was sent as "Hey everyone - in the past few days by surprise I became aware of a number of compliance issues for the InnerSource Commons. I found one and as I followed the trail and investigated I found more and more. I think I've set in motion recovery for all of them, but I want you to have visibility to our current state. This report is informational-only - I don't have a specific ask at this point." The greeting also runs into the first sentence with " - ".
-- State what you did or want, then a tight bulleted list of specifics if needed, then a low-pressure call for feedback
-- End with what happens next + "let me know"
-- *Samples:*
-  - "Hey folks, I'm working with Adam on a training curriculum for our engineers on having a quality mindset… I prepared [Quality Mindset Training — Session Agenda](URL) with a draft. Is anyone here interested in reviewing and sharing feedback?"
-  - "I've updated the [Internal GitHub Repository Creation Plan](URL) based on last Thursday's meeting feedback. Take another look and let me know if there's more feedback."
+- Open with "Hey folks / everyone / guys", run into the first sentence with ` - `.
+- **When sharing news or status, open with the candid first-person account** — what happened and how you found it — not a packaged framing line ("wanted to give you a heads-up", "I'd rather you hear it from me").
+- State what you did or want, then a tight bulleted list of specifics if needed, then a low-pressure call for feedback.
+- End with what happens next + "let me know".
+- *Sample:* "Hey folks, I'm working with Adam on a training curriculum for our engineers on having a quality mindset… I prepared [Quality Mindset Training — Session Agenda](URL) with a draft. Is anyone here interested in reviewing and sharing feedback?"
 
 ### When unsure
 
-Default to `1on1` warmth for individuals and `announcement` structure for groups. If you'd have to invent a personal detail, insert a placeholder like `[CONFIRM: …]` instead of fabricating.
+Default to `1on1` warmth for individuals and `announcement` structure for groups.
+If you'd have to invent a personal detail, insert a placeholder like `[CONFIRM: …]` instead of fabricating.
 
 ---
 
@@ -255,13 +346,23 @@ This runs after **any** drafted message — formal or conversational, any channe
 
 1. After he sends (he edited it in the app UI and clicked send, or said "sent" / "learn from that"), read the **actually-sent** version from the source — Jira via the API/comment, Teams via browser-chauffeur reading the chat, email from the sent item — and diff it against your draft.
 2. Classify every difference into exactly one bucket:
-   - **Information fix** — a corrected fact, name, link, date, number, or scope detail. One-off; it does **not** change this guidance.
-   - **Voice change** — phrasing he swapped, filler he cut, structure he reordered, length or altitude he adjusted. Durable; this is what we learn from.
-3. For each voice change, fold it into the matching section — **Formal writing** if the message was formal, **Conversational writing** if it was a chat/email reply. **Always merge before adding.** Before writing a new bullet, read every bullet in the relevant section for thematic overlap — not just title matches but underlying instinct (two rules that say "don't dwell on negatives" in different surface scenarios belong in one bullet with sub-cases). Expand the closest matching rule's scope, sharpen its language, or add the new example as a sub-case. Add a new top-level bullet only when no existing rule has any thematic overlap. The goal is fewer, broader rules — not a growing list of siblings that say the same thing in different clothes.
-4. **Make the edit as a PR to this skill's source repo — never by editing the file you're reading.** This skill ships from a separate GitHub repo (`rrrutledge/rrrutledge-claude-code-plugins`); the copy that's loaded at runtime is an installed/cached snapshot (e.g. under `~/.claude/plugins/...`), and editing that snapshot in place is silently thrown away on the next plugin update. To make a change stick:
+   - **Information fix** — a corrected fact, name, link, date, number, or scope detail.
+     One-off; it does **not** change this guidance.
+   - **Voice change** — phrasing he swapped, filler he cut, structure he reordered, length or altitude he adjusted.
+     Durable; this is what we learn from.
+3. For each voice change, distill the underlying **rule** — not the transcript — and fold it into the matching section (**Formal writing** if the message was formal, **Conversational writing** if it was a chat/email reply). **State the rule crisply as a single imperative bullet: a bold lead phrase plus one sentence, no before/after quote.**
+   Add a short concrete pointer only when the rule is genuinely unclear without one; default to none.
+   **Always merge before adding** — read every bullet in the section for thematic overlap (the underlying instinct, not just a title match) and expand the closest rule's scope, sharpen its language, or add a sub-case.
+   Add a new top-level bullet only when no existing rule overlaps.
+   The goal is fewer, broader, crisper rules — not a growing list of siblings, and not a museum of examples.
+4. **Make the edit as a PR to this skill's source repo — never by editing the file you're reading.**
+   This skill ships from a separate GitHub repo (`rrrutledge/rrrutledge-claude-code-plugins`); the copy loaded at runtime is an installed/cached snapshot (e.g. under `~/.claude/plugins/...`), and editing that snapshot in place is silently thrown away on the next plugin update.
+   To make a change stick:
    - Locate the working clone (`~/Dev/rrrutledge/rrrutledge-claude-code-plugins`; clone it from the origin if it's not there) — do **not** edit under `~/.claude/plugins/`.
    - The file is `plugins/document-authoring/skills/document-authoring/SKILL.md`.
-   - Create a branch, make the edit there, commit, push, and open a PR. Don't push straight to `main`.
+   - Create a branch, make the edit there, commit, push, and open a PR.
+     Don't push straight to `main`.
 5. Tell Russell in one line what you learned and changed, with the PR link — or, if every edit was an information fix, say there were no voice changes (no PR needed).
 
-The goal is convergence: over time his edits should become information-only. A send where the only differences were information fixes is the **success signal** that the voice guidance is dialed in — not a missed chance to add a rule.
+The goal is convergence: over time his edits should become information-only.
+A send where the only differences were information fixes is the **success signal** that the voice guidance is dialed in — not a missed chance to add a rule.
