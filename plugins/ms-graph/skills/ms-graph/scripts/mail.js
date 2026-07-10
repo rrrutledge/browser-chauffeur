@@ -5,6 +5,8 @@
 // List inbox:    node mail.js --list-inbox [--top=50] [--json]
 //                (inbox read+unread, newest-first; count-capped by --top; --json emits a
 //                 structured array for scripts)
+// List junk:     node mail.js --list-junk [--top=50] [--json]
+//                (Junk Email folder, read+unread, newest-first; same shape as --list-inbox)
 // List drafts:   node mail.js --list-drafts [--top=30]
 //                (drafts folder, most-recently-edited first; same block format with id)
 // Search:        node mail.js --search="Griffiths" [--top=10]
@@ -21,6 +23,10 @@
 //                (sends a plain-text mail to your own inbox; handy for phone copy-paste)
 // Delete one:    node mail.js --delete=<messageId>
 //                (moves the message to Archive — reversible, keeps it searchable, never a permanent purge)
+// Not junk:      node mail.js --not-junk=<messageId>
+//                (un-junks a message: moves it to Inbox and reports it "not junk" to Microsoft's
+//                 filter so future mail from that sender is less likely to be misfiled. Uses the
+//                 beta reportMessage action; falls back to a plain move-to-Inbox if that ever fails.)
 //
 // --- Inbox rules (server-side filters) ---
 // List rules:    node mail.js --list-rules [--json]
@@ -99,9 +105,55 @@ async function listInbox(client) {
   }
 }
 
+async function listJunk(client) {
+  // Same shape as listInbox, reading the Junk Email folder instead — kept as a separate function
+  // (not a shared helper) so each stays a simple, self-contained read of its own well-known folder.
+  const data = await client.api('/me/mailFolders/junkemail/messages')
+    .orderby('receivedDateTime desc')
+    .top(parseInt(args.top || '50', 10))
+    .select('id,conversationId,subject,from,toRecipients,receivedDateTime,bodyPreview,webLink,isRead')
+    .get();
+  const msgs = data.value || [];
+  if (args.json) {
+    console.log(JSON.stringify(msgs.map(m => ({
+      id: m.id, conversationId: m.conversationId, subject: m.subject,
+      from: addr(m.from), fromAddress: m.from?.emailAddress?.address || '',
+      received: m.receivedDateTime, isRead: m.isRead, webLink: m.webLink,
+      preview: (m.bodyPreview || '').replace(/\s+/g, ' ').slice(0, 300),
+    })), null, 2));
+    return;
+  }
+  if (!msgs.length) { console.log('No junk messages.'); return; }
+  console.log(`${msgs.length} junk message(s) (newest first):`);
+  for (const m of msgs) {
+    console.log(`\n--- ${m.receivedDateTime?.slice(0, 16)}  |  ${m.isRead ? 'read ' : 'UNREAD'} | ${m.subject}`);
+    console.log(`    from: ${addr(m.from)}`);
+    console.log(`    id:   ${m.id}`);
+    console.log(`    link: ${m.webLink}`);
+    console.log(`    > ${(m.bodyPreview || '').replace(/\s+/g, ' ').slice(0, 200)}`);
+  }
+}
+
 async function del(client) {
   await client.api(`/me/messages/${args.delete}/move`).post({ destinationId: 'archive' });
   console.log(`Moved to Archive (id ${String(args.delete).slice(0, 20)}...). Reversible, and searchable later.`);
+}
+
+async function notJunk(client) {
+  const id = args['not-junk'];
+  try {
+    // Beta-only: the stable markAsNotJunk action was retired Dec 2025. reportMessage is Microsoft's
+    // documented replacement — it both moves the message to Inbox and retrains the junk filter.
+    await client.api(`/me/messages/${id}/reportMessage`).version('beta')
+      .post({ IsMessageMoveRequested: true, ReportAction: 'notJunk' });
+    console.log(`Reported "not junk" and moved to Inbox (id ${String(id).slice(0, 20)}...).`);
+  } catch (e) {
+    // Beta endpoints can change without notice; degrade to "still un-junks the message" rather
+    // than a hard failure.
+    await client.api(`/me/messages/${id}/move`).post({ destinationId: 'inbox' });
+    console.log(`reportMessage (beta) failed [${e.message}] — fell back to a plain move to Inbox `
+      + `(id ${String(id).slice(0, 20)}...). Filter was not retrained.`);
+  }
 }
 
 async function search(client) {
@@ -312,6 +364,7 @@ if (require.main === module) {
     const client = await getGraphClient();
     if (args['list-unread']) return listUnread(client);
     if (args['list-inbox']) return listInbox(client);
+    if (args['list-junk']) return listJunk(client);
     if (args['list-drafts']) return listDrafts(client);
     if (args.search) return search(client);
     if (args.show) return show(client);
@@ -319,10 +372,11 @@ if (require.main === module) {
     if (args['draft-new']) return draftNew(client);
     if (args['send-self']) return sendSelf(client);
     if (args.delete) return del(client);
+    if (args['not-junk']) return notJunk(client);
     if (args['list-rules']) return listRules(client);
     if (args['create-rule']) return createRule(client);
     if (args['append-rule']) return appendRule(client);
     if (args['delete-rule']) return deleteRule(client);
-    throw new Error('Specify --list-unread, --list-inbox, --list-drafts, --search, --show, --reply, --draft-new, --send-self, --delete, --list-rules, --create-rule, --append-rule, or --delete-rule');
+    throw new Error('Specify --list-unread, --list-inbox, --list-junk, --list-drafts, --search, --show, --reply, --draft-new, --send-self, --delete, --not-junk, --list-rules, --create-rule, --append-rule, or --delete-rule');
   })().catch(e => { console.error('Error:', e.message); process.exit(1); });
 }

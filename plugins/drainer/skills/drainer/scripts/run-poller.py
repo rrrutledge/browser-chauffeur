@@ -580,16 +580,19 @@ def main():
         print("0 new items across all sources. Nothing to dispatch.")
         return
 
-    # --- deterministic pre-triage: every active Trello card is always needs-you ---
-    # The adapter only enumerates cards in play — due now-or-earlier, or with no due date at all. A
-    # due card's moment has arrived ("the due date IS the queue"); an undated card is on the board
-    # precisely because it needs a look — at minimum to give it a date — so it must not be sidelined
-    # to the digest. Either way the answer is needs-you, so skip the AI call: it's a tautology the
-    # model sometimes gets wrong (it mis-filed undated cards to fyi).
+    # --- deterministic pre-triage rules ---
+    # (1) every active Trello card is always needs-you — see comments below for why
+    # (2) junk-bucket items from outlook-graph-junk silently record as seen (already correctly filed)
     pre_triaged = []
+    correctly_junked = []
     ai_triage = []
     for it in all_new:
         if it["_source"] == "trello":
+            # The adapter only enumerates cards in play — due now-or-earlier, or with no due date at all.
+            # A due card's moment has arrived ("the due date IS the queue"); an undated card is on the
+            # board precisely because it needs a look — at minimum to give it a date — so it must not be
+            # sidelined to the digest. Either way the answer is needs-you, so skip the AI call: it's a
+            # tautology the model sometimes gets wrong (it mis-filed undated cards to fyi).
             it["_bucket"], it["_kind"] = "needs-you", "work"
             it["_complexity"] = "simple"
             pre_triaged.append(it)
@@ -609,6 +612,11 @@ def main():
     if pre_triaged:
         print(f"  {len(pre_triaged)} trello card(s) -> needs-you (deterministic, skipped AI)")
 
+    # Split off correctly-junked items AFTER triage: outlook-graph-junk items triaged as junk are
+    # already in the right place, so record them as seen with zero noise (no capture, no queue-add).
+    correctly_junked = [it for it in all_new if it["_source"] == "outlook-graph-junk" and it["_bucket"] == "junk"]
+    needs_and_others = [it for it in all_new if not (it["_source"] == "outlook-graph-junk" and it["_bucket"] == "junk")]
+
     # --- global open count across ALL sources ---
     global_oc = sum(open_count(s) for s in seen_by_source.values())
 
@@ -618,7 +626,7 @@ def main():
     # time, a dated card's due date, or an undated card's creation date (the trello adapter stamps that),
     # so undated cards sort by age alongside everything else.
     needs = sorted(
-        (it for it in all_new if it["_bucket"] == "needs-you"),
+        (it for it in needs_and_others if it["_bucket"] == "needs-you"),
         key=lambda it: it.get("received") or "",
         reverse=True,
     )
@@ -626,8 +634,8 @@ def main():
     # autonomously and writes .done immediately — so they self-clear fast and are NOT counted against the
     # needs-you cap (open_count only counts needs-you), letting a standing-rule action run without waiting
     # behind tabs parked for Russell's attention.
-    auto = [it for it in all_new if it["_bucket"] == "auto-handle"]
-    others = [it for it in all_new if it["_bucket"] not in ("needs-you", "auto-handle")]
+    auto = [it for it in needs_and_others if it["_bucket"] == "auto-handle"]
+    others = [it for it in needs_and_others if it["_bucket"] not in ("needs-you", "auto-handle")]
 
     if args.dry_run:
         counts = {b: sum(1 for it in all_new if it["_bucket"] == b)
@@ -635,7 +643,7 @@ def main():
         total_all = sum(totals.values())
         print(f"DRY-RUN — {len(all_new)} new of {total_all} across {len(providers)} source(s) | "
               f"{counts['needs-you']} needs-you, {counts['auto-handle']} auto-handle, "
-              f"{counts['fyi']} fyi, {counts['junk']} junk | "
+              f"{counts['fyi']} fyi, {counts['junk']} junk ({len(correctly_junked)} correctly-filed junk) | "
               f"global cap {cfg['max_open_tabs']}, currently open {global_oc}")
         if auto:
             print("  auto-handle (autonomous worker, not capped):")
@@ -696,12 +704,21 @@ def main():
         seen_state("record", cfg["runtime_dir"], it["_source"], iid, it["_bucket"])
         queued += 1
 
+    # Correctly-junked items from outlook-graph-junk (already in the right place) are recorded as
+    # seen with NO capture and NO queue-add — they generate zero noise and never surface to the user.
+    correctly_junked_count = 0
+    for it in correctly_junked:
+        iid = it["_id"]
+        seen_state("record", cfg["runtime_dir"], it["_source"], iid, "junk")
+        correctly_junked_count += 1
+
     teams_others = [it for it in others if it["_source"] == "teams"]
     if teams_others and prov.get("teams"):
         _spawn_teams_mark_read(teams_others, prov["teams"], repo, cfg["runtime_dir"], cfg["worker_model"])
 
     print(f"dispatched {dispatched} worker tab(s), {auto_dispatched} auto-handle worker(s), "
-          f"queued {queued} for digest, held {held} at global cap of {cfg['max_open_tabs']}. "
+          f"queued {queued} for digest, {correctly_junked_count} correctly-filed junk (no action), "
+          f"held {held} at global cap of {cfg['max_open_tabs']}. "
           f"Poller never clears.")
 
 
