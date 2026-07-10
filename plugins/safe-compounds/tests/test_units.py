@@ -16,7 +16,7 @@ from safe_compounds.commands import (  # noqa: E402
 )
 from safe_compounds.mcp import classify_mcp_tool  # noqa: E402
 from safe_compounds.enforce import detect_complex_bash, detect_simple_expansion, detect_cd_compound, enforce_bash  # noqa: E402
-from safe_compounds.scripts import check_node_segment  # noqa: E402
+from safe_compounds.scripts import check_node_segment, get_block_reason, reset_block_reason  # noqa: E402
 from safe_compounds.workflow import classify_workflow_tool  # noqa: E402
 
 
@@ -294,6 +294,39 @@ class TestCheckNodeSegment:
     def test_check_flag_with_extra_spacing(self):
         set_config()
         assert check_node_segment("node  --check  foo.mjs") is True
+
+
+class TestMissingScriptBlocks(object):
+    """A relative script filename that doesn't resolve against CLAUDE_CWD should
+    deny with an actionable message (use the full path), not silently fall
+    through to a bare approval prompt."""
+
+    def setup_method(self):
+        reset_block_reason()
+
+    def test_missing_relative_script_denies_with_full_path_instruction(self, tmp_path):
+        set_config()
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        assert check_node_segment("node gmail.js --search=foo") is False
+        reason = get_block_reason()
+        assert reason is not None
+        assert "BLOCKED" in reason
+        assert "gmail.js" in reason
+        assert "full absolute path" in reason
+        assert str(tmp_path).replace('\\', '/').lower() in reason.replace('\\', '/').lower()
+
+    def test_existing_script_does_not_trip_missing_script_block(self, tmp_path):
+        set_config()
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        os.environ['SAFE_COMPOUNDS_DISABLE_AI'] = '1'
+        (tmp_path / "script.js").write_text("console.log('hi')", encoding="utf-8")
+        try:
+            check_node_segment("node script.js")
+        finally:
+            del os.environ['SAFE_COMPOUNDS_DISABLE_AI']
+        # AI is disabled so the verdict is undecided (falls through to a plain
+        # prompt), but the missing-script block must not have fired.
+        assert get_block_reason() is None
 
 
 class TestCdCompoundDetection:

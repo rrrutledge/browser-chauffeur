@@ -13,7 +13,7 @@ import re
 
 from . import ai, config
 from .log import log_debug
-from .paths import is_in_trusted_script_dir, read_script_file
+from .paths import is_in_trusted_script_dir, read_script_file, resolve_against_cwd
 from .shell import ASSIGNMENT_ONLY, shell_tokenize
 from .trust import get_trusted
 
@@ -42,6 +42,17 @@ def _record_block(filename, language, reason):
         'commands. If it is legitimately privileged (e.g. a launcher that spawns sessions), add '
         'its directory to the safe-compounds "trusted_script_dirs" config or add a scoped '
         'Bash(...) allow rule for it instead of broadening the script.'
+    )
+
+
+def _record_missing_script(filename, language):
+    global _last_block_reason
+    resolved = resolve_against_cwd(filename)
+    _last_block_reason = (
+        f'BLOCKED: Could not find the {language} script "{filename}" — looked for it at "{resolved}", '
+        'which doesn\'t exist. A relative filename resolves against the current working directory, not '
+        'wherever the script actually lives, so it could not be read and safety-checked. Rerun the command '
+        'using the script\'s full absolute path instead of a bare or relative filename.'
     )
 
 
@@ -155,6 +166,7 @@ def _check_segment(seg, command, language, inline_flag):
             return True
         content = read_script_file(filename)
         if content is None:
+            _record_missing_script(filename, language)
             return False
         verdict, reason = ask_ai_about_script(content, language, command_line=seg)
         if verdict is False:
@@ -186,6 +198,7 @@ def check_direct_script_segment(seg, language):
         return True
     content = read_script_file(filename)
     if content is None:
+        _record_missing_script(filename, language)
         return False
     verdict, reason = ask_ai_about_script(content, language, command_line=seg)
     if verdict is False:
