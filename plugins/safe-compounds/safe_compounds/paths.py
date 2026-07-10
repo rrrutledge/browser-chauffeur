@@ -47,6 +47,12 @@ def _abs_against_cwd(path):
     return path
 
 
+def resolve_against_cwd(path):
+    """Public wrapper around _abs_against_cwd, for callers outside this module
+    that need to show a resolved path in a message (e.g. a block reason)."""
+    return _abs_against_cwd(path)
+
+
 def path_under(path, base, *, resolve_cwd=True):
     """True if `path` equals or is nested within `base` directory."""
     try:

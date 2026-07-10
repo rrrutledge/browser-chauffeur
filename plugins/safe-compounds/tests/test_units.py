@@ -406,13 +406,17 @@ class TestCheckNodeSegment:
         assert "BLOCKED" in reason
         assert "unquoted" in reason.lower()
 
-    def test_missing_file_without_windows_path_has_no_special_block(self):
-        # A plain missing file (no Windows-path hazard) still denies, but
-        # without the mangled-path-specific message.
+    def test_missing_file_without_windows_path_gets_generic_block(self):
+        # A plain missing file (no Windows-path hazard) still denies, with the
+        # generic "use the full path" message instead of the mangled-path one.
         set_config()
         reset_block_reason()
         assert check_node_segment("node /definitely/not/a/real/script.js") is False
-        assert get_block_reason() is None
+        reason = get_block_reason()
+        assert reason is not None
+        assert "BLOCKED" in reason
+        assert "unquoted" not in reason.lower()
+        assert "full absolute path" in reason
 
     def test_double_quoted_windows_path_not_flagged_as_mangled(self):
         # Double-quoting preserves backslashes, so this isn't the mangled-path
@@ -421,7 +425,10 @@ class TestCheckNodeSegment:
         reset_block_reason()
         seg = r'node "C:\definitely\not\a\real\path\script.js"'
         assert check_node_segment(seg) is False
-        assert get_block_reason() is None
+        reason = get_block_reason()
+        assert reason is not None
+        assert "unquoted" not in reason.lower()
+        assert "full absolute path" in reason
 
 
 class TestHasUnquotedWindowsDrivePath:
@@ -440,6 +447,39 @@ class TestHasUnquotedWindowsDrivePath:
     def test_flags_mid_command_occurrence(self):
         seg = r'node script.js C:\Users\russe\Dev\out'
         assert has_unquoted_windows_drive_path(seg) is True
+
+
+class TestMissingScriptBlocks(object):
+    """A relative script filename that doesn't resolve against CLAUDE_CWD should
+    deny with an actionable message (use the full path), not silently fall
+    through to a bare approval prompt."""
+
+    def setup_method(self):
+        reset_block_reason()
+
+    def test_missing_relative_script_denies_with_full_path_instruction(self, tmp_path):
+        set_config()
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        assert check_node_segment("node gmail.js --search=foo") is False
+        reason = get_block_reason()
+        assert reason is not None
+        assert "BLOCKED" in reason
+        assert "gmail.js" in reason
+        assert "full absolute path" in reason
+        assert str(tmp_path).replace('\\', '/').lower() in reason.replace('\\', '/').lower()
+
+    def test_existing_script_does_not_trip_missing_script_block(self, tmp_path):
+        set_config()
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        os.environ['SAFE_COMPOUNDS_DISABLE_AI'] = '1'
+        (tmp_path / "script.js").write_text("console.log('hi')", encoding="utf-8")
+        try:
+            check_node_segment("node script.js")
+        finally:
+            del os.environ['SAFE_COMPOUNDS_DISABLE_AI']
+        # AI is disabled so the verdict is undecided (falls through to a plain
+        # prompt), but the missing-script block must not have fired.
+        assert get_block_reason() is None
 
 
 class TestCdCompoundDetection:
