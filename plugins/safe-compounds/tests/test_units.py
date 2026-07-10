@@ -26,7 +26,7 @@ from safe_compounds.workflow import classify_workflow_tool  # noqa: E402
 def set_config(**kwargs):
     base = {
         "trusted_commands": [], "curl_domains": [], "mcp_blanket_servers": [],
-        "trusted_script_dirs": [], "workflow_blanket_names": [],
+        "mcp_blanket_tools": [], "trusted_script_dirs": [], "workflow_blanket_names": [],
     }
     base.update(kwargs)
     config._CONFIG = base
@@ -320,6 +320,14 @@ class TestMcp:
     def test_unknown_verb(self):
         set_config()
         assert classify_mcp_tool("mcp__s__frobnicate_thing") is False
+
+    def test_blanket_tool_configured(self):
+        set_config(mcp_blanket_tools=["mcp__s__frobnicate_thing"])
+        assert classify_mcp_tool("mcp__s__frobnicate_thing") is True
+
+    def test_blanket_tool_does_not_affect_other_tools_on_same_server(self):
+        set_config(mcp_blanket_tools=["mcp__s__frobnicate_thing"])
+        assert classify_mcp_tool("mcp__s__other_thing") is False
 
 
 class TestWorkflow:

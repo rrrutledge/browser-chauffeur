@@ -68,7 +68,8 @@ For each tool call the hook produces one of:
   and files inside a git repo's working tree; redirects stray temp-named files
   into `.tmp/`.
 - **MCP** — approves read-only and reversible-write verbs; prompts on destructive
-  verbs (`delete`, `purge`, …). Whole servers can be blanket-approved via config.
+  verbs (`delete`, `purge`, …). Whole servers can be blanket-approved via config,
+  and individual tools (by full name) can be blanket-approved too.
 
 ## Configuration
 
@@ -83,6 +84,7 @@ blanket-approved, etc.).
   "trusted_commands": ["mycli"],
   "curl_domains": ["atlassian.net", "mycorp.sharepoint.com"],
   "mcp_blanket_servers": ["plugin_product-management_atlassian"],
+  "mcp_blanket_tools": ["mcp__claude_ai_Gmail__apply_sensitive_message_label"],
   "trusted_script_dirs": ["my-plugins/"]
 }
 ```
