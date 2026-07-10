@@ -160,6 +160,7 @@ A single clear sentence ending in a question is usually the whole message — re
   Cut any salesy bridge before the ask.
 - **Reporting a completed task: lead with the outcome and the link; cut the diagnostic play-by-play and the editorial wrap-up.**
   They want the result, not the story of what was wrong, how you found it, or a closing "so this means…" they can draw themselves.
+  Don't itemize each thing you did once a summary phrase already covers it — "made a couple of edits: reworded the quotes and fixed a typo" was sent as "made a couple of edits ... and fixed a typo", the itemized "reworded the quotes" dropped as redundant with "a couple of edits."
 
 ### Never do these (AI-tells that break the voice)
 
@@ -185,6 +186,7 @@ A single clear sentence ending in a question is usually the whole message — re
   A direct yes/no question already prompts a reply, so "Let me know!" after it is a tail — cut it.
   But when the close is a statement (a soft offer, a hedge like "if X opens up, I'd be interested"), "Let me know what you think" *is* the ask, not a tail — keep it.
   When a real logistical question is unresolved, ask it directly instead of closing with vague enthusiasm.
+  Reporting an edit you made confidently to someone else's shared document is not an open question — don't append "let me know if you'd rather I change anything back"; close with a plain confident line instead. Real edit (telling Olive Cannon about quote edits made directly in her shared press-release docs): a draft closing "Let me know if you'd rather I change anything back." was sent as "Looks great. Thank you!" — the hedge-offer to revert cut for a confident close.
 - **When Russell owns the next step, say "I'll" — not "we'll" — and drop the trailing offer.**
   Announce work already done actively in the first person ("I drafted the posts"), not agent-less passive ("the posts are drafted").
 - **Adding a second ask mid-thread: open with the discovery, not the ask** — "found one more", not "one more ask while I have you".
