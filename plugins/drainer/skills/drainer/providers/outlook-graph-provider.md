@@ -30,18 +30,19 @@ signed in. If it errors with "Not signed in" or an auth error, do the `ms-graph`
 (`node scripts/auth.js` via browser-chauffeur), then retry — never surface the token error to the user.
 
 ## SITUATIONAL-CHECK mechanism
-The inbox is drained and emptied by the poller, so recent replies live in **Deleted Items** (where CLEAR
-moves handled messages), not the inbox or Archive. Search all three folders — inbox, Archive, Deleted
-Items — covering both directions and **paginating each fully**. Use `node mail.js --search="<subject>"`
-— verify it covers Deleted Items and do not stop at the first page.
+The inbox is drained and emptied by the poller, so recently-handled messages live in **Archive** (where
+CLEAR moves them), not the inbox. Search all three folders — inbox, Archive, Deleted Items — covering
+both directions and **paginating each fully** (older items cleared before this behavior changed may still
+sit in Deleted Items). Use `node mail.js --search="<subject>"` — verify it covers Archive and Deleted
+Items and do not stop at the first page.
 
 ## CAPTURE
 See `email-base.md` for the shared two-file shape. Graph-specific: `messageId` is the opaque Graph
 message id.
 
 ## CLEAR
-`node mail.js --delete=<messageId>` — moves the message to **Deleted Items** (reversible; narrate it).
-Never a permanent purge.
+`node mail.js --delete=<messageId>` — moves the message to **Archive** (reversible; keeps it searchable
+later; narrate it). Never a permanent purge.
 
 ## JUNK-LEARNING (step 3 — Outlook.com-specific)
 After exhausting unsubscribe and source-app options (see `email-base.md`): propose an **Outlook.com
