@@ -1,15 +1,21 @@
-name: Version bump guardrail
+name: Auto version bump
 
 on:
-  pull_request:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 concurrency:
-  group: version-bump-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: version-bump-main
+  cancel-in-progress: false
 
 jobs:
-  check-version-bump:
+  auto-bump:
+    if: github.event.head_commit.author.name != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,7 +24,18 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Check every changed plugin bumped its version
+      - name: Auto-bump patch version for changed plugins
         env:
-          BASE_REF: origin/${{ github.base_ref }}
-        run: python scripts/check_version_bump.py
+          BEFORE_SHA: ${{ github.event.before }}
+        run: python scripts/auto_bump_version.py
+      - name: Commit and push version bump
+        run: |
+          if git diff --quiet; then
+            echo "No version bumps needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: auto-bump patch version for changed plugins"
+          git push origin HEAD:main

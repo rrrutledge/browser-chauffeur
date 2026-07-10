@@ -9,7 +9,7 @@ inside any one plugin — so several callers can reuse them without depending on
 | `launch-session.ps1` | Launch a fresh Claude session in a Windows Terminal tab (handoff or drainer-worker mode). |
 | `wait-done.py` | Block until a completion marker file appears. |
 | `peek.py` | Render a spawned session's transcript as a compact timeline. |
-| `check_version_bump.py` | CI helper: verify a plugin's version was bumped when its files changed. |
+| `auto_bump_version.py` | Post-merge CI helper: auto-bump a plugin's patch version when its files changed but no manual bump landed. |
 
 ## The launch → wait → peek toolkit
 
