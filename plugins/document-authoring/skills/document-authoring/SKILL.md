@@ -251,6 +251,7 @@ A single clear sentence ending in a question is usually the whole message — re
 - **Confirm understanding with a short question** — "Let me know if I've got that right - one codebase supports two Solutions?"
 - **Close with "let me know"** — a signature phrase used constantly.
   Reach for it over near-variants ("just say the word" → "just let me know").
+  This includes a direct confirmation-ask on a completed action ("Can you confirm it landed on your end?" → "Let us know if that gives what you need") — the "let me/us know" framing invites an open reply about whether the outcome is right, instead of demanding a yes/no receipt confirmation.
 - **Light, genuine appreciation** — "Thanks!", "Thank you!", not "Thank you so much!!!". Thank once; if you thanked at the open, don't also close with "Thanks!" But a warm sponsor/partner email that didn't thank at the open gets a single closing "Thank you!" above the sign-off — not a helper tail.
   In chat, thanking someone who's taking on work for you is likewise fine, not a tail.
   Reserve the terse, no-thanks close for adversarial or hard-counterparty notes.
