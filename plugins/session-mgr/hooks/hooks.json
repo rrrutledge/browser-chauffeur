@@ -1,0 +1,29 @@
+{
+  "description": "Maintains a live-session registry so resume-sessions can find every crash-interrupted session with certainty, not heuristics.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/session_registry.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/session_registry.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
