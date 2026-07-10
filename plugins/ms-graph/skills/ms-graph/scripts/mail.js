@@ -20,7 +20,7 @@
 // Send to self:  node mail.js --send-self --subject="..." --body-file=note.txt
 //                (sends a plain-text mail to your own inbox; handy for phone copy-paste)
 // Delete one:    node mail.js --delete=<messageId>
-//                (moves the message to Deleted Items — reversible, never a permanent purge)
+//                (moves the message to Archive — reversible, keeps it searchable, never a permanent purge)
 //
 // --- Inbox rules (server-side filters) ---
 // List rules:    node mail.js --list-rules [--json]
@@ -100,8 +100,8 @@ async function listInbox(client) {
 }
 
 async function del(client) {
-  await client.api(`/me/messages/${args.delete}/move`).post({ destinationId: 'deleteditems' });
-  console.log(`Moved to Deleted Items (id ${String(args.delete).slice(0, 20)}...). Reversible from the Deleted Items folder.`);
+  await client.api(`/me/messages/${args.delete}/move`).post({ destinationId: 'archive' });
+  console.log(`Moved to Archive (id ${String(args.delete).slice(0, 20)}...). Reversible, and searchable later.`);
 }
 
 async function search(client) {
