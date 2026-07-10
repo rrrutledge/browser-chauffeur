@@ -8,10 +8,16 @@ are safe.
 
 ## Contributing
 
-**Every change to a plugin requires a version bump in that plugin's `.claude-plugin/plugin.json`.**
-Whenever you modify any file under `plugins/<name>/`, increment the `version` field of that
-plugin (patch for fixes, minor for features) in the same PR. Claude Code keys plugin updates
-off this version, so a change that ships without a bump won't roll out to installed copies.
+**Patch version bumps happen automatically on merge — don't bump for an ordinary fix.** A
+workflow (`.github/workflows/version-bump.yml`, `scripts/auto_bump_version.py`) runs on push to
+`main` and patch-bumps any plugin whose files changed but whose version didn't already move in
+that push.
+
+**A minor or major bump is still your call, made in the PR.** When a change is a new feature or a
+breaking change rather than a fix, bump the `version` field in that plugin's
+`.claude-plugin/plugin.json` yourself (e.g. `1.3.14` → `1.4.0`) in the same PR — the auto-bump
+only ever increments the patch digit, and it leaves a plugin alone if its version already moved
+in the push, so a manual bump you make is never double-bumped.
 
 ---
 
