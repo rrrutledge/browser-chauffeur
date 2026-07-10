@@ -22,7 +22,7 @@
 // Usage:
 //   node outlook-mail.js enumerate               -> JSON array of ALL inbox messages, newest-first
 //   node outlook-mail.js get <id>                -> full message JSON (body, recipients, webLink)
-//   node outlook-mail.js delete <id>             -> move to Deleted Items (reversible)
+//   node outlook-mail.js delete <id>             -> move to Archive (reversible, keeps it searchable)
 //   node outlook-mail.js token [--force]         -> ensure/refresh cached token, print status
 //   node outlook-mail.js create-draft --json <p> -> new draft email; prints {id, webLink}
 //   node outlook-mail.js create-reply <id> --json <p> -> reply draft (quoted original below); prints {id, webLink}
@@ -100,9 +100,9 @@ async function cmdGet(id) {
 }
 
 async function cmdDelete(id) {
-  const res = await apiCall('DELETE', `/me/messages/${enc(id)}`);
-  if (res.status !== 204 && res.status !== 200) throw new Error(`delete HTTP ${res.status}: ${res.body.slice(0, 400)}`);
-  process.stdout.write(JSON.stringify({ deleted: id, movedTo: 'Deleted Items' }) + '\n');
+  const res = await apiCall('POST', `/me/messages/${enc(id)}/move`, { DestinationId: 'archive' });
+  if (res.status !== 201 && res.status !== 200) throw new Error(`delete HTTP ${res.status}: ${res.body.slice(0, 400)}`);
+  process.stdout.write(JSON.stringify({ deleted: id, movedTo: 'Archive' }) + '\n');
 }
 
 function readJsonArg(p) {

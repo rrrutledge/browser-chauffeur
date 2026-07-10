@@ -106,8 +106,9 @@ a clarifying question left hanging turns a "ready to act" card into one blocked 
 don't miss that). For **email** threads, additionally search the whole mailbox in both directions
 (incoming from the contact AND your sent replies) — recent messages may have been swept out of the
 inbox by a prior drain cycle:
-- **outlook-rest / outlook-graph**: search inbox + Archive + **Deleted Items** (paginated) — CLEAR
-  moves handled messages to Deleted Items.
+- **outlook-rest / outlook-graph**: search inbox + Archive + Deleted Items (paginated) — CLEAR
+  moves handled messages to **Archive** (older items cleared before this behavior changed may still
+  sit in Deleted Items).
 - **gmail**: search All Mail with no `in:` filter — CLEAR archives (not trashes), so everything is
   in All Mail.
 
