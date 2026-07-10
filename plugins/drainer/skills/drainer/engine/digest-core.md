@@ -64,9 +64,10 @@ when the queue is otherwise empty.
 
 ## 2b. Auto-handled — report what Claude already did (no decision needed)
 
-Items a worker resolved autonomously under a provider **AUTO-HANDLE** rule (e.g. an approved Slack
-workspace invite). The action and the source-clear are **already done** — this section is purely so
-Russell *sees* what happened, never to ask him to act. Present it as a distinct **"Auto-handled"**
+Items a worker resolved autonomously — either under a provider **AUTO-HANDLE** rule (e.g. an approved
+Slack workspace invite) or by finishing a needs-you item's work and self-closing it (§6a of worker-core,
+re-tagged `auto-handle` on the way into the queue). The action and the source-clear are **already done**
+— this section is purely so Russell *sees* what happened, never to ask him to act. Present it as a distinct **"Auto-handled"**
 section (separate from fyi), one line each: what was done and the key detail (e.g. "Approved workspace
 invite for *jane@acme.com* (requested by Bob)"). Order most-notable first. On Russell's review these need
 **no provider CLEAR** (the worker already cleared the source) — just `queue-clear` them like the rest

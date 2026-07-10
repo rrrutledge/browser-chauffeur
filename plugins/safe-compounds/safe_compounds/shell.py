@@ -64,6 +64,31 @@ def shell_tokenize(text):
         return text.split()
 
 
+# A bare (unquoted) Windows drive-letter path, e.g. C:\Users\...
+_WINDOWS_DRIVE_PATH = re.compile(r'^[A-Za-z]:\\')
+
+
+def has_unquoted_windows_drive_path(segment):
+    """True if `segment` contains a Windows drive-letter path outside of any
+    quotes. POSIX word-splitting (both real shells and shlex) only preserves a
+    backslash literally inside double quotes; unquoted, `\\U` collapses to `U`.
+    A command built with an unquoted `C:\\Users\\...` path therefore has its
+    path silently mangled by the shell before the program ever sees it — this
+    flags that hazard so callers can surface it instead of failing silently.
+    """
+    tok = ShellTokenizer(segment)
+    while not tok.at_end():
+        if tok.consume_escape():
+            continue
+        if tok.update_quote_state():
+            tok.advance()
+            continue
+        if not tok.in_quotes() and _WINDOWS_DRIVE_PATH.match(segment[tok.pos:]):
+            return True
+        tok.advance()
+    return False
+
+
 def split_segments(cmd):
     """Split a compound command into segments on &&, ||, ;, and | operators,
     only when those operators appear outside quotes. Newlines are treated as

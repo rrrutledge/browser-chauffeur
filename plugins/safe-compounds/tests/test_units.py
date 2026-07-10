@@ -8,7 +8,8 @@ PLUGIN_DIR = os.path.dirname(TESTS_DIR)
 sys.path.insert(0, PLUGIN_DIR)
 
 from safe_compounds.shell import (  # noqa: E402
-    ASSIGNMENT_ONLY, extract_substitutions, first_word, split_segments, strip_var_assignment,
+    ASSIGNMENT_ONLY, extract_substitutions, first_word, has_unquoted_windows_drive_path,
+    split_segments, strip_var_assignment,
 )
 from safe_compounds import config  # noqa: E402
 from safe_compounds.commands import (  # noqa: E402
@@ -18,7 +19,7 @@ from safe_compounds.commands import (  # noqa: E402
 from safe_compounds import procs  # noqa: E402
 from safe_compounds.mcp import classify_mcp_tool  # noqa: E402
 from safe_compounds.enforce import detect_complex_bash, detect_simple_expansion, detect_cd_compound, enforce_bash  # noqa: E402
-from safe_compounds.scripts import check_node_segment  # noqa: E402
+from safe_compounds.scripts import check_node_segment, get_block_reason, reset_block_reason  # noqa: E402
 from safe_compounds.workflow import classify_workflow_tool  # noqa: E402
 
 
@@ -381,6 +382,56 @@ class TestCheckNodeSegment:
     def test_check_flag_with_extra_spacing(self):
         set_config()
         assert check_node_segment("node  --check  foo.mjs") is True
+
+    def test_unquoted_windows_path_gets_actionable_block(self):
+        # A bare C:\...\script.js argument gets its backslashes stripped by
+        # shell word-splitting before node ever sees it (real bash does this
+        # identically to shlex — it isn't shlex-specific). The missing-file
+        # case should be turned into a clear, actionable deny instead of a
+        # silent fall-through to a manual prompt.
+        set_config()
+        reset_block_reason()
+        seg = r'node C:\definitely\not\a\real\path\script.js'
+        assert check_node_segment(seg) is False
+        reason = get_block_reason()
+        assert reason is not None
+        assert "BLOCKED" in reason
+        assert "unquoted" in reason.lower()
+
+    def test_missing_file_without_windows_path_has_no_special_block(self):
+        # A plain missing file (no Windows-path hazard) still denies, but
+        # without the mangled-path-specific message.
+        set_config()
+        reset_block_reason()
+        assert check_node_segment("node /definitely/not/a/real/script.js") is False
+        assert get_block_reason() is None
+
+    def test_double_quoted_windows_path_not_flagged_as_mangled(self):
+        # Double-quoting preserves backslashes, so this isn't the mangled-path
+        # hazard — it should fail for the ordinary "file not found" reason.
+        set_config()
+        reset_block_reason()
+        seg = r'node "C:\definitely\not\a\real\path\script.js"'
+        assert check_node_segment(seg) is False
+        assert get_block_reason() is None
+
+
+class TestHasUnquotedWindowsDrivePath:
+    def test_bare_path_flagged(self):
+        assert has_unquoted_windows_drive_path(r'node C:\Users\russe\script.js') is True
+
+    def test_double_quoted_path_not_flagged(self):
+        assert has_unquoted_windows_drive_path(r'node "C:\Users\russe\script.js"') is False
+
+    def test_forward_slash_path_not_flagged(self):
+        assert has_unquoted_windows_drive_path('node C:/Users/russe/script.js') is False
+
+    def test_posix_style_path_not_flagged(self):
+        assert has_unquoted_windows_drive_path('node /c/Users/russe/script.js') is False
+
+    def test_flags_mid_command_occurrence(self):
+        seg = r'node script.js C:\Users\russe\Dev\out'
+        assert has_unquoted_windows_drive_path(seg) is True
 
 
 class TestCdCompoundDetection:

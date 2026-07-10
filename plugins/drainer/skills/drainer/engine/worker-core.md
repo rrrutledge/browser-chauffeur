@@ -219,8 +219,12 @@ the situational check or the work itself.
 
 When that's the case, treat the close-out like `auto-handle`'s (steps 4–6 in the branch at the top) even
 though this item was never labeled or triaged that way: log what happened somewhere Russell will find it
-later (a dated comment on the source item — a Trello card, e.g. — or a digest queue-add via
-`node <skill>/scripts/seen-state.js queue-add <runtime_dir> <source> <id> <path to items/<id>.json>`),
+later — a dated comment on the source item (a Trello card, e.g.), or a digest queue-add. **When you queue
+a digest entry, first re-tag the item's `triage` to `"auto-handle"` in `items/<id>.json` (Edit tool)
+before the `queue-add` — the same re-tag §2c makes for an FYI downgrade.** This files the entry under the
+digest's **"Auto-handled"** section (already done, dismiss-only), so a finished item is shown as handled
+rather than resurfacing as a live needs-you. Queue it via
+`node <skill>/scripts/seen-state.js queue-add <runtime_dir> <source> <id> <path to items/<id>.json>`,
 write `.done` immediately, and close the tab (reveal the literal PID with `echo $CLAUDE_HOST_PID`, then
 `taskkill /PID <that number> /T /F`) instead of presenting-and-waiting.
 
