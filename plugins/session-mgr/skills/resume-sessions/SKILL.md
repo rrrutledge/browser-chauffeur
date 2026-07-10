@@ -5,23 +5,84 @@ instructions: |-
   Find all Claude Code sessions that ended without an explicit "exit" command and launch each one
   in a new Windows Terminal tab for resumption. Skip sessions that are currently open.
 
-  ## Step 1 — Find currently active session IDs
+  ## Step 1 — Find currently active sessions
 
-  Run `wmic process where "name='claude.exe'" get CommandLine` and extract every session UUID
-  (pattern: `--resume <uuid>` or `--session-id <uuid>`). These are sessions already open in a tab
-  and must be excluded from the launch list.
-
-  Write a Python script to `.tmp/find_abrupt_sessions.py` and run it, passing the active IDs as
-  a JSON argument or writing them to a temp file first.
-
-  ## Step 2 — Find abrupt sessions
+  Write and run a Python script (`.tmp/find_active_sessions.py`) that uses `psutil` to enumerate
+  `claude.exe` processes and resolve each one's session ID:
 
   ```python
-  import os, json, sys
+  import psutil, re, json
+
+  SESSION_RE = re.compile(r"--(?:resume|session-id)\s+([0-9a-fA-F-]{36})")
+  active_ids = set()
+
+  for proc in psutil.process_iter(["pid", "name", "cmdline"]):
+      if (proc.info["name"] or "").lower() != "claude.exe":
+          continue
+      cmdline_str = " ".join(proc.info["cmdline"] or [])
+      m = SESSION_RE.search(cmdline_str)
+      if m:
+          active_ids.add(m.group(1))
+          continue
+      # Bare launches (no --resume/--session-id on the command line) still set
+      # CLAUDE_CODE_SESSION_ID in their environment — read it directly so these
+      # aren't missed and later double-launched.
+      try:
+          env = proc.environ()
+          sid = env.get("CLAUDE_CODE_SESSION_ID")
+          if sid:
+              active_ids.add(sid)
+      except (psutil.AccessDenied, psutil.NoSuchProcess):
+          pass
+
+  print(json.dumps(sorted(active_ids)))
+  ```
+
+  This closes the gap the command-line regex alone has: a session started without an explicit
+  `--resume`/`--session-id` flag (e.g. a fresh `claude` launch) has no ID in its command line, but
+  its environment always carries `CLAUDE_CODE_SESSION_ID`.
+
+  ## Step 2 — Read the live-session registry (authoritative source)
+
+  This plugin's `SessionStart`/`SessionEnd` hooks maintain
+  `~/.claude/session-mgr/live-sessions.json` — a dict of `{session_id: {cwd, started_at}}` for
+  every session that has started but not cleanly ended. A hard crash or forced restart never
+  triggers `SessionEnd`, so any entry left in this file whose ID is *not* in the Step 1 active set
+  is a **confirmed** interrupted session — no content heuristics needed to decide whether to
+  include it.
+
+  ```python
+  import json, os
+
+  registry_path = os.path.expanduser("~/.claude/session-mgr/live-sessions.json")
+  registry = {}
+  if os.path.exists(registry_path):
+      with open(registry_path, encoding="utf-8") as f:
+          registry = json.load(f)
+
+  confirmed = {sid: info for sid, info in registry.items() if sid not in active_ids}
+  ```
+
+  Sessions found this way go straight to the launch list (Step 4) — pull `title` and
+  `last_user_text` for the confirmation message by reading the tail of that session's transcript
+  the same way Step 3 does, but do not apply any of Step 3's exclusion rules to them; the registry
+  already proved they were still open.
+
+  Registry entries are self-healing: resuming a session re-fires `SessionStart` (re-adding it),
+  and a later clean exit fires `SessionEnd` (removing it) — so nothing needs manual pruning.
+
+  ## Step 3 — Fallback scan for sessions the registry doesn't cover
+
+  The registry only covers sessions started after this hook was installed. For completeness (and
+  as a safety net if a registry write ever fails), also run the content-heuristic scan below, then
+  merge its results with Step 2's, de-duplicating by session ID.
+
+  ```python
+  import os, json
   from datetime import datetime
 
   PROJECTS_DIR = os.path.expanduser("~/.claude/projects")
-  active_ids = set(json.loads(sys.argv[1])) if len(sys.argv) > 1 else set()
+  already_found = confirmed.keys() | active_ids  # from Steps 1-2
 
   abrupt = []
 
@@ -34,7 +95,7 @@ instructions: |-
           if not fname.endswith(".jsonl"):
               continue
           session_id = fname.replace(".jsonl", "")
-          if session_id in active_ids:
+          if session_id in already_found:
               continue
 
           fpath = os.path.join(full_project, fname)
@@ -81,28 +142,39 @@ instructions: |-
           })
 
   abrupt.sort(key=lambda x: x["mtime"])
-  print(json.dumps(abrupt, indent=2))
   ```
 
-  Run: `python .tmp/find_abrupt_sessions.py '<json_array_of_active_ids>'`
+  ### Exclusions — apply only these, and only in this fallback scan
 
-  ## Step 3 — Exclude only sessions with clear machine-generated endings
-
-  From the full list, exclude only sessions whose last_user_text matches one of these exact
-  machine-generated patterns — do NOT apply any other judgment about whether a session looks
+  Exclude a session found by the fallback scan only if its last_user_text matches one of these
+  exact machine-generated patterns — do NOT apply any other judgment about whether a session looks
   "complete" or "worth resuming":
 
   - Proper exit: last_user_text is exactly `<local-command-stdout>Goodbye!</local-command-stdout>`
     or `<local-command-stdout>Bye!</local-command-stdout>`
-  - Background task notification: last_user_text starts with `<task-notification>`
-  - Automated triage prompt: last_user_text is longer than 500 chars AND contains a JSON array (`[`)
+  - Automated triage prompt: last_user_text starts with `You are the drainer poller's triage step`
+    (a self-contained classification job that completes and ends on its own — never a live
+    conversation to resume)
+
+  Do **not** exclude sessions whose last message is a `<task-notification>` block. A pending
+  task-notification means a background action (a Monitor watch, a browser-chauffeur command, etc.)
+  never reported back — that is itself evidence of an interrupted session, not a reason to skip it.
+  This used to be an exclusion rule; it was wrong; e.g., a session mid-way through replying to a
+  recruiter DM about a job posting had its background browser action killed by a restart, and got
+  silently skipped because the notification looked machine-generated. A `<status>killed</status>`
+  field inside the notification is an especially strong signal the restart is exactly what
+  interrupted it. If the notification instead shows a passive timeout (e.g. "Monitor timed out —
+  re-arm if needed") and you want extra confidence before launching a whole tab for it, it's fine
+  to spot-check whether the underlying thing being watched (a PR, a deployment) is already resolved
+  — but default to including it; do not silently drop it.
 
   Launch everything else — short replies, drainer seeds, mid-sentence messages, one-word answers,
   all of it. Do not guess whether the user considered a session finished.
 
   ## Step 4 — Launch each session in a new WT tab
 
-  For each session in the filtered list, run:
+  Merge Step 2 (registry-confirmed) and Step 3 (fallback, after exclusions) into one list,
+  de-duplicated by session ID. For each session in that list, run:
 
   ```bash
   "$HOME/AppData/Local/Microsoft/WindowsApps/wt.exe" -w 0 new-tab \
@@ -124,8 +196,9 @@ instructions: |-
 
   ## Step 5 — Confirm
 
-  Tell the user how many sessions were opened and list the titles. If any sessions were skipped
-  because they were already open, mention that count too.
+  Tell the user how many sessions were opened and list the titles, noting how many came from the
+  registry (confirmed) versus the fallback scan (heuristic). If any sessions were skipped because
+  they were already open, mention that count too.
 
   ## Notes
 
@@ -136,6 +209,10 @@ instructions: |-
     newest *installed* copy of this launcher, so drainer workers aren't tied to a working-clone branch.
   - `claude --resume <session_id>` resumes an existing session by its UUID, picking up the full
     conversation history.
-  - There are ~1,300 JSONL session files total; the script scans them all but only reads the tail
-    of each (last user message), so it completes in a few seconds.
+  - There are ~1,300 JSONL session files total; the fallback scan reads all of them but only the
+    tail of each (last user message), so it completes in a few seconds.
+  - The live-session registry (`hooks/session_registry.py`, wired in `hooks/hooks.json`) is what
+    makes Step 2 authoritative instead of another heuristic. It only reflects sessions started
+    since the hook was installed — plan on the fallback scan doing more of the work until the
+    registry has enough history built up.
 ---
