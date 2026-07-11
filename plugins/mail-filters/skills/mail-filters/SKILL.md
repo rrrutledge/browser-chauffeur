@@ -242,7 +242,14 @@ re-deriving it each time. When the drainer reaches the filter step for a piece o
    append the phrase to the one existing rule for that mechanism — the subjects-to-archive filter, the
    bodies-to-archive rule — rather than spawning a new single-phrase filter. Create a new rule only for
    a genuinely new mechanism, or a numbered spillover when the current one is full.
-3. **Propose, then create on Russell's OK.** A filter is reversible, searchable config, so once Russell
-   approves the proposed phrase, create it via the mechanics above — no need to leave it as a manual
-   to-do. (This is distinct from outward messages, which are always staged for Russell to send
-   himself; a filter is inbound config he can undo.)
+3. **Show the exact rule, then create only on his explicit OK.** Never treat a general "yeah, do it" as
+   approval to build the rule. First show Russell the **literal rule** he is approving: the exact
+   phrase(s) it will match, which existing bucket/rule it lands in (or that it's a new one), and the
+   action it takes (archive / mark read). Wait for his OK **on that shown text** — seeing it is what
+   lets him strip a company name down to a type-level phrase, or catch that the item shouldn't be a rule
+   at all (anything he *acts on*, like an autopay re-enrollment reminder, is a needs-you, not
+   archive-fodder). Only once he approves the rule as shown do you run the create/append command. A
+   filter is reversible, searchable config, so there's no need to leave the approved rule as a manual
+   to-do — but the approval must be on the concrete rule, not the idea of one. (This is distinct from
+   outward messages, which are always staged for Russell to send himself; a filter is inbound config he
+   can undo.)
