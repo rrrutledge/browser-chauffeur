@@ -112,6 +112,19 @@ inbox by a prior drain cycle:
 - **gmail**: search All Mail with no `in:` filter — CLEAR archives (not trashes), so everything is
   in All Mail.
 
+**An ask can hop channels — follow it, don't just re-read where it started.** The channel that carried
+the last comment is not necessarily the channel that carries the resolution. Two patterns to watch for:
+- **"DM me your X" inside a group DM or channel names a different, private thread** — a 1:1 DM, not the
+  group conversation you're already reading. Open that specific 1:1 (`conversations.open` with the
+  contact's user id resolves it even when you don't already know the channel id) before concluding
+  they haven't answered.
+- **"Connect person A with person B" is usually carried out over email**, even when the whole
+  conversation up to that point lived in Slack/Teams. Search the mailbox (both directions, per the
+  email guidance above) for an intro before assuming that step hasn't happened.
+A card whose last comment describes an ask or a next step is only half-read until you've checked the
+channel that ask actually points to — checking only the channel you happened to start in and finding
+silence there is not the same as confirming nothing happened.
+
 **Cache back to the card.** Anything you learn that the next pass would otherwise re-derive — the
 thread deep link, the contact's role/handle, where they are in the outreach, the last message
 gist/date, the agreed next step — write into the card's description/comments via `trello-outreach`, in
