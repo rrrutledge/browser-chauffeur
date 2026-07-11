@@ -17,6 +17,7 @@
 //   node seen-state.js queue-list  <runtimeDir>                          -> prints the queue as JSON
 //   node seen-state.js queue-clear <runtimeDir> <id>                     -> removes one item from the queue
 //   node seen-state.js stale-list  <runtimeDir> <staleHours>             -> prints needs-you items dispatched-but-uncleared older than staleHours (reconciliation)
+//   node seen-state.js cleared-list <runtimeDir>                         -> prints [{id, source}] for every needs-you item marked cleared (CLEAR-verification sweep)
 //   node seen-state.js requeue     <runtimeDir> <source> <id>            -> orphan recovery: drop the seen key so the item re-enumerates and re-dispatches a fresh tab
 
 const fs = require('fs');
@@ -151,6 +152,25 @@ function staleList(runtimeDir, staleHours) {
   return out;
 }
 
+// CLEAR-verification sweep: every needs-you item the poller has marked 'cleared' (a worker wrote
+// .done, which the poller trusts at face value — see requeue() below for the same trust issue on the
+// dispatched side). A worker's own CLEAR call (archiving the source message) can silently fail even
+// though .done was written, leaving the item invisible to every future enumerate forever. This lists
+// candidates for a separate, deterministic check (not this file's job — it has no mailbox access)
+// against the live source: still present -> requeue() it; gone -> nothing to do.
+function clearedNeedsYouList(runtimeDir) {
+  const seen = loadSeen(runtimeDir);
+  const out = [];
+  for (const source of Object.keys(seen)) {
+    const items = seen[source] || {};
+    for (const id of Object.keys(items)) {
+      const r = items[id];
+      if (r.triage === 'needs-you' && r.status === 'cleared') out.push({ id, source });
+    }
+  }
+  return out;
+}
+
 // Orphan recovery: a worker tab closed or hung without writing <id>.done leaves its item 'dispatched'
 // forever, holding a cap slot. requeue() frees the slot and lets the item re-dispatch fresh by DELETING
 // its seen key, so the next enumerate no longer drops it as already-seen. No retry cap: the natural
@@ -166,7 +186,7 @@ function requeue(runtimeDir, source, id) {
 }
 
 module.exports = {
-  isSeen, record, openCount, clear, queueAdd, queueList, queueClear, staleList, requeue,
+  isSeen, record, openCount, clear, queueAdd, queueList, queueClear, staleList, clearedNeedsYouList, requeue,
 };
 
 if (require.main === module) {
@@ -204,12 +224,15 @@ if (require.main === module) {
       case 'stale-list':
         console.log(JSON.stringify(staleList(rest[0], rest[1] || 12), null, 2));
         break;
+      case 'cleared-list':
+        console.log(JSON.stringify(clearedNeedsYouList(rest[0]), null, 2));
+        break;
       case 'requeue':
         requeue(rest[0], rest[1], rest[2]);
         console.log(`requeued ${rest[2]}`);
         break;
       default:
-        throw new Error('Usage: seen-state.js <seen|record|open-count|clear|queue-add|queue-list|queue-clear|stale-list|requeue> ...');
+        throw new Error('Usage: seen-state.js <seen|record|open-count|clear|queue-add|queue-list|queue-clear|stale-list|cleared-list|requeue> ...');
     }
   } catch (e) {
     console.error('Error:', e.message);

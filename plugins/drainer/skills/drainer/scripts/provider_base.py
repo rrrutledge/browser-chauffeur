@@ -160,3 +160,11 @@ class ProviderBase:
     def capture(self, item, iid, runtime_dir):
         """Write the item's files under <runtime_dir>/items/ and return the path to <id>.json."""
         raise NotImplementedError
+
+    def still_in_inbox_ids(self):
+        """Optional: the set of this provider's message ids currently sitting in the live Inbox, for
+        the daily digest's CLEAR-verification sweep (a worker's archive call can silently fail even
+        though it wrote .done, leaving the source item stuck forever with no self-healing check).
+        Return None if this provider has no such check available this run (a transient failure) or no
+        meaningful notion of "still in inbox" at all (Slack, Teams, Trello) -- the sweep skips it."""
+        return None

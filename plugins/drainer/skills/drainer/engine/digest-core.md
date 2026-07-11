@@ -5,6 +5,13 @@ digest is the **slow loop**: once a day it empties that queue **with Russell in 
 re-surfaces any needs-you item whose worker never finished. It is the opposite of the poller in one
 way that governs everything below: **it is interactive and clears nothing without Russell's review.**
 
+Before this interactive session even opens, the launcher (`run-digest.py`) runs one silent,
+deterministic step: a CLEAR-verification sweep (`reconcile_cleared`) that checks every needs-you item
+already marked `cleared` against the live mailbox, in case a worker's archive call silently failed
+despite writing `.done`. Anything still physically present gets reset for a fresh poller pass — no AI,
+nothing shown to Russell here. That's a different case from step 4 below (a worker that never finished
+at all); this doc's reconciliation section only ever sees the dispatched-but-stale kind.
+
 You are a single digest session in your own tab. Your launcher gave you the runtime facts (runtime_dir,
 repo, the seen-state helper path, the providers dir, the provider-health file, and stale_hours).
 Everything you read and clear is under `runtime_dir`.
