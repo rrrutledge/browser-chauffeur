@@ -96,6 +96,16 @@ class Provider(ProviderBase):
             kept.append(line)
         return "\n".join(kept).strip()[:limit]
 
+    def still_in_inbox_ids(self):
+        res = run_node([self.gmailjs, "--list-inbox", "--json", "--top=500"])
+        if res.returncode != 0:
+            return None
+        try:
+            msgs = json.loads(res.stdout or "[]")
+        except ValueError:
+            return None
+        return {m["id"] for m in msgs if m.get("id")}
+
     def stable_id(self, item):
         # Timestamp to the second so two messages from the same sender with the same opening subject in
         # the same minute don't collide and silently drop one. Mirrors the outlook-graph scheme.

@@ -14,6 +14,7 @@ Usage:
     python run-digest.py --repo C:/Users/russe/Dev/personal-ai-pod --dry-run    # print the brief only
 """
 import argparse
+import importlib.util
 import json
 import os
 import subprocess
@@ -23,7 +24,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 SKILL_DIR = os.path.dirname(SCRIPT_DIR)
 PROVIDERS_DIR = os.path.join(SKILL_DIR, "providers")
 sys.path.insert(0, SCRIPT_DIR)
-from drainer_config import read_config  # noqa: E402  (shared .claude/drainer.local.md reader)
+from drainer_config import read_config, find_provider_file  # noqa: E402  (shared .claude/drainer.local.md reader + provider resolution)
 from provider_base import run_node, NO_WINDOW, spawn_tab  # noqa: E402  (shared subprocess helper + console-hide flag)
 
 SEEN_STATE = os.path.join(SCRIPT_DIR, "seen-state.js")
@@ -31,6 +32,62 @@ SEEN_STATE = os.path.join(SCRIPT_DIR, "seen-state.js")
 
 def seen_state(*cli_args):
     return run_node([SEEN_STATE, *cli_args])
+
+
+def reconcile_cleared(runtime_dir, cfg):
+    """Silent, deterministic CLEAR-verification sweep — no AI, nothing shown to Russell.
+
+    A worker marks a needs-you item 'cleared' by writing .done, and the poller trusts that at face
+    value. But the worker's own CLEAR call (archiving the source message) can silently fail while
+    .done still gets written, leaving the item stuck in the live Inbox forever — seen-state has no way
+    to notice, since it never rechecks anything once an id is marked cleared.
+
+    For each 'cleared' needs-you item, ask its provider (if it offers still_in_inbox_ids — email
+    providers do, chat/card providers don't) whether the source message is still physically present.
+    If so, requeue() it — the same reset orphan recovery uses — so the next poller cycle re-enumerates
+    it as brand new. From there the existing machinery handles it with zero special-casing: worker-core's
+    situational-check recognizes an already-answered thread and self-closes quietly (archive + .done,
+    no tab shown), or — if it's genuinely still open — it surfaces as an ordinary fresh needs-you item.
+    Either way Russell sees nothing extra; this just closes the blind spot.
+    """
+    cleared = json.loads(seen_state("cleared-list", runtime_dir).stdout or "[]")
+    if not cleared:
+        return 0
+
+    by_source = {}
+    for r in cleared:
+        by_source.setdefault(r["source"], []).append(r["id"])
+
+    inbox_ids_by_source = {}
+    for name in by_source:
+        path = find_provider_file(PROVIDERS_DIR, cfg["local_dir"], name, "-adapter.py")
+        if not path:
+            continue
+        try:
+            spec = importlib.util.spec_from_file_location(f"{name.replace('-', '_')}_adapter", path)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            prov = mod.Provider()
+            prov.configure(cfg)
+            ids = prov.still_in_inbox_ids()
+        except Exception:
+            ids = None  # a broken/uncheckable adapter this run just means: skip reconciliation for it
+        if ids is not None:
+            inbox_ids_by_source[name] = ids
+
+    reset = 0
+    for source, ids in inbox_ids_by_source.items():
+        for iid in by_source[source]:
+            try:
+                with open(os.path.join(runtime_dir, "items", f"{iid}.json"), encoding="utf-8") as f:
+                    message_id = json.load(f).get("messageId")
+            except (OSError, ValueError):
+                continue
+            if message_id and message_id in ids:
+                seen_state("requeue", runtime_dir, source, iid)
+                print(f"reconcile: {iid} ({source}) still in inbox despite 'cleared' status -> reset for a fresh pass.")
+                reset += 1
+    return reset
 
 
 def write_seed(runtime_dir, repo, cfg):
@@ -117,6 +174,10 @@ def main():
     if args.dry_run:
         print_brief(runtime_dir, cfg)
         return
+
+    reset = reconcile_cleared(runtime_dir, cfg)
+    if reset:
+        print(f"reconciliation: reset {reset} cleared-but-still-present item(s) for a fresh pass.")
 
     prompt_file = write_seed(runtime_dir, repo, cfg)
     spawn_cmd = os.path.join(SCRIPT_DIR, "spawn-tab.cmd")
