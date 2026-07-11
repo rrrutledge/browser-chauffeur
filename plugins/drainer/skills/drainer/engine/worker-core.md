@@ -105,6 +105,17 @@ July 2026. Pull the deep link out of the notification and present it as a clicka
 terminal, routed straight to **needs-you** — Russell clicks it and reads/replies himself; you never
 open it.
 
+Give him the **direct destination link, not the Outlook item link**. The notification email's "View
+message" button routes through Microsoft's Safe Links wrapper (`safelinks.protection.outlook.com/
+?url=...`) with tracking params (`lipi`, `midToken`, `trk`, `trkEmail`, `eid`, `otpToken`, etc.)
+appended. Fetch the message's raw HTML body (e.g. via `ms-graph`'s Graph client directly — `mail.js
+--show` strips tags and loses hrefs) and pull the `href` on the "View message" button — for LinkedIn
+that's the `messaging/thread/...` link, identifiable by `trk=...view_message_button` in the wrapped
+URL. Decode the wrapped `url=` query param and drop everything from the `?` onward (the tracking
+params aren't needed to open the thread), so what you hand Russell is a bare
+`https://www.linkedin.com/comm/messaging/thread/<id>` — not the `outlook.live.com` link to the
+notification email itself.
+
 Then, for every other pointer, **triage what you find with `triage.md`** (the same rubric the poller
 uses, in this engine/ folder), exactly as if that content had arrived as email:
 - **needs-you** → proceed through the steps below; stage any reply draft-only in that surface's composer,
