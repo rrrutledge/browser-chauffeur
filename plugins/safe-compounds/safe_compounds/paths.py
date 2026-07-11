@@ -8,6 +8,7 @@ import itertools
 import json
 import os
 import re
+import tempfile
 
 from .log import log_debug
 
@@ -91,12 +92,17 @@ def is_path_within_cwd(path):
 
 
 def is_safe_read_location(path):
-    """True if `path` is under the user's home, Downloads, Desktop or Documents
-    — locations safe to read from as a copy source."""
+    """True if `path` is under the user's home, Downloads, Desktop, Documents,
+    or a system/session temp dir — locations safe to read from as a copy
+    source. These are read-only checks: the destination-containment check
+    (_dest_allowed) is what keeps the write side safe, so this only needs to
+    keep sensitive files (SSH keys, credentials, tokens) out of the source
+    set, not lock the source down to "inside the repo"."""
     try:
         home = os.path.expanduser('~')
-        for sub in ('downloads', 'desktop', 'documents', ''):
-            base = os.path.join(home, sub) if sub else home
+        bases = [os.path.join(home, sub) if sub else home for sub in ('downloads', 'desktop', 'documents', '')]
+        bases += [tempfile.gettempdir(), '/tmp']
+        for base in bases:
             if path_under(path, base, resolve_cwd=False) or path_under(_abs_against_cwd(path), base, resolve_cwd=False):
                 return True
         return False
