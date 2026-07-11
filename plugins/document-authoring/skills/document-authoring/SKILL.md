@@ -283,7 +283,8 @@ Don't invent emoji outside this palette, don't stack them, and skip them entirel
 - **Email reply flow**: always **Reply All**, never plain Reply, to preserve every CC.
   Reply into an existing thread on the same topic rather than composing new, even when it isn't a direct response to any single message.
 - **Email sign-off**: just `Russ` on its own line — no valediction before it.
-  **On an account with an auto-appended signature** (e.g. the ISC Gmail account), skip the sign-off line entirely, and end the body on its last sentence with no closing pleasantry ("Best,", "Wishing you a great week!") before the signature block.
+  **On an account with an auto-appended signature** (e.g. the ISC Gmail account), that full name/title/org block only auto-appends on a fresh, first-touch/cold email — skip the bare sign-off line there and end the body on its last sentence with no closing pleasantry ("Best,", "Wishing you a great week!") before the block.
+  On a **reply within an existing thread** on that same account, the auto-signature doesn't fire — close with the standard bare `Russ` line as usual, even on a short nudge.
 - **Email subject**: a short noun phrase, no trailing `?` even when the email asks a question.
 - **Energizing close**: on genuine good news, a positive progress update, confirmed enthusiasm, or onboarding a partner/sponsor, end with a brief forward-looking note ("Looking forward to it!") instead of a helper-offer tail.
   When onboarding a partner or sponsor, that close can be the concrete next step their deliverable unlocks.
