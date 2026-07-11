@@ -57,6 +57,16 @@ class Provider(ProviderBase):
                                 kind="auth")
         return json.loads(res.stdout or "[]")
 
+    def still_in_inbox_ids(self):
+        res = run_node([self.mailjs, "--list-inbox", "--json", "--top=500"])
+        if res.returncode != 0:
+            return None
+        try:
+            msgs = json.loads(res.stdout or "[]")
+        except ValueError:
+            return None
+        return {m["id"] for m in msgs if m.get("id")}
+
     def stable_id(self, item):
         # Timestamp to the second (plus ms when Graph supplies them) so two messages from the same
         # sender with the same opening subject in the same minute don't collide and silently drop one.
