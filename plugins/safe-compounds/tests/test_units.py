@@ -14,8 +14,9 @@ from safe_compounds.shell import (  # noqa: E402
 from safe_compounds import config  # noqa: E402
 from safe_compounds.commands import (  # noqa: E402
     is_git_command_safe, is_curl_safe, is_sed_command_safe, is_start_safe, is_taskkill_safe,
-    strip_safe_redirections,
+    strip_safe_redirections, check_cwd_file_command,
 )
+from safe_compounds.paths import is_safe_read_location  # noqa: E402
 from safe_compounds import procs  # noqa: E402
 from safe_compounds.mcp import classify_mcp_tool  # noqa: E402
 from safe_compounds.enforce import detect_complex_bash, detect_simple_expansion, detect_cd_compound, enforce_bash  # noqa: E402
@@ -480,6 +481,37 @@ class TestMissingScriptBlocks(object):
         # AI is disabled so the verdict is undecided (falls through to a plain
         # prompt), but the missing-script block must not have fired.
         assert get_block_reason() is None
+
+
+class TestSensitiveReadDirsExcluded:
+    """Credential/token stores under home must never be treated as a safe
+    cp/mv/ln source, even though home itself is otherwise trusted."""
+
+    def test_ssh_dir_is_not_safe(self):
+        assert is_safe_read_location(os.path.expanduser("~/.ssh/id_rsa")) is False
+
+    def test_aws_credentials_not_safe(self):
+        assert is_safe_read_location(os.path.expanduser("~/.aws/credentials")) is False
+
+    def test_powershell_profile_not_safe(self):
+        path = os.path.expanduser("~/Documents/PowerShell/Microsoft.PowerShell_profile.ps1")
+        assert is_safe_read_location(path) is False
+
+    def test_claude_ms_graph_token_cache_not_safe(self):
+        assert is_safe_read_location(os.path.expanduser("~/.claude/ms-graph/token-cache.json")) is False
+
+    def test_ordinary_home_file_still_safe(self):
+        assert is_safe_read_location(os.path.expanduser("~/notes.txt")) is True
+
+    def test_cp_from_ssh_dir_into_cwd_not_approved(self, tmp_path):
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        src = os.path.expanduser("~/.ssh/id_rsa")
+        assert check_cwd_file_command(f'cp "{src}" ".tmp/id_rsa"', "cp") is False
+
+    def test_cp_from_ordinary_home_file_into_cwd_approved(self, tmp_path):
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        src = os.path.expanduser("~/notes.txt")
+        assert check_cwd_file_command(f'cp "{src}" ".tmp/notes.txt"', "cp") is True
 
 
 class TestCdCompoundDetection:

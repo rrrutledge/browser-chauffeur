@@ -90,10 +90,34 @@ def is_path_within_cwd(path):
     return path_under(path, cwd)
 
 
+# Credential/token stores under home that must never be treated as a safe
+# cp/mv/ln source, even though they live under an otherwise-trusted base
+# (home itself, or Documents for the PowerShell profile).
+SENSITIVE_READ_DIRS = [
+    '.ssh', '.aws', '.azure', '.gnupg', '.docker', '.kube',
+    '.netrc', '.git-credentials', '.npmrc',
+    '.claude/ms-graph',
+    'Documents/PowerShell', 'Documents/WindowsPowerShell',
+]
+
+
+def _is_sensitive_read_path(path):
+    home = os.path.expanduser('~')
+    for rel in SENSITIVE_READ_DIRS:
+        base = os.path.join(home, *rel.split('/'))
+        if path_under(path, base, resolve_cwd=False) or path_under(_abs_against_cwd(path), base, resolve_cwd=False):
+            return True
+    return False
+
+
 def is_safe_read_location(path):
     """True if `path` is under the user's home, Downloads, Desktop or Documents
-    — locations safe to read from as a copy source."""
+    — locations safe to read from as a copy source. Excludes known
+    credential/token stores (SENSITIVE_READ_DIRS) even when they fall under
+    one of those otherwise-trusted bases."""
     try:
+        if _is_sensitive_read_path(path):
+            return False
         home = os.path.expanduser('~')
         for sub in ('downloads', 'desktop', 'documents', ''):
             base = os.path.join(home, sub) if sub else home
