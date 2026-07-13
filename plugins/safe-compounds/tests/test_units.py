@@ -484,6 +484,37 @@ class TestMissingScriptBlocks(object):
         assert get_block_reason() is None
 
 
+class TestSensitiveReadDirsExcluded:
+    """Credential/token stores under home must never be treated as a safe
+    cp/mv/ln source, even though home itself is otherwise trusted."""
+
+    def test_ssh_dir_is_not_safe(self):
+        assert is_safe_read_location(os.path.expanduser("~/.ssh/id_rsa")) is False
+
+    def test_aws_credentials_not_safe(self):
+        assert is_safe_read_location(os.path.expanduser("~/.aws/credentials")) is False
+
+    def test_powershell_profile_not_safe(self):
+        path = os.path.expanduser("~/Documents/PowerShell/Microsoft.PowerShell_profile.ps1")
+        assert is_safe_read_location(path) is False
+
+    def test_claude_ms_graph_token_cache_not_safe(self):
+        assert is_safe_read_location(os.path.expanduser("~/.claude/ms-graph/token-cache.json")) is False
+
+    def test_ordinary_home_file_still_safe(self):
+        assert is_safe_read_location(os.path.expanduser("~/notes.txt")) is True
+
+    def test_cp_from_ssh_dir_into_cwd_not_approved(self, tmp_path):
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        src = os.path.expanduser("~/.ssh/id_rsa")
+        assert check_cwd_file_command(f'cp "{src}" ".tmp/id_rsa"', "cp") is False
+
+    def test_cp_from_ordinary_home_file_into_cwd_approved(self, tmp_path):
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        src = os.path.expanduser("~/notes.txt")
+        assert check_cwd_file_command(f'cp "{src}" ".tmp/notes.txt"', "cp") is True
+
+
 class TestSafeReadLocation:
     def test_system_temp_dir_is_safe(self, tmp_path, monkeypatch):
         monkeypatch.setattr(tempfile, "gettempdir", lambda: str(tmp_path))
