@@ -2,6 +2,7 @@
 prone to subtle regression during refactoring."""
 import os
 import sys
+import tempfile
 
 TESTS_DIR = os.path.dirname(os.path.abspath(__file__))
 PLUGIN_DIR = os.path.dirname(TESTS_DIR)
@@ -512,6 +513,31 @@ class TestSensitiveReadDirsExcluded:
         os.environ['CLAUDE_CWD'] = str(tmp_path)
         src = os.path.expanduser("~/notes.txt")
         assert check_cwd_file_command(f'cp "{src}" ".tmp/notes.txt"', "cp") is True
+
+
+class TestSafeReadLocation:
+    def test_system_temp_dir_is_safe(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(tempfile, "gettempdir", lambda: str(tmp_path))
+        assert is_safe_read_location(str(tmp_path / "foo.html")) is True
+
+    def test_posix_tmp_prefix_is_safe(self):
+        assert is_safe_read_location("/tmp/cdc-wb.html") is True
+
+    def test_path_outside_home_and_temp_is_not_safe(self):
+        assert is_safe_read_location("C:/Windows/System32/drivers/etc/hosts") is False
+
+
+class TestCpFromSystemTemp:
+    def test_cp_from_system_temp_into_cwd_approved(self, tmp_path, monkeypatch):
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        monkeypatch.setattr(tempfile, "gettempdir", lambda: str(tmp_path / "systmp"))
+        src = tmp_path / "systmp" / "cdc-wb.html"
+        assert check_cwd_file_command(f'cp "{src}" ".tmp/cdc-wb.html"', "cp") is True
+
+    def test_cp_from_outside_home_and_temp_into_cwd_not_approved(self, tmp_path):
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        src = "C:/Windows/System32/drivers/etc/hosts"
+        assert check_cwd_file_command(f'cp "{src}" ".tmp/hosts"', "cp") is False
 
 
 class TestCdCompoundDetection:
