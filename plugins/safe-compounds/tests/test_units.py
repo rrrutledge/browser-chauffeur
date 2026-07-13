@@ -2,6 +2,7 @@
 prone to subtle regression during refactoring."""
 import os
 import sys
+import tempfile
 
 TESTS_DIR = os.path.dirname(os.path.abspath(__file__))
 PLUGIN_DIR = os.path.dirname(TESTS_DIR)
@@ -14,8 +15,9 @@ from safe_compounds.shell import (  # noqa: E402
 from safe_compounds import config  # noqa: E402
 from safe_compounds.commands import (  # noqa: E402
     is_git_command_safe, is_curl_safe, is_sed_command_safe, is_start_safe, is_taskkill_safe,
-    strip_safe_redirections,
+    strip_safe_redirections, check_cwd_file_command,
 )
+from safe_compounds.paths import is_safe_read_location  # noqa: E402
 from safe_compounds import procs  # noqa: E402
 from safe_compounds.mcp import classify_mcp_tool  # noqa: E402
 from safe_compounds.enforce import detect_complex_bash, detect_simple_expansion, detect_cd_compound, enforce_bash  # noqa: E402
@@ -480,6 +482,31 @@ class TestMissingScriptBlocks(object):
         # AI is disabled so the verdict is undecided (falls through to a plain
         # prompt), but the missing-script block must not have fired.
         assert get_block_reason() is None
+
+
+class TestSafeReadLocation:
+    def test_system_temp_dir_is_safe(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(tempfile, "gettempdir", lambda: str(tmp_path))
+        assert is_safe_read_location(str(tmp_path / "foo.html")) is True
+
+    def test_posix_tmp_prefix_is_safe(self):
+        assert is_safe_read_location("/tmp/cdc-wb.html") is True
+
+    def test_path_outside_home_and_temp_is_not_safe(self):
+        assert is_safe_read_location("C:/Windows/System32/drivers/etc/hosts") is False
+
+
+class TestCpFromSystemTemp:
+    def test_cp_from_system_temp_into_cwd_approved(self, tmp_path, monkeypatch):
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        monkeypatch.setattr(tempfile, "gettempdir", lambda: str(tmp_path / "systmp"))
+        src = tmp_path / "systmp" / "cdc-wb.html"
+        assert check_cwd_file_command(f'cp "{src}" ".tmp/cdc-wb.html"', "cp") is True
+
+    def test_cp_from_outside_home_and_temp_into_cwd_not_approved(self, tmp_path):
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        src = "C:/Windows/System32/drivers/etc/hosts"
+        assert check_cwd_file_command(f'cp "{src}" ".tmp/hosts"', "cp") is False
 
 
 class TestCdCompoundDetection:
