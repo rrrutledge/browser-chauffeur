@@ -5,6 +5,15 @@ description: Read/draft/clear a personal Gmail or Google Workspace mailbox via I
 
 # Gmail — Personal/Workspace Mail via IMAP + App Password
 
+**A native `mcp__claude_ai_Gmail__*` connector (Claude's built-in Gmail integration) may also be
+connected to this same mailbox** — for the ISC account (`russ@innersourcecommons.org`), it is. That
+connector has no signature handling and no way to delete a draft it created. **Always draft and reply
+through this skill's `gmail.js`, never the native connector** — `GMAIL_SIGNATURE_HTML` places the
+signature correctly (after the body, before the quoted original) on every `--reply`/`--draft-new`, and
+`--delete-draft` cleans up a stray or superseded draft. Reach for the native connector only for
+read-only lookups this skill doesn't cover (e.g. `search_threads` across accounts this skill isn't
+configured for) — never for staging a draft on an account this skill already serves.
+
 Read and write a Gmail or Google Workspace mailbox directly over **IMAP** with a **16-character
 App Password** — no OAuth client, no Google Cloud project, no browser automation. Built on:
 
