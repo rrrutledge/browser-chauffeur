@@ -41,13 +41,14 @@ Russell decided in advance — do the action without presenting or waiting, then
       them: invoke browser-chauffeur to run `chauffeur.py --close-owned`, which closes only the
       tabs your session opened (never the user's, never another session's). Cleaning up your own tabs
       here means they never reach the browser sweep.
-   2. **Your session tab** — the terminal's hosting PID is in the `CLAUDE_HOST_PID` environment variable
-      (set by the user's PowerShell profile, loaded automatically when this tab launched). Via the Bash
-      tool, first reveal the literal value (`echo $CLAUDE_HOST_PID`), then run `taskkill /PID <that number>
-      /T /F` with the number written out literally — not the variable reference — since the auto-approval
-      hook only recognizes a literal PID. This kills the session and its tab together. If the variable is
-      unset (a session launched without loading the profile), just stop normally — don't hunt for the
-      process.
+   2. **Your session tab** — via the Bash tool, run `python <skill>/scripts/close-session.py`.
+      It ends the session the way a clean exit would: it fires the SessionEnd hook event first
+      (so the live-session registry drops this session instead of listing it as crash-interrupted
+      for resume-sessions to resurrect), then kills this tab's process tree (the hosting PID from
+      `CLAUDE_HOST_PID`, set by the user's PowerShell profile when this tab launched).
+      Never raw-`taskkill` the host PID — a force-killed session dies before SessionEnd can fire.
+      If the script reports `CLAUDE_HOST_PID` is unset (a session launched without loading the
+      profile), just stop normally — don't hunt for the process.
 
    This whole step is **auto-handle only** — needs-you items stay open for the user (see §6 for how they
    close their browser tabs).
@@ -141,9 +142,9 @@ to see, close the tab silently:
    `node <skill>/scripts/seen-state.js queue-add <runtime_dir> <source> <id> <path to items/<id>.json>`
 4. **Write `.done` immediately** with a one-line reason (e.g.
    "fyi: spam digest — both messages genuine spam, auto-discarded by Google").
-5. **Close this tab** — via the Bash tool, reveal the literal PID (`echo $CLAUDE_HOST_PID`) and run
-   `taskkill /PID <that number> /T /F` with the number written out literally. If `CLAUDE_HOST_PID` is
-   unset, stop normally.
+5. **Close this tab** — via the Bash tool, run `python <skill>/scripts/close-session.py`
+   (fires the SessionEnd event, then kills the tab — see the auto-handle branch's close-up step).
+   If it reports `CLAUDE_HOST_PID` unset, stop normally.
 
 Do not present anything to Russell. The digest is how he learns about it.
 
@@ -236,8 +237,8 @@ before the `queue-add` — the same re-tag §2c makes for an FYI downgrade.** Th
 digest's **"Auto-handled"** section (already done, dismiss-only), so a finished item is shown as handled
 rather than resurfacing as a live needs-you. Queue it via
 `node <skill>/scripts/seen-state.js queue-add <runtime_dir> <source> <id> <path to items/<id>.json>`,
-write `.done` immediately, and close the tab (reveal the literal PID with `echo $CLAUDE_HOST_PID`, then
-`taskkill /PID <that number> /T /F`) instead of presenting-and-waiting.
+write `.done` immediately, and close the tab (`python <skill>/scripts/close-session.py`) instead of
+presenting-and-waiting.
 
 **This is judgment, not a checklist — hold the same bar the other silent-resolution cases in this file
 already use: unsure → stay needs-you and present as normal (§1).** Self-close here only when ALL of
@@ -258,8 +259,8 @@ is narrower than it looks, and reaches only the cases above.
 Items you resolve WITHOUT surfacing them for the user's attention — a pointer re-triaged to fyi/junk
 (§2b), a content re-triage to FYI (§2c), a situational no-op close (nothing to do right now), or
 completed work that left nothing for Russell (§6a) — likewise write `.done` at once AND close the tab
-(`echo $CLAUDE_HOST_PID`, then `taskkill /PID <that number> /T /F`). A silently-resolved tab is just
-noise in the taskbar; close it.
+(`python <skill>/scripts/close-session.py`). A silently-resolved tab is just noise in the taskbar;
+close it.
 
 **Close your browser tabs when you and the user are truly finished with the item.** If you opened tabs in
 the browser (read a card, drove a web composer, clicked through a link), close them as your last act once
