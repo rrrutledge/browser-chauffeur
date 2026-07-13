@@ -4,6 +4,11 @@ Shared by all drainer sources (email, Teams, Slack, Trello outreach, …) on any
 worker prompt should point here and supply only its **source-specific bits** (where the item data is,
 and how to ADVANCE it). Everything below is identical across sources.
 
+Throughout this file, `<skill>` means this drainer skill's root folder — the directory containing
+the `engine/` folder this file lives in. Your seed prompt pointed you at
+`<skill>/engine/worker-core.md` by absolute path, so you already have it; substitute it into the
+`<skill>/scripts/...` commands below.
+
 You are working ONE item to completion in your own context. **Draft-only outbound; never send/post.**
 (Sending a reviewed draft is a separate, interactive-only step the user triggers later in the top-level
 session on an explicit per-message instruction — it never happens inside a worker or an autonomous drain.)
