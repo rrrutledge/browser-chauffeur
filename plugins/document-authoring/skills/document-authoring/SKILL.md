@@ -68,6 +68,8 @@ Don't present a menu of options or stack a numbered list of questions.
   This specifies the change's real-world effect — keep it separate from pitching why your cause deserves it.
 - **If you have options to resolve, pick the one you'd recommend and ask about that** — let the reader counter if they disagree.
   This applies even to a single sentence with an embedded "or"; cut it to the one ask you actually want and let them redirect.
+  **Exception — when you're genuinely unsure what to do next, ask for their read instead of proposing an action.**
+  State the impasse plainly ("I don't know here at all"), lay out the live options as open questions rather than a decision you've made, and end on their judgment. This is for soliciting advice from someone closer to the situation, not for stacking multiple requests-for-action onto them.
 - **Flag an ask buried after dense content with a light lead-in** — Russell's go-to is "One small ask -". But when the message is short and the thread already carries the context, cut both the context and the lead-in and let the bare question stand.
 - **Frame the ask to match the recipient's role.**
   When their job is to route you to a third party (find a volunteer, recommend a speaker), make the asks conditional on that handoff rather than personal requests to them — and don't narrate the follow-up's timing.
