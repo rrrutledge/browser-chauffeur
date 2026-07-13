@@ -65,8 +65,23 @@ instructions: |-
 
   Sessions found this way go straight to the launch list (Step 4) — pull `title` and
   `last_user_text` for the confirmation message by reading the tail of that session's transcript
-  the same way Step 3 does, but do not apply any of Step 3's exclusion rules to them; the registry
-  already proved they were still open.
+  the same way Step 3 does, but do not apply any of Step 3's `last_user_text` exclusion rules to
+  them; the registry already proved they were still open.
+
+  ### The one check that DOES apply to registry entries: the self-close tail check
+
+  A session that ends itself by force-killing its own tab dies before the harness can fire
+  `SessionEnd`, so its registry entry survives even though the close was deliberate.
+  The proper self-close primitive (`scripts/end-session.py`, next to the launcher) fires the
+  SessionEnd hooks first and can't leave this residue, but entries written before a session's
+  tooling adopted it — or by any independently-authored force-kill — still can.
+  So before launching a registry-confirmed session, scan its last ~30 transcript entries: a
+  `taskkill /PID <pid> /T /F`, or a `close-session.py` / `end-session.py` invocation, among the
+  session's final actions means it closed itself on purpose.
+  Do not launch it, and delete its entry from `live-sessions.json` so later scans don't
+  re-litigate it.
+  (Resuming such a session is worse than a false positive: it re-registers on `SessionStart`,
+  and if it force-kills itself again the stale entry reappears on every future run.)
 
   Registry entries are self-healing: resuming a session re-fires `SessionStart` (re-adding it),
   and a later clean exit fires `SessionEnd` (removing it) — so nothing needs manual pruning.
@@ -155,6 +170,9 @@ instructions: |-
   - Automated triage prompt: last_user_text starts with `You are the drainer poller's triage step`
     (a self-contained classification job that completes and ends on its own — never a live
     conversation to resume)
+  - Deliberate self-close: the transcript tail shows the session killing its own tab — the same
+    self-close tail check Step 2 applies to registry entries (a `taskkill /PID <pid> /T /F` or a
+    `close-session.py` / `end-session.py` invocation among its final actions)
 
   Do **not** exclude sessions whose last message is a `<task-notification>` block. A pending
   task-notification means a background action (a Monitor watch, a browser-chauffeur command, etc.)
@@ -215,4 +233,10 @@ instructions: |-
     makes Step 2 authoritative instead of another heuristic. It only reflects sessions started
     since the hook was installed — plan on the fallback scan doing more of the work until the
     registry has enough history built up.
+  - `scripts/end-session.py` (next to the launcher) is the correct way for a session to close its
+    own tab: it fires this plugin's SessionEnd hooks with the same payload the harness would send,
+    then taskkills the hosting process tree. Anything that instructs a session to self-close
+    should route through it (the drainer forwards via its own thin resolver,
+    `close-session.py`) — a raw `taskkill` of the host PID skips SessionEnd and strands a
+    registry entry.
 ---
