@@ -22,6 +22,11 @@
 // Mark read:     node slack.js --mark --channel=<C> --ts=<ts> [--thread-ts=<tts>]
 //                (conversations.mark up to <ts>, or subscriptions.thread.mark when --thread-ts is given —
 //                 the conversation/thread's "gone"; reversible, never deletes)
+// Find DM:       node slack.js --find-dm=<name substring> [--json]
+//                (users.list matched against real name, then conversations.open per match to resolve the
+//                 1:1 DM channel id — conversations.open only opens/returns the existing DM, it never
+//                 sends anything; use the returned channel id with --history to read a named contact's
+//                 DM before --list-unread would show anything, e.g. a reply Russell already read)
 
 const TOKEN = process.env.SLACK_BOT_TOKEN;
 const COOKIE = process.env.SLACK_COOKIE_D;
@@ -327,6 +332,30 @@ async function check() {
   console.log(`Signed in as ${r.user} (${r.team}, team ${r.team_id}). user_id ${r.user_id}.`);
 }
 
+async function findDm() {
+  const query = String(args['find-dm'] || '').toLowerCase();
+  if (!query) throw new Error('--find-dm requires a name, e.g. --find-dm="Jane Doe"');
+  const matches = [];
+  let cursor = '';
+  do {
+    const r = await call('users.list', { limit: '200', cursor });
+    for (const u of r.members || []) {
+      if (u.deleted || u.is_bot || u.id === 'USLACKBOT') continue;
+      const name = u.real_name || (u.profile && u.profile.real_name) || u.name || '';
+      if (name.toLowerCase().includes(query)) matches.push({ id: u.id, name });
+    }
+    cursor = (r.response_metadata && r.response_metadata.next_cursor) || '';
+  } while (cursor);
+  const out = [];
+  for (const u of matches) {
+    const r = await call('conversations.open', { users: u.id });
+    out.push({ userId: u.id, name: u.name, channel: (r.channel && r.channel.id) || '' });
+  }
+  if (args.json) { console.log(JSON.stringify(out, null, 2)); return; }
+  if (!out.length) { console.log(`No user matching "${args['find-dm']}".`); return; }
+  for (const o of out) console.log(`${o.name} (${o.userId}) -> DM channel ${o.channel}`);
+}
+
 (async () => {
   requireAuth();
   if (args.check) return await check();
@@ -335,5 +364,6 @@ async function check() {
   if (args.history) return await history();
   if (args.react) return await react();
   if (args.mark) return await mark();
-  throw new Error('Specify --check, --list-unread, --show, --history, --react, or --mark');
+  if (args['find-dm']) return await findDm();
+  throw new Error('Specify --check, --list-unread, --show, --history, --react, --mark, or --find-dm');
 })().catch(e => { console.error('Error:', e.message); process.exit(1); });
