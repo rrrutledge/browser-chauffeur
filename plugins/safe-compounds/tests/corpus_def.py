@@ -92,6 +92,12 @@ CASES = [
     # MSYS/Git-Bash doubles the leading slash (//PID, //T, //F) to escape its
     # path-mangling — same negative case, doubled-slash form.
     {"id": "taskkill_bogus_pid_msys", "tool": "Bash", "command": "taskkill //PID 999999 //T //F", "expect": "PROMPT"},
+    # The drainer's self-close primitive (fires SessionEnd, then kills its own
+    # tab) must auto-approve via the trusted plugin-cache script dir — a worker
+    # that hits a prompt here sits open forever instead of closing silently.
+    {"id": "close_session_plugin_script", "tool": "Bash",
+     "command": "python \"C:/Users/x/.claude/plugins/cache/rrrutledge-claude-code-plugins/drainer/1.39.0/skills/drainer/scripts/close-session.py\"",
+     "expect": "ALLOW"},
 
     # --- enforcement (can't statically validate -> rewrite) -----------------
     {"id": "heredoc", "tool": "Bash", "command": "cat << EOF\nhi\nEOF", "expect": "BLOCK"},
