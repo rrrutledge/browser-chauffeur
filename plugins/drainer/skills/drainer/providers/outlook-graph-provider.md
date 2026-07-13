@@ -44,12 +44,14 @@ message id.
 `node mail.js --delete=<messageId>` — moves the message to **Archive** (reversible; keeps it searchable
 later; narrate it). Never a permanent purge.
 
-## JUNK-LEARNING (step 3 — Outlook.com-specific)
-After exhausting unsubscribe and source-app options (see `email-base.md`): propose an **Outlook.com
-inbox rule**, using the **`mail-filters`** skill to choose the phrase and shape (append the type phrase
-to the right consolidated bucket, keep the sender-domain exclusion whitelist that fences every broad
-bucket, and pin any body match to its sender). Create it via `ms-graph`'s
-`mail.js --append-rule`/`--create-rule` once Russell OKs the phrase.
+## JUNK-LEARNING (the first-reach rule — Outlook.com-specific)
+The first-reach stop (per `email-base.md`'s rule-first order): an **Outlook.com inbox rule**, using the
+**`mail-filters`** skill to choose the phrase and shape — append the type phrase to the right
+consolidated bucket and keep the sender-domain exclusion whitelist that fences every broad bucket. A
+**body** match is allowed and often needed when the subject is too thin to be both specific and
+cross-company: use a distinctive automated-boilerplate phrase (fenced by the whitelist) so it catches the
+type from any sender; pin it to a single sender only when the phrase isn't distinctive enough to stand on
+its own. Create it via `ms-graph`'s `mail.js --append-rule`/`--create-rule` once Russell OKs the phrase.
 
 ## DRAFT-MODE CLI commands
 Follow all voice and reply-vs-fresh rules in `email-base.md`, then use these Graph commands:

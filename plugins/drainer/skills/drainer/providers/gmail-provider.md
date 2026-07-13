@@ -52,11 +52,12 @@ been dealt with, not discarded.
 message is still in the inbox or has already been archived — archive order relative to drafting no longer
 matters.
 
-## JUNK-LEARNING (step 3 — Gmail-specific)
-After exhausting unsubscribe and source-app options (see `email-base.md`): propose a **Gmail
-filter**, using the **`mail-filters`** skill to choose the phrase and shape (Gmail's fence is
-`subject:(…)` scoping so a footer phrase can't trigger the filter; `from:X subject:Y` for
-company-specific noise). Once Russell OKs the phrase, append it to the right mechanism bucket with the
+## JUNK-LEARNING (the first-reach rule — Gmail-specific)
+The first-reach stop (per `email-base.md`'s rule-first order): a **Gmail filter**, using the
+**`mail-filters`** skill to choose the phrase and shape. Gmail scopes on `subject:(…)` so a *generic
+footer* phrase (one that also appears in wanted mail) can't trigger the filter — but a **distinctive**
+body phrase that only shows up in this junk type is fair game via `--add-body`, and it's often what you
+need when the subject is too thin. Use `from:X subject:Y` for company-specific noise. Once Russell OKs the phrase, append it to the right mechanism bucket with the
 **`gmail`** skill's `filters.js` (the OAuth settings path):
 `node filters.js --append-filter=<id> --add-subject='"<phrase>"'` for a subject phrase, or `--add-body`
 for a body phrase — `--list-filters` first to find the bucket's id. Create a new bucket with

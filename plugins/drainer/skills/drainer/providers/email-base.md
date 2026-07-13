@@ -68,18 +68,19 @@ Pick the mode by who the message goes to:
 
 ## JUNK-LEARNING (shared priority order)
 
-Stop this junk arriving again — propose, never apply without the user's OK. Work top-down; only fall
-through when the step above isn't available:
+Stop this junk arriving again — propose, never apply without the user's OK.
+**Reach for a rule first.**
+A rule is an asset that pays off against every future sender; an unsubscribe is a one-time transaction with a single company that never builds the rule set.
+So the order is rule → source-app → unsubscribe:
 
-1. **Unsubscribe** — if the message carries an unsubscribe link (`List-Unsubscribe` header or a
-   footer link), propose using it. This is the cleanest stop.
-2. **Turn it off at the source app** — if there's no unsubscribe but the sender is an app whose
-   notifications the user controls (GitHub notification settings, LinkedIn email preferences, …),
-   propose adjusting that app's settings so the email is never sent.
-3. **Provider-specific filter/rule** — only when neither above applies. Defer to the **`mail-filters`**
-   skill for the breadth decision: it owns the phrase-selection craft (generalize from this one sample
-   to the type-level boilerplate phrase — broad enough to recur across senders, strict enough to never
-   bury wanted mail) and the per-platform create/delete mechanics. Propose the *type* phrase, not a
-   filter for this one sender; match the shape to the mailbox (Gmail subject-scoped vs Outlook
-   consolidated bucket); and once Russell OKs the phrase, create the filter (it is reversible,
-   searchable config). See your provider file for the platform pointer.
+1. **Build a type-level rule — the first reach.**
+   If this mail is a *class* you can capture with a general pattern, make the rule — it then catches this kind of mail from *every* sender, now and in the future, which is how the rule set compounds.
+   Defer to the **`mail-filters`** skill for the phrase craft: generalize from this one sample to a type-level phrase broad enough to recur across senders, strict enough to never bury wanted mail, fenced by the sender-domain whitelist.
+   **The subject is often too thin** to be both specific enough and cross-company — the **body** holds far more text, so hunt there for a distinctive automated-boilerplate phrase (a "you're receiving this because…" line, a bulk-sender footer marker, a mailing-platform signature) that reliably marks mail of this type.
+   Match the shape to the mailbox — Outlook can match on the body, Gmail scopes on the subject (see your provider file) — and once Russell OKs the phrase, create the rule (reversible, searchable config).
+2. **Turn it off at the source app.**
+   When the sender is an app whose notification settings the user controls (GitHub notification settings, LinkedIn email preferences, …), tuning it off there stops the mail at its source.
+3. **Unsubscribe — the fallback.**
+   Only when the mail is genuinely idiosyncratic to one sender and no type-level pattern — subject *or* body — fits.
+   Unsubscribe is one-company-only, so it's the last reach, not the first.
+   If unsubscribe is unavailable too (dead link, no `List-Unsubscribe` header) and the sender emails rarely, just archive the message and wait to see if it recurs.
