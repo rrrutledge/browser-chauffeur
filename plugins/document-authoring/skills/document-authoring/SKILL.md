@@ -212,6 +212,8 @@ A single clear sentence ending in a question is usually the whole message — re
   Cut reassurance about a side detail the recipient only flagged in passing.
 - **Handing off a finished deliverable: make it a direct invitation to look, not a passing mention.**
   Give the artifact its own sentence and invite the reader to open it, rather than burying it in a subordinate clause.
+- **Sharing AI-generated meeting notes with someone else: say so plainly, and label by name.**
+  Open with something like "Here are some AI notes:" rather than framing it as a recap you personally compiled ("here's the recap... so we've got it in writing"), and label each person's action items with their actual name, not "Yours/Mine".
 
 **Follow-up nudges** — the thread already holds the history, so nudge lean:
 
