@@ -54,10 +54,12 @@ matters.
 
 ## JUNK-LEARNING (the first-reach rule — Gmail-specific)
 The first-reach stop (per `email-base.md`'s rule-first order): a **Gmail filter**, using the
-**`mail-filters`** skill to choose the phrase and shape. Gmail scopes on `subject:(…)` so a *generic
-footer* phrase (one that also appears in wanted mail) can't trigger the filter — but a **distinctive**
-body phrase that only shows up in this junk type is fair game via `--add-body` — reach for it when the
-subject doesn't hand you a clean phrase. Use `from:X subject:Y` for company-specific noise. Once Russell OKs the phrase, append it to the right mechanism bucket with the
+**`mail-filters`** skill to choose the phrase and shape. A Gmail filter is a raw search query, and a bare
+quoted phrase in it matches the **whole message, body included** (`--add-body`) — so body matching is
+fully supported. Wrapping a phrase in `subject:(…)` (`--add-subject`) is the *fence* that scopes it to the
+subject, which you use to keep a phrase that also appears in wanted mail (a generic footer line) from
+triggering. So scope to the subject when the phrase isn't distinctive, and match the body when it is. Use
+`from:X subject:Y` for company-specific noise. Once Russell OKs the phrase, append it to the right mechanism bucket with the
 **`gmail`** skill's `filters.js` (the OAuth settings path):
 `node filters.js --append-filter=<id> --add-subject='"<phrase>"'` for a subject phrase, or `--add-body`
 for a body phrase — `--list-filters` first to find the bucket's id. Create a new bucket with

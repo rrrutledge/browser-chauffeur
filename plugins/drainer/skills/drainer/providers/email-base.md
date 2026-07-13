@@ -77,7 +77,7 @@ So the order is rule → source-app → unsubscribe:
    If this mail is a *class* you can capture with a general pattern, make the rule — it then catches this kind of mail from *every* sender, now and in the future, which is how the rule set compounds.
    Defer to the **`mail-filters`** skill for the phrase craft: generalize from this one sample to a type-level phrase broad enough to recur across senders, strict enough to never bury wanted mail, fenced by the sender-domain whitelist.
    **Start with the subject** — it's often very specific about exactly what the mail is, and a clean subject phrase makes the simplest rule. If the subject won't give you one that's both specific enough and cross-company, **give the body a thorough look**: it holds far more text and usually a distinctive automated-boilerplate phrase (a "you're receiving this because…" line, a bulk-sender footer marker, a mailing-platform signature) that reliably marks mail of this type.
-   Match the shape to the mailbox — Outlook can match on the body, Gmail scopes on the subject (see your provider file) — and once Russell OKs the phrase, create the rule (reversible, searchable config).
+   Match the shape to the mailbox — **both Outlook and Gmail can match on the body as well as the subject**; the difference is the fencing convention, not the capability (see your provider file) — and once Russell OKs the phrase, create the rule (reversible, searchable config).
 2. **Turn it off at the source app.**
    When the sender is an app whose notification settings the user controls (GitHub notification settings, LinkedIn email preferences, …), tuning it off there stops the mail at its source.
 3. **Unsubscribe — the fallback.**
