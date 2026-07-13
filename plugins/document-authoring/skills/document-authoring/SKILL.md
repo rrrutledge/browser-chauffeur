@@ -285,6 +285,7 @@ Don't invent emoji outside this palette, don't stack them, and skip them entirel
 
 **`1on1` — private direct chat or email reply:**
 - **Email greeting**: run it into the first sentence with ` - ` — "Hi [Name] - thanks and totally makes sense.", not "Hi [Name]," on its own line followed by a new paragraph.
+  **Exception — replying to a small named group (e.g. "Hi both"):** keep it a standalone line, own paragraph below, not run into the sentence.
 - **Email reply flow**: always **Reply All**, never plain Reply, to preserve every CC.
   Reply into an existing thread on the same topic rather than composing new, even when it isn't a direct response to any single message.
 - **Email sign-off**: just `Russ` on its own line — no valediction before it.
