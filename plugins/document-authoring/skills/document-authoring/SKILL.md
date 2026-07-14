@@ -231,7 +231,7 @@ A single clear sentence ending in a question is usually the whole message — re
 - **On a sent deliverable, confirm receipt, not review, and release the timeline** — "did you get it? Look at it on whatever schedule works", not "did you get a chance to look at it?"
 - **On unanswered outreach with no attachment, use a plain open prod with a "let me know" close** — "wanted to ask again about this. Let me know what you think." Don't use receipt-confirm framing here.
 - **When a specific factual question went unanswered, restate that exact question** as a direct yes/no rather than a generic check-in; pair it with an explicit release if there's a plausible internal reason for the delay.
-- **When more than one ask is still open, nudge on all of them**, not just one.
+- **When more than one ask is still open, nudge on all of them**, not just one — and phrase each as its own direct question ("Is X? What's Y?"), not one compound sentence joined by "and".
 - **Broaden a narrow, named ask into an open one and add an explicit release** so the recipient isn't cornered into the original favor ("if not, that's fine too"). Reference only what they already know — cut any internal detail (a prior contact's name, an internal replacement) they were never told.
   A genuine personal aside can open or close the nudge.
 
@@ -258,7 +258,7 @@ A single clear sentence ending in a question is usually the whole message — re
 - **Confirm understanding with a short question** — "Let me know if I've got that right - one codebase supports two Solutions?"
 - **Close with "let me know"** — a signature phrase used constantly.
   Reach for it over near-variants ("just say the word" → "just let me know").
-- **Light, genuine appreciation** — "Thanks!", "Thank you!", not "Thank you so much!!!". Thank once; if you thanked at the open, don't also close with "Thanks!" But a warm sponsor/partner email that didn't thank at the open gets a single closing "Thank you!" above the sign-off — not a helper tail.
+- **Light, genuine appreciation** — "Thanks!", "Thank you!", not "Thank you so much!!!". Thank once; if you thanked at the open, don't also close with "Thanks!" But a warm sponsor/partner email — or a nudge asking someone for a professional favor (e.g. HR, a former employer) — that didn't thank at the open gets a single closing "Thank you!" above the sign-off — not a helper tail.
   In chat, thanking someone who's taking on work for you is likewise fine, not a tail.
   Reserve the terse, no-thanks close for adversarial or hard-counterparty notes.
 - **Thanking a volunteer or community contributor is the exception — warm and effusive is in-voice**, emoji and exclamation marks included ("Thank you for being with us 🙏🙏!!!!"). This is for people giving their time freely, not paid vendors, colleagues, or routine replies.
