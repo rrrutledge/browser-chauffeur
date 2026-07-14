@@ -36,8 +36,9 @@ presence:
   idle_threshold_seconds: 600
 
 # Continuous-keeper (run-poller.py) knobs.
-max_open_tabs: 3              # max concurrent needs-you worker tabs dispatched-but-not-cleared; a burst
-                             # beyond this is held and retried on later cycles (fail-safe throttle).
+target_open_tabs: 12          # target total live Claude Code tabs system-wide (worker tabs + the drainer
+                             # itself + any tab opened by hand) — dispatch as fast as possible below this,
+                             # hold and retry on later cycles once it's reached (fail-safe throttle).
 max_messages_per_cycle: 50   # how many inbox items each cycle enumerates (newest-first, NO time window);
                              # the keeper drains the whole inbox a batch at a time across cycles to zero.
 

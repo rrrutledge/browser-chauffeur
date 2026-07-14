@@ -26,7 +26,7 @@ spawn, record — is code. No AI re-implements the loop.
 
 1. **Presence-gate** (`scripts/presence.py`) — away/locked → exit silently (skipped under `--dry-run`).
 2. **Read config** from `<project>/.claude/drainer.local.md`: enabled providers, `runtime_dir`,
-   `max_open_tabs` (default 3), `max_messages_per_cycle` (default 50), `idle_threshold_seconds`.
+   `target_open_tabs` (default 12), `max_messages_per_cycle` (default 50), `idle_threshold_seconds`.
 3. **Per provider — enumerate the new:** call the provider's enumerate (for outlook-graph,
    `mail.js --list-inbox --json --top=<max_messages_per_cycle>` — read+unread, newest-first, **no time
    window**: the keeper drains the whole inbox a batch at a time across cycles). Compute each item's
@@ -37,14 +37,17 @@ spawn, record — is code. No AI re-implements the loop.
    `context.md`, **and each enabled provider's AUTO-HANDLE section** (so the model can recognize a
    standing-rule item; the rules live in the provider docs, surfaced here at triage time).
 5. **Dispatch** (deterministic):
-   - **needs-you** → if open worker tabs < `max_open_tabs`: capture to `items/<id>.json`, spawn a worker
-     tab (`spawn-tab.cmd`) **with an explicit model chosen by complexity** (`worker_model` for simple,
-     `worker_model_complex` for complex — so a worker never inherits a 1M-context session default the
-     account can't use), then record seen **after** the spawn succeeds. At the cap: leave it
-     **unrecorded** so a later cycle picks it up (throttle + fail-safe).
+   - **needs-you** → if live Claude Code tabs system-wide (`total_claude_tabs()` — every running
+     `claude.exe` process: drainer worker tabs, the drainer itself, and any tab Russell opened by hand)
+     is below `target_open_tabs`: capture to `items/<id>.json`, spawn a worker tab (`spawn-tab.cmd`)
+     **with an explicit model chosen by complexity** (`worker_model` for simple, `worker_model_complex`
+     for complex — so a worker never inherits a 1M-context session default the account can't use), then
+     record seen **after** the spawn succeeds. At the target: leave it **unrecorded** so a later cycle
+     picks it up (throttle + fail-safe). If the live-tab scan itself fails, the throttle is skipped
+     entirely for that cycle (fail-safe: never block dispatch just because tabs couldn't be counted).
    - **auto-handle** → capture + spawn a worker tab too (it needs a browser to act), but the worker runs
-     the standing rule autonomously and writes `.done` immediately, so it self-clears fast and is **not
-     counted against the needs-you cap** (`open_count` tracks only needs-you). It's recorded with its own
+     the standing rule autonomously and writes `.done` immediately, so it self-clears fast and is
+     dispatched unconditionally, never throttled by `target_open_tabs`. It's recorded with its own
      `auto-handle` triage; the worker takes worker-core's auto-handle branch (act → CLEAR → queue a
      digest entry → `.done` now) and never interrupts the user. The digest reports it under "Auto-handled."
    - **fyi / junk** → capture, add to the digest queue (`seen-state.js queue-add`), record seen.

@@ -55,10 +55,6 @@ def load_seen(runtime_dir, source):
         return {}
 
 
-def open_count(seen):
-    return sum(1 for r in seen.values() if r.get("triage") == "needs-you" and r.get("status") == "dispatched")
-
-
 # ---------------------------------------------------------------------------- provider health (observability)
 #
 # The poller runs headless under pythonw (stdout/stderr discarded), so a provider whose credential
@@ -459,6 +455,24 @@ def live_session_ids():
     return set(re.findall(r"session-id\s+([0-9a-fA-F-]{36})", out))
 
 
+def total_claude_tabs():
+    """Count of every running claude.exe process system-wide — drainer worker tabs, the drainer
+    itself, and any tab Russell opened by hand. The real constraint on dispatch speed is total open
+    Claude Code tabs competing for his attention, not how many the drainer itself has dispatched, so
+    target_open_tabs is checked against this instead of the drainer's own seen-state bookkeeping.
+
+    Returns None if the scan can't be run/parsed — the caller then SKIPS the tab-count throttle this
+    cycle (fail-safe: an inability to see processes never blocks dispatch, mirroring live_session_ids)."""
+    ps = "(Get-Process -Name claude -ErrorAction SilentlyContinue | Measure-Object).Count"
+    try:
+        out = subprocess.run(["powershell", "-NoProfile", "-Command", ps],
+                             capture_output=True, text=True, timeout=30,
+                             creationflags=NO_WINDOW).stdout
+        return int(out.strip())
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return None
+
+
 def _session_guid(runtime_dir, iid):
     """(guid, mtime) from the worker's seeds/<id>.prompt.txt.session, or (None, None). mtime ~ launch
     time, used to give a freshly-launched tab a grace period before liveness can reap it."""
@@ -619,8 +633,8 @@ def main():
     correctly_junked = [it for it in all_new if it["_source"] == "outlook-graph-junk" and it["_bucket"] == "junk"]
     needs_and_others = [it for it in all_new if not (it["_source"] == "outlook-graph-junk" and it["_bucket"] == "junk")]
 
-    # --- global open count across ALL sources ---
-    global_oc = sum(open_count(s) for s in seen_by_source.values())
+    # --- live tab count, checked against target_open_tabs (None -> scan failed, throttle skipped) ---
+    live_tabs = total_claude_tabs()
 
     # --- split: needs-you (globally ordered), auto-handle (own worker, no cap), others (digest) ---
     # Ordering across ALL sources is by date, most-recent first: the newest email / Slack message or
@@ -633,9 +647,9 @@ def main():
         reverse=True,
     )
     # auto-handle items get a worker tab too (they need a browser to act), but the worker executes
-    # autonomously and writes .done immediately — so they self-clear fast and are NOT counted against the
-    # needs-you cap (open_count only counts needs-you), letting a standing-rule action run without waiting
-    # behind tabs parked for Russell's attention.
+    # autonomously and writes .done immediately — so they self-clear fast and are dispatched unconditionally,
+    # never held behind the target_open_tabs throttle that gates needs-you below, letting a standing-rule
+    # action run without waiting behind tabs parked for Russell's attention.
     auto = [it for it in needs_and_others if it["_bucket"] == "auto-handle"]
     others = [it for it in needs_and_others if it["_bucket"] not in ("needs-you", "auto-handle")]
 
@@ -646,7 +660,8 @@ def main():
         print(f"DRY-RUN — {len(all_new)} new of {total_all} across {len(providers)} source(s) | "
               f"{counts['needs-you']} needs-you, {counts['auto-handle']} auto-handle, "
               f"{counts['fyi']} fyi, {counts['junk']} junk ({len(correctly_junked)} correctly-filed junk) | "
-              f"global cap {cfg['max_open_tabs']}, currently open {global_oc}")
+              f"target open tabs {cfg['target_open_tabs']}, currently open "
+              f"{live_tabs if live_tabs is not None else 'unknown'}")
         if auto:
             print("  auto-handle (autonomous worker, not capped):")
             for it in auto:
@@ -654,11 +669,11 @@ def main():
                 print(f"    [{it['_source']:20}] {it['_id']}  ->  spawn auto-worker [{it['_complexity']} -> {model}]\n"
                       f"        {it.get('received')} | {it.get('from')} | {it.get('subject')}")
         print("  needs-you (newest-first globally):")
-        oc = global_oc
+        tabs = live_tabs
         for it in needs:
-            held = oc >= cfg["max_open_tabs"]
-            if not held:
-                oc += 1
+            held = tabs is not None and tabs >= cfg["target_open_tabs"]
+            if not held and tabs is not None:
+                tabs += 1
             model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
             action = "HOLD (at cap)" if held else f"spawn worker [{it['_complexity']} -> {model}]"
             print(f"    [{it['_source']:20}] {it['_id']}  ->  {action}\n"
@@ -675,9 +690,9 @@ def main():
         return
 
     dispatched, auto_dispatched, held, queued = 0, 0, 0, 0
-    # auto-handle first: a worker that executes a standing rule and self-clears immediately. Not capped
-    # (open_count tracks only needs-you), recorded with its own triage so capture stamps the json and the
-    # worker takes worker-core's auto-handle branch (act -> CLEAR -> queue digest -> .done now).
+    # auto-handle first: a worker that executes a standing rule and self-clears immediately. Not throttled
+    # by target_open_tabs, recorded with its own triage so capture stamps the json and the worker takes
+    # worker-core's auto-handle branch (act -> CLEAR -> queue digest -> .done now).
     for it in auto:
         provider = prov[it["_source"]]
         iid = it["_id"]
@@ -689,14 +704,15 @@ def main():
     for it in needs:
         provider = prov[it["_source"]]
         iid = it["_id"]
-        if global_oc >= cfg["max_open_tabs"]:
+        if live_tabs is not None and live_tabs >= cfg["target_open_tabs"]:
             held += 1  # leave UNRECORDED -> retried next cycle (fail-safe throttle)
             continue
         model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
         json_file = provider.capture(it, iid, cfg["runtime_dir"])
         spawn_worker(iid, json_file, repo, cfg["runtime_dir"], model, cfg["local_dir"])
         seen_state("record", cfg["runtime_dir"], it["_source"], iid, "needs-you")
-        global_oc += 1
+        if live_tabs is not None:
+            live_tabs += 1
         dispatched += 1
     for it in others:
         provider = prov[it["_source"]]
@@ -720,7 +736,7 @@ def main():
 
     print(f"dispatched {dispatched} worker tab(s), {auto_dispatched} auto-handle worker(s), "
           f"queued {queued} for digest, {correctly_junked_count} correctly-filed junk (no action), "
-          f"held {held} at global cap of {cfg['max_open_tabs']}. "
+          f"held {held} at target open tabs of {cfg['target_open_tabs']}. "
           f"Poller never clears.")
 
 
