@@ -53,7 +53,11 @@ def read_config(repo):
         "repo": repo,  # so adapters that drain configured targets (e.g. trello boards) can re-read this file
         "runtime_dir": runtime_dir,
         "local_dir": scalar("local_dir", os.path.join(repo, "drainer-local")),
-        "max_open_tabs": int(scalar("max_open_tabs", "3")),
+        # Target total open Claude Code tabs system-wide — drainer worker tabs, the drainer itself,
+        # and any tab Russell opened by hand. The poller drains as fast as possible (no artificial
+        # per-cycle throttle) until the live tab count reaches this, then holds new dispatches until
+        # it drops back below.
+        "target_open_tabs": int(scalar("target_open_tabs", "12")),
         "max_messages_per_cycle": int(scalar("max_messages_per_cycle", "50")),
         "idle_threshold_seconds": int(scalar("idle_threshold_seconds", "600")),
         # Worker tabs need an explicit model — otherwise they inherit the session default, which may be

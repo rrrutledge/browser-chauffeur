@@ -23,8 +23,9 @@ later follow-up day.
 The drainer runs as a **continuous keeper**: a presence-gated **poller** runs a short cycle every few
 minutes (a ~5-min cron) and holds each source at **zero un-started actionable items** all day.
 
-- **needs-you →** the poller immediately spawns a **worker tab** (up to `max_open_tabs`, default 3) so
-  the user starts acting right away; beyond the cap, items wait for a later cycle.
+- **needs-you →** the poller immediately spawns a **worker tab** so the user starts acting right away,
+  dispatching as fast as possible until the count of live Claude Code tabs system-wide reaches
+  `target_open_tabs` (default 12); beyond that, items wait for a later cycle.
 - **auto-handle →** a standing-rule item; the poller spawns a worker that acts autonomously, clears the
   source, queues a digest entry, and finishes without interrupting the user.
 - **fyi / junk →** captured to a **digest queue** for a once-a-day readout; nothing is disposed of
@@ -50,14 +51,14 @@ Every mechanism's worst case is *redundant work*, never a *dropped item*: seen-s
 store (losing it re-processes, never hides); a seen-id is recorded only **after** dispatch succeeds (an
 aborted cycle retries next time); workers are idempotent (a duplicate tab's situational-check resolves
 quietly). Orphan recovery follows the same principle — a worker tab closed without writing `.done` is
-detected by **liveness** (not a timeout) and re-queued so its cap slot frees, while an open, live tab is
+detected by **liveness** (not a timeout) and re-queued so its slot frees, while an open, live tab is
 left alone however long it's up, because it's either being worked or parked for the user.
 
 ## Two layers: the plugin vs. what each machine injects
 
 | In the plugin (generic) | Injected per machine |
 | --- | --- |
-| `engine/` — poller contract, worker procedure, triage rubric, provider contract; `scripts/` — the deterministic glue | `.claude/drainer.local.md` — which providers are active, per-provider config, `max_open_tabs`, `max_messages_per_cycle`, presence |
+| `engine/` — poller contract, worker procedure, triage rubric, provider contract; `scripts/` — the deterministic glue | `.claude/drainer.local.md` — which providers are active, per-provider config, `target_open_tabs`, `max_messages_per_cycle`, presence |
 | `providers/` — the providers (Outlook, Teams, Trello) | `context.md` (in `local_dir`) — who the user is, their systems, standing rules |
 | `docs/`, `templates/` | **credentials** (OS store / env) |
 
