@@ -130,6 +130,8 @@ def _check_subcommand_tool(seg, spec):
     sub, args = _extract_subcommand(tokens, spec.get('global_opts', set()), spec.get('flag_style', 'simple'))
     if sub is None:
         return spec.get('allow_empty', False)
+    if spec.get('case_insensitive'):
+        sub = sub.lower()
 
     category = spec.get('category')
     allowed = spec['trusted'] | (learned_subcommands(category) if category else set())
@@ -363,8 +365,8 @@ SUBCOMMAND_SPECS = {
     'pip':  {'command': 'pip',  'trusted': PIP_TRUSTED_SUBCOMMANDS,  'category': 'PIP_TRUSTED_SUBCOMMANDS',  'allow_empty': True},
     'pnpm': {'command': 'pnpm', 'trusted': PNPM_TRUSTED_SUBCOMMANDS, 'category': 'PNPM_TRUSTED_SUBCOMMANDS', 'allow_empty': True},
     'bun':      {'command': 'bun',      'trusted': BUN_TRUSTED_SUBCOMMANDS,      'category': 'BUN_TRUSTED_SUBCOMMANDS',      'allow_empty': True},
-    'schtasks': {'command': 'schtasks', 'trusted': SCHTASKS_TRUSTED_SUBCOMMANDS, 'category': None},
-    'reg':      {'command': 'reg',      'trusted': {'query'},                     'category': None},
+    'schtasks': {'command': 'schtasks', 'trusted': SCHTASKS_TRUSTED_SUBCOMMANDS, 'category': None, 'case_insensitive': True},
+    'reg':      {'command': 'reg',      'trusted': {'query'},                     'category': None, 'case_insensitive': True},
     'gh':   is_gh_command_safe,
     'wmic': is_wmic_safe,
 }
