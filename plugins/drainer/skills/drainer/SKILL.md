@@ -12,9 +12,10 @@ instructions: |-
 
   It runs as a **continuous keeper**: a presence-gated poller (`scripts/run-poller.py`) runs a short
   cycle every few minutes and holds each source at **zero un-started actionable items** — needs-you
-  items immediately open a worker tab (up to `max_open_tabs`), fyi/junk queue for a once-a-day digest,
-  and the poller itself never clears. The loop is code; AI is used only to **triage** each cycle's new
-  items and to run each **worker**.
+  items immediately open a worker tab, dispatched as fast as possible until live Claude Code tabs
+  system-wide reach `target_open_tabs`, fyi/junk queue for a once-a-day digest, and the poller itself
+  never clears. The loop is code; AI is used only to **triage** each cycle's new items and to run each
+  **worker**.
 
   ### 1. Load per-machine settings FIRST
   Read **`.claude/drainer.local.md`** in the current project (YAML frontmatter): which `providers` are
