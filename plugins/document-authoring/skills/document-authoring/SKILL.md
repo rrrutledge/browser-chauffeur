@@ -304,9 +304,9 @@ Don't invent emoji outside this palette, don't stack them, and skip them entirel
 - **Email sign-off**: just `Russ` on its own line — no valediction before it.
   **On an account with an auto-appended signature** (e.g. the ISC Gmail account), skip the sign-off line entirely, and end the body on its last sentence with no closing pleasantry ("Best,", "Wishing you a great week!") before the signature block.
 - **Email subject**: a short noun phrase, no trailing `?` even when the email asks a question.
-- **Energizing close**: on genuine good news, a positive progress update, confirmed enthusiasm, or onboarding a partner/sponsor, end with a brief forward-looking note ("Looking forward to it!") instead of a helper-offer tail.
+- **Energizing close** — the warm end of the closing spectrum in **Register**: end with a brief forward-looking note ("Looking forward to it!", "This'll be great") instead of a helper-offer tail whenever *either* trigger is present — the news is genuinely good (a positive progress update, confirmed enthusiasm, onboarding a partner/sponsor), *or* the person is someone you lead or are close to.
   When onboarding a partner or sponsor, that close can be the concrete next step their deliverable unlocks.
-  Skip it when sharing news into someone else's channel or group.
+  Skip it when the contact is a distant professional one you hold no leadership role with — a bare acknowledgment then, see **Brevity** — and when sharing news into someone else's channel or group.
 - **React to the specific thing they shared, and warm a rote close into genuine interest.**
   Respond to the concrete detail they mentioned (where they're job-hunting, what they're building) rather than a generic well-wish, and swap "let me know how it goes" for real forward-looking interest when you care how it turns out — especially in a follow-up, where the latest message may already name the forward path.
   When someone offers sympathy or help on the job search, give a real reason or a concrete ask, not a vague status.
