@@ -155,7 +155,7 @@ A single clear sentence ending in a question is usually the whole message — re
 - **When specific people own the answer, don't explain the architecture — route to them, or when the recipient is that owner, let them supply the mechanism.**
   Name the owners and one concrete next step; drop the conceptual overview.
   When you're writing to the domain expert on the mechanism in play, keep the message at the proposal level and let them fill in the how - don't explain their own system back to them, and don't stack a how-does-it-work question onto the core ask (research the mechanism to inform yourself, not to lecture the expert).
-  Hedge with "that I know of" when not fully certain.
+  Hedge with "that I know of" when not fully certain — the same applies to naming candidates/contacts you sourced yourself (e.g. a LinkedIn search) rather than know firsthand: say where they came from and defer to the recipient's better judgment.
 - **Keep asks open and tentative — don't pre-commit.**
   Write as though the outcome is still open and give room to say no: hedge with "may"/"wondering", include alternatives, and avoid pinning the person to a specific action.
   "Please consider" lands softer than a direct question for an internal favor; prefer "can" over "should" in a joint ask; soften a named prestigious slot to the general role ("speaker", not "keynote"). When the ask could read as ungrateful — pressing a lapsed commitment, an underpayment — make the gratitude explicit, frame it as sharing the point to ask whether it helps *them*, and point to the concrete record rather than asserting the fact.
@@ -193,7 +193,7 @@ A single clear sentence ending in a question is usually the whole message — re
 - **When Russell owns the next step, say "I'll" — not "we'll" — and drop the trailing offer.**
   Announce work already done actively in the first person ("I drafted the posts"), not agent-less passive ("the posts are drafted").
 - **Adding a second ask mid-thread: open with the discovery, not the ask** — "found one more", not "one more ask while I have you".
-- **Float a candidate tentatively, and disclose when a suggestion is your own research rather than firsthand knowledge** — "also may be a great fit", not "would be a great fit". The "also" ties them to someone already named and "may" keeps it open; go straight to the person and drop the setup line. When naming contacts you sourced yourself (e.g. a LinkedIn search) rather than people you actually know, say so plainly and defer to the recipient's better judgment — "I did a LinkedIn search and came up with these, but you probably know better than me who'd be right."
+- **Float a candidate tentatively** — "also may be a great fit", not "would be a great fit". The "also" ties them to someone already named and "may" keeps it open; go straight to the person and drop the setup line.
 - **When confirming an ask, give the "why" — not how-to steps.**
   Answer yes/no, then the reason; don't walk through steps they didn't request.
 - **Don't promise future follow-up actions.**
