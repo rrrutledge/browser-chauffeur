@@ -155,7 +155,8 @@ A single clear sentence ending in a question is usually the whole message — re
 - **When specific people own the answer, don't explain the architecture — route to them, or when the recipient is that owner, let them supply the mechanism.**
   Name the owners and one concrete next step; drop the conceptual overview.
   When you're writing to the domain expert on the mechanism in play, keep the message at the proposal level and let them fill in the how - don't explain their own system back to them, and don't stack a how-does-it-work question onto the core ask (research the mechanism to inform yourself, not to lecture the expert).
-  Hedge with "that I know of" when not fully certain — the same applies to naming candidates/contacts you sourced yourself (e.g. a LinkedIn search) rather than know firsthand: say where they came from and defer to the recipient's better judgment.
+  When you do surface what you researched to that expert, offer it as a tentative finding for them to confirm — attribute it plainly (Russell will say he looked it up, AI included, and read it himself), hand them the sources, and ask them to verify — rather than asserting the conclusion as settled fact.
+  Hedge with "that I know of" when not fully certain.
 - **Keep asks open and tentative — don't pre-commit.**
   Write as though the outcome is still open and give room to say no: hedge with "may"/"wondering", include alternatives, and avoid pinning the person to a specific action.
   "Please consider" lands softer than a direct question for an internal favor; prefer "can" over "should" in a joint ask; soften a named prestigious slot to the general role ("speaker", not "keynote"). When the ask could read as ungrateful — pressing a lapsed commitment, an underpayment — make the gratitude explicit, frame it as sharing the point to ask whether it helps *them*, and point to the concrete record rather than asserting the fact.
