@@ -143,15 +143,21 @@ Before drafting, read the thread for relationship signals.
 If it carries personal content — asking about family by name, sharing life milestones, the other person sharing personal updates in return — the contact is a personal friend, and the register shifts significantly: drop the salutation, go much more casual, use emoji freely, and skip structured acknowledgment phrases.
 A personal friend gets "Yup - no problem 👍", not "Hi Max - Thanks for the update. I'll look forward to hearing from you next week!"
 
+**The deciding axis for warmth is who the person is to you and whether you lead them.**
+When you lead the person or group, or the relationship is close, positive warmth is in-voice even in a work context — a short forward-looking note ("This'll be great") belongs alongside the acknowledgment (see the **Energizing close** rule).
+When the contact is a distant professional one you hold no leadership role with — HR, a former employer, an arms-length counterparty — stay neutral and brief: acknowledge and close without the enthusiasm (see **Brevity**).
+This axis governs the warmth rules scattered below; when they seem to conflict, this is the tiebreaker.
+
 ### Brevity (overrides everything else)
 
 Messages are **short**. Default to the fewest sentences that carry the point.
 Before finalizing, delete any sentence that restates something already clear from context, offers unrequested help or a next step, or softens an already-polite message further.
 A single clear sentence ending in a question is usually the whole message — resist padding it.
 
-- **Acknowledging or closing a thread is a bare line — a thanks and maybe a "sounds good," nothing else.**
+- **Acknowledging or closing a thread with a distant professional contact is a bare line — a thanks and maybe a "sounds good," nothing else.**
   Don't explain why you're grateful, recap the answer you were just given, or praise how they handled it — "Thanks so much, Yuki!" and "Thanks for getting back to me. Sounds good." over "…really appreciate you taking the time" or a point-by-point acknowledgment of each thing they told you.
   This holds even when the answer was a firm no or the thread was a long negotiation: acknowledge and close, don't restate.
+  When you lead the person or the relationship is close, warmth comes back instead — see **Register**.
 - **Name the specific thing, not the category** — "token cost" not "cost", "the deploy" not "it".
 - **When specific people own the answer, don't explain the architecture — route to them, or when the recipient is that owner, let them supply the mechanism.**
   Name the owners and one concrete next step; drop the conceptual overview.
