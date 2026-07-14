@@ -18,6 +18,7 @@ from safe_compounds.commands import (  # noqa: E402
     strip_safe_redirections, check_cwd_file_command,
 )
 from safe_compounds.paths import is_safe_read_location  # noqa: E402
+from safe_compounds import paths  # noqa: E402
 from safe_compounds import procs  # noqa: E402
 from safe_compounds.mcp import classify_mcp_tool  # noqa: E402
 from safe_compounds.enforce import detect_complex_bash, detect_simple_expansion, detect_cd_compound, enforce_bash  # noqa: E402
@@ -538,6 +539,25 @@ class TestCpFromSystemTemp:
         os.environ['CLAUDE_CWD'] = str(tmp_path)
         src = "C:/Windows/System32/drivers/etc/hosts"
         assert check_cwd_file_command(f'cp "{src}" ".tmp/hosts"', "cp") is False
+
+
+class TestTouchRespectsAllowedEditDirs:
+    """touch/chmod must honor the same destination rules as cp/mv/ln's
+    destination check (CWD, worktrees, Write/Edit-allowed dirs, ~/.claude/plugins)
+    -- not just CWD."""
+
+    def test_touch_outside_cwd_but_within_allowed_edit_dir_approved(self, tmp_path, monkeypatch):
+        os.environ['CLAUDE_CWD'] = str(tmp_path / "cwd")
+        allowed_dir = tmp_path / "other-repo"
+        monkeypatch.setattr(paths, "_ALLOWED_EDIT_DIRS", {str(allowed_dir)})
+        target = allowed_dir / ".tmp" / "marker.done"
+        assert check_cwd_file_command(f'touch "{target}"', "touch") is True
+
+    def test_touch_outside_cwd_and_outside_allowed_dirs_denied(self, tmp_path, monkeypatch):
+        os.environ['CLAUDE_CWD'] = str(tmp_path / "cwd")
+        monkeypatch.setattr(paths, "_ALLOWED_EDIT_DIRS", set())
+        target = tmp_path / "other-repo" / ".tmp" / "marker.done"
+        assert check_cwd_file_command(f'touch "{target}"', "touch") is False
 
 
 class TestCdCompoundDetection:
