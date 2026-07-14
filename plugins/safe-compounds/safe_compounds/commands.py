@@ -632,8 +632,8 @@ def check_cwd_file_command(seg, command):
         return True
 
     for path in paths:
-        if not is_path_within_cwd(path.strip('"\'')):
-            log_debug(f"{command} path outside CWD: {path}")
+        if not _dest_allowed(path.strip('"\'')):
+            log_debug(f"{command} path outside allowed areas: {path}")
             return False
     return True
 
