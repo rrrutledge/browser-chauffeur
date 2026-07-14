@@ -193,7 +193,7 @@ A single clear sentence ending in a question is usually the whole message — re
 - **When Russell owns the next step, say "I'll" — not "we'll" — and drop the trailing offer.**
   Announce work already done actively in the first person ("I drafted the posts"), not agent-less passive ("the posts are drafted").
 - **Adding a second ask mid-thread: open with the discovery, not the ask** — "found one more", not "one more ask while I have you".
-- **Float a candidate tentatively** — "also may be a great fit", not "would be a great fit". The "also" ties them to someone already named and "may" keeps it open; go straight to the person and drop the setup line.
+- **Float a candidate tentatively, and disclose when a suggestion is your own research rather than firsthand knowledge** — "also may be a great fit", not "would be a great fit". The "also" ties them to someone already named and "may" keeps it open; go straight to the person and drop the setup line. When naming contacts you sourced yourself (e.g. a LinkedIn search) rather than people you actually know, say so plainly and defer to the recipient's better judgment — "I did a LinkedIn search and came up with these, but you probably know better than me who'd be right."
 - **When confirming an ask, give the "why" — not how-to steps.**
   Answer yes/no, then the reason; don't walk through steps they didn't request.
 - **Don't promise future follow-up actions.**
@@ -224,6 +224,8 @@ A single clear sentence ending in a question is usually the whole message — re
 
 - **Let the thread carry the context.**
   Ask the shortest open question that covers what you need; don't re-name the deliverable or prior exchange already visible.
+- **Put the actual question in the first sentence.**
+  Lead a follow-up with the direct ask ("can you suggest any contacts at X or Y?"), not a status/context line that delays it to a later sentence.
 - **Don't re-paste something you already shared upthread** — a link, file, or detail the recipient already has.
   Just ask plainly.
   Exception: the first nudge that directly addresses someone previously only cc'd should restate the concrete ask, since they may not have engaged.
