@@ -225,6 +225,8 @@ A single clear sentence ending in a question is usually the whole message — re
 
 - **Let the thread carry the context.**
   Ask the shortest open question that covers what you need; don't re-name the deliverable or prior exchange already visible.
+- **Put the actual question in the first sentence.**
+  Lead a follow-up with the direct ask ("can you suggest any contacts at X or Y?"), not a status/context line that delays it to a later sentence.
 - **Don't re-paste something you already shared upthread** — a link, file, or detail the recipient already has.
   Just ask plainly.
   Exception: the first nudge that directly addresses someone previously only cc'd should restate the concrete ask, since they may not have engaged.
