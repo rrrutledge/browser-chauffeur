@@ -74,6 +74,12 @@ CASES = [
     {"id": "yarn_build", "tool": "Bash", "command": "yarn build:all", "expect": "ALLOW"},
     {"id": "pip_list", "tool": "Bash", "command": "pip list", "expect": "ALLOW"},
 
+    # --- schtasks / reg (case-insensitive Windows switches) ------------------
+    {"id": "schtasks_query_lower", "tool": "Bash", "command": "schtasks /query /TN MyTask", "expect": "ALLOW"},
+    {"id": "schtasks_query_capitalized", "tool": "Bash", "command": "schtasks /Query /TN MyTask", "expect": "ALLOW"},
+    {"id": "schtasks_change_prompts", "tool": "Bash", "command": "schtasks /Create /TN MyTask /TR notepad.exe /SC once", "expect": "PROMPT"},
+    {"id": "reg_query_capitalized", "tool": "Bash", "command": "reg QUERY HKLM\\Software\\Foo", "expect": "ALLOW"},
+
     # --- unknown command (AI disabled -> defer) -----------------------------
     {"id": "unknown_cmd", "tool": "Bash", "command": "frobnicate --all", "expect": "PROMPT"},
 
