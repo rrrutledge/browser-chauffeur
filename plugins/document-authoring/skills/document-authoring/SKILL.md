@@ -149,8 +149,9 @@ Messages are **short**. Default to the fewest sentences that carry the point.
 Before finalizing, delete any sentence that restates something already clear from context, offers unrequested help or a next step, or softens an already-polite message further.
 A single clear sentence ending in a question is usually the whole message — resist padding it.
 
-- **A simple thank-you for a small favor is a name and an exclamation — nothing else.**
-  Don't add a clause explaining why you're grateful — "Thanks so much, Yuki!", not "…really appreciate you taking the time."
+- **Acknowledging or closing a thread is a bare line — a thanks and maybe a "sounds good," nothing else.**
+  Don't explain why you're grateful, recap the answer you were just given, or praise how they handled it — "Thanks so much, Yuki!" and "Thanks for getting back to me. Sounds good." over "…really appreciate you taking the time" or a point-by-point acknowledgment of each thing they told you.
+  This holds even when the answer was a firm no or the thread was a long negotiation: acknowledge and close, don't restate.
 - **Name the specific thing, not the category** — "token cost" not "cost", "the deploy" not "it".
 - **When specific people own the answer, don't explain the architecture — route to them, or when the recipient is that owner, let them supply the mechanism.**
   Name the owners and one concrete next step; drop the conceptual overview.
