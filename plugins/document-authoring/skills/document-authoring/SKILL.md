@@ -155,6 +155,7 @@ A single clear sentence ending in a question is usually the whole message — re
 - **When specific people own the answer, don't explain the architecture — route to them, or when the recipient is that owner, let them supply the mechanism.**
   Name the owners and one concrete next step; drop the conceptual overview.
   When you're writing to the domain expert on the mechanism in play, keep the message at the proposal level and let them fill in the how - don't explain their own system back to them, and don't stack a how-does-it-work question onto the core ask (research the mechanism to inform yourself, not to lecture the expert).
+  When you counter their objection with a fix, acknowledge their point in a clause and give the proposal in one plain sentence, then a short open check ("Sound OK?") - cut the full restatement of their concern, the justification for why the fix works, the list of problems it sidesteps, and any call offer; the expert sees all that already.
   Hedge with "that I know of" when not fully certain.
 - **Keep asks open and tentative — don't pre-commit.**
   Write as though the outcome is still open and give room to say no: hedge with "may"/"wondering", include alternatives, and avoid pinning the person to a specific action.
