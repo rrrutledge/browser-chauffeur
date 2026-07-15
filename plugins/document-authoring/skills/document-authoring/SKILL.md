@@ -211,6 +211,7 @@ A single clear sentence ending in a question is usually the whole message — re
   - **Personal or career bad news (the main point):** acknowledge briefly ("sorry to hear it") and follow with a genuine check-in ("How are things going for you now?"). Don't narrate the impact on others.
   - **A stated constraint or caveat** (e.g. "budget climate is tough"): release the pressure plainly ("Either way is fine") and stop; don't echo the framing back.
     When an intermediary relays why a third party is silent (they're busy), name that reason and invite them to reach out once it clears — don't introduce a new or workaround ask.
+    **When relaying that someone else said the recipient hasn't responded to them, don't cite the complaint** — ask a neutral checking question ("Did [name] reach out to you about [thing]?") instead of stating the negative fact ("[name] mentioned she hasn't heard from you"), so the recipient isn't put on the spot.
   - **A frustration mentioned as an aside alongside positive news:** close on gratitude for their concrete contribution ("Thanks for the help!"); don't open the frustration thread.
 - **Don't echo someone's stated next step back to them — in any form.**
   They've said what they'll do next; restating it, even positively, adds subtle pressure and implies they needed reminding.
