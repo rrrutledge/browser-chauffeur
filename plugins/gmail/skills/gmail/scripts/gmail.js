@@ -21,6 +21,10 @@
 //                (<message-id> is the RFC822 Message-ID header, e.g. <abc@mail.gmail.com>; looked up
 //                 in All Mail, so it shows regardless of whether the message is still in the inbox)
 // List drafts:   node gmail.js --list-drafts [--top=30]
+// Save attachments: node gmail.js --save-attachments=<message-id> [--out-dir=<dir>]
+//                (downloads every attachment on a message to <dir> (default: cwd); looked up in the
+//                 inbox and All Mail like --show. Prints each saved filename + size. Attachments with
+//                 no filename are named "attachment-N".)
 // Draft a reply: node gmail.js --reply --message-id=<id> --body-file=reply.md [--attach=a.pdf,b.png]
 //                (appends a DRAFT reply in the thread to [Gmail]/Drafts; never sends; replaces any
 //                 prior draft on the same thread; prints a draft-id for --send-draft. <id> is looked up
@@ -189,6 +193,31 @@ async function show(c) {
   if (parsed.cc) console.log(`Cc: ${parsed.cc.text}`);
   console.log(`Date: ${parsed.date ? parsed.date.toISOString() : ''}`);
   console.log('\n' + (parsed.text || clean(parsed.html) || '(no body)'));
+}
+
+async function saveAttachments(c) {
+  let msg;
+  for (const mailbox of ['INBOX', ALLMAIL]) {
+    const lock = await c.getMailboxLock(mailbox);
+    try {
+      const uid = await findUid(c, args['save-attachments']);
+      if (!uid) continue;
+      msg = await c.fetchOne(String(uid), { source: true }, { uid: true });
+      break;
+    } finally { lock.release(); }
+  }
+  if (!msg) { console.log('Message not found in inbox or All Mail.'); return; }
+  const parsed = await simpleParser(msg.source);
+  const atts = parsed.attachments || [];
+  if (!atts.length) { console.log('Message has no attachments.'); return; }
+  const outDir = args['out-dir'] ? String(args['out-dir']) : process.cwd();
+  fs.mkdirSync(outDir, { recursive: true });
+  atts.forEach((a, i) => {
+    const name = a.filename || `attachment-${i + 1}`;
+    const dest = path.join(outDir, name);
+    fs.writeFileSync(dest, a.content);
+    console.log(`Saved ${dest} (${a.content.length} bytes, ${a.contentType || 'unknown type'})`);
+  });
 }
 
 async function listDrafts(c) {
@@ -382,6 +411,7 @@ async function check(c) {
   try {
     if (args['list-inbox']) return await listFolder(c, 'INBOX');
     if (args['list-drafts']) return await listDrafts(c);
+    if (args['save-attachments']) return await saveAttachments(c);
     if (args.show) return await show(c);
     if (args.reply) return await reply(c);
     if (args['draft-new']) return await draftNew(c);
@@ -391,6 +421,6 @@ async function check(c) {
     if (args['list-sent']) return await listFolder(c, '[Gmail]/Sent Mail');
     if (args.search) return await search(c);
     if (args.check) return await check(c);
-    throw new Error('Specify --list-inbox, --list-sent, --search, --list-drafts, --show, --reply, --draft-new, --send-draft, --delete-draft, --archive, or --check');
+    throw new Error('Specify --list-inbox, --list-sent, --search, --list-drafts, --save-attachments, --show, --reply, --draft-new, --send-draft, --delete-draft, --archive, or --check');
   } finally { await c.logout(); }
 })().catch(e => { console.error('Error:', e.message); process.exit(1); });

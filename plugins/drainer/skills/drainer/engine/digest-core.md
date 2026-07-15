@@ -80,6 +80,7 @@ invite for *jane@acme.com* (requested by Bob)"). Order most-notable first. On Ru
 **no provider CLEAR** (the worker already cleared the source) — just `queue-clear` them like the rest
 (step 5). If something here looks wrong — a rule fired when it shouldn't have — flag it so the AUTO-HANDLE
 rule can be tightened; that's the one case where an auto-handled item needs follow-up.
+If an auto-handled item is itself outreach-related, apply the Trello check from step 2 too.
 
 ## 2. fyi — summarize so Russell never has to open the item
 
@@ -99,6 +100,14 @@ check confirms is still open. Do not append a speculative "things still to do" l
 unverified captured snippets — that is exactly how an already-answered thread gets re-surfaced as if it
 needs attention.
 
+The same principle applies to outreach: **before framing any item as new** — an introduction, or a
+reply from a company or individual who might already be a tracked contact — check `<repo>/trello-boards.yaml`
+(the registry the `trello` source and `trello-outreach` skill use) for an existing card naming that
+company or contact, the same check worker-core.md §2 runs before drafting. A match means the item is
+already tracked: name and link the card, and frame the item as **already tracked** rather than new
+(optionally noting whether the card is worth updating). No match → surface it as genuinely new. This
+applies regardless of which source (mail, Teams, Slack) captured the item.
+
 ## 3. junk — group by source, each with a source-stop proposal
 
 Group junk by sender/source. For each group, propose **how to stop it arriving again**, following that
@@ -117,9 +126,10 @@ in, and the action, and create only on his explicit OK of that shown text.
 
 List each stale needs-you item with its age, who it's from, the subject, and a one-line note on what
 it was waiting for (read its captured body if needed). These fell through the cracks; the point
-is that they stay visible. For each, offer Russell the choice: **reopen** it (spawn a fresh worker tab
-the same way the poller does, or handle it here), or **clear** it as no-longer-needed. Take no
-clearing action until he chooses.
+is that they stay visible. If a stale item is itself outreach-related, apply the Trello check from
+step 2 too, before listing it, so an item already tracked on a card is framed as such. For each, offer
+Russell the choice: **reopen** it (spawn a fresh worker tab the same way the poller does, or handle it
+here), or **clear** it as no-longer-needed. Take no clearing action until he chooses.
 
 ## 5. Present, then clear ONLY on Russell's review
 
