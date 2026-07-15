@@ -35,6 +35,14 @@ sniffed) and the channel is ready. If it errors with "Missing token(s)", Teams w
 in the CDP browser: open `https://teams.microsoft.com/`, confirm signed in, and stop reading Teams until
 the token sniffs clean. Never surface a raw auth error to the user.
 
+## SITUATIONAL-CHECK
+If a captured message could be outreach on behalf of a tracked initiative — an introduction, or a
+reply from a company or individual who might already be a tracked contact — check
+`<repo>/trello-boards.yaml` (the registry the `trello` source and `trello-outreach` skill use) for an
+existing card naming that company or contact. A match means the item is already tracked: reference the
+card (and consider updating it — bump the due date, add a comment) rather than treating this as new
+outreach. No match → treat it as genuinely new.
+
 ## UNRENDERABLE CARDS ("go.skype.com/cards.unsupported")
 When a captured message body is `Card - access it on https://go.skype.com/cards.unsupported`, the
 message is an adaptive card the drainer's REST API cannot render as text. **Do not treat this as

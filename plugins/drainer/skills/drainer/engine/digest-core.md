@@ -80,9 +80,6 @@ invite for *jane@acme.com* (requested by Bob)"). Order most-notable first. On Ru
 **no provider CLEAR** (the worker already cleared the source) — just `queue-clear` them like the rest
 (step 5). If something here looks wrong — a rule fired when it shouldn't have — flag it so the AUTO-HANDLE
 rule can be tightened; that's the one case where an auto-handled item needs follow-up.
-If an auto-handled item is itself outreach-related, apply the outreach cross-reference check (step 2)
-too, so the writeup credits or updates the matching Trello card rather than reading as an untracked
-action.
 
 ## 2. fyi — summarize so Russell never has to open the item
 
@@ -102,21 +99,6 @@ check confirms is still open. Do not append a speculative "things still to do" l
 unverified captured snippets — that is exactly how an already-answered thread gets re-surfaced as if it
 needs attention.
 
-**Before presenting any outreach-related item as new** — an introduction, or a reply/message from a
-company or individual who could be an outreach target (Summit sponsorship, keynote, FINOS working
-group, job search, general ED outreach) — cross-check it against Trello first.
-Read `<repo>/trello-boards.yaml` (the same registry the `trello` source and the `trello-outreach` skill
-use) and look for an existing card naming that company or contact:
-- **A matching card exists** — name it and link it in the summary, and frame the item as **already
-  tracked** rather than new.
-  Note whether it's worth updating that card (bump the due date, add a comment) instead of implying a
-  new card is needed.
-- **No matching card** — surface it as a genuinely new outreach candidate worth tracking.
-
-This is the same principle as SITUATIONAL-CHECK applied to a different kind of staleness: the item can
-look untracked in isolation while already having a home elsewhere in Russell's own tracking, and the
-digest is the one place positioned to catch that before he does the lookup by hand.
-
 ## 3. junk — group by source, each with a source-stop proposal
 
 Group junk by sender/source. For each group, propose **how to stop it arriving again**, following that
@@ -129,11 +111,9 @@ in one step.
 
 List each stale needs-you item with its age, who it's from, the subject, and a one-line note on what
 it was waiting for (read its captured body if needed). These fell through the cracks; the point
-is that they stay visible. If a stale item is itself outreach-related, apply the outreach
-cross-reference check (step 2) before listing it, so a stale mail/Teams/Slack item that's already
-tracked on a Trello card is framed as such rather than as a second, competing to-do. For each, offer
-Russell the choice: **reopen** it (spawn a fresh worker tab the same way the poller does, or handle it
-here), or **clear** it as no-longer-needed. Take no clearing action until he chooses.
+is that they stay visible. For each, offer Russell the choice: **reopen** it (spawn a fresh worker tab
+the same way the poller does, or handle it here), or **clear** it as no-longer-needed. Take no
+clearing action until he chooses.
 
 ## 5. Present, then clear ONLY on Russell's review
 

@@ -30,6 +30,13 @@ The captured item is the inbound message at capture time; the conversation may h
    done. Close it without a new draft.
 3. **Check for an existing draft** using your provider's draft-list command, to avoid staging a
    duplicate if a prior session already started one.
+4. **If this could be outreach on behalf of a tracked initiative** — an introduction, or a reply from a
+   company or individual who might already be a tracked contact — check `<repo>/trello-boards.yaml`
+   (the registry the `trello` source and `trello-outreach` skill use) for an existing card naming that
+   company or contact.
+   A match means the item is already tracked: reference the card (and consider updating it — bump the
+   due date, add a comment) rather than treating this as new outreach.
+   No match → treat it as genuinely new.
 
 ---
 
