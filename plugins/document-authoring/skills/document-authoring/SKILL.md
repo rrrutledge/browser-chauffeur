@@ -305,12 +305,12 @@ Don't invent emoji outside this palette, don't stack them, and skip them entirel
 - **Email subject**: a short noun phrase, no trailing `?` even when the email asks a question.
 - **Energizing close** — how to execute a warm close, when **Register** calls for one: end with a brief forward-looking note ("Looking forward to it!", "This'll be great") instead of a helper-offer tail.
   When onboarding a partner or sponsor, that close can be the concrete next step their deliverable unlocks.
-  Skip the note when sharing news into someone else's channel or group.
+  Skip the note when sharing news into someone else's channel or group, or when the message already states a concrete next step (a call, a follow-up date) - that action is the close, not an added enthusiasm line on top of it.
 - **React to the specific thing they shared, and warm a rote close into genuine interest.**
   Respond to the concrete detail they mentioned (where they're job-hunting, what they're building) rather than a generic well-wish, and swap "let me know how it goes" for real forward-looking interest when you care how it turns out — especially in a follow-up, where the latest message may already name the forward path.
   When someone offers sympathy or help on the job search, give a real reason or a concrete ask, not a vague status.
   When a contact offers to connect you with their contacts, respond with self-initiated follow-through ("I'll check through them and let you know"), not a direct ask for the intro now.
-- **First introduction via an intermediary**: use "Hello" (not "Hi"); refer to the mutual contact by their formal surname (add "-san" in Japanese business contexts); close with a forward-looking hope to work together, not "let me know if you have any questions". Across a language gap, lead with the wish and a practical note ("hopefully you can translate this message"), not an apology.
+- **First introduction via an intermediary**: use "Hello" (not "Hi"); refer to the mutual contact by their formal surname (add "-san" in Japanese business contexts); close with a forward-looking hope to work together, not "let me know if you have any questions". **Name the topic you want to discuss, not the specific angle it might fit** (a prospective event slot, a program tie-in) - save that detail for once the conversation's underway. Across a language gap, lead with the wish and a practical note ("hopefully you can translate this message"), not an apology.
 - Short, conversational, considerate of their time and life.
 - Logistics + warmth; apologize if rescheduling.
 - *Samples:*
