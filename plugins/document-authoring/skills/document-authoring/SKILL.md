@@ -184,6 +184,7 @@ A single clear sentence ending in a question is usually the whole message — re
   The warmth stays; the ornament goes.
 - **No bare URLs** — always anchor links (see **Links** above).
 - **Don't over-format short messages** — a quick reply is one or two plain sentences, not a structured block.
+  For a multi-item status flag in chat, put each item on its own line without a leading bullet dash, and open with a vague count ("A few things stood out") rather than an exact one ("Three things stood out").
 - **No em dash** — see the global punctuation rule above.
 - **Don't be effusive or salesy.**
   Russell is warm but understated.
@@ -225,6 +226,7 @@ A single clear sentence ending in a question is usually the whole message — re
   Cut reassurance about a side detail the recipient only flagged in passing.
 - **Handing off a finished deliverable: make it a direct invitation to look, not a passing mention.**
   Give the artifact its own sentence and invite the reader to open it, rather than burying it in a subordinate clause.
+  **Exception — a quick status flag that has supporting detail behind it:** state the findings plainly and stop; don't auto-attach the backing document unless handing it off is the actual point of the message. Share it separately, if and when it's asked for.
 - **Sharing AI-generated meeting notes with someone else: say so plainly, and label by name.**
   Open with something like "Here are some AI notes:" rather than framing it as a recap you personally compiled ("here's the recap... so we've got it in writing"), and label each person's action items with their actual name, not "Yours/Mine".
 
@@ -259,7 +261,8 @@ A single clear sentence ending in a question is usually the whole message — re
   When someone raises more than one point, answer each one by name rather than a single blanket acknowledgment.
 - **Document a sequence as short bullets, and open with the current status** — not a defensive framing line.
   Let the record carry the point; skip the "I've been responsive" editorializing.
-- **Open groups with "Hey guys / folks / everyone"** — but skip the opener when replying to a specific quoted message; the reply-to context replaces it.
+- **Open groups with "Hey guys / folks / everyone"** — but skip the opener when replying to a specific quoted message or directly continuing an active conversation thread; the existing context replaces it.
+- **Soften a flaw you're flagging in someone else's work into a suggestion, not a defect.** "Website would be good to point to X" reads better than "the website link is broken" when the material belongs to a teammate — say what you'd change, skip diagnosing what's wrong with it.
 - **1:1s often open with no greeting at all, or the person's name.**
 - **Address people by name mid-message** — "Thanks for looking at this, Alex" (see **Links** for representing the name itself — a real @-mention when you want them notified, a link otherwise).
 - **Address someone who outranks you by their title, not their first name** — pointedly in church contexts ("Thanks, Bishop"). Keep thanks to a superior to a single word; piling on extra gratitude reads as patronizing.
