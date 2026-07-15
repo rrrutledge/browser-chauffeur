@@ -59,8 +59,12 @@ quoted phrase in it matches the **whole message, body included** (`--add-body`) 
 fully supported. Wrapping a phrase in `subject:(…)` (`--add-subject`) is the *fence* that scopes it to the
 subject, which you use to keep a phrase that also appears in wanted mail (a generic footer line) from
 triggering. So scope to the subject when the phrase isn't distinctive, and match the body when it is. Use
-`from:X subject:Y` for company-specific noise. Once Russell OKs the phrase, append it to the right mechanism bucket with the
-**`gmail`** skill's `filters.js` (the OAuth settings path):
+`from:X subject:Y` for company-specific noise. Before appending to the right mechanism bucket with the
+**`gmail`** skill's `filters.js` (the OAuth settings path), run the **`mail-filters`** skill's
+show-literal-rule gate ("Wiring the drainer" step 3): show Russell the exact phrase(s), which bucket they
+land in, and the action, and create only on his explicit OK of that shown text. A digest-level "yes, stop
+that" approves the proposal to build a rule — it authorizes running this gate, not the rule text itself.
+Once he OKs the shown text:
 `node filters.js --append-filter=<id> --add-subject='"<phrase>"'` for a subject phrase, or `--add-body`
 for a body phrase — `--list-filters` first to find the bucket's id. Create a new bucket with
 `--create-filter --query='…' --archive --mark-read` only for a genuinely new mechanism.

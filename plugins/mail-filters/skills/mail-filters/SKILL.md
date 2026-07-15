@@ -100,6 +100,17 @@ human never writes and only the notification carries:
 The through-line: match the phrase the sending machine puts there by template, as a distinctive
 fragment, scoped to where it is reliable.
 
+**When the company name sits mid-subject.** A subject like "Your Account with TPWD Has been Updated"
+tempts you to lift the surrounding words as the phrase — but `Has been Updated` alone buries good mail
+("Your job application status has been updated"), and the only way to keep the fragment safe is to keep
+the company name in it, which fails the recurrence side: the next company's version won't say "TPWD."
+No subject fragment threads that needle. Drop to the **body** instead, where account-update
+notifications carry a template sentence the subject doesn't show — `account has been updated with your
+requested changes` — and fence it to the **no-reply sender class** rather than one sender, since any
+machine that sends this kind of confirmation is likely to use a no-reply address. That combination
+recurs across companies (the safety net for the next one) and stays safe (the no-reply fence rules out a
+person ever writing it to you).
+
 ## Organizing rule: one bucket per mechanism, not per topic
 
 Group filters by the **mechanism that catches the mail — the field you matched and the action you take

@@ -52,7 +52,11 @@ from the subject, but when it doesn't hand you a phrase that's both specific and
 **body** match is allowed and often what you need: use a distinctive automated-boilerplate phrase (fenced
 by the whitelist) so it catches the
 type from any sender; pin it to a single sender only when the phrase isn't distinctive enough to stand on
-its own. Create it via `ms-graph`'s `mail.js --append-rule`/`--create-rule` once Russell OKs the phrase.
+its own. Before running `ms-graph`'s `mail.js --append-rule`/`--create-rule`, run the **`mail-filters`**
+skill's show-literal-rule gate ("Wiring the drainer" step 3): show Russell the exact phrase(s), which
+bucket they land in, and the action, and create only on his explicit OK of that shown text. A digest-level
+"yes, stop that" approves the proposal to build a rule — it authorizes running this gate, not the rule
+text itself.
 
 ## DRAFT-MODE CLI commands
 Follow all voice and reply-vs-fresh rules in `email-base.md`, then use these Graph commands:

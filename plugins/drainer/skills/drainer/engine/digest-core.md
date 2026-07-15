@@ -107,6 +107,12 @@ and apply the priority order it defines. Propose, never apply without Russell's 
 concrete (the actual link, setting, or rule the provider's JUNK-LEARNING points to) so Russell can act
 in one step.
 
+This step's proposal, and his go-ahead on it in step 5, approve **building a rule for this type of
+junk** — they are not approval of a rule's literal text. When the chosen stop is a mail rule, creating
+or appending it always routes through the provider's JUNK-LEARNING section, which in turn requires the
+**`mail-filters`** skill's show-literal-rule gate: show Russell the exact phrase(s), the bucket they land
+in, and the action, and create only on his explicit OK of that shown text.
+
 ## 4. Reconciliation — re-surface the stale-but-unfinished
 
 List each stale needs-you item with its age, who it's from, the subject, and a one-line note on what
