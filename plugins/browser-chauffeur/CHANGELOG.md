@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.10.1] - 2026-07-15
+
+### Changed
+- **Email-delivered MFA codes are no longer a user-intervention trigger.** When a site sends its one-time code to a mailbox Claude already has read access to (Gmail/Outlook/IMAP), fetch the code from that mailbox and complete the login directly instead of pausing with `AskUserQuestion`. Escalation is now reserved for MFA that lands somewhere unreachable — SMS, an authenticator app, a phone call.
+
 ## [1.10.0] - 2026-07-06
 
 Stops one Claude session from grabbing and navigating another session's tab. Previously two sessions on the same site (e.g. both editing the same LinkedIn profile) could clobber each other's work when one session's tab reuse matched the other's tab by URL.
