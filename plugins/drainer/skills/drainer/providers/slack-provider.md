@@ -50,13 +50,6 @@ blocked on them, not ready to act on. Confirm there's not already a reply and th
 before drafting. The `message-draft` slack mode stages drafts in the Slack composer — check the
 conversation in Slack so you don't stack a second draft. Reply only to what is still open.
 
-If this could be outreach on behalf of a tracked initiative — an introduction, or a reply from a
-company or individual who might already be a tracked contact — also check `<repo>/trello-boards.yaml`
-(the registry the `trello` source and `trello-outreach` skill use) for an existing card naming that
-company or contact. A match means the item is already tracked: reference the card (and consider
-updating it — bump the due date, add a comment) rather than treating this as new outreach. No match →
-treat it as genuinely new.
-
 ## CAPTURE (the item shape the worker reads)
 The adapter writes these two files for each dispatched item (`slack-adapter.py` → `capture`); this is the
 shape the worker can rely on:

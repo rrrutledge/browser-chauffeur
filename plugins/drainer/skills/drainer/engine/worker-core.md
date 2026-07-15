@@ -99,6 +99,14 @@ message in the thread — even when that latest message is one the user sent.** 
 the conversation actually stands, so quote and thread on the newest message, not an older inbound one;
 provider DRAFT-MODE notes how to target a sent message.
 
+**Also check Trello when the item could be outreach** — an introduction, or a reply from a company or
+individual who might already be a tracked contact — regardless of which source it arrived on. Read
+`<repo>/trello-boards.yaml` (the registry the `trello` source and `trello-outreach` skill use) for an
+existing card naming that company or contact. A match means the item is already tracked: reference the
+card in what you present (and consider updating it — bump the due date, add a comment) instead of acting
+as if this were unstarted outreach. No match → treat it as genuinely new. This isn't source-specific, so
+it applies the same way no matter which provider captured the item.
+
 ## 2b. If the item is a pointer, open the real content yourself
 If your item is a **notification that points to content living elsewhere** — a meeting-recording
 notice, a forum "you have a reply" — it is NOT the content, only a pointer. **Go open and read the
