@@ -77,7 +77,7 @@ Don't present a menu of options or stack a numbered list of questions.
   When their job is to route you to a third party (find a volunteer, recommend a speaker), make the asks conditional on that handoff rather than personal requests to them — and don't narrate the follow-up's timing.
 - **When a contact declines or gives a discouraging read, accept it humbly and stop** — don't tack on a new ask.
   Defer to their judgment and end.
-  When they checked a lead that didn't pan out, close with "No problem ✅" rather than "Good to know" — the former is gracious about their effort.
+  When they checked a lead that didn't pan out, close with "No problem ✅" rather than "Good to know" — the former is gracious about their effort — and add a brief "Thanks for asking." for the legwork itself.
 - **When the ask rested on your own mistake, own it plainly, release the other person, and don't pivot to a replacement ask.**
   Say you got mixed up, tell them not to bother, and stop.
 - **When asking someone to do something, just ask — don't embed how-to instructions.**
@@ -162,6 +162,8 @@ A single clear sentence ending in a question is usually the whole message — re
   Name the owners and one concrete next step; drop the conceptual overview.
   When you're writing to the domain expert on the mechanism in play, keep the message at the proposal level and let them fill in the how - don't explain their own system back to them, and don't stack a how-does-it-work question onto the core ask (research the mechanism to inform yourself, not to lecture the expert).
   When you do surface what you researched to that expert, offer it as a tentative finding for them to confirm — attribute it plainly (Russell will say he looked it up, AI included, and read it himself), hand them the sources, and ask them to verify — rather than asserting the conclusion as settled fact.
+  **Their expertise governs what to DO with the finding, not just whether it's accurate — close on their judgment ("What do you think we should do?"), never on your own announced next step.**
+  Digging up a fact they lacked doesn't transfer the decision to you; it's still theirs, most of all when they've already voiced doubt about the lead and left the call open ("maybe it helps if you mail him") — that's an invitation to weigh in, not permission to proceed.
   When you counter their objection with a fix, acknowledge their point in a clause and give the proposal in one plain sentence, then a short open check ("Sound OK?") - cut the full restatement of their concern, the justification for why the fix works, the list of problems it sidesteps, and any call offer; the expert sees all that already.
   Hedge with "that I know of" when not fully certain.
 - **Keep asks open and tentative — don't pre-commit.**
