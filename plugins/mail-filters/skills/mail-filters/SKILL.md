@@ -72,10 +72,15 @@ phrasings — variants captured over time, rather than one phrase broadened past
 
 1. **Name the type, not the sender.** Ask "what *kind* of machine notification is this?" — delivery
    confirmation, policy-change announcement, receipt, one-time passcode, auto-reply, statement-ready.
-2. **Find the intrinsic boilerplate.** Scan the subject and body for the words the *sending system*
-   emits by template — the words that are there because a machine generated this notification, not
-   because of this particular company. Prefer a distinctive multi-word fragment over a single common
-   word.
+2. **Find the intrinsic boilerplate — subject first, body on escalation.** Scan the subject first for
+   the words the *sending system* emits by template — the words that are there because a machine
+   generated this notification, not because of this particular company — since a subject phrase makes
+   the simplest single-mechanism rule. Escalate to the body when the subject can't deliver one: either
+   it's too generic to mean this type at all, or the only distinctive words are welded to the company's
+   own name (see the body-escalation worked example below). The body holds far more text and usually
+   carries a distinctive automated-boilerplate phrase (a "you're receiving this because…" line, a
+   bulk-sender footer marker, a mailing-platform signature) that marks the type regardless of who sent
+   it. Wherever it's found, prefer a distinctive multi-word fragment over a single common word.
 3. **Run the two-sided test** on the candidate.
 4. **Tighten until safe**, accept that variants may slip through, and plan to add sibling phrases as
    they surface.
@@ -99,6 +104,17 @@ human never writes and only the notification carries:
 
 The through-line: match the phrase the sending machine puts there by template, as a distinctive
 fragment, scoped to where it is reliable.
+
+**The body-escalation case, worked.** A subject like "Your Account with TPWD Has been Updated" tempts
+you to lift the surrounding words as the phrase — but `Has been Updated` alone buries good mail ("Your
+job application status has been updated"), and the only way to keep the fragment safe is to keep the
+company name in it, which fails the recurrence side: the next company's version won't say "TPWD." No
+subject fragment threads that needle, so escalate per step 2 above: drop to the **body**, where
+account-update notifications carry a template sentence the subject doesn't show — `account has been
+updated with your requested changes` — and fence it to the **no-reply sender class** rather than one
+sender, since any machine that sends this kind of confirmation is likely to use a no-reply address. That
+recurs across companies (the safety net for the next one) and stays safe (the no-reply fence rules out a
+person ever writing it to you).
 
 ## Organizing rule: one bucket per mechanism, not per topic
 

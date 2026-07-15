@@ -45,14 +45,11 @@ message id.
 later; narrate it). Never a permanent purge.
 
 ## JUNK-LEARNING (the first-reach rule — Outlook.com-specific)
-The first-reach stop (per `email-base.md`'s rule-first order): an **Outlook.com inbox rule**, using the
-**`mail-filters`** skill to choose the phrase and shape — append the type phrase to the right
-consolidated bucket and keep the sender-domain exclusion whitelist that fences every broad bucket. Start
-from the subject, but when it doesn't hand you a phrase that's both specific and cross-company, a
-**body** match is allowed and often what you need: use a distinctive automated-boilerplate phrase (fenced
-by the whitelist) so it catches the
-type from any sender; pin it to a single sender only when the phrase isn't distinctive enough to stand on
-its own. Create it via `ms-graph`'s `mail.js --append-rule`/`--create-rule` once Russell OKs the phrase.
+The first-reach stop (per `email-base.md`'s rule-first order, including its show-literal-rule gate): an
+**Outlook.com inbox rule** — append the type phrase to the right consolidated bucket, keeping the
+sender-domain exclusion whitelist that fences every broad bucket; pin the phrase to a single sender only
+when it isn't distinctive enough to stand on its own. Once Russell has OK'd the shown rule, create it via
+`ms-graph`'s `mail.js --append-rule`/`--create-rule`.
 
 ## DRAFT-MODE CLI commands
 Follow all voice and reply-vs-fresh rules in `email-base.md`, then use these Graph commands:
