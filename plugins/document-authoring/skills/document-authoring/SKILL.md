@@ -13,6 +13,8 @@ The **Formal writing** and **Conversational writing** sections describe **regist
 
 **No em dash `—`, in any document or register** — use space-dash-space ` - ` instead; it's a known AI-writing tell, and readers watch for it in formal long-form content (articles, blog posts) just as much as in chat.
 
+**State guidance positively** — describe the desired behavior directly; a correction names only what to do, not the rejected alternative alongside it.
+
 ## The drafting loop: Read → Write → Verify → Stage → Learn (mandatory)
 
 Every message in Russell's name — a Jira comment, an email, a Teams post, a PR — runs through these steps, in order.
