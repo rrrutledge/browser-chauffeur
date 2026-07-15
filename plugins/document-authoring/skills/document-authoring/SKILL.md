@@ -174,6 +174,8 @@ A single clear sentence ending in a question is usually the whole message — re
 - **Reporting a completed task: lead with the outcome and the link; cut the diagnostic play-by-play and the editorial wrap-up.**
   They want the result, not the story of what was wrong, how you found it, or a closing "so this means…" they can draw themselves.
   Don't itemize each individual action once a summary phrase already implies it.
+- **Stating availability for a call: give the nearest open window and the next occupied slot, then stop.**
+  Drop later-in-the-day blocks that don't bear on scheduling the call at hand — the recipient only needs enough to pick a time now, not your full day.
 
 ### Never do these (AI-tells that break the voice)
 
@@ -258,7 +260,7 @@ A single clear sentence ending in a question is usually the whole message — re
   When you have genuine good news of your own, that news is the warm opener: lead with it, ahead of any business question.
 - **Answer the question first.**
   Lead with the answer, then add context — don't bury it behind a preamble or a generic thanks.
-  When someone raises more than one point, answer each one by name rather than a single blanket acknowledgment.
+  When someone raises more than one point, answer each one by name rather than a single blanket acknowledgment — this includes an earlier, question-free message where they shared research or effort on your behalf: thank them for the specific contribution and note your own follow-through on it before pivoting to a fresh, unrelated ask in the same reply.
 - **Document a sequence as short bullets, and open with the current status** — not a defensive framing line.
   Let the record carry the point; skip the "I've been responsive" editorializing.
 - **Open groups with "Hey guys / folks / everyone"** — but skip the opener when replying to a specific quoted message or directly continuing an active conversation thread; the existing context replaces it.
