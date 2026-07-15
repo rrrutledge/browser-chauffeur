@@ -174,8 +174,8 @@ A single clear sentence ending in a question is usually the whole message — re
 - **Reporting a completed task: lead with the outcome and the link; cut the diagnostic play-by-play and the editorial wrap-up.**
   They want the result, not the story of what was wrong, how you found it, or a closing "so this means…" they can draw themselves.
   Don't itemize each individual action once a summary phrase already implies it.
-- **Stating availability for a call: give the nearest open window and the next occupied slot, then stop.**
-  Drop later-in-the-day blocks that don't bear on scheduling the call at hand — the recipient only needs enough to pick a time now, not your full day.
+- **Proposing call times across timezones: filter to the recipient's normal work day, not just your own open calendar.**
+  Converting your free slots to their local time isn't enough — a slot that's open for you can still be very late or very early for them. Before offering a window, check it against a normal work day (roughly 8am-6pm) in *their* timezone and drop anything outside it, even if it's technically free on your end.
 
 ### Never do these (AI-tells that break the voice)
 
