@@ -170,6 +170,7 @@ A single clear sentence ending in a question is usually the whole message — re
   Write as though the outcome is still open and give room to say no: hedge with "may"/"wondering", include alternatives, and avoid pinning the person to a specific action.
   "Please consider" lands softer than a direct question for an internal favor; prefer "can" over "should" in a joint ask; soften a named prestigious slot to the general role ("speaker", not "keynote"). When the ask could read as ungrateful — pressing a lapsed commitment, an underpayment — make the gratitude explicit, frame it as sharing the point to ask whether it helps *them*, and point to the concrete record rather than asserting the fact.
   When asking an existing contributor for more, name a peer already committed as the nudge and hand the choice back with an explicit release ("so it's fine either way").
+  On a repeated ask, recast a phrasing that presumes an answer already exists ("who do we have lined up") into one that asks whether it exists at all ("is there anyone we can line up") - the presumptive form reads as chasing a decision already made, the open form as a genuine question.
 - **First-touch outreach: keep the ask to one low-commitment thing, and warm the reference to their past work.**
   After a long gap, ask for a single easy yes rather than stacking asks, and affirm that their earlier contribution still matters in plain words.
   Cut any salesy bridge before the ask.
