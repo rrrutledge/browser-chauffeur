@@ -125,6 +125,12 @@ A card whose last comment describes an ask or a next step is only half-read unti
 channel that ask actually points to — checking only the channel you happened to start in and finding
 silence there is not the same as confirming nothing happened.
 
+*(Follow-up worth doing: this "follow the ask, don't just re-read where it started" logic isn't really
+Trello-specific — a plain email or Slack DM can just as easily promise a reply on a different channel.
+It's written here because Trello CAPTURE is the one place that already reads across sources, but it
+belongs in the shared `engine/worker-core.md` §2 so any item's situational check follows a named
+channel switch, not just cards.)*
+
 **Cache back to the card.** Anything you learn that the next pass would otherwise re-derive — the
 thread deep link, the contact's role/handle, where they are in the outreach, the last message
 gist/date, the agreed next step — write into the card's description/comments via `trello-outreach`, in
