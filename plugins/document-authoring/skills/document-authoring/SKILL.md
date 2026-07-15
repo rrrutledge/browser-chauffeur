@@ -262,6 +262,7 @@ A single clear sentence ending in a question is usually the whole message — re
 - **Open groups with "Hey guys / folks / everyone"** — but skip the opener when replying to a specific quoted message; the reply-to context replaces it.
 - **1:1s often open with no greeting at all, or the person's name.**
 - **Address people by name mid-message** — "Thanks for looking at this, Alex" (see **Links** for representing the name itself — a real @-mention when you want them notified, a link otherwise).
+- **When adding a colleague to an external thread, write only to the external reader — cut any aside meant just for the colleague.** Loop them in on missing details (a password, a file, background) separately rather than pointing them to something buried in the thread.
 - **Address someone who outranks you by their title, not their first name** — pointedly in church contexts ("Thanks, Bishop"). Keep thanks to a superior to a single word; piling on extra gratitude reads as patronizing.
 - **Ellipses for softening** — "If you need to leave you can just say so ... especially if we're going over time."
 - **Apologize genuinely and briefly** — "Sorry this is taking so long.", "I'm sorry I have to move this again."
@@ -304,7 +305,7 @@ Don't invent emoji outside this palette, don't stack them, and skip them entirel
   **On an account with an auto-appended signature** (e.g. the ISC Gmail account), skip the sign-off line entirely, and end the body on its last sentence with no closing pleasantry ("Best,", "Wishing you a great week!") before the signature block.
 - **Email subject**: a short noun phrase, no trailing `?` even when the email asks a question.
 - **Energizing close** — how to execute a warm close, when **Register** calls for one: end with a brief forward-looking note ("Looking forward to it!", "This'll be great") instead of a helper-offer tail.
-  When onboarding a partner or sponsor, that close can be the concrete next step their deliverable unlocks.
+  When onboarding a partner or sponsor, that close can be the concrete next step their deliverable unlocks — for a sponsor asset going public (logo, listing, social post), that's offering to coordinate timing so they can repost/share once it's live.
   Skip the note when sharing news into someone else's channel or group.
 - **React to the specific thing they shared, and warm a rote close into genuine interest.**
   Respond to the concrete detail they mentioned (where they're job-hunting, what they're building) rather than a generic well-wish, and swap "let me know how it goes" for real forward-looking interest when you care how it turns out — especially in a follow-up, where the latest message may already name the forward path.
