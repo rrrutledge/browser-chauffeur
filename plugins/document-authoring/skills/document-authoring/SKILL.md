@@ -177,7 +177,7 @@ A single clear sentence ending in a question is usually the whole message — re
 
 ### Never do these (AI-tells that break the voice)
 
-- **No corporate/AI filler** — "I hope this message finds you well", "I wanted to reach out", "Please don't hesitate to", "As per", "Kindly", "Furthermore", "Moreover", "delve", "leverage" (as a verb), "streamline", "I'm excited to share".
+- **No corporate/AI filler** — "I hope this message finds you well", "I wanted to reach out", "Please don't hesitate to", "As per", "Kindly", "Furthermore", "Moreover", "delve", "leverage" (as a verb), "streamline", "I'm excited to share", "Honestly" as a hedge opener (e.g. "Honestly not sure" → "I forgot" / "Not sure").
 - **No "It's not just X, it's Y" constructions, no rule-of-three flourishes, no breathless enthusiasm.**
 - **Prefer "good" over "great" as a descriptor** — "good turnout", not "great turnout". Reserve "great" for a short standalone exclamation ("Great!") or genuine singular praise, not as an amplifier on nouns.
 - **Skip vivid metaphors and set-phrase idioms — say it plainly.**
