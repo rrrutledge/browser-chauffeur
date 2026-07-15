@@ -27,6 +27,10 @@
 //                 1:1 DM channel id — conversations.open only opens/returns the existing DM, it never
 //                 sends anything; use the returned channel id with --history to read a named contact's
 //                 DM before --list-unread would show anything, e.g. a reply Russell already read)
+// Find by domain: node slack.js --find-by-domain=<email domain> [--json]
+//                (users.list filtered on profile.email ending in @<domain> — surfaces an existing
+//                 member who already works at a company, a warm path into a cold outreach target
+//                 instead of a generic company inbox)
 
 const TOKEN = process.env.SLACK_BOT_TOKEN;
 const COOKIE = process.env.SLACK_COOKIE_D;
@@ -356,6 +360,28 @@ async function findDm() {
   for (const o of out) console.log(`${o.name} (${o.userId}) -> DM channel ${o.channel}`);
 }
 
+async function findByDomain() {
+  const domain = String(args['find-by-domain'] || '').toLowerCase().replace(/^@/, '');
+  if (!domain) throw new Error('--find-by-domain requires an email domain, e.g. --find-by-domain=opentext.com');
+  const matches = [];
+  let cursor = '';
+  do {
+    const r = await call('users.list', { limit: '200', cursor });
+    for (const u of r.members || []) {
+      if (u.deleted || u.is_bot || u.id === 'USLACKBOT') continue;
+      const email = ((u.profile && u.profile.email) || '').toLowerCase();
+      if (email.endsWith(`@${domain}`)) {
+        const name = u.real_name || (u.profile && u.profile.real_name) || u.name || '';
+        matches.push({ id: u.id, name, email, title: (u.profile && u.profile.title) || '' });
+      }
+    }
+    cursor = (r.response_metadata && r.response_metadata.next_cursor) || '';
+  } while (cursor);
+  if (args.json) { console.log(JSON.stringify(matches, null, 2)); return; }
+  if (!matches.length) { console.log(`No member with an @${domain} email.`); return; }
+  for (const m of matches) console.log(`${m.name} (${m.id}) <${m.email}>${m.title ? ' - ' + m.title : ''}`);
+}
+
 (async () => {
   requireAuth();
   if (args.check) return await check();
@@ -365,5 +391,6 @@ async function findDm() {
   if (args.react) return await react();
   if (args.mark) return await mark();
   if (args['find-dm']) return await findDm();
-  throw new Error('Specify --check, --list-unread, --show, --history, --react, --mark, or --find-dm');
+  if (args['find-by-domain']) return await findByDomain();
+  throw new Error('Specify --check, --list-unread, --show, --history, --react, --mark, --find-dm, or --find-by-domain');
 })().catch(e => { console.error('Error:', e.message); process.exit(1); });
