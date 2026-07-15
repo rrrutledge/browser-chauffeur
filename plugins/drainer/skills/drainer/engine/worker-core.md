@@ -99,6 +99,20 @@ message in the thread — even when that latest message is one the user sent.** 
 the conversation actually stands, so quote and thread on the newest message, not an older inbound one;
 provider DRAFT-MODE notes how to target a sent message.
 
+**An ask can hop channels — follow it, don't just re-read where it started.** The channel that carried
+the item is not necessarily the channel that carries its resolution. Two patterns to watch for, on any
+source:
+- **"DM me your X" inside a group chat/channel names a different, private thread** — a 1:1 DM, not the
+  group conversation you're already reading. Open that specific 1:1 (e.g. Slack's `conversations.open`
+  with the contact's user id resolves it even when you don't already know the channel id) before
+  concluding they haven't answered.
+- **"Connect person A with person B" is usually carried out over email**, even when the ask itself
+  arrived over Slack/Teams or is sitting on a Trello card. Search the mailbox (both directions, per the
+  email guidance above) for an intro before assuming that step hasn't happened.
+An item whose content describes an ask or a next step is only half-read until you've checked the channel
+that ask actually points to — checking only the channel it arrived on and finding silence there is not
+the same as confirming nothing happened.
+
 **Also check Trello when the item could be outreach** — an introduction, or a reply from a company or
 individual who might already be a tracked contact — regardless of which source it arrived on. Read
 `<repo>/trello-boards.yaml` (the registry the `trello` source and `trello-outreach` skill use) for an
