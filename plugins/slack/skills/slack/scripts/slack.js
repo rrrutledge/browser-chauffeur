@@ -26,7 +26,29 @@
 //                (users.list matched against real name, then conversations.open per match to resolve the
 //                 1:1 DM channel id — conversations.open only opens/returns the existing DM, it never
 //                 sends anything; use the returned channel id with --history to read a named contact's
-//                 DM before --list-unread would show anything, e.g. a reply Russell already read)
+//                 DM before --list-unread would show anything, e.g. a reply Russell already read.
+//                 WORKSPACES WITH LONG HISTORY ACCUMULATE DUPLICATE ACCOUNTS per person (an old inactive
+//                 one plus their current one) — when a name matches more than one user, results are
+//                 sorted newest-`updated`-first and flagged; use the top one, not whichever happened to
+//                 come first in users.list. This isn't rare: one real workspace had 156 duplicate names
+//                 out of ~4,300 members.)
+// Send:          node slack.js --send --user=<userId> --text="..." [--unfurl=false] [--commit]
+//                (conversations.open + chat.postMessage — an explicit, deliberate outbound send, not a
+//                 drafted-for-review reply. Default is dry-run: prints the resolved DM channel and exact
+//                 text and stops. Only sends with --commit. Use a real `<@USERID>` in --text for a mention
+//                 (renders as a proper chip); to make a message read like a forward of an existing Slack
+//                 message, just include that message's permalink in --text with unfurl left on — Slack
+//                 auto-unfurls its own permalinks into a rich quote card (avatar, author, text, "Posted
+//                 in #channel", "View message"), which looks like a native forward for far less code than
+//                 reconstructing the quote by hand. --channel=<C> sends to a channel/existing conversation
+//                 directly instead of opening a DM.
+//                 NEVER --commit without the specific person having reviewed this exact text and given
+//                 explicit go-ahead for it — the dry-run output is what to show them first.)
+// Delete:        node slack.js --delete --channel=<C> --ts=<ts> [--commit]
+//                (chat.delete — retracts a message you sent. Default is dry-run: prints what would be
+//                 deleted. Only deletes with --commit. Verify afterward with --history on the same
+//                 channel and confirm the message is gone — chat.delete can silently no-op on a message
+//                 it doesn't own or that's already gone.)
 
 const TOKEN = process.env.SLACK_BOT_TOKEN;
 const COOKIE = process.env.SLACK_COOKIE_D;
@@ -342,18 +364,72 @@ async function findDm() {
     for (const u of r.members || []) {
       if (u.deleted || u.is_bot || u.id === 'USLACKBOT') continue;
       const name = u.real_name || (u.profile && u.profile.real_name) || u.name || '';
-      if (name.toLowerCase().includes(query)) matches.push({ id: u.id, name });
+      if (name.toLowerCase().includes(query)) matches.push({ id: u.id, name, updated: u.updated || 0 });
     }
     cursor = (r.response_metadata && r.response_metadata.next_cursor) || '';
   } while (cursor);
+  // Newest-updated first — when the same name matches more than one account, the stale/inactive
+  // duplicate should never be picked ahead of the one the person actually uses.
+  matches.sort((a, b) => b.updated - a.updated);
+  const byName = new Map();
+  for (const m of matches) { if (!byName.has(m.name)) byName.set(m.name, []); byName.get(m.name).push(m); }
+
   const out = [];
   for (const u of matches) {
     const r = await call('conversations.open', { users: u.id });
-    out.push({ userId: u.id, name: u.name, channel: (r.channel && r.channel.id) || '' });
+    const dupeCount = byName.get(u.name).length;
+    out.push({
+      userId: u.id, name: u.name, channel: (r.channel && r.channel.id) || '',
+      updated: u.updated, duplicateAccounts: dupeCount > 1 ? dupeCount : undefined,
+    });
   }
   if (args.json) { console.log(JSON.stringify(out, null, 2)); return; }
   if (!out.length) { console.log(`No user matching "${args['find-dm']}".`); return; }
-  for (const o of out) console.log(`${o.name} (${o.userId}) -> DM channel ${o.channel}`);
+  for (const o of out) {
+    const flag = o.duplicateAccounts ? `  [DUPLICATE NAME: ${o.duplicateAccounts} accounts match "${o.name}" — this is sorted newest-first, use the top one]` : '';
+    console.log(`${o.name} (${o.userId}) -> DM channel ${o.channel}${flag}`);
+  }
+}
+
+async function send() {
+  if (!args.text) throw new Error('--send requires --text');
+  if (!args.user && !args.channel) throw new Error('--send requires --user=<userId> or --channel=<C>');
+
+  let channel = args.channel;
+  if (!channel) {
+    const r = await call('conversations.open', { users: args.user });
+    channel = (r.channel && r.channel.id) || '';
+  }
+
+  const unfurl = args.unfurl === 'false' ? false : true;
+  console.log('--- Message text ---');
+  console.log(args.text);
+  console.log('--- Target ---');
+  console.log(`channel: ${channel}${args.user ? `  (DM with user ${args.user})` : ''}`);
+  console.log(`unfurl_links: ${unfurl}`);
+
+  if (!args.commit) {
+    console.log('\nDRY RUN — not sent. Re-run with --commit once this has been reviewed and approved.');
+    return;
+  }
+
+  const post = await call('chat.postMessage', { channel, text: args.text, unfurl_links: unfurl ? 'true' : 'false' });
+  console.log(`\nSent. ts=${post.ts} channel=${post.channel}`);
+}
+
+async function deleteMessage() {
+  if (!args.channel || !args.ts) throw new Error('--delete requires --channel and --ts');
+
+  console.log('--- Would delete ---');
+  console.log(`channel: ${args.channel}  ts: ${args.ts}`);
+
+  if (!args.commit) {
+    console.log('\nDRY RUN — not deleted. Re-run with --commit to actually delete.');
+    return;
+  }
+
+  await call('chat.delete', { channel: args.channel, ts: args.ts });
+  console.log(`\nDeleted ${args.channel} ${args.ts}. Verify with --history on the same channel.`);
 }
 
 (async () => {
@@ -365,5 +441,7 @@ async function findDm() {
   if (args.react) return await react();
   if (args.mark) return await mark();
   if (args['find-dm']) return await findDm();
-  throw new Error('Specify --check, --list-unread, --show, --history, --react, --mark, or --find-dm');
+  if (args.send) return await send();
+  if (args.delete) return await deleteMessage();
+  throw new Error('Specify --check, --list-unread, --show, --history, --react, --mark, --find-dm, --send, or --delete');
 })().catch(e => { console.error('Error:', e.message); process.exit(1); });
