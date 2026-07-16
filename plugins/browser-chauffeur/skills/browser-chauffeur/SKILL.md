@@ -392,8 +392,19 @@ Sometimes the browser hits a blocker that only a human can resolve. These all fa
 
 - **CAPTCHAs / human verification** — Cloudflare "Verify you are human", Zillow "Press & Hold", reCAPTCHA, hCaptcha, Arkose Labs. Cannot be solved programmatically. Do NOT retry or switch browsers — escalate immediately.
 - **Login pages** — the user isn't signed in, or the session expired mid-run. You may try the other browser first (Edge/Chrome fallback), but if that also shows a login page, escalate immediately.
-- **MFA prompts** — requires the user's phone/authenticator.
+- **MFA prompts requiring the user's phone or authenticator app** — an SMS code, a push notification, a TOTP app. Nothing you can reach; escalate.
 - **Unresolvable consent/terms walls** — cookie banners or terms pages that can't be auto-dismissed by the overlay dismissal pattern.
+
+### Email-delivered MFA codes — fetch them yourself, don't escalate
+
+When a site's MFA step sends a one-time code to an email address you have read access to (a connected Gmail/Outlook/IMAP mailbox), this is **not** a user-intervention case — complete it yourself:
+
+1. Note the destination the page names ("We just sent a code to `user@example.com`") and the field waiting for it.
+2. Search that mailbox for the just-sent code — sender/subject naming the site or "verification"/"authorization code"/"one-time passcode" is usually enough; sort by most recent, since the same sender may have older codes from prior attempts.
+3. Enter the code and submit, the same way you'd fill any other field.
+4. If the mailbox search comes up empty after a reasonable wait, or the code is rejected, retry the search once (delivery lag) before falling back to `AskUserQuestion` — don't spin indefinitely.
+
+Only escalate an MFA prompt when the code goes somewhere you can't reach (SMS, an authenticator app, a phone call) — see the bullet above.
 
 ### Required `AskUserQuestion` pattern
 
