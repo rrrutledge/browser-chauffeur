@@ -311,7 +311,7 @@ Don't invent emoji outside this palette, don't stack them, and skip them entirel
 - **Email reply flow**: always **Reply All**, never plain Reply, to preserve every CC.
   Reply into an existing thread on the same topic rather than composing new, even when it isn't a direct response to any single message.
 - **Email sign-off**: just `Russ` on its own line — no valediction before it.
-  **On an account with an auto-appended signature** (e.g. the ISC Gmail account), skip the sign-off line entirely, and end the body on its last sentence with no closing pleasantry ("Best,", "Wishing you a great week!") before the signature block.
+  **For any Gmail account this repo's `gmail` skill serves (e.g. the ISC account, `russ@innersourcecommons.org`), stage the draft through that skill's `gmail.js`, not the native `mcp__claude_ai_Gmail__*` connector** — see that skill's SKILL.md for why (no signature handling, no draft cleanup). `gmail.js` appends the account's real signature automatically, so write just `Russ` and stop; don't retype the signature block yourself, and don't let it go out through a path that skips the signature entirely.
 - **Email subject**: a short noun phrase, no trailing `?` even when the email asks a question.
 - **Energizing close** — how to execute a warm close, when **Register** calls for one: end with a brief forward-looking note ("Looking forward to it!", "This'll be great") instead of a helper-offer tail.
   When onboarding a partner or sponsor, that close can be the concrete next step their deliverable unlocks.
