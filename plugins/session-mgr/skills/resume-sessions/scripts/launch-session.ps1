@@ -36,6 +36,22 @@ param(
 # user's PowerShell $PROFILE when the caller's `powershell` invocation loads it (both current
 # callers do).
 
+# Ensures a session id exists and writes it to "<AnchorFile>.session" so peek.py (and anything else
+# that wants to follow this tab's live transcript) can find it later — the two launch modes used to
+# each carry their own copy of this, and only the -PromptFile copy actually ran, so a -SeedFile launch
+# (every handoff) never got a receipt and could never be peeked at. One function, called from both
+# branches below, so they can't drift out of sync again.
+function Register-SessionReceipt {
+  param(
+    [Parameter(Mandatory)][string]$AnchorFile,
+    [string]$SessionId
+  )
+  if (-not $SessionId) { $SessionId = [guid]::NewGuid().Guid }
+  Set-Content -LiteralPath ($AnchorFile + ".session") -Value $SessionId -Encoding ascii
+  Write-Host "launch-session id: $SessionId"
+  return $SessionId
+}
+
 $seed = $null
 if ($Resume) {
   $claudeArgs = @('--resume', $Resume)
@@ -50,12 +66,8 @@ if ($PromptFile) {
     Write-Host "launch-session: prompt file not found: $PromptFile" -ForegroundColor Red
     return
   }
-  # Run with a fixed session id so the orchestrator can find this tab's full JSONL
-  # transcript later. Write the id next to the prompt file as <promptfile>.session so the
-  # transcript is locatable by item (peek.py depends on this).
-  if (-not $SessionId) { $SessionId = [guid]::NewGuid().Guid }
-  Set-Content -LiteralPath ($PromptFile + ".session") -Value $SessionId -Encoding ascii
-  Write-Host "launch-session id: $SessionId"
+  # Run with a fixed session id so the orchestrator can find this tab's full JSONL transcript later.
+  $SessionId = Register-SessionReceipt -AnchorFile $PromptFile -SessionId $SessionId
   # Lead with a one-line item summary (if supplied) so Claude names the tab off it — a descriptive
   # title like "Handle Gmail security message" instead of "Review prompt-file instructions" — while the
   # attention star still works (no --suppressApplicationTitle). Then point it at the full instructions.
@@ -80,8 +92,10 @@ elseif ($SeedFile) {
     Write-Host "launch-session: seed file not found: $SeedFile" -ForegroundColor Red
     return
   }
+  # Same receipt as the -PromptFile branch above, so a handoff can be peeked at too — this previously
+  # only fired when a caller happened to pass -SessionId explicitly, which none do.
+  $SessionId = Register-SessionReceipt -AnchorFile $SeedFile -SessionId $SessionId
   $seed = (Get-Content -Raw -LiteralPath $SeedFile).Trim()
-  if ($SessionId) { Write-Host "launch-session id: $SessionId" }
 }
 else {
   Write-Host "launch-session: supply -PromptFile, -SeedFile, or -Resume <session-id>" -ForegroundColor Red
