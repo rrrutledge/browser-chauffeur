@@ -308,14 +308,7 @@ Don't invent emoji outside this palette, don't stack them, and skip them entirel
 - **Email reply flow**: always **Reply All**, never plain Reply, to preserve every CC.
   Reply into an existing thread on the same topic rather than composing new, even when it isn't a direct response to any single message.
 - **Email sign-off**: just `Russ` on its own line — no valediction before it.
-  **An account's configured Gmail signature only auto-appends when a human (or browser-chauffeur) types into the real Gmail compose window — never on a draft created through the Gmail API** (e.g. the `mcp__claude_ai_Gmail__create_draft` tool, or any IMAP-APPEND draft). The API has no concept of the account's signature setting, so a draft staged that way needs the full signature written into the body, or it goes out bare. **For the ISC Gmail account** (`russ@innersourcecommons.org`), its configured signature is:
-  ```
-  Russ Rutledge
-  Executive Director
-  InnerSource Commons Foundation
-  https://innersourcecommons.org/
-  ```
-  Append that block (with the org link anchored, not bare) after the body on every API-staged ISC Gmail draft. **Only when staging directly in the Gmail web compose UI via browser-chauffeur** does the client apply the signature itself — there, just write `Russ` and stop; adding the block yourself would duplicate it.
+  **For any Gmail account this repo's `gmail` skill serves (e.g. the ISC account, `russ@innersourcecommons.org`), stage the draft through that skill's `gmail.js`, not the native `mcp__claude_ai_Gmail__*` connector** — see that skill's SKILL.md for why (no signature handling, no draft cleanup). `gmail.js` appends the account's real signature automatically, so write just `Russ` and stop; don't retype the signature block yourself, and don't let it go out through a path that skips the signature entirely.
 - **Email subject**: a short noun phrase, no trailing `?` even when the email asks a question.
 - **Energizing close** — how to execute a warm close, when **Register** calls for one: end with a brief forward-looking note ("Looking forward to it!", "This'll be great") instead of a helper-offer tail.
   When onboarding a partner or sponsor, that close can be the concrete next step their deliverable unlocks.
