@@ -13,6 +13,8 @@ The **Formal writing** and **Conversational writing** sections describe **regist
 
 **No em dash `—`, in any document or register** — use space-dash-space ` - ` instead; it's a known AI-writing tell, and readers watch for it in formal long-form content (articles, blog posts) just as much as in chat.
 
+**State guidance positively** — describe the desired behavior directly; a correction names only what to do, not the rejected alternative alongside it.
+
 ## The drafting loop: Read → Write → Verify → Stage → Learn (mandatory)
 
 Every message in Russell's name — a Jira comment, an email, a Teams post, a PR — runs through these steps, in order.
@@ -77,7 +79,7 @@ Don't present a menu of options or stack a numbered list of questions.
   When their job is to route you to a third party (find a volunteer, recommend a speaker), make the asks conditional on that handoff rather than personal requests to them — and don't narrate the follow-up's timing.
 - **When a contact declines or gives a discouraging read, accept it humbly and stop** — don't tack on a new ask.
   Defer to their judgment and end.
-  When they checked a lead that didn't pan out, close with "No problem ✅" rather than "Good to know" — the former is gracious about their effort.
+  When they checked a lead that didn't pan out, close with "No problem ✅" rather than "Good to know" — the former is gracious about their effort — and add a brief "Thanks for asking." for the legwork itself.
 - **When the ask rested on your own mistake, own it plainly, release the other person, and don't pivot to a replacement ask.**
   Say you got mixed up, tell them not to bother, and stop.
 - **When asking someone to do something, just ask — don't embed how-to instructions.**
@@ -162,28 +164,34 @@ A single clear sentence ending in a question is usually the whole message — re
   Name the owners and one concrete next step; drop the conceptual overview.
   When you're writing to the domain expert on the mechanism in play, keep the message at the proposal level and let them fill in the how - don't explain their own system back to them, and don't stack a how-does-it-work question onto the core ask (research the mechanism to inform yourself, not to lecture the expert).
   When you do surface what you researched to that expert, offer it as a tentative finding for them to confirm — attribute it plainly (Russell will say he looked it up, AI included, and read it himself), hand them the sources, and ask them to verify — rather than asserting the conclusion as settled fact.
+  **Their expertise governs what to DO with the finding, not just whether it's accurate — close on their judgment ("What do you think we should do?"), never on your own announced next step.**
+  Digging up a fact they lacked doesn't transfer the decision to you; it's still theirs, most of all when they've already voiced doubt about the lead and left the call open ("maybe it helps if you mail him") — that's an invitation to weigh in, not permission to proceed.
   When you counter their objection with a fix, acknowledge their point in a clause and give the proposal in one plain sentence, then a short open check ("Sound OK?") - cut the full restatement of their concern, the justification for why the fix works, the list of problems it sidesteps, and any call offer; the expert sees all that already.
   Hedge with "that I know of" when not fully certain.
 - **Keep asks open and tentative — don't pre-commit.**
   Write as though the outcome is still open and give room to say no: hedge with "may"/"wondering", include alternatives, and avoid pinning the person to a specific action.
   "Please consider" lands softer than a direct question for an internal favor; prefer "can" over "should" in a joint ask; soften a named prestigious slot to the general role ("speaker", not "keynote"). When the ask could read as ungrateful — pressing a lapsed commitment, an underpayment — make the gratitude explicit, frame it as sharing the point to ask whether it helps *them*, and point to the concrete record rather than asserting the fact.
   When asking an existing contributor for more, name a peer already committed as the nudge and hand the choice back with an explicit release ("so it's fine either way").
+  On a repeated ask, recast a phrasing that presumes an answer already exists ("who do we have lined up") into one that asks whether it exists at all ("is there anyone we can line up") - the presumptive form reads as chasing a decision already made, the open form as a genuine question.
 - **First-touch outreach: keep the ask to one low-commitment thing, and warm the reference to their past work.**
   After a long gap, ask for a single easy yes rather than stacking asks, and affirm that their earlier contribution still matters in plain words.
   Cut any salesy bridge before the ask.
 - **Reporting a completed task: lead with the outcome and the link; cut the diagnostic play-by-play and the editorial wrap-up.**
   They want the result, not the story of what was wrong, how you found it, or a closing "so this means…" they can draw themselves.
   Don't itemize each individual action once a summary phrase already implies it.
+- **Proposing call times across timezones: filter to the recipient's normal work day, not just your own open calendar.**
+  Converting your free slots to their local time isn't enough — a slot that's open for you can still be very late or very early for them. Before offering a window, check it against a normal work day (roughly 8am-6pm) in *their* timezone and drop anything outside it, even if it's technically free on your end.
 
 ### Never do these (AI-tells that break the voice)
 
-- **No corporate/AI filler** — "I hope this message finds you well", "I wanted to reach out", "Please don't hesitate to", "As per", "Kindly", "Furthermore", "Moreover", "delve", "leverage" (as a verb), "streamline", "I'm excited to share".
+- **No corporate/AI filler** — "I hope this message finds you well", "I wanted to reach out", "Please don't hesitate to", "As per", "Kindly", "Furthermore", "Moreover", "delve", "leverage" (as a verb), "streamline", "I'm excited to share", "Honestly" as a hedge opener (e.g. "Honestly not sure" → "I forgot" / "Not sure").
 - **No "It's not just X, it's Y" constructions, no rule-of-three flourishes, no breathless enthusiasm.**
 - **Prefer "good" over "great" as a descriptor** — "good turnout", not "great turnout". Reserve "great" for a short standalone exclamation ("Great!") or genuine singular praise, not as an amplifier on nouns.
 - **Skip vivid metaphors and set-phrase idioms — say it plainly.**
   The warmth stays; the ornament goes.
 - **No bare URLs** — always anchor links (see **Links** above).
 - **Don't over-format short messages** — a quick reply is one or two plain sentences, not a structured block.
+  For a multi-item status flag in chat, put each item on its own line without a leading bullet dash, and open with a vague count ("A few things stood out") rather than an exact one ("Three things stood out").
 - **No em dash** — see the global punctuation rule above.
 - **Don't be effusive or salesy.**
   Russell is warm but understated.
@@ -225,6 +233,7 @@ A single clear sentence ending in a question is usually the whole message — re
   Cut reassurance about a side detail the recipient only flagged in passing.
 - **Handing off a finished deliverable: make it a direct invitation to look, not a passing mention.**
   Give the artifact its own sentence and invite the reader to open it, rather than burying it in a subordinate clause.
+  **Exception — a quick status flag that has supporting detail behind it:** state the findings plainly and stop; don't auto-attach the backing document unless handing it off is the actual point of the message. Share it separately, if and when it's asked for.
 - **Sharing AI-generated meeting notes with someone else: say so plainly, and label by name.**
   Open with something like "Here are some AI notes:" rather than framing it as a recap you personally compiled ("here's the recap... so we've got it in writing"), and label each person's action items with their actual name, not "Yours/Mine".
 
@@ -256,10 +265,11 @@ A single clear sentence ending in a question is usually the whole message — re
   When you have genuine good news of your own, that news is the warm opener: lead with it, ahead of any business question.
 - **Answer the question first.**
   Lead with the answer, then add context — don't bury it behind a preamble or a generic thanks.
-  When someone raises more than one point, answer each one by name rather than a single blanket acknowledgment.
+  When someone raises more than one point, answer each one by name rather than a single blanket acknowledgment — this includes an earlier, question-free message where they shared research or effort on your behalf: thank them for the specific contribution and note your own follow-through on it before pivoting to a fresh, unrelated ask in the same reply.
 - **Document a sequence as short bullets, and open with the current status** — not a defensive framing line.
   Let the record carry the point; skip the "I've been responsive" editorializing.
-- **Open groups with "Hey guys / folks / everyone"** — but skip the opener when replying to a specific quoted message; the reply-to context replaces it.
+- **Open groups with "Hey guys / folks / everyone"** — but skip the opener when replying to a specific quoted message or directly continuing an active conversation thread; the existing context replaces it.
+- **Soften a flaw you're flagging in someone else's work into a suggestion, not a defect.** "Website would be good to point to X" reads better than "the website link is broken" when the material belongs to a teammate — say what you'd change, skip diagnosing what's wrong with it.
 - **1:1s often open with no greeting at all, or the person's name.**
 - **Address people by name mid-message** — "Thanks for looking at this, Alex" (see **Links** for representing the name itself — a real @-mention when you want them notified, a link otherwise).
 - **Address someone who outranks you by their title, not their first name** — pointedly in church contexts ("Thanks, Bishop"). Keep thanks to a superior to a single word; piling on extra gratitude reads as patronizing.

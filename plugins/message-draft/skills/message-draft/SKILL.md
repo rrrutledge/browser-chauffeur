@@ -34,6 +34,11 @@ the done-criteria once it has run.
 - **Prefer replying to an existing thread over composing a fresh message.** When a relevant thread
   exists, draft a reply on it rather than a new email; only compose new when there's genuinely no
   thread to reply to.
+  **Slack carve-out:** Slack's Thread feature sidebars a reply away from the main conversation view,
+  unlike a Teams reply or an email reply, which stay inline. In a small DM or group DM, prefer posting
+  a new top-level message in the main conversation over starting a Slack Thread reply, so it's visible
+  to everyone without opening a side panel. Reserve actual Slack Threads for busier channels, where
+  keeping the main feed clean matters more than single-glance visibility.
 
 ## Load-bearing invariants (apply to ALL modes — violating these has typed into the WRONG place)
 
