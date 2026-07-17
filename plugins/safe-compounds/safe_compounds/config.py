@@ -31,9 +31,11 @@ AI might learn but should never be shared publicly (e.g. an internal tool name).
 `workflow_blanket_names` auto-allows Workflow tool calls by their saved
 workflow name (`tool_input.name` — a built-in workflow or one saved under
 `.claude/workflows/`). An inline/dynamic `script` payload is never
-blanket-allowed, however it names itself, since nothing in that text is
-proof of what it does. Everything not listed still prompts, since a
-workflow can spin up many subagents.
+blanket-allowed via this list, however it names itself, since nothing in
+that text is proof of what it does. Instead, an inline script is sent to
+an AI safety check (`scripts.ask_ai_about_workflow_script`) that reads the
+prompts it hands to `agent()` calls — the only thing such a script can
+actually do — every time it runs, since the text differs run to run.
 
 `mcp_blanket_tools` auto-allows individual MCP tool calls by their full
 name (`mcp__<server>__<operation>`), regardless of what verb the operation

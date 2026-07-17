@@ -77,6 +77,12 @@ needed. A reader who sees only your final message must understand *why this was 
 its opening lines. Lead with the same briefing in your first message too, but the final one is the
 guarantee. Never a bare "done, nothing to do."
 
+**Always include the item's own deep link alongside the restated text**, every captured item carries
+one (`url` in `items/<id>.json` — a Slack permalink, Teams deep link, email `webLink`, Trello
+`shortUrl`). Surfacing it costs nothing and means the user can click straight to the source and act
+there himself instead of waiting on you — exactly what he'll often prefer for something he can answer
+in a line or two. Put it right next to the paraphrase, not buried at the end.
+
 ## 2. Situational-check first
 Has it already moved or been handled? (PR merged? request done? they replied and the user already
 answered?) That changes the right action. For an unknown mechanism internal to the user's

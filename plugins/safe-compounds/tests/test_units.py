@@ -23,6 +23,8 @@ from safe_compounds import procs  # noqa: E402
 from safe_compounds.mcp import classify_mcp_tool  # noqa: E402
 from safe_compounds.enforce import detect_complex_bash, detect_simple_expansion, detect_cd_compound, enforce_bash  # noqa: E402
 from safe_compounds.scripts import check_node_segment, get_block_reason, reset_block_reason  # noqa: E402
+from safe_compounds import ai  # noqa: E402
+from safe_compounds import workflow  # noqa: E402
 from safe_compounds.workflow import classify_workflow_tool  # noqa: E402
 
 
@@ -334,6 +336,9 @@ class TestMcp:
 
 
 class TestWorkflow:
+    def setup_method(self):
+        workflow.reset_block_reason()
+
     def test_named_blanket(self):
         set_config(workflow_blanket_names=["code-review"])
         assert classify_workflow_tool({"name": "code-review"}) is True
@@ -346,16 +351,69 @@ class TestWorkflow:
         set_config()
         assert classify_workflow_tool({"name": "code-review"}) is False
 
-    def test_inline_script_never_blanket_even_if_it_claims_the_name(self):
+    def test_inline_script_never_blanket_via_name_even_if_it_claims_the_name(self, monkeypatch):
         # An inline/dynamic script's own text is unverified at call time, so a
-        # self-declared meta.name must never grant blanket trust.
+        # self-declared meta.name must never grant blanket trust through the
+        # name path — it always goes through the AI content check instead.
         set_config(workflow_blanket_names=["code-review"])
+        monkeypatch.setattr(ai, "call_ai", lambda prompt: (None, None))
         script = "export const meta = {\n  name: 'code-review',\n  description: 'x',\n}\nlog('hi')"
         assert classify_workflow_tool({"script": script}) is False
 
     def test_no_name_or_script(self):
         set_config(workflow_blanket_names=["code-review"])
         assert classify_workflow_tool({}) is False
+
+    def test_inline_script_ai_disabled_prompts_without_block(self):
+        # With no AI available, the verdict is undecided: falls through to a
+        # plain prompt, and must not be mistaken for an unsafe verdict.
+        set_config()
+        os.environ['SAFE_COMPOUNDS_DISABLE_AI'] = '1'
+        try:
+            assert classify_workflow_tool({"script": "log('hi')"}) is False
+        finally:
+            del os.environ['SAFE_COMPOUNDS_DISABLE_AI']
+        assert workflow.get_block_reason() is None
+
+    def test_inline_script_ai_safe_allows(self, monkeypatch):
+        set_config()
+        monkeypatch.setattr(ai, "call_ai", lambda prompt: (True, None))
+        assert classify_workflow_tool({"script": "log('hi')"}) is True
+        assert workflow.get_block_reason() is None
+
+    def test_inline_script_ai_dangerous_blocks_with_reason(self, monkeypatch):
+        set_config()
+        monkeypatch.setattr(ai, "call_ai", lambda prompt: (False, "spawns an agent told to force-push"))
+        assert classify_workflow_tool({"script": "log('hi')"}) is False
+        reason = workflow.get_block_reason()
+        assert reason is not None
+        assert "BLOCKED" in reason
+        assert "force-push" in reason
+
+    def test_ai_prompt_includes_script_text(self, monkeypatch):
+        # The AI check must actually see the script, not a placeholder.
+        captured = {}
+
+        def fake_call_ai(prompt):
+            captured['prompt'] = prompt
+            return True, None
+
+        set_config()
+        monkeypatch.setattr(ai, "call_ai", fake_call_ai)
+        classify_workflow_tool({"script": "const X = 'unique-marker-42'"})
+        assert "unique-marker-42" in captured['prompt']
+
+    def test_script_path_is_read_and_checked(self, tmp_path, monkeypatch):
+        set_config()
+        script_file = tmp_path / "workflow.js"
+        script_file.write_text("log('from file')", encoding="utf-8")
+        monkeypatch.setattr(ai, "call_ai", lambda prompt: (True, None))
+        assert classify_workflow_tool({"scriptPath": str(script_file)}) is True
+
+    def test_missing_script_path_prompts_without_crash(self):
+        set_config()
+        assert classify_workflow_tool({"scriptPath": "/definitely/not/a/real/workflow.js"}) is False
+        assert workflow.get_block_reason() is None
 
 
 class TestComplexBash:
