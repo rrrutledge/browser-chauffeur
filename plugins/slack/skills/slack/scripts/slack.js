@@ -9,7 +9,10 @@
 //                (calls auth.test; prints the signed-in user/team; non-zero exit on auth failure)
 // List unread:   node slack.js --list-unread [--top=50] [--json]
 //                (unread DMs + group DMs + @-mentions + channel unreads + unread subscribed-thread
-//                 replies, newest-first; muted conversations are skipped; --json emits a structured array)
+//                 replies, newest-first; muted conversations are skipped; --json emits a structured array.
+//                 Each item also carries `unread`: the FULL span of unread messages since the last read
+//                 cursor, oldest-first, each with from/received/text — so a conversation that accreted
+//                 several distinct asks between reads exposes every one, not only its newest message)
 // Show one:      node slack.js --show --channel=<C> --ts=<ts> [--thread-ts=<tts>] [--json]
 //                (the message text + a chat.getPermalink url; pass --thread-ts for a threaded reply)
 // History:       node slack.js --history --channel=<C> [--thread-ts=<tts>] [--limit=50] [--json]
@@ -126,6 +129,18 @@ async function previewText(msgs) {
   return clean((await Promise.all(msgs.slice(0, 5).reverse().map(m => renderText(m.text)))).join(' / ')).slice(0, 600);
 }
 
+// Build the full unread span (oldest-first) for an item body: every unread message kept whole, with its
+// author and time. Where `preview` joins and truncates a handful of messages into one snippet, this keeps
+// each message separate so a conversation that accreted several distinct asks between reads exposes every
+// one. msgs arrive newest-first (as unreadMessages sorts them); the body reads oldest-first.
+async function unreadSpan(msgs) {
+  const out = [];
+  for (const m of msgs.slice().reverse()) {
+    out.push({ ts: m.ts, from: await userName(m.user), received: tsToIso(m.ts), text: await renderText(m.text) });
+  }
+  return out;
+}
+
 // Unread top-level messages in one conversation: recent history filtered to ts > last_read, excluding our
 // own and pure system join/leave noise. (Passing oldest=last_read is unreliable — some conversations
 // carry a last_read value Slack rejects with invalid_ts_oldest — so we filter client-side.)
@@ -159,7 +174,7 @@ async function listUnread() {
         id: `${c.id}:${latest.ts}`, channel: c.id, channelType: kind === 'ims' ? 'im' : 'mpim',
         ts: latest.ts, threadTs: '', from, fromId: latest.user, subject, channelName,
         received: tsToIso(latest.ts), isRead: false, unreadCount: msgs.length,
-        preview: await previewText(msgs),
+        preview: await previewText(msgs), unread: await unreadSpan(msgs),
       });
     }
   }
@@ -174,11 +189,13 @@ async function listUnread() {
     const chName = info.name ? `#${info.name}` : c.id;
     for (const m of mentions) {
       const from = await userName(m.user);
+      const rendered = await renderText(m.text);
       items.push({
         id: `${c.id}:${m.ts}`, channel: c.id, channelType: 'channel',
         ts: m.ts, threadTs: '', from, fromId: m.user, subject: `@mention in ${chName}`, channelName: chName,
         received: tsToIso(m.ts), isRead: false, unreadCount: 1,
-        preview: (await renderText(m.text)).slice(0, 600),
+        preview: rendered.slice(0, 600),
+        unread: [{ ts: m.ts, from, received: tsToIso(m.ts), text: rendered }],
       });
     }
   }
@@ -199,7 +216,7 @@ async function listUnread() {
       id: `${c.id}:${latest.ts}`, channel: c.id, channelType: 'channel',
       ts: latest.ts, threadTs: '', from, fromId: latest.user, subject: `Unread in ${chName}`,
       channelName: chName, received: tsToIso(latest.ts), isRead: false, unreadCount: msgs.length,
-      preview: await previewText(msgs),
+      preview: await previewText(msgs), unread: await unreadSpan(msgs),
     });
   }
 
@@ -227,7 +244,7 @@ async function listUnread() {
         ts: latest.ts, threadTs: root.thread_ts || root.ts, from, fromId: latest.user,
         subject: mentioned ? `@mention in thread in ${chName}` : `Thread reply in ${chName}`,
         channelName: chName, received: tsToIso(latest.ts), isRead: false, unreadCount: unread.length,
-        preview: await previewText(unread),
+        preview: await previewText(unread), unread: await unreadSpan(unread),
       });
     }
   } catch { /* threads view unavailable — DMs/mentions still enumerate */ }

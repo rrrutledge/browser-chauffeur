@@ -66,6 +66,14 @@ class Provider(ProviderBase):
     def stable_id(self, item):
         # <channel>:<ts> is already unique per message (a Slack ts is unique within a channel); slugify
         # to a filesystem-safe id and keep it stable across cycles so seen-state dedups on it.
+        #
+        # One item per conversation, keyed to its latest ts — deliberately NOT one item per distinct ask.
+        # A conversation that accreted several asks between reads (the graphics/logo/case-study/channel/line
+        # burst) stays a single item whose body carries the whole unread span (see `capture`), and the
+        # worker handles every ask before clearing (worker-core §2/§6). Splitting one conversation into
+        # per-ask items would mean guessing task boundaries semantically at poll time (lossy and brittle)
+        # and would fragment the read cursor, which advances per conversation, not per message. The
+        # capture-the-whole-span approach is the robust path.
         raw = f"{self.name}-{item.get('channel')}-{item.get('ts')}"
         return re.sub(r"[^A-Za-z0-9]+", "-", raw).strip("-")[:72]
 
@@ -87,15 +95,33 @@ class Provider(ProviderBase):
                 permalink = shown.get("permalink") or ""
             except ValueError:
                 pass
+        # Write the FULL unread span into the body, not only the newest message. One DM/channel/thread can
+        # accrete several distinct asks between reads, and CLEAR (advancing the read cursor to `ts`) drops
+        # every still-unread message under it — so the worker must see them all here to handle each one
+        # before clearing. enumerate already computed this span (same last_read snapshot, no extra API
+        # call); fall back to the single shown message when it's absent (older slack.js or a lone message).
+        unread = item.get("unread") or []
+        if len(unread) > 1:
+            parts = [f"**{m.get('from') or item.get('from') or '?'}** "
+                     f"({(m.get('received') or '')[:16].replace('T', ' ')}):\n{m.get('text', '')}"
+                     for m in unread]
+            body = (f"{len(unread)} unread messages since your last read, oldest first - treat EACH as a "
+                    "distinct open ask. The item is not done, and you must not CLEAR it, until every one "
+                    "is completed, staged as a draft, or tracked on a follow-up card.\n\n"
+                    + "\n\n".join(parts))
+        else:
+            body = text
         with open(body_file, "w", encoding="utf-8") as f:
             f.write(f"# {item.get('subject')}\n\nFrom: {item.get('from')}\n"
                     f"Channel: {item.get('channelName')} ({channel})\nReceived: {item.get('received')}\n"
-                    f"Link: {permalink}\nMessageRef: {channel}:{ts}\n\n---\n\n{text}\n")
+                    f"Unread messages: {item.get('unreadCount')}\n"
+                    f"Link: {permalink}\nMessageRef: {channel}:{ts}\n\n---\n\n{body}\n")
         record = {
             "id": iid, "source": self.name, "triage": item["_bucket"], "kind": item.get("_kind"),
             "from": item.get("from"), "subject": item.get("subject"), "received": item.get("received"),
             "snippet": item.get("preview"), "url": permalink, "messageId": f"{channel}:{ts}",
             "channel": channel, "ts": ts, "threadTs": thread_ts,
+            "unreadCount": item.get("unreadCount"),
             "channelType": item.get("channelType"), "channelName": item.get("channelName"),
             "teamId": os.environ.get("SLACK_TEAM_ID"),
             "bodyFile": body_file,

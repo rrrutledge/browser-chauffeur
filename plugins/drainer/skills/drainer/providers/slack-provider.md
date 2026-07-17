@@ -50,11 +50,20 @@ blocked on them, not ready to act on. Confirm there's not already a reply and th
 before drafting. The `message-draft` slack mode stages drafts in the Slack composer — check the
 conversation in Slack so you don't stack a second draft. Reply only to what is still open.
 
+**One DM/channel/thread often carries several distinct asks — handle every one.** The captured body holds
+the **full unread span** (all unread messages since Russell's last read, oldest first), so read every
+message in it and enumerate each distinct open ask, not just the newest. Marking read (CLEAR) advances the
+cursor past the whole span at once, so any ask you skip is dropped for good (see worker-core §2's multi-ask
+model and §6's clear guard).
+
 ## CAPTURE (the item shape the worker reads)
 The adapter writes these two files for each dispatched item (`slack-adapter.py` → `capture`); this is the
 shape the worker can rely on:
-- `items/<id>.slack.md` — header block (From, Channel, Received, Link, MessageRef) + the message text
-  (from `slack.js --show --json`).
+- `items/<id>.slack.md` — header block (From, Channel, Received, Unread messages, Link, MessageRef) + the
+  **full unread span**: every unread message since Russell's last read, oldest first, each labelled with its
+  author and time (from the `unread` array `slack.js --list-unread --json` attaches to each item). A
+  single-message item falls back to that one message's text. This is what makes the several-asks-in-one-DM
+  case visible to the worker instead of showing only the newest message.
 - `items/<id>.json` — `{ "id","source":"slack","triage","kind","from","subject","received","snippet",`
   `"url":"<permalink>","messageId":"<channel>:<ts>","channel","ts","threadTs","channelType",`
   `"channelName","teamId","bodyFile","ts_captured" }`.
@@ -68,6 +77,12 @@ workspaces if a second is ever added).
 ## CLEAR
 Advance the read cursor (the Slack "gone") — reversible and non-destructive (nothing is deleted; re-reading
 or a newer message re-surfaces it). Narrate it. Never delete messages.
+
+**Clear only once every ask in the unread span is handled.** Advancing the cursor to `ts` marks the whole
+span read in one move, so a still-unhandled ask under it silently disappears and never re-surfaces (Russell
+already read it, so no new message re-triggers it). Confirm every distinct ask you enumerated — completed,
+staged as a draft, or tracked on a follow-up card — before you mark read. If any remains open, don't clear:
+handle or track it first (worker-core §6).
 - **DM / group DM / channel mention / channel unread** — `node slack.js --mark --channel=<channel> --ts=<ts>`
   (`conversations.mark`). Advances the read cursor to `ts`. For a channel @-mention this clears the
   mention badge but leaves any newer messages unread (the channel may re-surface as "Unread in #channel"
