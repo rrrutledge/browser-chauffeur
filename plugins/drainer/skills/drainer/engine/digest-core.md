@@ -90,12 +90,10 @@ Russell never needs to open the item itself**: who/what, the substance (not just
 date or number that matters. Link the source with descriptive text per the `document-authoring` voice,
 never a bare URL. Order by what's most worth knowing first.
 
-**Expand containers.** When an fyi item is a **container** — its real content lives behind a hosted link
-(a school/HOA/church newsletter served through Smore, Finalsite, or a Mailchimp campaign; a "view in
-browser" wrapper) and only a stub sits in the captured body — open the link and summarize the *actual*
-content, not the wrapper. Use a plain fetch for a static page and **browser-chauffeur** when it renders
-client-side (Smore and most campaign pages return only a shell to a plain fetch). This is the same
-open-the-pointer duty a worker follows in `worker-core.md` § 2b, applied at digest time for fyi.
+**Expand containers.** When an fyi item is a **container** — only a stub sits in the captured body and
+the real content is behind a link — open it and summarize the actual content, exactly as
+`worker-core.md` § 2b describes. That's the same open-the-pointer duty a worker does for needs-you,
+applied here at digest time for fyi.
 
 **Before framing any item as still needing Russell** — an open ask, an awaited reply, anything that
 implies he still owes a response — run that provider's **SITUATIONAL-CHECK** first (search Sent +
@@ -123,12 +121,9 @@ and apply the priority order it defines. Propose, never apply without Russell's 
 concrete (the actual link, setting, or rule the provider's JUNK-LEARNING points to) so Russell can act
 in one step.
 
-**Before proposing any mail rule, load the `mail-filters` skill** (call the Skill tool) and derive the
-proposal from its phrase-selection method — do not hand-write a rule from memory. That skill's core rule
-is **never a filter for one sender's one message**: name the *type*, find the intrinsic system
-boilerplate (subject first, body on escalation), run the two-sided recurrence/safety test, and append the
-type phrase to the existing bucket-per-mechanism rather than spawning a `from:<company>` one-off. A
-company-specific `from:` filter is the signal you skipped the skill.
+**When the stop is a mail rule, load the `mail-filters` skill first** (call the Skill tool) and derive
+the proposal from it — don't hand-write a rule from memory. A company-specific `from:<sender>` filter is
+the tell that the skill was skipped.
 
 This step's proposal, and his go-ahead on it in step 5, approve **building a rule for this type of
 junk** — they are not approval of a rule's literal text. When the chosen stop is a mail rule, creating
