@@ -33,7 +33,7 @@ SKILL_DIR = os.path.dirname(SCRIPT_DIR)
 PROVIDERS_DIR = os.path.join(SKILL_DIR, "providers")
 sys.path.insert(0, SCRIPT_DIR)
 import presence  # noqa: E402  (sibling module)
-from provider_base import run_node, NO_WINDOW, ProviderError, spawn_tab, spawn_silent  # noqa: E402  (subprocess helper + typed provider failure)
+from provider_base import run_node, NO_WINDOW, ProviderError, spawn_tab, spawn_silent, NEUTRAL_PRIORITY_BAND  # noqa: E402  (subprocess helper + typed provider failure)
 from drainer_config import read_config, find_provider_file  # noqa: E402  (shared .claude/drainer.local.md reader + provider resolution)
 
 SEEN_STATE = os.path.join(SCRIPT_DIR, "seen-state.js")
@@ -637,18 +637,13 @@ def main():
     live_tabs = total_claude_tabs()
 
     # --- split: needs-you (globally ordered), auto-handle (own worker, no cap), others (digest) ---
-    # Ordering across ALL sources is by (priority band, date), both descending. Almost everything sits at
-    # the neutral band, so the default is date, most-recent first: the newest email / Slack message or
-    # most-recently-due card leads (each item carries its date in `received` — an inbox message's arrival
-    # time, a dated card's due date, or an undated card's creation date the trello adapter stamps). The
-    # only items off the neutral band are job-search cards the poller tagged 🎯 P1/P2/P3 (the trello
-    # adapter stamps `_priority_band`): a P1 (strong-fit role) rides at the neutral band, interleaved
-    # with that day's email by date, while a P2 sinks one tick below it and a P3 two, so weak fits wait
-    # until the inbox is worked down and never crowd out real work. Non-trello items carry no band and
-    # default to neutral.
+    # Ordered across ALL sources by (priority band, date) descending. Only job-search cards carry a
+    # non-neutral band (the trello adapter stamps `_priority_band` — see its _PRIORITY_BAND for the
+    # policy); every other item defaults to neutral and so orders purely by `received` date as before
+    # (an inbox message's arrival time, a dated card's due date, or an undated card's creation date).
     needs = sorted(
         (it for it in needs_and_others if it["_bucket"] == "needs-you"),
-        key=lambda it: (it.get("_priority_band", 1), it.get("received") or ""),
+        key=lambda it: (it.get("_priority_band", NEUTRAL_PRIORITY_BAND), it.get("received") or ""),
         reverse=True,
     )
     # auto-handle items get a worker tab too (they need a browser to act), but the worker executes

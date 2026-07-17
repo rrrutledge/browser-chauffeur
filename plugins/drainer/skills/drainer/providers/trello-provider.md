@@ -85,18 +85,12 @@ their **go-live date** (the earliest of Start/Due, most recent first) and undate
 **creation date** (decoded from the card's ObjectId).
 
 Rank is `(priority band, date)`, both descending — date is the tiebreaker within a band. A card's band
-comes from a **priority label** named exactly `P1`, `P2`, or `P3` (optionally with a 🎯 prefix). In this
-phase **P1 rides at the neutral band** — the same level as email, Slack, and every card wearing no
-priority label — so a P1 found on a given day interleaves with that day's email by date rather than
-jumping ahead of it; **P2 sits one tick below** neutral and **P3 two ticks below**. Only the Job Search
-Outreach cards that the job-board poller (personal-ai-pod `job-board-poll.js`) tags carry these labels,
-so every other board is unaffected: its cards stay neutral and order purely by date as before. The effect
-is that strong-fit roles are worked alongside the inbox while weak ones (P2/P3) wait below it until the
-neutral band is caught up, and a P2/P3 is the first thing dropped when a cycle overflows
-`max_messages_per_cycle`. (Raising P1 above the neutral band — so it jumps ahead of email — is a one-line
-change in the adapter's `_PRIORITY_BAND`, worth revisiting once the job-search backlog is caught up.) A
-priority label is held out of the contact parse (it names a fit rank, not a person), the same way ⛔/⏳
-status labels are.
+comes from a **priority label** named exactly `P1`, `P2`, or `P3` (optionally with a 🎯 prefix), written
+by the job-board poller (personal-ai-pod `job-board-poll.js`) on Job Search Outreach cards. Only those
+labeled cards leave the neutral band, so every other board is unaffected and orders purely by date as
+before. The band each tier maps to — and how to change it — is defined in one place, the adapter's
+`_PRIORITY_BAND`; a priority label is held out of the contact parse (it names a fit rank, not a person),
+the same way ⛔/⏳ status labels are.
 
 Build a stable id:
 `trello-<card-name-slug>-<last6 of cardId>-<goLiveYYYYMMDD|nodue>` where the go-live date is Start when

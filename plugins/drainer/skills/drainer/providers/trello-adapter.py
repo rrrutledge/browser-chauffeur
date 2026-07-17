@@ -34,22 +34,27 @@ from datetime import datetime, timezone
 _SCRIPTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts")
 if _SCRIPTS not in sys.path:
     sys.path.insert(0, _SCRIPTS)
-from provider_base import ProviderBase, ProviderError, slug  # noqa: E402
+from provider_base import ProviderBase, ProviderError, slug, NEUTRAL_PRIORITY_BAND  # noqa: E402
 
 # A priority label is exactly "P1"/"P2"/"P3" (optionally with a 🎯 prefix), written by the job-board
 # poller (personal-ai-pod job-board-poll.js) to rank a role's fit. Anchored so it matches only a card
 # whose whole label IS the priority marker — never a contact name that happens to contain "P1".
 _PRIORITY_RE = re.compile(r"^\s*(?:🎯\s*)?P([1-3])\s*$")
 
-# A parsed priority maps to a queue band. In this phase a P1 rides at the NEUTRAL band — the same level
-# as email, Slack, and every card with no priority label — so a P1 found on a given day interleaves with
-# that day's email by date rather than jumping ahead of it. P2 sits one tick below neutral (it surfaces
-# only once the neutral band is worked down) and P3 another tick below that. Only the job-search cards the
-# poller labels ever leave the neutral band, so this is inert for every other board. (To instead let a P1
-# jump ahead of email — worth revisiting once the job-search backlog is caught up — raise P1 above
-# neutral, e.g. {1: 2, 2: 1, 3: 0}.)
-_PRIORITY_BAND = {1: 1, 2: 0, 3: -1}
-_NEUTRAL_BAND = 1
+# THE priority policy — the one place it is defined; every other site that mentions a band points here.
+# A card's priority label maps to a queue band, ranked (band, date) descending against every other
+# drained item. Bands are relative to NEUTRAL_PRIORITY_BAND (email/Slack and every unlabeled card):
+#   P1 → neutral      a P1 found on a day interleaves with that day's email by date, not ahead of it
+#   P2 → one below    surfaces only once the neutral band is worked down
+#   P3 → two below    the first item dropped when a cycle overflows
+# This is inert for every other board — only the poller-labeled job-search cards leave neutral. To let a
+# P1 jump AHEAD of email instead (worth revisiting once the job-search backlog is caught up), raise it
+# above neutral, e.g. {1: NEUTRAL_PRIORITY_BAND + 1, 2: NEUTRAL_PRIORITY_BAND, 3: NEUTRAL_PRIORITY_BAND - 1}.
+_PRIORITY_BAND = {
+    1: NEUTRAL_PRIORITY_BAND,
+    2: NEUTRAL_PRIORITY_BAND - 1,
+    3: NEUTRAL_PRIORITY_BAND - 2,
+}
 
 
 class Provider(ProviderBase):
@@ -272,14 +277,13 @@ class Provider(ProviderBase):
 
     @staticmethod
     def _priority_band(card):
-        """Return a card's queue band from its priority label (🎯 P1/P2/P3), or the neutral band when it
-        carries none. P1 → neutral (rides with email by date), P2 → one tick below, P3 → two below (see
-        _PRIORITY_BAND). The first priority label wins; a card normally wears exactly one."""
+        """Return a card's queue band from its priority label (see _PRIORITY_BAND), or neutral when it
+        carries none. The first priority label wins; a card normally wears exactly one."""
         for l in card.get("labels", []):
             m = _PRIORITY_RE.match(l.get("name") or "")
             if m:
                 return _PRIORITY_BAND[int(m.group(1))]
-        return _NEUTRAL_BAND
+        return NEUTRAL_PRIORITY_BAND
 
     def _has_skip_label(self, card):
         """True if the card wears a suppress label (default: ⛔ Blocked) — hidden until it's cleared."""
@@ -377,11 +381,7 @@ class Provider(ProviderBase):
                 # Sort rank: a dated card ranks by its go-live date (the earliest of start/due); an
                 # undated card ranks by its creation date (always in the past).
                 sort_dt = min(gate_dts) if gate_dts else self._created_dt(card["id"])
-                # Priority band from a 🎯 P1/P2/P3 label (neutral for every unlabeled card). It leads the
-                # sort key here and in the poller's cross-source ordering: a P1 job card rides at the
-                # neutral level (interleaved with email by date) while P2 and P3 sink below it — see
-                # run-poller's needs sort and trello-provider.md.
-                priority_band = self._priority_band(card)
+                priority_band = self._priority_band(card)  # see _PRIORITY_BAND; leads the sort key below
                 channel, feats, contacts, initiative_label = self._classify_labels(card)
                 # A per-card initiative label wins over the board's default initiative. The slug is the
                 # initiative label's name slugified (→ initiatives/<slug>.md); board defaults are already
@@ -412,12 +412,10 @@ class Provider(ProviderBase):
                     "_due_sort": sort_dt,
                     "_priority_band": priority_band,
                 })
-        # Ranked by (priority band, sort date), both descending. A P1 rides at the neutral band, so it
-        # orders by date alongside every unlabeled card (most-recent-first, an undated card by its creation
-        # date set above); P2 and P3 trail below the neutral band. This is also the truncation order — when
-        # more than `limit` cards are in play the lowest-priority, oldest ones drop and resurface on a later
-        # cycle, so a P2/P3 is dropped before a neutral card. A card whose sort date couldn't be derived
-        # falls back to `now`, ranking it at the top of its band.
+        # Ranked (band, date) descending — band leads (see _PRIORITY_BAND), date breaks ties within a band
+        # (most-recent-first; an undated card by its creation date, set above, or `now` if even that
+        # couldn't be derived). This is also the truncation order: over `limit`, the lowest-priority oldest
+        # cards drop and resurface on a later cycle.
         items.sort(key=lambda it: (it["_priority_band"], it["_due_sort"] or now), reverse=True)
         return items[:limit]
 
