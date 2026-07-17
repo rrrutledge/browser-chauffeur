@@ -107,9 +107,10 @@ class Provider(ProviderBase):
                      for m in unread]
             body = (f"{len(unread)} unread messages since your last read, oldest first. Group them into "
                     "distinct asks first - several rapid-fire messages on one topic are one ask; different "
-                    "topics are separate asks - then handle each group as its own unit (do the work, draft "
-                    "any reply). The item is not done, and you must not CLEAR it, until every group is "
-                    "completed, staged as a draft, or tracked on a follow-up card.\n\n"
+                    "topics are separate asks (the timestamps below are a tiebreaker: minutes apart leans "
+                    "one ask, hours or days apart leans separate). Then handle each group as its own unit "
+                    "(do the work, draft any reply). The item is not done, and you must not CLEAR it, until "
+                    "every group is completed, staged as a draft, or tracked on a follow-up card.\n\n"
                     + "\n\n".join(parts))
         else:
             body = text
