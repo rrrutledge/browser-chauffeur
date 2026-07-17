@@ -50,8 +50,9 @@ Common Workday cards seen this way: time-off approvals (FYI — no action needed
 confirmations, manager-approval tasks. Re-triage after reading: most are FYI → route to digest.
 
 ## MEETING RECORDING MESSAGES
-A meeting-recording notification (recording/transcript link or "Meeting ended" summary) is a container —
-see `../engine/triage.md § Containers that hold action items`. Classify as **needs-you (work)** and follow
+A meeting-recording notification (recording/transcript link or "Meeting ended" summary) is a **pointer**
+(a container holding the real content) — see "recognize pointers" in `../engine/triage.md` and the
+resolve-a-pointer step in `../engine/worker-core.md` § 2b. Classify as **needs-you (work)** and follow
 these steps in order:
 
 1. **Open AI notes.** Open the meeting's AI notes via `browser-chauffeur`.

@@ -127,11 +127,14 @@ card in what you present (and consider updating it — bump the due date, add a 
 as if this were unstarted outreach. No match → treat it as genuinely new. This isn't source-specific, so
 it applies the same way no matter which provider captured the item.
 
-## 2b. If the item is a pointer, open the real content yourself
-If your item is a **notification that points to content living elsewhere** — a meeting-recording
-notice, a forum "you have a reply" — it is NOT the content, only a pointer. **Go open and read the
-underlying message yourself before doing anything else**, using the right tool for that surface.
-Reading it is YOUR job; never hand the lookup back to the user ("go read the message yourself").
+## 2b. Resolve a pointer — open the real content yourself
+This is the shared **open-the-pointer mechanic** every stage uses — `triage.md` defines what a pointer is
+and its kinds; a worker resolves needs-you ones here, the digest resolves fyi ones the same way. A pointer
+is NOT the content, only a stub. **Open and read the underlying content yourself before doing anything
+else**, with the right tool for that surface: a plain fetch when the page is static, and
+**browser-chauffeur when the page renders client-side** (a client-rendered page returns only a wrapper
+shell to a plain fetch). Summarize the real content as if it had arrived inline. Reading it is YOUR job;
+never hand the lookup back to the user ("go read the message yourself").
 
 **Exception: LinkedIn/Facebook "X just messaged you" pointers.** Never drive browser-chauffeur to
 linkedin.com or facebook.com for any reason — LinkedIn suspended Russell's account for automation in
