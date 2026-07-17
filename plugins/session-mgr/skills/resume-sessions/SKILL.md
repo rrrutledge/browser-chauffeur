@@ -239,4 +239,8 @@ instructions: |-
     should route through it (the drainer forwards via its own thin resolver,
     `close-session.py`) — a raw `taskkill` of the host PID skips SessionEnd and strands a
     registry entry.
+  - `/close` runs `scripts/end-session.py` on demand, for an interactive session that's done and
+    wants to close its own tab in one shot instead of typing `exit` twice (once for Claude Code,
+    once for the PowerShell host). Requires `CLAUDE_HOST_PID` to be set, which the user's
+    `$PROFILE` does automatically for any tab launched with a normal `powershell` host.
 ---
