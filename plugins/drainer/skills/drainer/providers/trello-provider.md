@@ -82,7 +82,17 @@ Via `trello-outreach`, list cards across the configured boards that sit in an **
 `skip_lists`), are **not** wearing a `skip_labels` label (⛔ Blocked), and are **startable** — Start
 now-or-earlier, OR Due now-or-earlier (overdue counts), OR carrying neither date. Rank dated cards by
 their **go-live date** (the earliest of Start/Due, most recent first) and undated cards by their
-**creation date** (decoded from the card's ObjectId). Build a stable id:
+**creation date** (decoded from the card's ObjectId).
+
+Rank is `(priority band, date)`, both descending — date is the tiebreaker within a band. A card's band
+comes from a **priority label** named exactly `P1`, `P2`, or `P3` (optionally with a 🎯 prefix), written
+by the job-board poller (personal-ai-pod `job-board-poll.js`) on Job Search Outreach cards. Only those
+labeled cards leave the neutral band, so every other board is unaffected and orders purely by date as
+before. The band each tier maps to — and how to change it — is defined in one place, the adapter's
+`_PRIORITY_BAND`; a priority label is held out of the contact parse (it names a fit rank, not a person),
+the same way ⛔/⏳ status labels are.
+
+Build a stable id:
 `trello-<card-name-slug>-<last6 of cardId>-<goLiveYYYYMMDD|nodue>` where the go-live date is Start when
 present, else Due. That date is part of the id on purpose: a card recurs every cycle (a nudge bumps its
 Start out; an outreach CLEAR bumps its Due out), and seen-state keeps a drained id forever, so without

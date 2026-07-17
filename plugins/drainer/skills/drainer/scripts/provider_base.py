@@ -22,6 +22,13 @@ NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 WT_WINDOW_CLASS = "CASCADIA_HOSTING_WINDOW_CLASS"
 SW_MINIMIZE = 6
 
+# The neutral priority band — the rank of any drained item carrying no priority label (all email/Slack,
+# and every Trello card the job-board poller didn't tag). The trello adapter assigns it to unlabeled
+# cards and run-poller falls back to it in the cross-source sort, so both agree on where "no priority"
+# sits. Which fit tiers rank above or below neutral is defined in one place: the trello adapter's
+# _PRIORITY_BAND.
+NEUTRAL_PRIORITY_BAND = 1
+
 
 def _window_class(hwnd):
     """Win32 class name of a window handle, or '' if it can't be read."""

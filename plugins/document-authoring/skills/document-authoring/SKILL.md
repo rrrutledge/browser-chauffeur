@@ -165,7 +165,7 @@ A single clear sentence ending in a question is usually the whole message — re
   Name the owners and one concrete next step; drop the conceptual overview.
   When you're writing to the domain expert on the mechanism in play, keep the message at the proposal level and let them fill in the how - don't explain their own system back to them, and don't stack a how-does-it-work question onto the core ask (research the mechanism to inform yourself, not to lecture the expert).
   When you do surface what you researched to that expert, offer it as a tentative finding for them to confirm — attribute it plainly (Russell will say he looked it up, AI included, and read it himself), hand them the sources, and ask them to verify — rather than asserting the conclusion as settled fact.
-  **Their expertise governs what to DO with the finding, not just whether it's accurate — close on their judgment ("What do you think we should do?"), never on your own announced next step.**
+  **Their expertise governs what to DO with the finding, not just whether it's accurate — close on their judgment ("What do you think we should do?"), never on your own announced next step.** When the next step runs through their own internal process (their vendor system, a bank-update flow), ask what that process needs ("What do we need to do to update the bank in your system?") rather than declaring you'll push something through on your own ("I'll send you a new invoice…") — they own the mechanism; let them name it.
   Digging up a fact they lacked doesn't transfer the decision to you; it's still theirs, most of all when they've already voiced doubt about the lead and left the call open ("maybe it helps if you mail him") — that's an invitation to weigh in, not permission to proceed.
   When you counter their objection with a fix, acknowledge their point in a clause and give the proposal in one plain sentence, then a short open check ("Sound OK?") - cut the full restatement of their concern, the justification for why the fix works, the list of problems it sidesteps, and any call offer; the expert sees all that already.
   Hedge with "that I know of" when not fully certain.
@@ -207,6 +207,7 @@ A single clear sentence ending in a question is usually the whole message — re
   Treat any sentence after your main point as guilty until proven necessary: cut reassurance, offers, hedges, restated context, and invitations to react, in any form and in any situation, not just the ones already catalogued here.
   The test: does this sentence hand the reader something they don't already have?
   If not, it's a tail.
+  **Confirming a factual yes/no is the sharpest case**: answer in the fewest words that carry it and stop — "Yes - Bluevine.", not a full sentence justifying the answer with internal evidence (prior migrations, other accounts already switched). That evidence only supports a decision already made; the asker wanted the answer, not the paper trail behind it.
   Only exception: a real decision is still genuinely open — then ask it as one direct question and stop there too.
 - **When Russell owns the next step, say "I'll" — not "we'll" — and drop the trailing offer.**
   Announce work already done actively in the first person ("I drafted the posts"), not agent-less passive ("the posts are drafted").
