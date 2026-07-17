@@ -105,9 +105,11 @@ class Provider(ProviderBase):
             parts = [f"**{m.get('from') or item.get('from') or '?'}** "
                      f"({(m.get('received') or '')[:16].replace('T', ' ')}):\n{m.get('text', '')}"
                      for m in unread]
-            body = (f"{len(unread)} unread messages since your last read, oldest first - treat EACH as a "
-                    "distinct open ask. The item is not done, and you must not CLEAR it, until every one "
-                    "is completed, staged as a draft, or tracked on a follow-up card.\n\n"
+            body = (f"{len(unread)} unread messages since your last read, oldest first. Group them into "
+                    "distinct asks first - several rapid-fire messages on one topic are one ask; different "
+                    "topics are separate asks - then handle each group as its own unit (do the work, draft "
+                    "any reply). The item is not done, and you must not CLEAR it, until every group is "
+                    "completed, staged as a draft, or tracked on a follow-up card.\n\n"
                     + "\n\n".join(parts))
         else:
             body = text

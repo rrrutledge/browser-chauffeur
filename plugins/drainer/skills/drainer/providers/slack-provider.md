@@ -50,11 +50,12 @@ blocked on them, not ready to act on. Confirm there's not already a reply and th
 before drafting. The `message-draft` slack mode stages drafts in the Slack composer — check the
 conversation in Slack so you don't stack a second draft. Reply only to what is still open.
 
-**One DM/channel/thread often carries several distinct asks — handle every one.** The captured body holds
-the **full unread span** (all unread messages since Russell's last read, oldest first), so read every
-message in it and enumerate each distinct open ask, not just the newest. Marking read (CLEAR) advances the
-cursor past the whole span at once, so any ask you skip is dropped for good (see worker-core §2's multi-ask
-model and §6's clear guard).
+**One DM/channel/thread often carries several distinct asks - group them, then handle each.** The captured
+body holds the **full unread span** (all unread messages since Russell's last read, oldest first). Read
+every message and group them into distinct asks using judgment - several rapid-fire messages on one topic
+are one ask, different topics are separate asks - then handle each group as its own unit, like a standalone
+message. Marking read (CLEAR) advances the cursor past the whole span at once, so any ask you skip is
+dropped for good (see worker-core §2's multi-ask model and §6's clear guard).
 
 ## CAPTURE (the item shape the worker reads)
 The adapter writes these two files for each dispatched item (`slack-adapter.py` → `capture`); this is the
