@@ -274,6 +274,7 @@ A single clear sentence ending in a question is usually the whole message — re
 - **1:1s often open with no greeting at all, or the person's name.**
 - **Address people by name mid-message** — "Thanks for looking at this, Alex" (see **Links** for representing the name itself — a real @-mention when you want them notified, a link otherwise).
 - **Address someone who outranks you by their title, not their first name** — pointedly in church contexts ("Thanks, Bishop"). Keep thanks to a superior to a single word; piling on extra gratitude reads as patronizing.
+- **Address a Japanese contact by their surname + "-san"** — "Thanks for sharing, Oidate-san", in any register and at any point in the relationship, not only a first introduction.
 - **Ellipses for softening** — "If you need to leave you can just say so ... especially if we're going over time."
 - **Apologize genuinely and briefly** — "Sorry this is taking so long.", "I'm sorry I have to move this again."
 - **Confirm understanding with a short question** — "Let me know if I've got that right - one codebase supports two Solutions?"
