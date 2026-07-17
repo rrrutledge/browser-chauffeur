@@ -111,23 +111,12 @@ are automatically pulled into the trusted set.
 
 #### 6. Workflow tool scripts (`workflow.py`)
 
-The Workflow tool gets a single approve/deny decision up front — once it's approved, the
-whole multi-agent run proceeds unattended, with no further per-call prompt for anything
-its spawned subagents do. Two independent paths can approve that one decision:
-
-- **By saved name** — a workflow saved under `.claude/workflows/` (or built-in) is
-  blanket-trusted if its name is listed in `workflow_blanket_names`, the same way
-  `trusted_script_dirs` trusts a directory rather than re-inspecting every run. An
-  inline/dynamic script's own self-declared `meta.name` is never consulted here —
-  nothing in that text is proof of what it does.
-- **By AI content check** — an inline `script` (or a `scriptPath` file) has no
-  filesystem/network access of its own; the only thing it can do is hand a subagent a
-  prompt via `agent()`. So `scripts.ask_ai_about_workflow_script` reads those prompts
-  and asks Haiku whether every one is purely read/investigate/return-data, with nothing
-  that writes, commits, pushes, posts, or sends. This runs on every invocation (the
-  script differs each time), and a DANGEROUS verdict turns into an actionable **BLOCK**
-  with the reason, via the same block-reason handshake `scripts.py` uses for node/python
-  scripts.
+A saved workflow (`.claude/workflows/` or built-in) is blanket-trusted by name via
+`workflow_blanket_names`. An inline/dynamic script instead gets AI-judged fresh on every
+run (`scripts.ask_ai_about_workflow_script`) against the prompts it hands to `agent()` —
+the only thing such a script can actually do. DANGEROUS blocks with a reason; otherwise
+it prompts as usual. See the docstrings in `workflow.py`/`scripts.py` for the full
+reasoning.
 
 ### Learned → source promotion (`tools/sync_learned.py`)
 
