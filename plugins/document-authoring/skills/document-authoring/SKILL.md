@@ -84,6 +84,7 @@ Don't present a menu of options or stack a numbered list of questions.
   Say you got mixed up, tell them not to bother, and stop.
 - **When asking someone to do something, just ask — don't embed how-to instructions.**
   State what you need and trust them to execute; cut a supplied script, a suggested approach, or step-by-step notes.
+- **Phrase a requested edit to someone else's draft as a question, not a flat correction** — "can you make it X?" reads as collaborative even when you already know exactly what should change; save the flat "should be X" framing for reference material, not a live ask.
 - **When a decision-relevant fact is still outstanding, get it before committing — and don't let the wait look like stalling.**
   Hold off until the number, document, or valuation is in hand even if the other side wants a yes now; keep the tone warm and move straight to what you still need, so it reads as diligence.
   Cut lines that lock Russell in early (a stated readiness to sign, a formal request for an undecided step), which also give away leverage.
@@ -192,6 +193,7 @@ A single clear sentence ending in a question is usually the whole message — re
 - **No bare URLs** — always anchor links (see **Links** above).
 - **Don't over-format short messages** — a quick reply is one or two plain sentences, not a structured block.
   For a multi-item status flag in chat, put each item on its own line without a leading bullet dash, and open with a vague count ("A few things stood out") rather than an exact one ("Three things stood out").
+  **Exception — a short list of edit requests on the same document** (a placeholder to fill in, a wording fix, a tagging tweak): fold them into one flowing paragraph instead of one-per-line: they're closely related corrections on one artifact, not separate status items.
 - **No em dash** — see the global punctuation rule above.
 - **Don't be effusive or salesy.**
   Russell is warm but understated.
@@ -208,7 +210,7 @@ A single clear sentence ending in a question is usually the whole message — re
   Only exception: a real decision is still genuinely open — then ask it as one direct question and stop there too.
 - **When Russell owns the next step, say "I'll" — not "we'll" — and drop the trailing offer.**
   Announce work already done actively in the first person ("I drafted the posts"), not agent-less passive ("the posts are drafted").
-- **Adding a second ask mid-thread: open with the discovery, not the ask** — "found one more", not "one more ask while I have you".
+- **Adding a second ask mid-thread: open with the discovery, not the ask** — "found one more", not "one more ask while I have you". Scope: this is for tacking a new point onto something you already sent. When several points are compiled into one message from the start (e.g. a batch of edit requests on the same document), skip the discovery framing entirely and just list them — there's nothing to "find" mid-message.
 - **Float a candidate tentatively** — "also may be a great fit", not "would be a great fit". The "also" ties them to someone already named and "may" keeps it open; go straight to the person and drop the setup line.
 - **When confirming an ask, give the "why" — not how-to steps.**
   Answer yes/no, then the reason; don't walk through steps they didn't request.
@@ -267,6 +269,7 @@ A single clear sentence ending in a question is usually the whole message — re
 - **Answer the question first.**
   Lead with the answer, then add context — don't bury it behind a preamble or a generic thanks.
   When someone raises more than one point, answer each one by name rather than a single blanket acknowledgment — this includes an earlier, question-free message where they shared research or effort on your behalf: thank them for the specific contribution and note your own follow-through on it before pivoting to a fresh, unrelated ask in the same reply.
+  **Exception — a tangential personal aside with no question and nothing to act on** (a passing "hope you're well", a remark about how a call wrapped up): it doesn't need its own acknowledgment when you're replying to a separate, substantive ask in the same thread. Answering the ask is the whole reply.
 - **Document a sequence as short bullets, and open with the current status** — not a defensive framing line.
   Let the record carry the point; skip the "I've been responsive" editorializing.
 - **Open groups with "Hey guys / folks / everyone"** — but skip the opener when replying to a specific quoted message or directly continuing an active conversation thread; the existing context replaces it.
