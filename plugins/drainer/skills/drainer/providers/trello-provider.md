@@ -82,7 +82,20 @@ Via `trello-outreach`, list cards across the configured boards that sit in an **
 `skip_lists`), are **not** wearing a `skip_labels` label (⛔ Blocked), and are **startable** — Start
 now-or-earlier, OR Due now-or-earlier (overdue counts), OR carrying neither date. Rank dated cards by
 their **go-live date** (the earliest of Start/Due, most recent first) and undated cards by their
-**creation date** (decoded from the card's ObjectId). Build a stable id:
+**creation date** (decoded from the card's ObjectId).
+
+Rank is `(priority band, date)`, both descending — date is the tiebreaker within a band. A card's band
+comes from a **priority label** named exactly `P1`, `P2`, or `P3` (optionally with a 🎯 prefix): P1 rides
+**above** the date-ordered queue, P3 **below** it, and P2 — like every card wearing no priority label —
+sits at the **neutral** band. Only the Job Search Outreach cards that the job-board poller
+(personal-ai-pod `job-board-poll.js`) tags carry these labels, so every other board is unaffected: its
+cards stay neutral and order purely by date as before. The effect is that a strong-fit role
+(P1) is handed to Russell ahead of the rest of the queue and a weak one (P3) sinks below it and is the
+first dropped when a cycle overflows `max_messages_per_cycle`, so a P1 is never truncated in favour of a
+fresher P3. A priority label is held out of the contact parse (it names a fit rank, not a person), the
+same way ⛔/⏳ status labels are.
+
+Build a stable id:
 `trello-<card-name-slug>-<last6 of cardId>-<goLiveYYYYMMDD|nodue>` where the go-live date is Start when
 present, else Due. That date is part of the id on purpose: a card recurs every cycle (a nudge bumps its
 Start out; an outreach CLEAR bumps its Due out), and seen-state keeps a drained id forever, so without

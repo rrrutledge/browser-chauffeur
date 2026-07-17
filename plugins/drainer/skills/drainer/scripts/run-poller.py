@@ -637,13 +637,17 @@ def main():
     live_tabs = total_claude_tabs()
 
     # --- split: needs-you (globally ordered), auto-handle (own worker, no cap), others (digest) ---
-    # Ordering across ALL sources is by date, most-recent first: the newest email / Slack message or
-    # most-recently-due card leads. Each item carries its date in `received` — an inbox message's arrival
-    # time, a dated card's due date, or an undated card's creation date (the trello adapter stamps that),
-    # so undated cards sort by age alongside everything else.
+    # Ordering across ALL sources is by (priority band, date), both descending. Almost everything sits at
+    # the neutral band, so the default is date, most-recent first: the newest email / Slack message or
+    # most-recently-due card leads (each item carries its date in `received` — an inbox message's arrival
+    # time, a dated card's due date, or an undated card's creation date the trello adapter stamps). The
+    # only items off the neutral band are job-search cards the poller tagged 🎯 P1/P2/P3 (the trello
+    # adapter stamps `_priority_band`): a P1 (strong-fit role) jumps ahead of the whole queue and a P3
+    # (weak fit) sinks below it, so the strongest opportunities surface first and weak ones never crowd
+    # out real work. Non-trello items carry no band and default to neutral.
     needs = sorted(
         (it for it in needs_and_others if it["_bucket"] == "needs-you"),
-        key=lambda it: it.get("received") or "",
+        key=lambda it: (it.get("_priority_band", 1), it.get("received") or ""),
         reverse=True,
     )
     # auto-handle items get a worker tab too (they need a browser to act), but the worker executes
@@ -668,7 +672,7 @@ def main():
                 model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
                 print(f"    [{it['_source']:20}] {it['_id']}  ->  spawn auto-worker [{it['_complexity']} -> {model}]\n"
                       f"        {it.get('received')} | {it.get('from')} | {it.get('subject')}")
-        print("  needs-you (newest-first globally):")
+        print("  needs-you (priority band, then newest-first, globally):")
         tabs = live_tabs
         for it in needs:
             held = tabs is not None and tabs >= cfg["target_open_tabs"]

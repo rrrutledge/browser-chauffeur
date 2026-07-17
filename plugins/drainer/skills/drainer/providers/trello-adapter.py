@@ -36,6 +36,18 @@ if _SCRIPTS not in sys.path:
     sys.path.insert(0, _SCRIPTS)
 from provider_base import ProviderBase, ProviderError, slug  # noqa: E402
 
+# A priority label is exactly "P1"/"P2"/"P3" (optionally with a 🎯 prefix), written by the job-board
+# poller (personal-ai-pod job-board-poll.js) to rank a role's fit. Anchored so it matches only a card
+# whose whole label IS the priority marker — never a contact name that happens to contain "P1".
+_PRIORITY_RE = re.compile(r"^\s*(?:🎯\s*)?P([1-3])\s*$")
+
+# A parsed priority maps to a queue band: P1 (strongest fit) jumps ahead of the normal date-ordered
+# queue, P3 (weakest) sinks below it, and P2 rides at the neutral band alongside every card that carries
+# no priority label at all. Only the job-search cards the poller labels ever leave the neutral band, so
+# this is inert for every other board.
+_PRIORITY_BAND = {1: 2, 2: 1, 3: 0}
+_NEUTRAL_BAND = 1
+
 
 class Provider(ProviderBase):
     name = "trello"
@@ -243,15 +255,28 @@ class Provider(ProviderBase):
         initiative = next((l.get("name") for l in labels
                            if (l.get("color") or "").lower() == "yellow" and l.get("name")),
                           None)
-        # Hold status labels (⛔ Blocked / ⏳ Waiting) out of the name pool so they're never read as a
-        # contact — they carry dependency state, not a person.
+        # Hold status labels (⛔ Blocked / ⏳ Waiting) and priority labels (🎯 P1/P2/P3) out of the name
+        # pool so neither is ever read as a contact — a status label carries dependency state and a
+        # priority label carries fit rank, not a person.
         names = [l.get("name") for l in labels
                  if l.get("name") and l.get("name") != initiative
-                 and not any(tok in l.get("name").lower() for tok in self.status_labels)]
+                 and not any(tok in l.get("name").lower() for tok in self.status_labels)
+                 and not _PRIORITY_RE.match(l.get("name"))]
         channel = next((n for n in names if n in self.channels), None)
         feats = [n for n in names if n in self.features]
         contacts = [n for n in names if n not in self.channels and n not in self.features]
         return channel, feats, contacts, initiative
+
+    @staticmethod
+    def _priority_band(card):
+        """Return a card's queue band from its priority label (🎯 P1/P2/P3), or the neutral band when it
+        carries none. P1 → above the queue, P2 → neutral, P3 → below it (see _PRIORITY_BAND). The first
+        priority label wins; a card normally wears exactly one."""
+        for l in card.get("labels", []):
+            m = _PRIORITY_RE.match(l.get("name") or "")
+            if m:
+                return _PRIORITY_BAND[int(m.group(1))]
+        return _NEUTRAL_BAND
 
     def _has_skip_label(self, card):
         """True if the card wears a suppress label (default: ⛔ Blocked) — hidden until it's cleared."""
@@ -349,6 +374,10 @@ class Provider(ProviderBase):
                 # Sort rank: a dated card ranks by its go-live date (the earliest of start/due); an
                 # undated card ranks by its creation date (always in the past).
                 sort_dt = min(gate_dts) if gate_dts else self._created_dt(card["id"])
+                # Priority band from a 🎯 P1/P2/P3 label (neutral for every unlabeled card). It leads the
+                # sort key here and in the poller's cross-source ordering, so a P1 job card jumps the
+                # queue and a P3 sinks — see run-poller's needs sort and trello-provider.md.
+                priority_band = self._priority_band(card)
                 channel, feats, contacts, initiative_label = self._classify_labels(card)
                 # A per-card initiative label wins over the board's default initiative. The slug is the
                 # initiative label's name slugified (→ initiatives/<slug>.md); board defaults are already
@@ -377,12 +406,15 @@ class Provider(ProviderBase):
                     "received": card.get("due") or (sort_dt.isoformat() if sort_dt else "(no due date)"),
                     "preview": f"[{bname} / {list_name}] {(card.get('desc') or '').strip()[:200]}",
                     "_due_sort": sort_dt,
+                    "_priority_band": priority_band,
                 })
-        # Ranked by sort date, most recent first (an undated card sorts by its creation date, set above).
-        # This is also the truncation order: when more than `limit` cards are in play the oldest ones are
-        # dropped and resurface on a later cycle. A card whose sort date couldn't be derived falls back to
-        # `now`, ranking it at the top.
-        items.sort(key=lambda it: it["_due_sort"] or now, reverse=True)
+        # Ranked by (priority band, sort date), both descending: a P1 card leads regardless of date, a
+        # P3 trails, and everything neutral orders by date most-recent-first as before (an undated card
+        # sorts by its creation date, set above). This is also the truncation order — when more than
+        # `limit` cards are in play the lowest-priority, oldest ones drop and resurface on a later cycle,
+        # so a P1 is never truncated in favour of a fresh P3. A card whose sort date couldn't be derived
+        # falls back to `now`, ranking it at the top of its band.
+        items.sort(key=lambda it: (it["_priority_band"], it["_due_sort"] or now), reverse=True)
         return items[:limit]
 
     def stable_id(self, item):
