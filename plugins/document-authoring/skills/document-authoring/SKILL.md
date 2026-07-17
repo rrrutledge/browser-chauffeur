@@ -159,6 +159,8 @@ A single clear sentence ending in a question is usually the whole message — re
 
 - **A thank-you for a small favor is a name and an exclamation — nothing else.**
   Don't add a clause explaining why you're grateful — "Thanks so much, Yuki!", not "…really appreciate you taking the time." (How much warmth a close carries is set separately, by relationship — see **Register**.)
+- **Accepting a group email introduction: give shared logistics once, and skip a separate thanks for the intro itself.**
+  When the same detail (a scheduling link, an instruction) applies to both people being introduced, state it once rather than repeating it to each addressee in turn, and let the warm reply carry the thanks for connecting you — don't add a standalone "Thanks for connecting us!" on top of it.
 - **Name the specific thing, not the category** — "token cost" not "cost", "the deploy" not "it".
 - **When specific people own the answer, don't explain the architecture — route to them, or when the recipient is that owner, let them supply the mechanism.**
   Name the owners and one concrete next step; drop the conceptual overview.
