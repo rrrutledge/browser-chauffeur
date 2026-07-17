@@ -109,6 +109,26 @@ is asked whether the CLI tool name is a safe dev/productivity tool.
 Commands matching `Bash(command-name)` in `permissions.allow` in your `settings.json`
 are automatically pulled into the trusted set.
 
+#### 6. Workflow tool scripts (`workflow.py`)
+
+The Workflow tool gets a single approve/deny decision up front — once it's approved, the
+whole multi-agent run proceeds unattended, with no further per-call prompt for anything
+its spawned subagents do. Two independent paths can approve that one decision:
+
+- **By saved name** — a workflow saved under `.claude/workflows/` (or built-in) is
+  blanket-trusted if its name is listed in `workflow_blanket_names`, the same way
+  `trusted_script_dirs` trusts a directory rather than re-inspecting every run. An
+  inline/dynamic script's own self-declared `meta.name` is never consulted here —
+  nothing in that text is proof of what it does.
+- **By AI content check** — an inline `script` (or a `scriptPath` file) has no
+  filesystem/network access of its own; the only thing it can do is hand a subagent a
+  prompt via `agent()`. So `scripts.ask_ai_about_workflow_script` reads those prompts
+  and asks Haiku whether every one is purely read/investigate/return-data, with nothing
+  that writes, commits, pushes, posts, or sends. This runs on every invocation (the
+  script differs each time), and a DANGEROUS verdict turns into an actionable **BLOCK**
+  with the reason, via the same block-reason handshake `scripts.py` uses for node/python
+  scripts.
+
 ### Learned → source promotion (`tools/sync_learned.py`)
 
 At **session end** (and on-demand via `/safe-compounds:sync-learned`), learned approvals
@@ -130,7 +150,7 @@ are promoted back to the plugin source via a GitHub PR on a rolling branch
 | `mcp_blanket_servers` | MCP server names to blanket-allow |
 | `trusted_script_dirs` | Directories containing safe scripts |
 | `learned_sync_exclude` | Learned commands to exclude from PR sync |
-| `workflow_blanket_names` | Saved workflow names (`tool_input.name`) to blanket-allow — never matches an inline/dynamic script |
+| `workflow_blanket_names` | Saved workflow names (`tool_input.name`) to blanket-allow — never matches an inline/dynamic script, which is instead judged fresh each run by the AI content check in `workflow.py` |
 
 ---
 
@@ -170,6 +190,6 @@ are promoted back to the plugin source via a GitHub PR on a rolling branch
 | `plugins/safe-compounds/safe_compounds/commands.py` | All per-tool safety checkers + `SUBCOMMAND_SPECS` |
 | `plugins/safe-compounds/safe_compounds/enforce.py` | Bash form validation + block messages |
 | `plugins/safe-compounds/safe_compounds/learned.py` | Machine-local learned store read/write |
-| `plugins/safe-compounds/safe_compounds/workflow.py` | Classifies Workflow tool calls against `workflow_blanket_names` |
+| `plugins/safe-compounds/safe_compounds/workflow.py` | Classifies Workflow tool calls: `workflow_blanket_names` for saved workflows, AI content check for inline scripts |
 | `plugins/safe-compounds/tools/sync_learned.py` | Promotes learned approvals to a GitHub PR |
 | `plugins/safe-compounds/safe_compounds/config.py` | Config file schema + loader |
