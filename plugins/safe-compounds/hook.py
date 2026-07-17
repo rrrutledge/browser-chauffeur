@@ -5,7 +5,8 @@ Decision order (preserved from the original single-file hook):
   PowerShell tool  -> deny (use the Bash tool)
   Write / Edit     -> writes.decide_write_edit
   mcp__*           -> mcp.classify_mcp_tool
-  Workflow         -> workflow.classify_workflow_tool (blanket-approved saved names only)
+  Workflow         -> workflow.classify_workflow_tool (blanket-approved saved names,
+                       or an AI safety verdict on an inline script's agent() prompts)
   Bash             -> enforce.enforce_bash (deny), then per-segment trust (allow)
   anything else    -> defer (no output)
 
@@ -29,6 +30,7 @@ from safe_compounds.log import log_debug  # noqa: E402
 from safe_compounds.mcp import classify_mcp_tool  # noqa: E402
 from safe_compounds.shell import split_segments  # noqa: E402
 from safe_compounds.trust import get_trusted  # noqa: E402
+from safe_compounds import workflow  # noqa: E402
 from safe_compounds.workflow import classify_workflow_tool  # noqa: E402
 from safe_compounds.writes import decide_write_edit  # noqa: E402
 
@@ -112,6 +114,7 @@ def dispatch(data):
     paths.reset_pending_worktree_paths()
     paths.reset_allowed_edit_dirs()
     scripts.reset_block_reason()
+    workflow.reset_block_reason()
 
     tool = data.get('tool_name')
     tool_input = data.get('tool_input', {})
@@ -152,6 +155,10 @@ def dispatch(data):
         if classify_workflow_tool(tool_input):
             log_debug(f"DECISION: Allow Workflow {tool_input.get('name')}")
             allow()
+        block = workflow.get_block_reason()
+        if block:
+            log_debug(f"DECISION: Deny (AI judged workflow script unsafe): {block[:80]}")
+            deny(block)
         defer()
 
     if tool != 'Bash':

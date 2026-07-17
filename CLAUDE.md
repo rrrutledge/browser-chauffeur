@@ -109,6 +109,15 @@ is asked whether the CLI tool name is a safe dev/productivity tool.
 Commands matching `Bash(command-name)` in `permissions.allow` in your `settings.json`
 are automatically pulled into the trusted set.
 
+#### 6. Workflow tool scripts (`workflow.py`)
+
+A saved workflow (`.claude/workflows/` or built-in) is blanket-trusted by name via
+`workflow_blanket_names`. An inline/dynamic script instead gets AI-judged fresh on every
+run (`scripts.ask_ai_about_workflow_script`) against the prompts it hands to `agent()` —
+the only thing such a script can actually do. DANGEROUS blocks with a reason; otherwise
+it prompts as usual. See the docstrings in `workflow.py`/`scripts.py` for the full
+reasoning.
+
 ### Learned → source promotion (`tools/sync_learned.py`)
 
 At **session end** (and on-demand via `/safe-compounds:sync-learned`), learned approvals
@@ -130,7 +139,7 @@ are promoted back to the plugin source via a GitHub PR on a rolling branch
 | `mcp_blanket_servers` | MCP server names to blanket-allow |
 | `trusted_script_dirs` | Directories containing safe scripts |
 | `learned_sync_exclude` | Learned commands to exclude from PR sync |
-| `workflow_blanket_names` | Saved workflow names (`tool_input.name`) to blanket-allow — never matches an inline/dynamic script |
+| `workflow_blanket_names` | Saved workflow names (`tool_input.name`) to blanket-allow — never matches an inline/dynamic script, which is instead judged fresh each run by the AI content check in `workflow.py` |
 
 ---
 
@@ -170,6 +179,6 @@ are promoted back to the plugin source via a GitHub PR on a rolling branch
 | `plugins/safe-compounds/safe_compounds/commands.py` | All per-tool safety checkers + `SUBCOMMAND_SPECS` |
 | `plugins/safe-compounds/safe_compounds/enforce.py` | Bash form validation + block messages |
 | `plugins/safe-compounds/safe_compounds/learned.py` | Machine-local learned store read/write |
-| `plugins/safe-compounds/safe_compounds/workflow.py` | Classifies Workflow tool calls against `workflow_blanket_names` |
+| `plugins/safe-compounds/safe_compounds/workflow.py` | Classifies Workflow tool calls: `workflow_blanket_names` for saved workflows, AI content check for inline scripts |
 | `plugins/safe-compounds/tools/sync_learned.py` | Promotes learned approvals to a GitHub PR |
 | `plugins/safe-compounds/safe_compounds/config.py` | Config file schema + loader |
