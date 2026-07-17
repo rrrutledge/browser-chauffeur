@@ -281,6 +281,7 @@ A single clear sentence ending in a question is usually the whole message — re
 - **Address a Japanese contact by closeness** — someone Russell knows well goes by first name alone ("Yuki"); a contact he knows less well gets the formal surname + "-san" ("Oidate-san"), in any register and at any point in the relationship, not only a first introduction.
 - **Ellipses for softening** — "If you need to leave you can just say so ... especially if we're going over time."
 - **Apologize genuinely and briefly** — "Sorry this is taking so long.", "I'm sorry I have to move this again."
+  Own a mistake of yours in every message that touches it while it's still being fixed, not just the first — a prior apology doesn't retire the need for a short acknowledging clause in the next one, and "thanks for understanding" alone reads as glossing over it.
 - **Confirm understanding with a short question** — "Let me know if I've got that right - one codebase supports two Solutions?"
 - **Close with "let me know"** — a signature phrase used constantly.
   Reach for it over near-variants ("just say the word" → "just let me know").
