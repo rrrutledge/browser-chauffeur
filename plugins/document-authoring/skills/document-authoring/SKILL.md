@@ -177,9 +177,10 @@ A single clear sentence ending in a question is usually the whole message — re
 - **First-touch outreach: keep the ask to one low-commitment thing, and warm the reference to their past work.**
   After a long gap, ask for a single easy yes rather than stacking asks, and affirm that their earlier contribution still matters in plain words.
   Cut any salesy bridge before the ask.
-- **Reporting a completed task: lead with the outcome and the link; cut the diagnostic play-by-play and the editorial wrap-up.**
-  They want the result, not the story of what was wrong, how you found it, or a closing "so this means…" they can draw themselves.
+- **Reporting a completed task, or answering a question you researched: lead with the outcome; cut the diagnostic play-by-play and the editorial wrap-up.**
+  They want the result, not the story of what was wrong, how you found it, which options you ruled out and why, or a closing "so this means…" they can draw themselves.
   Don't itemize each individual action once a summary phrase already implies it.
+  This applies even when the ruled-out option was worth investigating - state the bottom line the research produced, not the reasoning that got you there.
 - **Proposing call times across timezones: filter to the recipient's normal work day, not just your own open calendar.**
   Converting your free slots to their local time isn't enough — a slot that's open for you can still be very late or very early for them. Before offering a window, check it against a normal work day (roughly 8am-6pm) in *their* timezone and drop anything outside it, even if it's technically free on your end.
 
