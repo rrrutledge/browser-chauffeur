@@ -13,13 +13,20 @@ it immediately, or kick it off in a tab. Everything Russell is going to do, he d
 Answering that is the whole of triage, and the answer is one of four buckets — two when there's something
 to do, two when there isn't.
 
-**First, follow pointers — but don't open them here.** Some items aren't the content; they POINT to it (a
-Teams meeting-recording notice linking to AI notes with action items; a LinkedIn/Facebook "X messaged
-you" pointing to a DM elsewhere). Triage works only from what's in front of it and never opens the link
-(the batched step has no browser). So a pointer that plausibly holds something for Russell is itself
-something to do — the action is *open it and act* → **needs-you**, and the worker does the lookup (pull
-each action item out and capture it separately, read and answer the DM, …). Only a pointer that plainly
-carries the whole story and asks nothing — a recording notice with no notes — is just **fyi**.
+**First, recognize pointers (a.k.a. containers) — but don't open them here.** Some items aren't the
+content; they POINT to it, holding the real thing elsewhere: a Teams meeting-recording notice linking to
+AI notes with action items; a LinkedIn/Facebook "X messaged you" pointing to a DM elsewhere; a bank or
+portal "you have a message waiting"; a newsletter whose body sits behind a hosted "view in browser" link
+(Smore, Finalsite, a Mailchimp campaign). This is the shared "what am I looking at" that every stage
+resolves the same way — its **definition lives here**; the mechanics of *opening* one live once in
+`worker-core.md` § 2b (the resolve-a-pointer step). Triage itself works only from what's in front of it
+and never opens the link (the batched step has no browser): it **recognizes** the pointer and routes it,
+and the stage that acts — a worker, or the digest for an fyi — then opens and reads it per § 2b. So a
+pointer that plausibly holds something for Russell is itself something to do — *open it and act* →
+**needs-you**, and the worker does the lookup (pull each action item out and capture it separately, read
+and answer the DM, …). A pointer that plainly carries the whole story and asks nothing — a recording
+notice with no notes — is **fyi**, and the digest opens it there if it's a container worth reading (e.g. a
+newsletter).
 
 **Then, for the content in front of you, there's something to do when:**
 
@@ -72,8 +79,8 @@ carries the whole story and asks nothing — a recording notice with no notes �
     Russell would do. It would become an action only if the notice revealed something unexpected, and
     Russell catches that in the digest and escalates himself.
   - **Newsletters from an institution Russell has a real relationship with** — his children's school,
-    his HOA, his church, a community he belongs to. He reads these, so they are fyi, not junk. (Many are
-    link-hosted containers the digest then opens — that mechanic lives in `worker-core.md` § 2b.)
+    his HOA, his church, a community he belongs to. He reads these, so they are fyi, not junk. (A
+    link-hosted one is a pointer the digest opens — see "recognize pointers" above.)
 - **junk** — not even worth surfacing: automated noise, pure marketing, cold newsletters from senders
   Russell has no relationship with, CI/build notifications, duplicate status churn, chatter not aimed at
   the user. The newsletter test is the **relationship**, not the fact that it's a bulk send. Junk is also
