@@ -33,7 +33,7 @@ SKILL_DIR = os.path.dirname(SCRIPT_DIR)
 PROVIDERS_DIR = os.path.join(SKILL_DIR, "providers")
 sys.path.insert(0, SCRIPT_DIR)
 import presence  # noqa: E402  (sibling module)
-from provider_base import run_node, NO_WINDOW, ProviderError, spawn_tab, spawn_silent  # noqa: E402  (subprocess helper + typed provider failure)
+from provider_base import run_node, NO_WINDOW, ProviderError, spawn_tab, spawn_silent, NEUTRAL_PRIORITY_BAND  # noqa: E402  (subprocess helper + typed provider failure)
 from drainer_config import read_config, find_provider_file  # noqa: E402  (shared .claude/drainer.local.md reader + provider resolution)
 
 SEEN_STATE = os.path.join(SCRIPT_DIR, "seen-state.js")
@@ -637,13 +637,13 @@ def main():
     live_tabs = total_claude_tabs()
 
     # --- split: needs-you (globally ordered), auto-handle (own worker, no cap), others (digest) ---
-    # Ordering across ALL sources is by date, most-recent first: the newest email / Slack message or
-    # most-recently-due card leads. Each item carries its date in `received` — an inbox message's arrival
-    # time, a dated card's due date, or an undated card's creation date (the trello adapter stamps that),
-    # so undated cards sort by age alongside everything else.
+    # Ordered across ALL sources by (priority band, date) descending. Only job-search cards carry a
+    # non-neutral band (the trello adapter stamps `_priority_band` — see its _PRIORITY_BAND for the
+    # policy); every other item defaults to neutral and so orders purely by `received` date as before
+    # (an inbox message's arrival time, a dated card's due date, or an undated card's creation date).
     needs = sorted(
         (it for it in needs_and_others if it["_bucket"] == "needs-you"),
-        key=lambda it: it.get("received") or "",
+        key=lambda it: (it.get("_priority_band", NEUTRAL_PRIORITY_BAND), it.get("received") or ""),
         reverse=True,
     )
     # auto-handle items get a worker tab too (they need a browser to act), but the worker executes
@@ -668,7 +668,7 @@ def main():
                 model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
                 print(f"    [{it['_source']:20}] {it['_id']}  ->  spawn auto-worker [{it['_complexity']} -> {model}]\n"
                       f"        {it.get('received')} | {it.get('from')} | {it.get('subject')}")
-        print("  needs-you (newest-first globally):")
+        print("  needs-you (priority band, then newest-first, globally):")
         tabs = live_tabs
         for it in needs:
             held = tabs is not None and tabs >= cfg["target_open_tabs"]
