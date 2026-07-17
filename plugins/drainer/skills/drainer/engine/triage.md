@@ -71,10 +71,18 @@ carries the whole story and asks nothing — a recording notice with no notes �
     regenerated, a password changed, a setting updated, a sign-in confirmed); reading it changes nothing
     Russell would do. It would become an action only if the notice revealed something unexpected, and
     Russell catches that in the digest and escalates himself.
-- **junk** — not even worth surfacing: automated noise, newsletters, pure marketing, CI/build
-  notifications, duplicate status churn, chatter not aimed at the user. Junk is also a signal to stop it
-  arriving again; *how* to stop it is provider mechanics — each provider's **JUNK-LEARNING** section owns
-  the remediation (unsubscribe → source-app notification settings → inbox rule, in that order).
+  - **Newsletters from an institution Russell has a real relationship with** — his children's school,
+    his HOA, his church, a community he belongs to. He reads these, so they are fyi, not junk. Many are
+    **containers**: the actual newsletter lives behind a "view in browser" / hosted link (Smore,
+    Finalsite, Mailchimp campaign) and only a wrapper sentence sits in the mail body. Triage still files
+    it fyi here (no browser at triage time); the **digest** expands the container and summarizes the real
+    content (see `digest-core.md` § fyi).
+- **junk** — not even worth surfacing: automated noise, pure marketing, cold newsletters from senders
+  Russell has no relationship with, CI/build notifications, duplicate status churn, chatter not aimed at
+  the user. A newsletter from an institution he actually belongs to is **fyi** (above), not junk — the
+  test is the relationship, not the fact that it's a bulk send. Junk is also a signal to stop it arriving
+  again; *how* to stop it is provider mechanics — each provider's **JUNK-LEARNING** section owns the
+  remediation (unsubscribe → source-app notification settings → inbox rule, in that order).
 
 ## Tie-breakers
 - **auto-handle** is never a tie-breaker default: pick it ONLY when a provider AUTO-HANDLE rule clearly

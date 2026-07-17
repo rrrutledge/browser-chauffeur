@@ -81,6 +81,12 @@ Add an emoji reaction to a message: `node slack.js --react --channel=<channel> -
 (reactions cannot be removed by the drainer), so propose and execute only when the reaction is clearly
 warranted. Reactions are visible to everyone in the workspace.
 
+**React only to a message a 👍 actually fits** — a genuinely positive or acknowledgeable note (a
+"thanks", a "sounds good", a shared win, a closing agreement aimed at Russell). A question, a lament, or a
+"where is everyone?" is **not** one of these: a 👍 there reads as tone-deaf, and because the reaction can't
+be undone, the cost of a wrong one is real. When no reaction clearly fits, add none and just clear (mark
+read); when the message actually warrants a written reply, that's `needs-you`, not a reaction.
+
 ## AUTO-HANDLE
 Standing rules where Russell has decided the answer in advance, so the poller triages the item
 **`auto-handle`** (per `../engine/triage.md`) and the worker executes it autonomously — no tab, no wait —

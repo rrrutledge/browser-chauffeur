@@ -123,8 +123,12 @@ it applies the same way no matter which provider captured the item.
 
 ## 2b. If the item is a pointer, open the real content yourself
 If your item is a **notification that points to content living elsewhere** — a meeting-recording
-notice, a forum "you have a reply" — it is NOT the content, only a pointer. **Go open and read the
-underlying message yourself before doing anything else**, using the right tool for that surface.
+notice, a forum "you have a reply", a bank/portal "you have a message waiting", or a **newsletter whose
+body sits behind a hosted "view in browser" link** (Smore, Finalsite, a Mailchimp campaign page) — it is
+NOT the content, only a pointer. **Go open and read the underlying content yourself before doing anything
+else**, using the right tool for that surface: a plain fetch when the page is static, and
+**browser-chauffeur when the page renders client-side** (Smore and most campaign pages return only a
+wrapper shell to a plain fetch). Summarize the real content as if it had arrived inline in the mail.
 Reading it is YOUR job; never hand the lookup back to the user ("go read the message yourself").
 
 **Exception: LinkedIn/Facebook "X just messaged you" pointers.** Never drive browser-chauffeur to
