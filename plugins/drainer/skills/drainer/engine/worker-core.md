@@ -105,6 +105,31 @@ message in the thread — even when that latest message is one the user sent.** 
 the conversation actually stands, so quote and thread on the newest message, not an older inbound one;
 provider DRAFT-MODE notes how to target a sent message.
 
+**One captured conversation can hold several distinct open asks - group them, then handle each.**
+When a chat source keys one item per conversation (a DM, a group chat, an unread channel, a subscribed
+thread), the messages waiting since the user's last read may be several separate tasks or one topic typed
+across rapid-fire messages - and it takes judgment to tell which. The item stands for the **whole unread
+span**, not the single message it is keyed to, so **start by grouping** the unread messages into distinct
+asks:
+messages that are one train of thought (someone typing fast, or refining the same request across a few
+lines) collapse into a single ask; messages on genuinely different topics ("update the graphics" / "post
+the case study" / "remove that line") are separate asks. Topic is what decides it, and the timestamps in
+the span are a useful tiebreaker: messages seconds or minutes apart lean toward one train of thought, while
+a gap of hours or days (you just hadn't drained in a while) leans toward separate asks. You may end with
+one group or several - that grouping is your call, made from reading the span. Then handle **each group as its own unit**, exactly as
+you would a standalone message or email: do the work, draft any reply. The item is done only when **every**
+group is completed, staged as a draft/PR, or explicitly tracked on a follow-up card (per the host
+`context.md`), and your reply covers all of them. An ask you leave for "a later item that'll come around"
+never comes around: the next section explains why clearing the item drops it for good.
+
+**Email is the same judgment with different mechanics.** A quick "oh, and one more thing" follow-up email
+is real, so the one-ask-or-several question applies to email too - but our email sources key one item per
+message, so that follow-up arrives as its own item and clearing one email never drops another. So the grouping
+here is lighter: when the situational check pulls the thread and you see two of the sender's messages close
+together, decide whether they're one ask to answer once or two to handle separately, and don't fire a second
+near-duplicate reply for what is really one thing. The load-bearing group-and-guard-before-clearing logic
+above is for the chat sources, where several messages collapse into one item behind a single read cursor.
+
 **An ask can hop channels — follow it, don't just re-read where it started.** The channel that carried
 the item is not necessarily the channel that carries its resolution. Two patterns to watch for, on any
 source:
@@ -229,6 +254,14 @@ that means, read the **CLEAR** op in `providers/<source>-provider.md`.
 
 If you drafted a reply in step 4 but step 3's underlying work isn't done yet, STOP — do NOT clear;
 leave the item as-is and write a "paused" marker instead.
+
+**Never clear while an un-handled open ask remains in the unread span.** For a conversation captured as one
+item (§2's multi-ask case), clearing (advancing the read cursor / marking the conversation read) drops
+**every** still-unread message under the one you're keyed to, including asks you haven't touched, and they
+will not resurface. So before you CLEAR, confirm every ask you grouped out of the span in §2 is completed,
+staged, or tracked on a follow-up card. If any remains open, do not clear: handle or track it first, or
+leave the item un-cleared and write a "paused" marker. Clearing is the last act after the whole span is
+handled, never a per-message step.
 
 If the situational check finds nothing to do right now (an outreach card that's not yet time to follow
 up, or a thread where they replied and the user already answered), resolve it quietly — bump the due
