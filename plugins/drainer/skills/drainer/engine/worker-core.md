@@ -128,14 +128,13 @@ as if this were unstarted outreach. No match → treat it as genuinely new. This
 it applies the same way no matter which provider captured the item.
 
 ## 2b. Resolve a pointer — open the real content yourself
-This is the shared **open-the-pointer mechanic** every stage uses (`triage.md` defines what a pointer is
-and which kinds exist — meeting-recording notices, DM pointers, portal "message waiting", link-hosted
-newsletters; a worker resolves needs-you ones here, the digest resolves fyi ones the same way). A pointer
+This is the shared **open-the-pointer mechanic** every stage uses — `triage.md` defines what a pointer is
+and its kinds; a worker resolves needs-you ones here, the digest resolves fyi ones the same way. A pointer
 is NOT the content, only a stub. **Open and read the underlying content yourself before doing anything
 else**, with the right tool for that surface: a plain fetch when the page is static, and
-**browser-chauffeur when the page renders client-side** (Smore and most campaign pages return only a
-wrapper shell to a plain fetch). Summarize the real content as if it had arrived inline. Reading it is
-YOUR job; never hand the lookup back to the user ("go read the message yourself").
+**browser-chauffeur when the page renders client-side** (a client-rendered page returns only a wrapper
+shell to a plain fetch). Summarize the real content as if it had arrived inline. Reading it is YOUR job;
+never hand the lookup back to the user ("go read the message yourself").
 
 **Exception: LinkedIn/Facebook "X just messaged you" pointers.** Never drive browser-chauffeur to
 linkedin.com or facebook.com for any reason — LinkedIn suspended Russell's account for automation in

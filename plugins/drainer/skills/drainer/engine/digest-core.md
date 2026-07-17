@@ -90,10 +90,9 @@ Russell never needs to open the item itself**: who/what, the substance (not just
 date or number that matters. Link the source with descriptive text per the `document-authoring` voice,
 never a bare URL. Order by what's most worth knowing first.
 
-**Resolve pointers.** When an fyi item is a **pointer** — only a stub in the captured body, the real
-content behind a link (a link-hosted newsletter, etc.) — open and summarize the real content, per the
-resolve-a-pointer step in `worker-core.md` § 2b. Same mechanic a worker uses for needs-you, applied here
-at digest time for fyi.
+**Resolve pointers.** An fyi item can be a **pointer** (a stub whose real content is behind a link — see
+`triage.md`). Open and summarize the real content per the resolve-a-pointer step in `worker-core.md`
+§ 2b — the same mechanic a worker uses for needs-you, here at digest time for fyi.
 
 **Before framing any item as still needing Russell** — an open ask, an awaited reply, anything that
 implies he still owes a response — run that provider's **SITUATIONAL-CHECK** first (search Sent +
