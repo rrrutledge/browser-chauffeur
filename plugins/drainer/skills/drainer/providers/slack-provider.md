@@ -50,11 +50,17 @@ blocked on them, not ready to act on. Confirm there's not already a reply and th
 before drafting. The `message-draft` slack mode stages drafts in the Slack composer — check the
 conversation in Slack so you don't stack a second draft. Reply only to what is still open.
 
+A Slack item's body carries the **full unread span** (every unread message since Russell's last read, not
+just the newest), so apply worker-core §2's group-then-handle model to it: read the whole span and decide
+how many distinct asks it holds before you draft.
+
 ## CAPTURE (the item shape the worker reads)
 The adapter writes these two files for each dispatched item (`slack-adapter.py` → `capture`); this is the
 shape the worker can rely on:
-- `items/<id>.slack.md` — header block (From, Channel, Received, Link, MessageRef) + the message text
-  (from `slack.js --show --json`).
+- `items/<id>.slack.md` — header block (From, Channel, Received, Unread messages, Link, MessageRef) + the
+  **full unread span**: every unread message since Russell's last read, oldest first, each labelled with its
+  author and time (from the `unread` array `slack.js --list-unread --json` attaches to each item). A
+  single-message item falls back to that one message's text.
 - `items/<id>.json` — `{ "id","source":"slack","triage","kind","from","subject","received","snippet",`
   `"url":"<permalink>","messageId":"<channel>:<ts>","channel","ts","threadTs","channelType",`
   `"channelName","teamId","bodyFile","ts_captured" }`.
@@ -68,6 +74,10 @@ workspaces if a second is ever added).
 ## CLEAR
 Advance the read cursor (the Slack "gone") — reversible and non-destructive (nothing is deleted; re-reading
 or a newer message re-surfaces it). Narrate it. Never delete messages.
+
+Marking read advances the cursor to `ts` in one move, clearing every unread message under it — so a
+still-unhandled ask in the span silently disappears and never re-surfaces. Apply worker-core §6's clear
+guard: mark read only once every ask in the span is handled, staged, or tracked.
 - **DM / group DM / channel mention / channel unread** — `node slack.js --mark --channel=<channel> --ts=<ts>`
   (`conversations.mark`). Advances the read cursor to `ts`. For a channel @-mention this clears the
   mention badge but leaves any newer messages unread (the channel may re-surface as "Unread in #channel"
@@ -80,6 +90,12 @@ Add an emoji reaction to a message: `node slack.js --react --channel=<channel> -
 (`reactions.add`). Emoji name without colons — e.g. `thumbsup`, `tada`, `white_check_mark`. Irreversible
 (reactions cannot be removed by the drainer), so propose and execute only when the reaction is clearly
 warranted. Reactions are visible to everyone in the workspace.
+
+**React only to a message a 👍 actually fits** — a genuinely positive or acknowledgeable note (a
+"thanks", a "sounds good", a shared win, a closing agreement aimed at Russell). A question, a lament, or a
+"where is everyone?" is **not** one of these: a 👍 there reads as tone-deaf, and because the reaction can't
+be undone, the cost of a wrong one is real. When no reaction clearly fits, add none and just clear (mark
+read); when the message actually warrants a written reply, that's `needs-you`, not a reaction.
 
 ## AUTO-HANDLE
 Standing rules where Russell has decided the answer in advance, so the poller triages the item

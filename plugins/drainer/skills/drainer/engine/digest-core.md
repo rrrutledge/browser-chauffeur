@@ -90,6 +90,10 @@ Russell never needs to open the item itself**: who/what, the substance (not just
 date or number that matters. Link the source with descriptive text per the `document-authoring` voice,
 never a bare URL. Order by what's most worth knowing first.
 
+**Resolve pointers.** An fyi item can be a **pointer** (a stub whose real content is behind a link — see
+`triage.md`). Open and summarize the real content per the resolve-a-pointer step in `worker-core.md`
+§ 2b — the same mechanic a worker uses for needs-you, here at digest time for fyi.
+
 **Before framing any item as still needing Russell** — an open ask, an awaited reply, anything that
 implies he still owes a response — run that provider's **SITUATIONAL-CHECK** first (search Sent +
 Drafts; read `<providers_dir>/<source>-provider.md` → SITUATIONAL-CHECK). The captured snippet is the
@@ -115,6 +119,10 @@ item's provider **JUNK-LEARNING** section — read `<providers_dir>/<source>-pro
 and apply the priority order it defines. Propose, never apply without Russell's OK. Make each proposal
 concrete (the actual link, setting, or rule the provider's JUNK-LEARNING points to) so Russell can act
 in one step.
+
+**When the stop is a mail rule, load the `mail-filters` skill first** (call the Skill tool) and derive
+the proposal from it — don't hand-write a rule from memory. A company-specific `from:<sender>` filter is
+the tell that the skill was skipped.
 
 This step's proposal, and his go-ahead on it in step 5, approve **building a rule for this type of
 junk** — they are not approval of a rule's literal text. When the chosen stop is a mail rule, creating
