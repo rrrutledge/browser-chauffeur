@@ -50,6 +50,12 @@ that plainly carries the whole story and asks nothing — a recording notice wit
 - a **dated to-do** comes due — a Trello tracker or outreach card, any dated item, the moment its due
   date arrives or passes. The due date IS the queue: a due item is the action surfacing when it was
   scheduled for.
+- **Russell sent it to himself** — mail from Russell's own address to himself is a deliberate self-note,
+  his way of handing a task to the drainer, and it is judged by its **content**, never dismissed as junk
+  for being terse or self-addressed. A self-note is usually a compressed task that wraps a pointer: a bare
+  link to open, a photo of a bill or form to act on, a one-line "renew this online." Recognize the pointer
+  and route it → **needs-you**, and the worker opens what it points to and does the thing. Only a self-note
+  that genuinely carries no task — a memo he parked purely to re-read — is fyi; a self-note is never junk.
 
 **When there is something to do, it's one of two buckets:**
 
@@ -68,8 +74,14 @@ that plainly carries the whole story and asks nothing — a recording notice wit
 
 - **fyi** — Russell may want to know, but there's nothing to act on; no tab opens and the digest surfaces
   it. Common cases that land here:
-  - **Delivery-failure bounces** (MAILER-DAEMON / Postmaster) — they report that an email didn't reach
-    him, but there's nothing for him to do about the bounce itself.
+  - **Delivery-failure bounces** (MAILER-DAEMON / Postmaster) of a message that asked nothing — an
+    auto-send or FYI that didn't land — report a fact with nothing to redo → fyi. But a bounce of a
+    message **Russell wrote to reach someone** is different: the message he intended never arrived, so his
+    action is still open and he has to deliver it another way → **needs-you**. The canonical case is a
+    Google Docs comment he tried to post by replying to the notification email (a bounce from
+    `comments-noreply@docs.google.com`, which doesn't accept mail): the comment never posted, so the worker
+    helps him add it directly in the doc. Read the bounced message: carried an intended reply/comment →
+    needs-you; carried nothing of his → fyi.
   - **Completed-event notices** — an automated notification that something already finished (a token
     regenerated, a password changed, a setting updated, a sign-in confirmed); reading it changes nothing
     Russell would do. It would become an action only if the notice revealed something unexpected, and
