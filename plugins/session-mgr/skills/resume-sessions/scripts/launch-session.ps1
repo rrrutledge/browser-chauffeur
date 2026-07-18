@@ -35,6 +35,20 @@ param(
 # Self-close: a session that wants to close its own tab reads $env:CLAUDE_HOST_PID, set by the
 # user's PowerShell $PROFILE when the caller's `powershell` invocation loads it (both current
 # callers do).
+#
+# When this script is itself invoked from a Bash tool call inside a running Claude Code session
+# (every handoff/resume launched via that session's own Bash tool, as opposed to a plain shell),
+# the OS process chain inherits that parent session's CLAUDE_CODE_CHILD_SESSION/CLAUDE_CODE_SESSION_ID/
+# CLAUDE_PID env vars all the way down to the new `claude` process this script spawns. Claude Code
+# reads CLAUDE_CODE_CHILD_SESSION on startup and suppresses its own transcript persistence for a
+# process that thinks it's a child session — even though it's really a fresh, independent,
+# human-driven session in its own tab. Confirmed in practice: a handoff session inherited these
+# vars, ran for hours doing real work, and never wrote a single line to disk anywhere — its entire
+# history existed only in process memory. Clear all three before ever invoking `claude` below so a
+# newly spawned top-level session is never mistaken for a child of whatever launched it.
+Remove-Item Env:\CLAUDE_CODE_CHILD_SESSION -ErrorAction SilentlyContinue
+Remove-Item Env:\CLAUDE_CODE_SESSION_ID -ErrorAction SilentlyContinue
+Remove-Item Env:\CLAUDE_PID -ErrorAction SilentlyContinue
 
 # Ensures a session id exists and writes it to "<AnchorFile>.session" so peek.py (and anything else
 # that wants to follow this tab's live transcript) can find it later — the two launch modes used to
