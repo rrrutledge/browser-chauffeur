@@ -71,10 +71,11 @@ that plainly carries the whole story and asks nothing — a recording notice wit
 
 - **fyi** — Russell may want to know, but there's nothing to act on; no tab opens and the digest surfaces
   it. Common cases that land here:
-  - **Delivery-failure bounces** (MAILER-DAEMON / Postmaster) — fyi when the bounced message asked
-    nothing, but **needs-you** when it's a message Russell wrote to reach someone (e.g. a Google Docs
-    comment bounced from `comments-noreply@docs.google.com`): his message never arrived, so he still has
-    to deliver it another way.
+  - **Delivery-failure bounces** (MAILER-DAEMON / Postmaster) — **needs-you** when someone Russell was
+    actually trying to reach didn't get it: a primary **To** recipient, especially a lone address (e.g. a
+    Google Docs comment bounced from `comments-noreply@docs.google.com`), which he now has to deliver
+    another way. fyi when the failed address wasn't the real target — a CC, or one of many on a mailing
+    list — so the message still reached who it was for.
   - **Completed-event notices** — an automated notification that something already finished (a token
     regenerated, a password changed, a setting updated, a sign-in confirmed); reading it changes nothing
     Russell would do. It would become an action only if the notice revealed something unexpected, and
