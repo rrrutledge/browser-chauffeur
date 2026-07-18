@@ -195,9 +195,12 @@ Outlook rules can hold many conditions and run top-to-bottom, which enables a ri
 - **The master fence, in Outlook form.** Every broad subject-or-body bucket ends with *"…except when
   the sender's address contains:"* the known personal-mail domains — this is how Outlook expresses the
   corporate-mail-only fence above. Keep the exclusion list on every broad bucket.
-- **Body matches pinned to a sender.** A body match is the dangerous kind, so in Outlook it is always
-  fenced by an `AND from:<sender>` — e.g. body `You paid $` **and** from `service@paypal.com`. Pinning
-  the body phrase to the one sender that emits it is the safest way to match on body text.
+- **Body phrases: pin to a sender only when the phrase can't stand alone.** A distinctive body phrase -
+  one no wanted mail could plausibly carry, like `Sign in with this one-time passcode` - goes straight
+  into the general bodies bucket ("Corporate Bodies") with the master fence, **unpinned**, exactly as its
+  subject counterpart would. Reserve the `AND from:<sender>` pin for a body phrase too broad to be safe on
+  its own - `You paid $` **and** from `service@paypal.com` - as the same tightening escalation the
+  two-sided test uses everywhere else, never a blanket rule that pins every body match to a sender.
 - **Sender-scoped subject buckets.** When the sender is pinned, the subject phrase can be looser —
   `from:discover.com` + subject `Activate 5%`, `from:amazon.com` + subject `Your Amazon.com order`.
 - **Native message-type conditions.** Outlook can match *"the message is a Meeting Response"* or
