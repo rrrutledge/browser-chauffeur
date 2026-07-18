@@ -347,6 +347,8 @@ Don't invent emoji outside this palette, don't stack them, and skip them entirel
 - **Cold outreach for a commitment: open with the soft ask, not the hard one.**
   Gauge interest and invite a conversation ("is this of interest?", "can we talk?"); name the commitment lightly and later, after they've engaged.
   Ask one thing, not a menu of next steps.
+- **Warm-intro ask via a mutual connection: ground the opener in real shared history, not generic warmth.**
+  Name the opportunity and the mutual connection in one short paragraph with both links inline (`Name (URL)` on composers with no rich-text anchoring), skip the self-pitch entirely, and land on one direct yes/no ask ("Do you know X well enough to make an introduction?") with a short warm close — no hedging escape hatch.
 - **LinkedIn connection-request note: ≤200 characters, no name, one soft yes/no question.**
   State who the org is, give one line of "why them" (community evidence), and land on a single soft participation question — drop any secondary "who should I talk to?" ask, and don't sign it.
 - *Samples:*
