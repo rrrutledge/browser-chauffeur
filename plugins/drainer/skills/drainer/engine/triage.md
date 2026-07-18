@@ -50,6 +50,9 @@ that plainly carries the whole story and asks nothing — a recording notice wit
 - a **dated to-do** comes due — a Trello tracker or outreach card, any dated item, the moment its due
   date arrives or passes. The due date IS the queue: a due item is the action surfacing when it was
   scheduled for.
+- **Russell sent it to himself** — a note from his own address is a deliberate self-note, not noise.
+  Evaluate it by content exactly as you would any other item: **needs-you** when the content implies an
+  action, fyi when it's just something to re-read. Never junk for being terse or self-addressed.
 
 **When there is something to do, it's one of two buckets:**
 
@@ -68,8 +71,11 @@ that plainly carries the whole story and asks nothing — a recording notice wit
 
 - **fyi** — Russell may want to know, but there's nothing to act on; no tab opens and the digest surfaces
   it. Common cases that land here:
-  - **Delivery-failure bounces** (MAILER-DAEMON / Postmaster) — they report that an email didn't reach
-    him, but there's nothing for him to do about the bounce itself.
+  - **Delivery-failure bounces** (MAILER-DAEMON / Postmaster) — **needs-you** when someone Russell was
+    actually trying to reach didn't get it: a primary **To** recipient, especially a lone address (e.g. a
+    Google Docs comment bounced from `comments-noreply@docs.google.com`), which he now has to deliver
+    another way. fyi when the failed address wasn't the real target — a CC, or one of many on a mailing
+    list — so the message still reached who it was for.
   - **Completed-event notices** — an automated notification that something already finished (a token
     regenerated, a password changed, a setting updated, a sign-in confirmed); reading it changes nothing
     Russell would do. It would become an action only if the notice revealed something unexpected, and
