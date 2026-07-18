@@ -209,11 +209,6 @@ instructions: |-
   - Backslash paths from `cwd` must be converted to forward slashes
   - `-Resume` accepts only the UUID — no prose needed
   - Keep `--title` short and quote-free (no `"` inside the title string)
-  - Do NOT pass `-NoProfile` — the user's `$PROFILE` is what sets `$env:CLAUDE_HOST_PID` for
-    this new tab's own host process; skipping it leaves that variable unset for this process,
-    so it falls through to whatever value the spawning shell already had (typically some
-    unrelated ancestor session's host PID), and `/close`'s ancestor check on the resumed tab
-    then correctly refuses to kill a PID that isn't actually upstream of it.
 
   Launch each tab sequentially (the Bash tool runs them one at a time naturally).
 
