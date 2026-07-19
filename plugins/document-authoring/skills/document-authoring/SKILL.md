@@ -113,6 +113,10 @@ Use for: Confluence specs, how-to guides, PRDs, PR descriptions, Word docs, publ
   Resist listing every permission, alternative, and implementation note.
 - **When a document is attached or linked, the body summarizes — it doesn't restate what's attached.**
   Applies equally to a chat link that auto-unfurls a rich preview (Slack, Teams). Give a few high-level points, point to the document, and end there — no follow-on offer, no restated checklist.
+- **A durable doc reads as how things are, not how they changed.**
+  A reference doc, spec, how-to, README, or code comment states the current design as plain fact, and never narrates the change that produced it ("used to", "now", "since", "previously", "no longer", "escalated", "moved to") or leaves a stale claim standing beside the new one.
+  This generalizes the "never narrate a removal" rule: the artifact should read as though the current design had always been the design.
+  The before-and-after belongs only in the PR description, commit message, or status update that introduces the change — those are measured against the prior state; the artifact they land in is not.
 - Avoid corporate filler ("leverage", "streamline", "as per"), long compound sentences, and effusive sign-offs.
 
 ### Reports, reviews & status updates
