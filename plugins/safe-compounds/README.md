@@ -57,8 +57,10 @@ For each tool call the hook produces one of:
   it only if *every* segment is trusted or a recognized-safe form: read-only/
   reversible `git` (allowlist of subcommands), read-only/reversible `gh`,
   `curl` to localhost / a configured domain / any GET, package-manager installs,
-  CWD-scoped `cp`/`mv`/`touch`/`ln`, `start` on viewable file types, and `wt`
-  only when it launches a trusted program.
+  CWD-scoped `cp`/`mv`/`touch`/`ln` (also trusting `~/Downloads` as a
+  destination by default, plus any dirs in `trusted_destination_dirs`),
+  `start` on viewable file types, and `wt` only when it launches a trusted
+  program.
 - **Enforcement (BLOCK → rewrite)** — heredocs, output/input redirection, inline
   `python -c` / `node -e`, PowerShell cmdlets in bash, `cmd /c`, `sed -i`, `$VAR`
   expansion, `VAR=...` assignment, and complex bash (loops, `$()`, conditionals,
@@ -85,7 +87,8 @@ blanket-approved, etc.).
   "curl_domains": ["atlassian.net", "mycorp.sharepoint.com"],
   "mcp_blanket_servers": ["plugin_product-management_atlassian"],
   "mcp_blanket_tools": ["mcp__claude_ai_Gmail__apply_sensitive_message_label"],
-  "trusted_script_dirs": ["my-plugins/"]
+  "trusted_script_dirs": ["my-plugins/"],
+  "trusted_destination_dirs": ["~/OneDrive/Deliverables"]
 }
 ```
 

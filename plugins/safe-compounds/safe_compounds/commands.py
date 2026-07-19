@@ -10,7 +10,8 @@ from .learned import add_learned_command, add_learned_subcommand, learned_subcom
 from .log import log_debug
 from .paths import (
     is_in_trusted_script_dir, is_path_within_allowed_edits, is_path_within_claude_plugins,
-    is_path_within_cwd, is_path_within_git_worktree, is_safe_read_location, read_script_file,
+    is_path_within_cwd, is_path_within_git_worktree, is_path_within_trusted_destination,
+    is_safe_read_location, read_script_file,
 )
 from .shell import ASSIGNMENT_ONLY, get_subcommands, shell_tokenize
 
@@ -622,7 +623,7 @@ def check_cwd_file_command(seg, command):
 
     if command in ('cp', 'mv', 'ln') and len(paths) >= 2:
         dest = paths[-1].strip('"\'')
-        if not _dest_allowed(dest):
+        if not (_dest_allowed(dest) or is_path_within_trusted_destination(dest)):
             log_debug(f"{command} destination outside allowed areas: {dest}")
             return False
         for src in paths[:-1]:
