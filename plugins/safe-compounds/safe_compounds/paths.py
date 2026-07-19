@@ -139,6 +139,28 @@ def is_path_within_claude_plugins(path):
     return path_under(path, os.path.expanduser('~/.claude/plugins'))
 
 
+# Built into the plugin: dirs cp/mv/ln may write to even though they're
+# outside the repo. Downloads is a personal-computer staging area (build
+# outputs, exported PDFs, attachments) rather than org-specific data, so it's
+# trusted by default -- unlike curl_domains/trusted_script_dirs, which really
+# are consumer-specific and belong in safe-compounds-config.json instead.
+TRUSTED_DESTINATION_DIRS = ['~/Downloads']
+
+
+def is_path_within_trusted_destination(path):
+    """True if `path` is within TRUSTED_DESTINATION_DIRS (built in, e.g.
+    ~/Downloads) or a `trusted_destination_dirs` entry from
+    safe-compounds-config.json (machine-local extras) — dirs that cp/mv/ln
+    may write to even though they're outside the repo."""
+    from .config import get_config
+    bases = list(TRUSTED_DESTINATION_DIRS) + get_config().get('trusted_destination_dirs', [])
+    for base in bases:
+        base = os.path.expanduser(base)
+        if path_under(path, base, resolve_cwd=False) or path_under(_abs_against_cwd(path), base, resolve_cwd=False):
+            return True
+    return False
+
+
 # Paths declared by "git worktree add <path>" in the current compound command.
 _pending_worktree_paths = set()
 

@@ -32,6 +32,7 @@ def set_config(**kwargs):
     base = {
         "trusted_commands": [], "curl_domains": [], "mcp_blanket_servers": [],
         "mcp_blanket_tools": [], "trusted_script_dirs": [], "workflow_blanket_names": [],
+        "trusted_destination_dirs": [],
     }
     base.update(kwargs)
     config._CONFIG = base
@@ -572,6 +573,27 @@ class TestSensitiveReadDirsExcluded:
         os.environ['CLAUDE_CWD'] = str(tmp_path)
         src = os.path.expanduser("~/notes.txt")
         assert check_cwd_file_command(f'cp "{src}" ".tmp/notes.txt"', "cp") is True
+
+    def test_cp_to_downloads_approved_by_default(self, tmp_path):
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        set_config()
+        src = tmp_path / "resume.pdf"
+        dest = os.path.expanduser("~/Downloads/resume.pdf")
+        assert check_cwd_file_command(f'cp "{src}" "{dest}"', "cp") is True
+
+    def test_cp_to_configured_trusted_destination_approved(self, tmp_path):
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        set_config(trusted_destination_dirs=[str(tmp_path / "downloads")])
+        src = tmp_path / "resume.pdf"
+        dest = tmp_path / "downloads" / "resume.pdf"
+        assert check_cwd_file_command(f'cp "{src}" "{dest}"', "cp") is True
+
+    def test_cp_outside_trusted_destination_still_denied(self, tmp_path):
+        os.environ['CLAUDE_CWD'] = str(tmp_path / "cwd")
+        set_config(trusted_destination_dirs=[str(tmp_path / "downloads")])
+        src = tmp_path / "cwd" / "resume.pdf"
+        dest = tmp_path / "other-dir" / "resume.pdf"
+        assert check_cwd_file_command(f'cp "{src}" "{dest}"', "cp") is False
 
 
 class TestSafeReadLocation:

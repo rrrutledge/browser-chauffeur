@@ -13,7 +13,8 @@ Example ~/.claude/safe-compounds-config.json:
       "mcp_blanket_tools": ["mcp__claude_ai_Gmail__apply_sensitive_message_label"],
       "trusted_script_dirs": ["my-plugins/"],
       "learned_sync_exclude": ["my-internal-cli"],
-      "workflow_blanket_names": ["code-review"]
+      "workflow_blanket_names": ["code-review"],
+      "trusted_destination_dirs": ["~/OneDrive/Deliverables"]
     }
 
 Every value here is a command *name* or path/domain string — a name-level
@@ -43,6 +44,13 @@ name starts with. Use this when one specific tool on a server is safe to
 run unattended but the server as a whole isn't (e.g. a Gmail label/trash
 tool whose effect is private and reversible, without blanket-trusting
 every other Gmail tool too).
+
+`trusted_destination_dirs` adds *extra* dirs `cp`/`mv`/`ln` may write to
+outside the repo, on top of the built-in default (`~/Downloads` — see
+`paths.TRUSTED_DESTINATION_DIRS`). Writing outside the repo is otherwise
+treated as elevated risk (an out-of-repo write can silently overwrite an
+existing file), so beyond the built-in default, only paths you list here are
+trusted as destinations.
 """
 import json
 import os
@@ -55,6 +63,7 @@ _DEFAULTS = {
     "trusted_script_dirs": [],
     "learned_sync_exclude": [],
     "workflow_blanket_names": [],
+    "trusted_destination_dirs": [],
 }
 
 _CONFIG = None

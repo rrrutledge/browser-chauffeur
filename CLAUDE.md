@@ -140,6 +140,7 @@ are promoted back to the plugin source via a GitHub PR on a rolling branch
 | `trusted_script_dirs` | Directories containing safe scripts |
 | `learned_sync_exclude` | Learned commands to exclude from PR sync |
 | `workflow_blanket_names` | Saved workflow names (`tool_input.name`) to blanket-allow — never matches an inline/dynamic script, which is instead judged fresh each run by the AI content check in `workflow.py` |
+| `trusted_destination_dirs` | Extra dirs `cp`/`mv`/`ln` may write to outside the repo, beyond the built-in default (`~/Downloads`) |
 
 ---
 
@@ -160,6 +161,7 @@ are promoted back to the plugin source via a GitHub PR on a rolling branch
    | `curl` to a new domain | `curl_domains` in `~/.claude/safe-compounds-config.json` |
    | Private/company command (don't want in public PR) | `trusted_commands` in `~/.claude/safe-compounds-config.json` |
    | A specific `/code-review`-style Workflow you want to always run | `workflow_blanket_names` in `~/.claude/safe-compounds-config.json` |
+   | `cp`/`mv`/`ln` writing to a specific dir outside the repo (e.g. `~/Downloads`) | `trusted_destination_dirs` in `~/.claude/safe-compounds-config.json` |
 
 3. **Consider reversibility** — if the operation is reversible (can be undone), it
    belongs in the allowlist. If it's irreversible or unknowable, it should remain a
