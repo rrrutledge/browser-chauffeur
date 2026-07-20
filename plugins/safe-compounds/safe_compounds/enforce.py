@@ -195,6 +195,22 @@ def detect_input_redirection(command):
     return False
 
 
+def detect_function_definition(command):
+    """Return the defined name if a segment defines a shell function
+    (`name() { ... }` or `function name { ... }`), else None. Function
+    definitions can't be statically validated — a function can shadow any
+    real command, so the hook can't confirm what actually runs."""
+    for seg in split_segments(command):
+        stripped = seg.strip()
+        m = re.match(r'^(\w+)\s*\(\)\s*\{', stripped)
+        if m:
+            return m.group(1)
+        m = re.match(r'^function\s+(\w+)\s*(?:\(\))?\s*\{', stripped)
+        if m:
+            return m.group(1)
+    return None
+
+
 def detect_cd_cwd_prefix(command):
     cwd = os.environ.get('CLAUDE_CWD', os.getcwd())
     m = re.match(r'^cd\s+("([^"]+)"|\'([^\']+)\'|(\S+))\s*(?:&&|;)', command.strip())
@@ -336,6 +352,18 @@ def enforce_bash(command):
         return (f'BLOCKED: PowerShell cmdlet "{cmdlet}" used in Bash command. '
                 f'Use bash equivalent instead: {alternative}. '
                 'Always use bash commands in the Bash tool, never PowerShell cmdlets.')
+
+    func_name = detect_function_definition(command)
+    if func_name:
+        if func_name == 'cd':
+            return ('BLOCKED: Shell function definition "cd() { ... }" detected. This is usually added to '
+                     'stop an embedded cd from changing the working directory, but the Bash tool already runs '
+                     'every command in the correct working directory — there is no cd to guard against. Drop '
+                     'the "cd() { ... };" prefix entirely and run the rest of the command directly.')
+        return (f'BLOCKED: Shell function definition ("{func_name}() {{ ... }}") detected. Function definitions '
+                'can\'t be statically validated — a function can silently shadow a real command, so the hook '
+                'can\'t confirm what actually runs. Remove the function definition and call the command '
+                'directly, or move the logic into a .tmp/ script (Python/Node) if it\'s genuinely needed.')
 
     for seg in split_segments(command):
         word = first_word(seg.strip())
