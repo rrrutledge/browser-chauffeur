@@ -350,6 +350,7 @@ Don't invent emoji outside this palette, don't stack them, and skip them entirel
 - **Cold outreach for a commitment: open with the soft ask, not the hard one.**
   Gauge interest and invite a conversation ("is this of interest?", "can we talk?"); name the commitment lightly and later, after they've engaged.
   Ask one thing, not a menu of next steps.
+  **When the ask involves money or a formal commitment (a sponsorship, a paid slot), close with an explicit no-pressure release** — "If not, then it's fine too - no problem. I wanted to ask though to see." — so a no costs the recipient nothing to say.
 - **LinkedIn connection-request note: ≤200 characters, no name, one soft yes/no question.**
   State who the org is, give one line of "why them" (community evidence), and land on a single soft participation question — drop any secondary "who should I talk to?" ask, and don't sign it.
 - *Samples:*
