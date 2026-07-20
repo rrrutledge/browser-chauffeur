@@ -21,7 +21,9 @@ from safe_compounds.paths import is_safe_read_location  # noqa: E402
 from safe_compounds import paths  # noqa: E402
 from safe_compounds import procs  # noqa: E402
 from safe_compounds.mcp import classify_mcp_tool  # noqa: E402
-from safe_compounds.enforce import detect_complex_bash, detect_simple_expansion, detect_cd_compound, enforce_bash  # noqa: E402
+from safe_compounds.enforce import (  # noqa: E402
+    detect_complex_bash, detect_simple_expansion, detect_cd_compound, detect_function_definition, enforce_bash,
+)
 from safe_compounds.scripts import check_node_segment, get_block_reason, reset_block_reason  # noqa: E402
 from safe_compounds import ai  # noqa: E402
 from safe_compounds import workflow  # noqa: E402
@@ -727,6 +729,40 @@ class TestCdCompoundBlocking:
     def test_no_block_cd_alone(self, tmp_path):
         os.environ['CLAUDE_CWD'] = str(tmp_path)
         assert enforce_bash("cd /other/dir") is None
+
+
+class TestFunctionDefinitionBlocking:
+    """Test that enforce_bash blocks shell function definitions, since a function
+    can silently shadow a real command and can't be statically validated."""
+
+    def test_detects_cd_shim(self):
+        assert detect_function_definition('cd() { :; }; gh pr create --title x') == 'cd'
+
+    def test_detects_arbitrary_name(self):
+        assert detect_function_definition('git() { echo pwned; }; git status') == 'git'
+
+    def test_detects_function_keyword_form(self):
+        assert detect_function_definition('function cd { :; }; ls') == 'cd'
+
+    def test_no_match_on_plain_command(self):
+        assert detect_function_definition('gh pr create --title x') is None
+        assert detect_function_definition('echo "a() { b }"') is None
+
+    def test_block_cd_shim_has_tailored_message(self):
+        reason = enforce_bash('cd() { :; }; gh pr create --repo x/y --title z')
+        assert reason is not None
+        assert "BLOCKED" in reason
+        assert 'cd() { ... }' in reason
+        assert "already runs every command in the correct working directory" in reason
+
+    def test_block_other_function_has_generic_message(self):
+        reason = enforce_bash('git() { echo pwned; }; git status')
+        assert reason is not None
+        assert "BLOCKED" in reason
+        assert "shadow a real command" in reason
+
+    def test_no_block_plain_gh_command(self):
+        assert enforce_bash('gh pr create --repo x/y --title z --body-file file.md') is None
 
 
 class TestCdCompoundDetection:
