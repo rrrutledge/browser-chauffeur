@@ -388,10 +388,12 @@ This runs after **any** drafted message — formal or conversational, any channe
      One-off; it does **not** change this guidance.
    - **Voice change** — phrasing he swapped, filler he cut, structure he reordered, length or altitude he adjusted.
      Durable; this is what we learn from.
-3. For each voice change, distill the underlying **rule** — not the transcript — and fold it into the matching section (**Formal writing** if the message was formal, **Conversational writing** if it was a chat/email reply). **State the rule crisply as a single imperative bullet: a bold lead phrase plus one sentence, no before/after quote.**
+3. For each voice change, distill the underlying **rule** — not the transcript.
+   **Search the whole file for overlap before writing a word of new text — this is the step most often skipped, and skipping it is what produces a duplicate bullet.** Grep the entire `SKILL.md` for the concept (register keywords, the behavior, near-synonyms), across **every** section and persona block — Core voice, Asks, Never do these, Formal writing, and *every* persona under Conversational writing (`1on1`, `outreach`, `announcement`, `meeting-invite`) — not just the one persona the message you're learning from happens to match. The closest existing bullet is very often sitting in a sibling persona (an `outreach` rule can be exactly what a `1on1` message needs too); "I'm editing the 1on1 section so I only need to check 1on1" is the exact mistake to avoid.
+   Fold the rule into whatever bullet that search turns up — expand its scope, sharpen its language, generalize it to a cross-persona Core-voice bullet if the instinct is universal, or add a sub-case — rather than adding a new one.
+   Add a new top-level bullet **only** once that whole-file search has genuinely come up empty, and name in the PR description which sections you checked and confirm none overlapped.
+   **State the rule crisply as a single imperative bullet: a bold lead phrase plus one sentence, no before/after quote.**
    Add a short concrete pointer only when the rule is genuinely unclear without one; default to none.
-   **Always merge before adding** — read every bullet in the section for thematic overlap (the underlying instinct, not just a title match) and expand the closest rule's scope, sharpen its language, or add a sub-case.
-   Add a new top-level bullet only when no existing rule overlaps.
    The goal is fewer, broader, crisper rules — not a growing list of siblings, and not a museum of examples.
 4. **Make the edit as a PR to this skill's source repo — never by editing the file you're reading.**
    This skill ships from a separate GitHub repo (`rrrutledge/rrrutledge-claude-code-plugins`); the copy loaded at runtime is an installed/cached snapshot (e.g. under `~/.claude/plugins/...`), and editing that snapshot in place is silently thrown away on the next plugin update.
@@ -400,6 +402,7 @@ This runs after **any** drafted message — formal or conversational, any channe
    - The file is `plugins/document-authoring/skills/document-authoring/SKILL.md`.
    - Create a branch, make the edit there, commit, push, and open a PR.
      Don't push straight to `main`.
+   - **In the PR description, state the overlap search's outcome** — either "folded into `<bullet>` in `<section>`" or "searched Core voice / Asks / Never do these / every Conversational persona — no overlap, new bullet." This is what makes the check auditable at review time instead of invisible inside the diff.
 5. Tell Russell in one line what you learned and changed, with the PR link — or, if every edit was an information fix, say there were no voice changes (no PR needed).
 
 The goal is convergence: over time his edits should become information-only.
