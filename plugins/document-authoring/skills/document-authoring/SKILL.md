@@ -343,6 +343,7 @@ Don't invent emoji outside this palette, don't stack them, and skip them entirel
 - Frame as helpful and low-pressure; invite a look.
 - Land on a single concrete question or request (see **Asks**).
 - Use the collective **"we"** for a committee/team ask, not "I" — including a joint recommendation to peers/co-leads ("I think we should merge these", not "I'd like to merge these"), even in a 1on1-style note to a couple of named people rather than a broad group.
+  When the next step touches a co-lead's own process or repo, propose it as a question for their buy-in ("would that cover it?", "can we set up X?") instead of announcing you'll execute it unilaterally ("I'll start pulling the content over").
 - Plain framing over clever phrasing — drop quoted catchphrases.
 - **Don't pitch why someone or their org is a good fit when asking them to participate.**
   Trust the context; the ask stands on its own — cut the "your experience in A, B, C is exactly what we need" list.
