@@ -103,7 +103,7 @@ class Provider(ProviderBase):
         # item instead of staying permanently seen after the first resume. Same idiom the
         # trello adapter uses baking a card's go-live date into its id.
         stamp = slug(item.get("started_at"), 32) or "unknown"
-        return f"{self.name}-{item.get('session_id')}-{stamp}"
+        return f"orphan-{item.get('session_id')}-{stamp}"
 
     def capture(self, item, iid, runtime_dir):
         items_dir = os.path.join(runtime_dir, "items")
