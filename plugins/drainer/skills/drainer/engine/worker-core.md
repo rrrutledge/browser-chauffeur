@@ -145,13 +145,19 @@ An item whose content describes an ask or a next step is only half-read until yo
 that ask actually points to — checking only the channel it arrived on and finding silence there is not
 the same as confirming nothing happened.
 
-**Also check Trello when the item could be outreach** — an introduction, or a reply from a company or
-individual who might already be a tracked contact — regardless of which source it arrived on. Read
-`<repo>/trello-boards.yaml` (the registry the `trello` source and `trello-outreach` skill use) for an
-existing card naming that company or contact. A match means the item is already tracked: reference the
-card in what you present (and consider updating it — bump the due date, add a comment) instead of acting
-as if this were unstarted outreach. No match → treat it as genuinely new. This isn't source-specific, so
-it applies the same way no matter which provider captured the item.
+**Check Trello before researching or drafting anything, for any item that could already be tracked.**
+The test is whether this names an ongoing piece of work, not whether it looks like outreach or names a
+known contact - a colleague's DM, a card, and a notification about the same piece of work can all land
+within the same hour, and the lookup is what stops them turning into duplicate effort.
+Read `<repo>/trello-boards.yaml` (the registry the `trello` source and `trello-outreach` skill use) for
+an existing card naming that company, contact, project, or topic, and do this first - before step 3's
+research and before step 4's draft, since its whole purpose is to stop you duplicating work already
+recorded on the card.
+A match means the item is already tracked: adopt the card as the working record, comment on it, and
+reference it when presenting, instead of acting as if this were unstarted work (see §3 for pushing the
+card's due date out at the moment you adopt it).
+No match → treat it as genuinely new.
+This isn't source-specific, so it applies the same way no matter which provider captured the item.
 
 ## 2b. Resolve a pointer — open the real content yourself
 This is the shared **open-the-pointer mechanic** every stage uses — `triage.md` defines what a pointer is
@@ -222,6 +228,12 @@ complete.
 
 Anything irreversible / outbound-to-others waits for the user's explicit OK; safe, reversible work
 proceeds immediately.
+
+**Adopting a card from §2's check claims it the same way Trello's own CAPTURE does.**
+When §2's lookup finds an existing Trello card for this item, push its `due` date out (tomorrow or
+later, via `trello-outreach` - see `providers/trello-provider.md`'s CAPTURE section) before starting the
+work above, not after, so the card can't spawn a second tab on another drain while you're mid-research.
+This applies whether Trello is your own source or you found the card from another source entirely.
 
 ## 4. Contact the person (draft-only)
 **After step 3's work is complete**, when a message is warranted, stage the draft with the
