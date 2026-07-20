@@ -65,6 +65,8 @@ def test_enumerate_returns_seeded_orphan():
         check("cwd carried through", bool(match) and match["cwd"] == "C:/fake/repo/adapter-test")
         check("stable_id is deterministic",
               bool(match) and provider.stable_id(match) == provider.stable_id(match))
+        check("stable_id has orphan- prefix",
+              bool(match) and provider.stable_id(match).startswith("orphan-"))
     finally:
         if registry_has(session_id):
             fire_event("SessionEnd", session_id)

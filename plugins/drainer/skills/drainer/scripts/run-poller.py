@@ -499,6 +499,8 @@ def reconcile_orphans(runtime_dir, cfg):
         iid, source = r.get("id"), r.get("source")
         if not iid or not source:
             continue
+        if source == "orphan-sessions":
+            continue  # self-heals via find-orphans.py's own liveness check; no worker-tab receipt to reconcile
         guid, smtime = _session_guid(runtime_dir, iid)
         if guid and guid in live:
             continue  # process alive -> being worked or parked for the user; never reap an open tab
