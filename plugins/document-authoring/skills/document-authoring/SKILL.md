@@ -257,6 +257,7 @@ A single clear sentence ending in a question is usually the whole message — re
 - **On unanswered outreach with no attachment, use a plain open prod with a "let me know" close** — "wanted to ask again about this. Let me know what you think." Don't use receipt-confirm framing here.
 - **When a specific factual question went unanswered, restate that exact question** as a direct yes/no rather than a generic check-in; pair it with an explicit release if there's a plausible internal reason for the delay.
 - **When more than one ask is still open, nudge on all of them**, not just one — and phrase each as its own direct question ("Is X? What's Y?"), not one compound sentence joined by "and".
+  This covers asks the recipient has had time to answer; leave out one you raised in your own immediately-preceding message on the thread, since repeating it hours later reads as nagging rather than nudging.
 - **Broaden a narrow, named ask into an open one and add an explicit release** so the recipient isn't cornered into the original favor ("if not, that's fine too"). Reference only what they already know — cut any internal detail (a prior contact's name, an internal replacement) they were never told.
   A genuine personal aside can open or close the nudge.
 
