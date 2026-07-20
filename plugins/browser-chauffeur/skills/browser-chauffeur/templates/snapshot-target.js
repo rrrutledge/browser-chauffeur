@@ -23,9 +23,18 @@ const { chromium } = (() => {
   catch { return require(require('path').join(require('os').homedir(), '.claude', 'browser-chauffeur', 'node_modules', 'playwright-core')); }
 })();
 
-const cdpPort = process.argv.find(a => a.startsWith('--cdp-port='))?.split('=')[1] || '9222';
-const targetUrl = process.argv.find(a => a.startsWith('--url='))?.split('=')[1];
-const targetAnchor = process.argv.find(a => a.startsWith('--target-anchor='))?.split('=')[1] || null;
+// Splits only on the FIRST "=" — a bare .split('=')[1] truncates any value that
+// itself contains "=" (a URL query string like ?jl=123, a CSS attribute selector
+// like [role="dialog"]), silently handing the script a mangled argument.
+function argValue(flag) {
+  const prefix = `--${flag}=`;
+  const arg = process.argv.find(a => a.startsWith(prefix));
+  return arg ? arg.slice(prefix.length) : undefined;
+}
+
+const cdpPort = argValue('cdp-port') || '9222';
+const targetUrl = argValue('url');
+const targetAnchor = argValue('target-anchor') || null;
 
 if (!targetUrl) {
   console.error('Usage: node snapshot-target.js --cdp-port=<port> --url=<url> [--target-anchor=<css-selector>]');
