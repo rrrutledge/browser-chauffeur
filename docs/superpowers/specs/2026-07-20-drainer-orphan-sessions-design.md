@@ -140,6 +140,37 @@ No `.done`, no CLEAR: dispatch **is** the entire action for this source. Once
 pattern every other source uses) and the drainer's involvement ends — Russell continues in
 his own resumed session exactly as if he'd relaunched it himself.
 
+**Launch conventions — nothing about this path is special-cased.** `spawn-resume-tab.cmd`
+invokes exactly the same `powershell -NoExit -File <launcher> ...` shape every other spawn
+in this codebase uses (`spawn-tab.cmd`, the handoff launcher), so everything that shape
+gives you "for free" applies unchanged:
+- **`$PROFILE` loads normally** (no `-NoProfile`) → `$env:CLAUDE_HOST_PID` is set, so `/close`
+  and `end-session.py` work on a resumed tab exactly like on any other tab.
+- **`launch-session.ps1`'s `-Resume` branch sets `$env:BROWSER_CHAUFFEUR_OWNER_PID`** before
+  calling `claude`, same as its `-PromptFile`/`-SeedFile` branches — browser tabs the
+  resumed session opens are owned by, and cleaned up with, this tab like any other.
+- **`claude --resume <guid>` re-fires `SessionStart`** the same as any `claude` launch —
+  this is not a step `spawn_resume_tab` has to do itself, it's inherent to `--resume`, and
+  it's *why* the registry's `started_at` for that session advances on every resume. That's
+  also the fact §2's recurrence-safe `stable_id` scheme depends on: registering fresh on
+  resume is what makes a second, later crash of the same session produce a new `started_at`
+  and a new id instead of staying permanently seen.
+- **No `-Model` override.** Unlike a fresh worker dispatch (which must pin `worker_model`/
+  `worker_model_complex` so it doesn't inherit a 1M-context account default), `--resume`
+  restores the session's own prior model as part of resuming state, so passing nothing is
+  correct — this matches the manual `resume-sessions` skill's own invocation, which also
+  passes no `-Model`.
+- **Window placement — `-w drainer`, not the manual skill's `-w 0`, and deliberately so.**
+  The manual skill uses `-w 0` (whatever window is currently focused) because it's invoked
+  by Russell in the moment, in whatever window he's already in. This dispatch is unattended
+  automation, the same as every other drainer spawn, so it follows the *drainer's* launch
+  convention instead: `-w drainer`, through the existing `provider_base.spawn_tab()` helper
+  unchanged. That's not just naming consistency — that helper's foreground-preservation
+  logic (read the foreground window before spawning; minimize the drainer window if it
+  steals focus from something else Russell was using) is built around tabs landing in a
+  known "drainer" window, and only works correctly there. Routing resumes through `-w 0`
+  instead would both scatter them unpredictably and silently drop that focus protection.
+
 ### 5. Priority ordering (change to `run-poller.py`)
 
 Rather than relying on `received`-timestamp tie-breaking against the global newest-first
