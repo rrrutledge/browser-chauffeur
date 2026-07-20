@@ -7,13 +7,13 @@ instructions: |-
 
   ## Step 1 — Find confirmed orphans (shared script)
 
-  Run the shared detection script instead of hand-authoring the scan:
+  Run the shared detection script:
 
   ```bash
   python "$HOME/Dev/rrrutledge/rrrutledge-claude-code-plugins/plugins/session-mgr/skills/resume-sessions/scripts/find-orphans.py"
   ```
 
-  It does what this step used to do by hand, in two parts:
+  It works in two parts:
   1. Scans running `claude.exe` processes for their session ID — from `--resume`/
      `--session-id` on the command line, or (for a bare launch with neither flag)
      `CLAUDE_CODE_SESSION_ID` in the process's own environment.
