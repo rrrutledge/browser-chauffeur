@@ -388,7 +388,12 @@ def spawn_worker(iid, json_file, repo, runtime_dir, worker_model, local_dir):
             "item — later than .done: after the user has done their human step (sent the draft, submitted "
             "the form) and you've done any follow-up. Then invoke browser-chauffeur to run "
             "`chauffeur.py --close-owned`, which closes only this session's browser tabs (never the "
-            "user's, never another session's). Keep the session's own PowerShell tab open for the user.\n"
+            "user's, never another session's). Once that same truly-finished bar is met — the human step "
+            "done, any follow-up done (learn-from-send, a tracker card, advancing the source item), and "
+            "nothing still open (no unanswered question, no PR awaiting a merge decision, no unconfirmed "
+            "draft) — close this session's own tab too, as your last act: invoke the `session-mgr:close` "
+            "skill. Don't ask \"anything else?\" and don't wait to be told `/close` — go straight to "
+            "closing once the bar is met. Stay open, as normal, whenever anything is still outstanding.\n"
             "If the item's `triage` field is `auto-handle`, follow worker-core's auto-handle BRANCH "
             "instead: execute the standing rule autonomously, CLEAR the source, queue a digest entry, "
             "and write .done IMMEDIATELY — no presentation, no wait. Then CLOSE UP as your very last step: "
@@ -399,7 +404,8 @@ def spawn_worker(iid, json_file, repo, runtime_dir, worker_model, local_dir):
             "crash-interrupted) and then terminates this session and closes its tab, so a self-resolved "
             "item never lingers as a finished tab you must check. Never raw-`taskkill` the host PID — a "
             "force-killed session dies before SessionEnd can fire. "
-            "Do this ONLY for auto-handle — needs-you items always stay open and wait for the user.\n"
+            "Do this exact close-session.py sequence ONLY for auto-handle — a needs-you item closes via "
+            "`session-mgr:close` instead, and only once genuinely finished, per the rule above.\n"
         )
     # A one-line summary leads the seed so the worker's Claude session self-titles the tab descriptively
     # while keeping its attention star (the launcher prepends this; see launch-session.ps1 -SummaryFile).
