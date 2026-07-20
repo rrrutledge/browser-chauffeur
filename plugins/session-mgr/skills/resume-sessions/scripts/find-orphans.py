@@ -12,8 +12,7 @@ Run directly, prints JSON to stdout:
     [{"session_id": "...", "cwd": "...", "started_at": "2026-07-20T13:04:11.123456"}, ...]
 
 Shared by two callers:
-  - the resume-sessions skill (its Step 1, in place of the snippets it used to author fresh
-    into .tmp/ each run)
+  - the resume-sessions skill, from its Step 1
   - the drainer's orphan-sessions-adapter.py, via subprocess, resolved to the newest
     installed copy of this plugin (see that adapter's _find_orphans_script())
 """
