@@ -7,6 +7,10 @@ description: Russell's personal style conventions for authoring or editing any d
 
 Apply these whenever authoring or editing a document or message in Russell's name.
 
+**REQUIRED BACKGROUND:** Load `authoring-rules` first.
+It holds the medium-independent rules that bind every artifact Russell's name goes on, code comments and docstrings included, and it is the rubric a writing reviewer checks against.
+This skill adds what is specific to outward messages: register, warmth, asks, personas, emoji, sign-offs, and nudges - plus the drafting and voice-learning loops, which govern how you compose rather than what lands.
+
 **Everything here applies to every medium by default** — Teams, Slack, email, Jira comments, Confluence, Word, PRs.
 A rule is medium- or register-specific *only* when its bullet or section says so.
 The **Formal writing** and **Conversational writing** sections describe **register** (how warm, how structured), not which rules are in scope; their guidance applies wherever you're writing in that register, across all channels.
