@@ -4,6 +4,14 @@ This repo contains Claude Code plugins, the most actively maintained of which is
 **safe-compounds** — a `PreToolUse` hook that auto-approves Bash commands it can prove
 are safe.
 
+## Engineering principle: deterministic logic goes in Python
+
+Wherever a plugin's behavior can be fully specified in advance, write it as a Python script,
+not prose an AI re-derives each run or a PowerShell one-liner. A script is cheaper, faster,
+and testable; AI judgment is reserved for the steps that genuinely need it (see the
+drainer's `poller-core.md` for the canonical split between what's code and what's a single
+batched AI call per cycle).
+
 ---
 
 ## Contributing
