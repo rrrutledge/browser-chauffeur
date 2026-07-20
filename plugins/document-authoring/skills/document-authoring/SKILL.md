@@ -28,6 +28,7 @@ Skipping a step is what leaks the patterns this skill bans: reading once then co
 3. **Verify** — walk the same persona bullets and "Never do these" one at a time against your **actual draft text**. For each bullet, find the words it governs and confirm they comply, or revise.
    This is a line-by-line audit of what you wrote, not a general vibe check.
    **Apply the load-bearing outreach checks every time**, since these are the ones most often missed: cold/first-touch outreach opens with the *soft* ask (gauge interest, invite a conversation) and names any hard commitment only lightly and later — **a scheduling link is a hard ask**, so don't propose a call or drop a calendar-booking link in the first cold-touch message; link instead to the event/program itself and let a reply be the next step, saving the calendar link for once they've shown interest; never restate a link, date, or detail already shared upthread; land on one ask; close with "let me/us know."
+   **Every named event, program, or document gets its link on first mention, every single time** — this is the check most often skipped because the draft still reads fine without it. Before staging, scan your own text for each event/program/document name (e.g. "InnerSource Summit 2026") and confirm it carries a link per the **Links** section below; if you don't have the URL yet, look it up rather than sending the name bare.
 4. **Stage, never send** — a draft that survives verify is staged for Russell's approval; by default he sends it himself.
    Put the text into the real UI where it'll be sent — the ticket comment box, the Teams compose box, the email reply — via `browser-chauffeur`, so he sees it in context, edits inline, and clicks the app's own Send.
    If the UI genuinely can't be driven, show the proposed text in chat for approval instead.
@@ -350,6 +351,7 @@ Don't invent emoji outside this palette, don't stack them, and skip them entirel
 - **Cold outreach for a commitment: open with the soft ask, not the hard one.**
   Gauge interest and invite a conversation ("is this of interest?", "can we talk?"); name the commitment lightly and later, after they've engaged.
   Ask one thing, not a menu of next steps.
+  **When the ask involves money or a formal commitment (a sponsorship, a paid slot), close with an explicit no-pressure release** — "If not, then it's fine too - no problem. I wanted to ask though to see." — so a no costs the recipient nothing to say.
 - **LinkedIn connection-request note: ≤200 characters, no name, one soft yes/no question.**
   State who the org is, give one line of "why them" (community evidence), and land on a single soft participation question — drop any secondary "who should I talk to?" ask, and don't sign it.
 - *Samples:*
