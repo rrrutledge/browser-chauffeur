@@ -269,6 +269,7 @@ A single clear sentence ending in a question is usually the whole message — re
   Plain words, short sentences.
 - **Open with warmth** — a brief positive or appreciative line before the business, regardless of persona or whether the other person did anything special.
   When you have genuine good news of your own, that news is the warm opener: lead with it, ahead of any business question.
+  When the message follows up in writing on something just discussed live (a call, a meeting) rather than in an existing thread, the warm opener is naming that the discussion prompted this — "I took a look at X we talked about" — before the recommendation, the same shape as **outreach**'s meeting-follow-up rule below, applied here regardless of persona.
 - **Answer the question first.**
   Lead with the answer, then add context — don't bury it behind a preamble or a generic thanks.
   When someone raises more than one point, answer each one by name rather than a single blanket acknowledgment — this includes an earlier, question-free message where they shared research or effort on your behalf: thank them for the specific contribution and note your own follow-through on it before pivoting to a fresh, unrelated ask in the same reply.
@@ -341,7 +342,7 @@ Don't invent emoji outside this palette, don't stack them, and skip them entirel
 - Lead with the person's name, then hand them the thing plainly with the link anchored to its title.
 - Frame as helpful and low-pressure; invite a look.
 - Land on a single concrete question or request (see **Asks**).
-- Use the collective **"we"** for a committee/team ask, not "I".
+- Use the collective **"we"** for a committee/team ask, not "I" — including a joint recommendation to peers/co-leads ("I think we should merge these", not "I'd like to merge these"), even in a 1on1-style note to a couple of named people rather than a broad group.
 - Plain framing over clever phrasing — drop quoted catchphrases.
 - **Don't pitch why someone or their org is a good fit when asking them to participate.**
   Trust the context; the ask stands on its own — cut the "your experience in A, B, C is exactly what we need" list.
