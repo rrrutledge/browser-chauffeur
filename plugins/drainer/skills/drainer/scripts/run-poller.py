@@ -388,6 +388,18 @@ def spawn_worker(iid, json_file, repo, runtime_dir, worker_model, local_dir):
               cwd=repo)
 
 
+def spawn_resume_tab(session_id, cwd, repo):
+    """Dispatch an orphan-sessions item: reopen an existing session via `claude --resume
+    <session_id>`, in ITS OWN original `cwd` (not the drainer's repo) — unlike every other
+    source, there's no prompt seed to write; the session already has its full history."""
+    base = os.path.basename((cwd or "").rstrip("/\\")) or session_id[:8]
+    title = f"Resume: {base}"
+    title = re.sub(r'[&<>|%"^]', " ", title)
+    title = re.sub(r"\s+", " ", title).strip()[:50] or f"resume:{session_id[:8]}"
+    spawn_cmd = os.path.join(SCRIPT_DIR, "spawn-resume-tab.cmd")
+    spawn_tab([spawn_cmd, title, cwd or repo, session_id], cwd=repo)
+
+
 # ---------------------------------------------------------------------------- the cycle
 
 def reconcile_done(runtime_dir):
@@ -589,6 +601,12 @@ def main():
             it["_bucket"], it["_kind"] = "needs-you", "work"
             it["_complexity"] = "simple"
             pre_triaged.append(it)
+        elif it["_source"] == "orphan-sessions":
+            # An orphaned session unconditionally needs resuming — no judgment to make, so
+            # this skips the AI call the same way trello's due cards do.
+            it["_bucket"], it["_kind"] = "needs-you", "resume"
+            it["_complexity"] = "simple"
+            pre_triaged.append(it)
         else:
             ai_triage.append(it)
 
@@ -618,11 +636,23 @@ def main():
     # non-neutral band (the trello adapter stamps `_priority_band` — see its _PRIORITY_BAND for the
     # policy); every other item defaults to neutral and so orders purely by `received` date as before
     # (an inbox message's arrival time, a dated card's due date, or an undated card's creation date).
-    needs = sorted(
-        (it for it in needs_and_others if it["_bucket"] == "needs-you"),
+    needs_you_items = [it for it in needs_and_others if it["_bucket"] == "needs-you"]
+    # orphan-sessions dispatches FIRST, ahead of every other source, explicitly — not via
+    # priority-band/received-timestamp tie-breaking (a coincidentally-recent or high-priority
+    # Slack/Trello item could still slot ahead of that). As tab slots free up cycle over cycle,
+    # they go to the orphan-sessions backlog before any fresh Slack/Trello/mail item, until it's
+    # drained.
+    orphan_needs = sorted(
+        (it for it in needs_you_items if it["_source"] == "orphan-sessions"),
+        key=lambda it: it.get("received") or "",
+        reverse=True,
+    )
+    other_needs = sorted(
+        (it for it in needs_you_items if it["_source"] != "orphan-sessions"),
         key=lambda it: (it.get("_priority_band", NEUTRAL_PRIORITY_BAND), it.get("received") or ""),
         reverse=True,
     )
+    needs = orphan_needs + other_needs
     # auto-handle items get a worker tab too (they need a browser to act), but the worker executes
     # autonomously and writes .done immediately — so they self-clear fast and are dispatched unconditionally,
     # never held behind the target_open_tabs throttle that gates needs-you below, letting a standing-rule
@@ -645,12 +675,17 @@ def main():
                 model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
                 print(f"    [{it['_source']:20}] {it['_id']}  ->  spawn auto-worker [{it['_complexity']} -> {model}]\n"
                       f"        {it.get('received')} | {it.get('from')} | {it.get('subject')}")
-        print("  needs-you (priority band, then newest-first, globally):")
+        print("  needs-you (orphan-sessions first, then priority band, then newest-first):")
         tabs = live_tabs
         for it in needs:
             held = tabs is not None and tabs >= cfg["target_open_tabs"]
             if not held and tabs is not None:
                 tabs += 1
+            if it["_source"] == "orphan-sessions":
+                action = "HOLD (at cap)" if held else "spawn resume tab"
+                print(f"    [{it['_source']:20}] {it['_id']}  ->  {action}\n"
+                      f"        {it.get('received')} | cwd={it.get('cwd')} | session={it.get('session_id')}")
+                continue
             model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
             action = "HOLD (at cap)" if held else f"spawn worker [{it['_complexity']} -> {model}]"
             print(f"    [{it['_source']:20}] {it['_id']}  ->  {action}\n"
@@ -684,9 +719,12 @@ def main():
         if live_tabs is not None and live_tabs >= cfg["target_open_tabs"]:
             held += 1  # leave UNRECORDED -> retried next cycle (fail-safe throttle)
             continue
-        model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
         json_file = provider.capture(it, iid, cfg["runtime_dir"])
-        spawn_worker(iid, json_file, repo, cfg["runtime_dir"], model, cfg["local_dir"])
+        if it["_source"] == "orphan-sessions":
+            spawn_resume_tab(it["session_id"], it["cwd"], repo)
+        else:
+            model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
+            spawn_worker(iid, json_file, repo, cfg["runtime_dir"], model, cfg["local_dir"])
         seen_state("record", cfg["runtime_dir"], it["_source"], iid, "needs-you")
         if live_tabs is not None:
             live_tabs += 1
