@@ -55,8 +55,9 @@ Russell decided in advance — do the action without presenting or waiting, then
       If the script reports `CLAUDE_HOST_PID` is unset (a session launched without loading the
       profile), just stop normally — don't hunt for the process.
 
-   This whole step is **auto-handle only** — needs-you items stay open for the user (see §6 for how they
-   close their browser tabs).
+   This whole step is **auto-handle only** — a needs-you item never closes up front like this; it stays
+   open through the conversation and only closes once the work and any follow-up are genuinely finished
+   (see §6 for how it closes its browser tabs and its own session tab at that point).
 
 Everything below (steps 0–7) is the **needs-you** flow — follow it for every item that is NOT auto-handle.
 
@@ -343,6 +344,17 @@ to run `chauffeur.py --close-owned`, which closes only this session's tabs (neve
 another session's, never the browser's last page). If a tab you opened was never something the user needed
 to see — its content is already mirrored where they work (a Slack draft that shows in their own Slack) —
 close it as soon as that's clear rather than waiting.
+
+**Close your own session tab too, once truly finished — don't wait to be asked.** Apply the same
+"truly finished" bar to this tab, not just to browser tabs opened along the way. Once every one of
+these holds — the human step is done (Russell told you he sent/submitted/confirmed it), any
+follow-up you owed is finished (§5's learn-from-send, a tracker card, advancing the source item),
+and nothing is still open (no unanswered question back to him, no PR awaiting his merge decision, no
+draft he hasn't confirmed sending) — close this tab yourself as your very last act, by invoking the
+**`session-mgr:close`** skill. Don't ask "anything else?" and don't wait for him to type `/close` —
+those two extra round-trips are exactly what this rule removes. Stay open, as normal, whenever any of
+the above is still outstanding: a PR that's shipped but not yet merged, a question you're waiting on
+him to answer, or a draft he hasn't told you he sent.
 
 ## 7. Improve the source (don't just hoard facts)
 If the user had to tell you something you could have known, don't just note it — figure out *where it
