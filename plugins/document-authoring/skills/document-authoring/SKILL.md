@@ -148,6 +148,7 @@ A personal friend gets "Yup - no problem 👍", not "Hi Max - Thanks for the upd
 
 **How warm a close is comes down to one axis: your relationship and role toward the person. Decide it here — this is the single source of truth, and the closing rules elsewhere describe only how to execute, not when.**
 Good news can brighten a close, but it modulates warmth *within* the relationship; it never overrides it. When two rules seem to conflict, this axis is the tiebreaker.
+- **Family** → the warmest point on the axis, and it holds even when the subject is business: no salutation at all, and sign off `Love, Russ`. A ward or church matter addressed to his wife in her calling is still family mail, so keep the family close rather than shifting to a formal one.
 - **Someone you lead or are close to** → warmth is in-voice even at work: a short forward-looking note ("This'll be great") alongside the acknowledgment (execute per **Energizing close**). A leadership role can make this apply even to an otherwise-distant contact — e.g. an ISC context where you're the one leading.
 - **A distant professional contact you hold no leadership role with** — HR, a former employer, an arms-length counterparty → brief and neutral: acknowledge and close with no added enthusiasm, even when the news is good ("glad it worked out" at most, never "This'll be great") and even after a firm no or a long negotiation. Don't recap the answer you were given or praise how they handled it — "Thanks for getting back to me. Sounds good." is the whole reply (execute per **Brevity**).
 - **Someone who outranks you** → especially measured: a single-word thanks, never extra positivity (see the superior-address rule below).
@@ -182,6 +183,8 @@ A single clear sentence ending in a question is usually the whole message — re
   They want the result, not the story of what was wrong, how you found it, which options you ruled out and why, or a closing "so this means…" they can draw themselves.
   Don't itemize each individual action once a summary phrase already implies it.
   This applies even when the ruled-out option was worth investigating - state the bottom line the research produced, not the reasoning that got you there.
+  **Handing over data: give the numbers and stop - no paragraph on how to interpret them.** Caveats about what a report does or doesn't capture (records that may be stale, rows that are edge cases, a definition that may not match what they assume) belong in the terminal to Russell, who decides whether any of it is worth saying; in the message itself they read as defensive and get cut.
+  Say what the attachment is in one clause and let it speak - don't add a sentence selling why it's useful to them.
 - **Proposing call times across timezones: filter to the recipient's normal work day, not just your own open calendar.**
   Converting your free slots to their local time isn't enough — a slot that's open for you can still be very late or very early for them. Before offering a window, check it against a normal work day (roughly 8am-6pm) in *their* timezone and drop anything outside it, even if it's technically free on your end.
 
