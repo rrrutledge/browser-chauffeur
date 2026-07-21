@@ -1,0 +1,92 @@
+---
+name: authoring-rules
+description: Russell's medium-independent rules for any text that ships - code comments, docstrings, SKILL.md and other skill prose, READMEs, repo docs, config prose, PR bodies, commit messages, Confluence pages, email, Teams and Slack messages. Load when authoring or editing any of these, and when reviewing authored text against the rules.
+---
+
+# Authoring rules (shared rubric)
+
+Every rule here is an **artifact rule**: you can tell whether it was followed by reading the finished text alone.
+That is what makes this set shared.
+The writer loads it to compose against; a reviewer loads the same file to check against, so the two can never drift.
+
+Each rule states the behavior, then a **Check** giving the surface forms that usually indicate it was broken, and where those forms are innocent.
+The forms are evidence, not the rule: one appearing is not automatically a violation, and a violation that uses none of them is still a violation.
+
+Rules that constrain *how you get there* rather than what lands (draft then revisit, verify line by line, run the overlap search before adding a bullet) are writer-only and live in `document-authoring`.
+A reviewer holding only the output cannot evaluate them.
+
+Medium-specific rules - register, warmth, personas, emoji, sign-offs, asks, nudges - also live in `document-authoring`.
+They are reviewable, but only for outward messages.
+
+---
+
+## The rules
+
+**Present tense in shipped artifacts; before/after only in change-explanations.**
+Where the text lands decides which applies, not how useful the history feels.
+- *Ships and stays* (docs, `SKILL.md`, README, code comments, docstrings, config prose): every sentence answers "how does this work today".
+- *Explains a change* (chat with Russell, a PR body, a commit message): before/after is the point.
+
+Rationale is in scope; provenance is not.
+"Deletes the entry so a later run doesn't re-litigate it" is a why with no history in it.
+**Check:** does the sentence parse without knowing a previous state? Watch for "used to", "no longer", "instead of the old", "we tried X", "this replaces", "formerly", "previously", "by hand", "what X did before".
+Innocent: "used to" as passive voice, where *used* means employed - "the key used to sign the token", "a script used to validate input". The test is whether the sentence needs a previous state *of the system* to parse.
+
+**State guidance positively.**
+Describe the desired behavior directly; a correction names only what to do, not the rejected alternative alongside it.
+Reserve a negative for a real, tempting failure mode a positive instruction won't prevent on its own, and write it as a single standalone guardrail.
+**Check:** a "don't do X, do Y" couplet where "do Y" alone would carry it; a prohibition where a recipe would bind better.
+
+**No helper tail.**
+Stop the moment the point is made.
+Treat any sentence after the main point as guilty until proven necessary: cut reassurance, offers, hedges, restated context, and invitations to react.
+**Check:** does this sentence hand the reader something they don't already have? Watch for a close starting "happy to", "let me know if you'd like", "if you'd rather", "hope this helps", "feel free to"; a final paragraph restating what was already said; unrequested reassurance.
+Innocent: a genuinely open decision, asked as one direct question and stopped there.
+
+**No em dash.**
+Use a spaced hyphen ` - ` instead.
+**Check:** the character U+2014 anywhere in authored text.
+Innocent: text quoted verbatim from someone else, where changing it would misquote them.
+
+**Anchor every link on descriptive text.**
+Write "see the [incident report](URL)", never a bare `https://…` in prose.
+**Check:** a bare URL outside a code block.
+
+**Name the specific thing, not the category.**
+"token cost" not "cost", "the deploy" not "it".
+**Check:** can you point at what each noun refers to without reading around it?
+
+**Say it plainly.**
+**Check:** "it's not just X, it's Y" constructions; rule-of-three flourishes; vivid metaphors and set-phrase idioms; "great" as an amplifier on a noun where "good" would do (reserve "great" for a standalone exclamation or genuine singular praise).
+Sentence length and rhythm are drafting judgment rather than a decidable check, so they stay in `document-authoring`.
+
+**State facts without editorializing.**
+**Check:** cheerful labels ("the good news is", "you're all set"); unsolicited reassurance; hedging something already confirmed ("looks like", "turns out").
+
+**Bold lead-ins on bullets.**
+Start each bullet with a bold 4-7 word key phrase, then the detail.
+Put an intro sentence above a list, with a blank line before the list.
+
+**Plain words over corporate and AI filler.**
+**Check:** "leverage" as a verb, "streamline", "as per", "kindly", "delve", "furthermore", "moreover", "I wanted to reach out", "I hope this message finds you well", "please don't hesitate to", "I'm excited to share", "honestly" as a hedge opener.
+
+**Semantic line breaks in markdown source.**
+Within a paragraph or a multi-sentence bullet, start each sentence on a new line.
+Rendered output is identical, but a one-sentence edit then touches one line instead of marking the whole paragraph changed in the diff.
+**Check:** markdown source only. Never applies to a message composed in a web UI, where there is no source to diff.
+
+---
+
+## Where the rules pull against each other
+
+These tensions are real, not drafting mistakes.
+Each is resolved by a stated boundary rather than by judgment in the moment, so the writer isn't left arbitrating mid-sentence.
+
+| Tension | Boundary that resolves it |
+|---|---|
+| "Explain the why" vs present-tense-only | Rationale (why it behaves this way now) is in scope. Provenance (what it replaced) is not. |
+| "Be useful" vs no helper tail | Usefulness goes in the substance. A closing offer adds nothing the reader doesn't have. |
+| "Be precise about the failure" vs state guidance positively | A negative is allowed when the failure mode is real and tempting, and then only as one standalone guardrail. |
+
+When a rule and an active writing goal pull opposite ways, the goal usually wins by default, because the goal is what you're holding in mind while composing.
+That is the failure this rubric exists to make checkable, and the reason a reviewer reading cold catches what the author stared past.
