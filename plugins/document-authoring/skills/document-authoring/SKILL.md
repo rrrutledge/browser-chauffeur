@@ -20,12 +20,12 @@ The **Formal writing** and **Conversational writing** sections describe **regist
 Every message in Russell's name — a Jira comment, an email, a Teams post, a PR — runs through these steps, in order.
 Skipping a step is what leaks the patterns this skill bans: reading once then composing "in the voice" is not enough.
 
-1. **Read** — before writing a word, identify the persona/register this message is in (`1on1`, `outreach`, `announcement`, `meeting-invite`, formal, etc.) and read that section's bullets plus the "Never do these" list.
+1. **Read** — before writing a word, identify the persona/register this message is in (`1on1`, `outreach`, `announcement`, `meeting-invite`, formal, etc.) and read that section's bullets plus the **Holding the voice** list.
    Compose against what you just read, not from memory.
 2. **Write** — draft the message.
    When it's on the same topic as a prior message or email thread — even if it isn't a direct response, and even when the most recent message is one Russell sent himself — anchor it there rather than composing fresh, so the follow-up answers where the conversation actually stands and the history stays together.
    In Teams, use Reply on a message in that topic; in email, reply into the existing thread on that subject.
-3. **Verify** — walk the same persona bullets and "Never do these" one at a time against your **actual draft text**. For each bullet, find the words it governs and confirm they comply, or revise.
+3. **Verify** — walk the same persona bullets and **Holding the voice** one at a time against your **actual draft text**. For each bullet, find the words it governs and confirm they comply, or revise.
    This is a line-by-line audit of what you wrote, not a general vibe check.
    **Apply the load-bearing outreach checks every time**, since these are the ones most often missed: cold/first-touch outreach opens with the *soft* ask (gauge interest, invite a conversation) and names any hard commitment only lightly and later — **a scheduling link is a hard ask**, so don't propose a call or drop a calendar-booking link in the first cold-touch message; link instead to the event/program itself and let a reply be the next step, saving the calendar link for once they've shown interest; never restate a link, date, or detail already shared upthread; land on one ask; close with "let me/us know."
    **Every named event, program, or document gets its link on first mention, every single time** — this is the check most often skipped because the draft still reads fine without it. Before staging, scan your own text for each event/program/document name (e.g. "InnerSource Summit 2026") and confirm it carries a link per the **Links** section below; if you don't have the URL yet, look it up rather than sending the name bare.
@@ -376,7 +376,7 @@ This runs after **any** drafted message — formal or conversational, any channe
    - **Voice change** — phrasing he swapped, filler he cut, structure he reordered, length or altitude he adjusted.
      Durable; this is what we learn from.
 3. For each voice change, distill the underlying **rule** — not the transcript.
-   **Search the whole file for overlap before writing a word of new text — this is the step most often skipped, and skipping it is what produces a duplicate bullet.** Grep the entire `SKILL.md` for the concept (register keywords, the behavior, near-synonyms), across **every** section and persona block — Core voice, Asks, Never do these, Formal writing, and *every* persona under Conversational writing (`1on1`, `outreach`, `announcement`, `meeting-invite`) — not just the one persona the message you're learning from happens to match. The closest existing bullet is very often sitting in a sibling persona (an `outreach` rule can be exactly what a `1on1` message needs too); "I'm editing the 1on1 section so I only need to check 1on1" is the exact mistake to avoid.
+   **Search the whole file for overlap before writing a word of new text — this is the step most often skipped, and skipping it is what produces a duplicate bullet.** Grep the entire `SKILL.md` for the concept (register keywords, the behavior, near-synonyms), across **every** section and persona block — Core voice, Asks, Holding the voice, Formal writing, and *every* persona under Conversational writing (`1on1`, `outreach`, `announcement`, `meeting-invite`) — not just the one persona the message you're learning from happens to match. The closest existing bullet is very often sitting in a sibling persona (an `outreach` rule can be exactly what a `1on1` message needs too); "I'm editing the 1on1 section so I only need to check 1on1" is the exact mistake to avoid.
    Fold the rule into whatever bullet that search turns up — expand its scope, sharpen its language, generalize it to a cross-persona Core-voice bullet if the instinct is universal, or add a sub-case — rather than adding a new one.
    Add a new top-level bullet **only** once that whole-file search has genuinely come up empty, and name in the PR description which sections you checked and confirm none overlapped.
    **State the rule crisply as a single imperative bullet: a bold lead phrase plus one sentence, no before/after quote.**
@@ -389,7 +389,7 @@ This runs after **any** drafted message — formal or conversational, any channe
    - The file is `plugins/document-authoring/skills/document-authoring/SKILL.md`.
    - Create a branch, make the edit there, commit, push, and open a PR.
      Don't push straight to `main`.
-   - **In the PR description, state the overlap search's outcome** — either "folded into `<bullet>` in `<section>`" or "searched Core voice / Asks / Never do these / every Conversational persona — no overlap, new bullet." This is what makes the check auditable at review time instead of invisible inside the diff.
+   - **In the PR description, state the overlap search's outcome** — either "folded into `<bullet>` in `<section>`" or "searched Core voice / Asks / Holding the voice / every Conversational persona — no overlap, new bullet." This is what makes the check auditable at review time instead of invisible inside the diff.
 5. Tell Russell in one line what you learned and changed, with the PR link — or, if every edit was an information fix, say there were no voice changes (no PR needed).
 
 The goal is convergence: over time his edits should become information-only.
