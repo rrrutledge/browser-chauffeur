@@ -16,6 +16,24 @@ Copy `templates/context.example.md` to `<local_dir>/context.md` and fill in **yo
 are, the systems you act in, your internal knowledge source (if any), your tracker board, and the
 standing behavioral rules. The worker loads it at the start of every item.
 
+It also goes into **every triage prompt**, where it is the largest fixed cost — so a `## ` section
+that only bears on one kind of item can declare a trigger and sit out the cycles it has nothing to
+say about:
+
+```markdown
+## Fireflies recap emails
+**Trigger:** `from=fred@fireflies\.ai; subject=^Your meeting recap`
+```
+
+Semicolon-separated `field=regex` pairs, ANDed, matched case-insensitively against the items in the
+current batch — `from`, `subject`, `preview`, or `source` for the provider name. The section is sent
+only when something matches.
+
+Gate only sections that are unambiguously about one source. Most of the file is world knowledge that
+informs classifying anything, and it should stay untriggered: a section wrongly withheld doesn't
+announce itself, it shows up as triage quietly deciding without knowing something. A section with no
+trigger, or one whose trigger can't be parsed, is always sent.
+
 ## Providers
 The providers in `providers/` cover Outlook (web), Teams (web), and Trello outreach; enable the ones
 you want in `drainer.local.md` and give any config they need (Trello board id; a Slack workspace

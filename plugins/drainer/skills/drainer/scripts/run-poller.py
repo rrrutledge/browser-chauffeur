@@ -165,25 +165,137 @@ def _read(path):
         return ""
 
 
-def _auto_handle_rules(providers_by_name, local_dir):
-    """Concatenate each enabled provider's AUTO-HANDLE section so the triage model can recognize an
+_AUTO_HANDLE_RE = re.compile(r"^##\s+AUTO-HANDLE\b.*?(?=^##\s|\Z)", re.DOTALL | re.MULTILINE)
+# A rule starts at a numbered list item whose title is bold: `1. **Workspace invite ...**`.
+_RULE_SPLIT_RE = re.compile(r"^(?=\d+\.\s+\*\*)", re.MULTILINE)
+# `- **Trigger:** `from=fred@example.com; subject=^Your meeting recap``
+# The leading bullet is optional, so a context.md section can carry one on its own line.
+_TRIGGER_RE = re.compile(r"^\s*(?:-\s*)?\*\*Trigger:\*\*\s*`([^`]+)`", re.MULTILINE)
+
+
+def _auto_handle_section(providers_dir, local_dir, name):
+    """The AUTO-HANDLE text for one provider: the shipped provider's section, plus any section in a
+    machine-local overlay at `<local_dir>/providers/<name>-provider.local.md`. The overlay lets a
+    machine attach its own standing rules to a shipped provider without forking it, which is where a
+    rule naming a personal account, vendor or workspace belongs. Returns (preamble, [rule, ...])."""
+    docs = [_read(find_provider_file(providers_dir, local_dir, name, "-provider.md") or "")]
+    if local_dir:
+        docs.append(_read(os.path.join(local_dir, "providers", f"{name}-provider.local.md")))
+
+    preamble, rules = "", []
+    for doc in docs:
+        m = _AUTO_HANDLE_RE.search(doc)
+        if not m:
+            continue
+        parts = _RULE_SPLIT_RE.split(m.group(0).strip())
+        if not preamble:
+            preamble = parts[0].strip()
+        rules.extend(p.strip() for p in parts[1:] if p.strip())
+    return preamble, rules
+
+
+def _parse_trigger(rule):
+    """The cheap precondition a rule may declare, as [(field, compiled regex), ...] ANDed together.
+
+    Returns None when the rule should load unconditionally — no trigger declared, or one that can't be
+    parsed. Failing open matters: a rule whose trigger is malformed would otherwise go silently
+    unenforced, which is far worse than paying its tokens."""
+    m = _TRIGGER_RE.search(rule)
+    if not m:
+        return None
+    conds = []
+    for part in m.group(1).split(";"):
+        part = part.strip()
+        if not part:
+            continue
+        if "=" not in part:
+            return None
+        field, pattern = part.split("=", 1)
+        try:
+            conds.append((field.strip().lower(), re.compile(pattern.strip(), re.IGNORECASE)))
+        except re.error:
+            return None
+    return conds or None
+
+
+def _item_field(item, field):
+    """A trigger's field name, resolved against a raw enumerate item. `source` is the provider name,
+    which the item carries as `_source`."""
+    if field == "source":
+        return item.get("_source") or ""
+    return item.get(field) or ""
+
+
+def _items_match(conds, items):
+    return any(
+        all(rx.search(str(_item_field(it, field))) for field, rx in conds)
+        for it in items
+    )
+
+
+def _section_fires(rules, items):
+    """Whether this provider's AUTO-HANDLE text is worth sending for this batch.
+
+    Gating is per section rather than per rule because rules cross-reference each other for
+    disambiguation ("...= rule 2 below"), and dropping one of a pair would leave the other pointing at
+    nothing. An ungated rule keeps the whole section always-on."""
+    triggers = [_parse_trigger(r) for r in rules]
+    if any(t is None for t in triggers):
+        return True
+    return any(_items_match(t, items) for t in triggers)
+
+
+def _context_for_batch(local_dir, items):
+    """context.md, minus any `## ` section whose declared trigger nothing in this batch matches.
+
+    The shared brain is embedded in every triage prompt and is by far the largest fixed part of it,
+    yet several of its sections only bear on one kind of item — a vendor's notification mail, one
+    service's digests. Those can declare a trigger and sit out the cycles they have nothing to say
+    about.
+
+    A section with no trigger is always sent, which is what most of the file is: world knowledge that
+    informs classifying anything. Gate only sections that are unambiguously about one source, because
+    a section wrongly withheld doesn't announce itself — it shows up as triage quietly deciding
+    without knowing something."""
+    text = _read(os.path.join(local_dir, "context.md"))
+    if not text or items is None:
+        return text
+    kept = []
+    for part in re.split(r"^(?=## )", text, flags=re.MULTILINE):
+        conds = _parse_trigger(part)
+        if conds is None or _items_match(conds, items):
+            kept.append(part)
+    return "".join(kept)
+
+
+def _auto_handle_rules(providers_by_name, local_dir, items=None):
+    """Concatenate the AUTO-HANDLE rules the triage model needs for THIS batch, so it can recognize an
     auto-handle item. The rules live in providers/<name>-provider.md (worker-facing), but classification
     happens here at triage time, so the relevant sections are surfaced to the model. A provider with no
-    AUTO-HANDLE section contributes nothing. New providers add rules just by writing the section."""
+    AUTO-HANDLE section contributes nothing. New providers add rules just by writing the section.
+
+    A section is sent only when one of its rules could actually apply to an item in hand, matched
+    against the item fields by the rule's own `Trigger:` line. Standing rules for rare events —
+    a vendor's notification mail, a monthly report — then cost nothing on the cycles they don't fire."""
     out = []
     for name in sorted(providers_by_name):
-        doc = _read(find_provider_file(PROVIDERS_DIR, local_dir, name, "-provider.md") or "")
-        m = re.search(r"^##\s+AUTO-HANDLE\b.*?(?=^##\s|\Z)", doc, re.DOTALL | re.MULTILINE)
-        if m:
-            out.append(f"### {name}\n{m.group(0).strip()}")
+        preamble, rules = _auto_handle_section(PROVIDERS_DIR, local_dir, name)
+        if not rules and not preamble:
+            continue
+        if items is not None:
+            mine = [it for it in items if it.get("_source") == name]
+            if not _section_fires(rules, mine):
+                continue
+        body = "\n\n".join([preamble, *rules]).strip()
+        out.append(f"### {name}\n{body}")
     return "\n\n".join(out)
 
 
 def triage(items, repo, local_dir, model, providers_by_name):
     claude = shutil.which("claude") or "claude"
     rubric = _read(os.path.join(SCRIPT_DIR, "..", "engine", "triage.md"))  # embed -> self-contained
-    context = _read(os.path.join(local_dir, "context.md"))
-    auto_rules = _auto_handle_rules(providers_by_name, local_dir)
+    context = _context_for_batch(local_dir, items)
+    auto_rules = _auto_handle_rules(providers_by_name, local_dir, items)
 
     def preview(it):
         # The owning adapter supplies the text triage sees: its `triage_text` returns the new message

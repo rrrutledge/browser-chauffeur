@@ -90,6 +90,35 @@ the provider needs).
 - **Delegating providers** (like Trello) hand reads/mutations to a sibling skill instead of
   re-implementing an API.
 
+## Standing rules (AUTO-HANDLE)
+
+A provider can carry an optional `## AUTO-HANDLE` section: standing decisions the worker executes on
+its own, reported in the digest rather than put to the user. Each rule is a numbered item with a bold
+title. The poller lifts the section into the triage prompt so the model can classify against it.
+
+**Gate each rule with a `Trigger:`.** The triage prompt is rebuilt every cycle, so an ungated rule pays
+its tokens on every poll — including the vast majority where nothing it cares about arrived. A trigger
+is a cheap precondition checked in Python against the items already in hand:
+
+```markdown
+   - **Trigger:** `from=fred@fireflies\.ai; subject=^Your meeting recap`
+```
+
+Semicolon-separated `field=regex` pairs, ANDed, matched case-insensitively against that provider's
+items in the current batch (`from`, `subject`, `preview` — the raw enumerate fields). The section is
+sent only when one of its rules could apply. Gating is per **section**, not per rule, because rules
+cross-reference each other to disambiguate near-misses and dropping one of a pair would leave the other
+pointing at nothing.
+
+A rule with no trigger, or one whose trigger can't be parsed, loads unconditionally — the failure mode
+of a bad trigger is a wasted prompt, never a rule that silently stops being enforced.
+
+**Personal rules go in an overlay, not the plugin.** A rule naming a specific account, vendor or
+workspace belongs on the machine that has it, in
+`<local_dir>/providers/<source>-provider.local.md`. Its `## AUTO-HANDLE` section is appended to the
+shipped provider's, so a machine attaches its own standing rules to a generic provider without forking
+it. The shipped providers stay free of anyone's private integrations.
+
 ## Checklist
 - [ ] `providers/<source>-adapter.py` defines `Provider(ProviderBase)` with `name`/`enumerate`/
       `stable_id`/`capture`.
