@@ -261,6 +261,7 @@ A single clear sentence ending in a question is usually the whole message — re
   This covers asks the recipient has had time to answer; leave out one you raised in your own immediately-preceding message on the thread, since repeating it hours later reads as nagging rather than nudging.
 - **Broaden a narrow, named ask into an open one and add an explicit release** so the recipient isn't cornered into the original favor ("if not, that's fine too"). Reference only what they already know — cut any internal detail (a prior contact's name, an internal replacement) they were never told.
   A genuine personal aside can open or close the nudge.
+- **When the thing you're nudging on is stuck in the recipient's own internal process, frame it as trust in their follow-through, not a status request.** Lead with confidence they're already on it ("I know you're always on top of moving this through") rather than "any update?" — that framing already covers the release, so drop a separate "no worries if it's still moving" line.
 
 ### Core voice
 
