@@ -40,6 +40,16 @@ The reviewer must come to the text cold.
 4. Report the findings to Russell.
    Apply the ones that are right; say which you applied and which you disagreed with, and why.
 
+## Learning from waved-off findings
+
+A finding Russell rejects carries the same signal as an edit he makes to a draft: the rule is tighter than his practice, or the condition it keys on is too narrow.
+
+When he waves one off, distil which of the two it was and fold it into the rule, as a PR against this repo.
+`document-authoring`'s voice-learning loop covers outward messages, where a draft-versus-sent diff exists.
+Shipped artifacts have no such diff, so a rejected finding is the only correction signal they get.
+
+The goal is convergence, and the success signal is the same shape: over time, findings should be ones he acts on.
+
 ## Scope
 
 Report only what a stated rule in `authoring-rules` covers, and name the rule in every finding.
