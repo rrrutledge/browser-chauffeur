@@ -2,6 +2,9 @@
 
 Dispatch a subagent with this prompt. The reviewer must not have participated in authoring the text.
 
+The rules live in `authoring-rules`, and this template does not restate them.
+Anything the reviewer should check for belongs in that file, where the writer sees it too.
+
 ```
 Subagent (general-purpose):
   description: "Writing review: [what's under review]"
@@ -14,11 +17,18 @@ Subagent (general-purpose):
     ## The rubric
 
     Read it first: [RUBRIC_PATH]
-    (plugins/document-authoring/skills/authoring-rules/SKILL.md)
+
+    Every rule carries a Check naming the surface forms that usually indicate
+    it was broken, and where those forms are innocent. Apply the Check as
+    evidence, not as the rule: a listed form is not automatically a finding,
+    and a violation using none of them is still a finding.
 
     If the text under review is an outward message (email, Teams, Slack,
     Confluence), also read [DOCUMENT_AUTHORING_PATH] and review against its
-    message-specific rules.
+    message-specific rules. Those are conditioned on register, so identify the
+    register first, from its Register section. When the register is genuinely
+    ambiguous, say so and report the finding as conditional rather than
+    picking one silently.
 
     ## Text under review
 
@@ -28,51 +38,11 @@ Subagent (general-purpose):
     prose file, review the prose: a code block quoted as an example is not
     subject to the prose rules, and text quoted from someone else (a cited
     message, an error string, a counter-example the document is arguing
-    against) is reported only if the document is presenting it as its own voice.
-
-    ## Detection aids
-
-    These are surface forms that usually indicate a rule was broken. They are
-    evidence, not rules. Every finding cites the rule from the rubric; these
-    just help you spot candidates. A form appearing on this list is not
-    automatically a finding, and a violation not on this list is still a
-    finding.
-
-    **Present tense in shipped artifacts** - "used to", "no longer", "instead of
-    the old", "we tried X", "this replaces", "formerly", "previously", "by
-    hand", "what X did before".
-    False positive to skip: "used to" as passive voice, where "used" means
-    employed - "the key used to sign the token", "a script used to validate
-    input". The test is whether the sentence needs a *previous state of the
-    system* to parse.
-
-    **No helper tail** - a closing sentence starting "happy to", "let me know if
-    you'd like", "if you'd rather", "hope this helps", "feel free to"; a final
-    paragraph that restates what was already said; reassurance the reader did
-    not ask for.
-
-    **No corporate or AI filler** - "I hope this message finds you well", "I
-    wanted to reach out", "please don't hesitate to", "as per", "kindly",
-    "furthermore", "moreover", "delve", "leverage" as a verb, "streamline",
-    "I'm excited to share", "honestly" as a hedge opener.
-
-    **Plain phrasing** - "it's not just X, it's Y" constructions;
-    rule-of-three flourishes; vivid metaphors and set-phrase idioms; "great" as
-    an amplifier on a noun where "good" would do.
-
-    **Don't editorialize** - cheerful labels ("the good news is", "you're all
-    set"); hedging something already confirmed ("looks like", "turns out").
-
-    **No em dash** - the character U+2014.
-
-    **Anchored links** - a bare https:// URL in prose, outside a code block.
-
-    **State guidance positively** - a "don't do X, do Y" couplet where "do Y"
-    alone carries it; a prohibition where a recipe would bind better.
+    against) is reported only if the document presents it as its own voice.
 
     ## What to report
 
-    Report only what a rubric rule covers, and name the rule in every finding.
+    Report only what a stated rule covers, and name the rule in every finding.
     Do not volunteer general writing opinions, restructuring suggestions, or
     taste. An unsourced finding costs you the reader's trust on the sourced
     ones.
