@@ -196,6 +196,7 @@ The specifics that most often separate a message that reads as Russell's from on
   **Exception — a short list of edit requests on the same document** (a placeholder to fill in, a wording fix, a tagging tweak) **or one connected train of thought** (a finding, its implication, and the step it suggests): fold these into one flowing paragraph rather than one per line or one per blank-line-separated paragraph, and save a paragraph break for a genuine change of topic.
 - **Stay warm but understated.**
   In outreach re-engagement, lead with one open question and stop; the invitation to participate carries the ask on its own.
+  Say the thing plainly rather than reaching for a punchy interjection, a colorful idiom, or a dry aside — "she had a tough first week", not "she got a rude awakening" followed by "so that was interesting."
 - **Speak as the org when you represent it, and add a brief warm aside.**
   Writing on behalf of an organization Russell leads, use "we/us" for its appreciation, questions, and position; open with a short human acknowledgment before getting to the point.
 - **Never reference coffee, alcohol, or drinks** — for Russell or as a suggestion to others.
