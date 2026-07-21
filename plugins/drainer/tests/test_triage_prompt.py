@@ -194,5 +194,88 @@ check(
     True,
 )
 
+# --- context.md section gating ---------------------------------------------
+print("\ncontext.md section gating")
+
+CONTEXT = """# drainer context — the shared brain
+
+Preamble that belongs in every prompt.
+
+## Preferences (always relevant)
+Judgment-shaped world knowledge, no trigger, always sent.
+
+## Fireflies recap emails
+**Trigger:** `from=fred@example\\.com; subject=^Your meeting recap`
+
+How to handle a Fireflies recap.
+
+## GitHub notification triage
+**Trigger:** `from=notifications@github\\.com`
+
+How to handle GitHub mail.
+"""
+
+ctx_dir = tempfile.mkdtemp(prefix="ctx-")
+with open(os.path.join(ctx_dir, "context.md"), "w", encoding="utf-8") as f:
+    f.write(CONTEXT)
+
+everything = poller._context_for_batch(ctx_dir, None)
+check("items=None sends the whole file", "GitHub notification triage" in everything, True)
+
+quiet = poller._context_for_batch(ctx_dir, [item(subject="Lunch?", **{"from": "bob@x.com"})])
+check("untriggered preamble always survives", "shared brain" in quiet, True)
+check("untriggered section always survives", "Preferences (always relevant)" in quiet, True)
+check("unmatched section is dropped", "Fireflies recap emails" in quiet, False)
+check("other unmatched section is dropped too", "GitHub notification triage" in quiet, False)
+
+ff = poller._context_for_batch(
+    ctx_dir, [item(subject="Your meeting recap - Jul 20", **{"from": "fred@example.com"})]
+)
+check("a matching item pulls its section in", "How to handle a Fireflies recap" in ff, True)
+check("but not the unrelated one", "How to handle GitHub mail" in ff, False)
+
+both = poller._context_for_batch(
+    ctx_dir,
+    [
+        item(subject="Your meeting recap", **{"from": "fred@example.com"}),
+        item(**{"from": "notifications@github.com"}),
+    ],
+)
+check("two matching items pull both sections", "How to handle GitHub mail" in both and "How to handle a Fireflies recap" in both, True)
+
+check(
+    "gating actually shrinks the payload",
+    len(quiet) < len(everything),
+    True,
+)
+
+# A trigger may match on the provider name, for a section that is about a whole source.
+SRC_CONTEXT = """# brain
+
+## Slack etiquette
+**Trigger:** `source=^slack$`
+
+Only when a Slack item is in hand.
+"""
+src_dir = tempfile.mkdtemp(prefix="ctx-src-")
+with open(os.path.join(src_dir, "context.md"), "w", encoding="utf-8") as f:
+    f.write(SRC_CONTEXT)
+check(
+    "source= matches the provider name",
+    "Only when a Slack item" in poller._context_for_batch(src_dir, [item(_source="slack")]),
+    True,
+)
+check(
+    "source= does not match a different provider",
+    "Only when a Slack item" in poller._context_for_batch(src_dir, [item(_source="gmail")]),
+    False,
+)
+
+check(
+    "a missing context.md is not an error",
+    poller._context_for_batch(os.path.join(ctx_dir, "nope"), [item()]),
+    "",
+)
+
 print(f"\n{'FAILED: ' + ', '.join(failures) if failures else 'all checks passed'}")
 sys.exit(1 if failures else 0)

@@ -169,7 +169,8 @@ _AUTO_HANDLE_RE = re.compile(r"^##\s+AUTO-HANDLE\b.*?(?=^##\s|\Z)", re.DOTALL | 
 # A rule starts at a numbered list item whose title is bold: `1. **Workspace invite ...**`.
 _RULE_SPLIT_RE = re.compile(r"^(?=\d+\.\s+\*\*)", re.MULTILINE)
 # `- **Trigger:** `from=fred@example.com; subject=^Your meeting recap``
-_TRIGGER_RE = re.compile(r"^\s*-\s*\*\*Trigger:\*\*\s*`([^`]+)`", re.MULTILINE)
+# The leading bullet is optional, so a context.md section can carry one on its own line.
+_TRIGGER_RE = re.compile(r"^\s*(?:-\s*)?\*\*Trigger:\*\*\s*`([^`]+)`", re.MULTILINE)
 
 
 def _auto_handle_section(providers_dir, local_dir, name):
@@ -217,6 +218,21 @@ def _parse_trigger(rule):
     return conds or None
 
 
+def _item_field(item, field):
+    """A trigger's field name, resolved against a raw enumerate item. `source` is the provider name,
+    which the item carries as `_source`."""
+    if field == "source":
+        return item.get("_source") or ""
+    return item.get(field) or ""
+
+
+def _items_match(conds, items):
+    return any(
+        all(rx.search(str(_item_field(it, field))) for field, rx in conds)
+        for it in items
+    )
+
+
 def _section_fires(rules, items):
     """Whether this provider's AUTO-HANDLE text is worth sending for this batch.
 
@@ -226,11 +242,30 @@ def _section_fires(rules, items):
     triggers = [_parse_trigger(r) for r in rules]
     if any(t is None for t in triggers):
         return True
-    return any(
-        all(rx.search(str(it.get(field) or "")) for field, rx in conds)
-        for conds in triggers
-        for it in items
-    )
+    return any(_items_match(t, items) for t in triggers)
+
+
+def _context_for_batch(local_dir, items):
+    """context.md, minus any `## ` section whose declared trigger nothing in this batch matches.
+
+    The shared brain is embedded in every triage prompt and is by far the largest fixed part of it,
+    yet several of its sections only bear on one kind of item — a vendor's notification mail, one
+    service's digests. Those can declare a trigger and sit out the cycles they have nothing to say
+    about.
+
+    A section with no trigger is always sent, which is what most of the file is: world knowledge that
+    informs classifying anything. Gate only sections that are unambiguously about one source, because
+    a section wrongly withheld doesn't announce itself — it shows up as triage quietly deciding
+    without knowing something."""
+    text = _read(os.path.join(local_dir, "context.md"))
+    if not text or items is None:
+        return text
+    kept = []
+    for part in re.split(r"^(?=## )", text, flags=re.MULTILINE):
+        conds = _parse_trigger(part)
+        if conds is None or _items_match(conds, items):
+            kept.append(part)
+    return "".join(kept)
 
 
 def _auto_handle_rules(providers_by_name, local_dir, items=None):
@@ -259,7 +294,7 @@ def _auto_handle_rules(providers_by_name, local_dir, items=None):
 def triage(items, repo, local_dir, model, providers_by_name):
     claude = shutil.which("claude") or "claude"
     rubric = _read(os.path.join(SCRIPT_DIR, "..", "engine", "triage.md"))  # embed -> self-contained
-    context = _read(os.path.join(local_dir, "context.md"))
+    context = _context_for_batch(local_dir, items)
     auto_rules = _auto_handle_rules(providers_by_name, local_dir, items)
 
     def preview(it):
