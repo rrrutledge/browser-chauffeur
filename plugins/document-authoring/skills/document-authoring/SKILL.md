@@ -115,6 +115,7 @@ Use for: Confluence specs, how-to guides, PRDs, PR descriptions, Word docs, publ
   Resist listing every permission, alternative, and implementation note.
 - **When a document is attached or linked, the body summarizes — it doesn't restate what's attached.**
   Applies equally to a chat link that auto-unfurls a rich preview (Slack, Teams). Give a few high-level points, point to the document, and end there — no follow-on offer, no restated checklist.
+  **When an image or screenshot of the thing is attached, drop the summary too** — say what it is, point at it, and stop, because the reader can already see what changed and any description just repeats the picture.
 - Avoid corporate filler ("leverage", "streamline", "as per"), long compound sentences, and effusive sign-offs.
 
 ### Reports, reviews & status updates
@@ -243,6 +244,7 @@ The specifics that most often separate a message that reads as Russell's from on
 - **Don't re-paste something you already shared upthread** — a link, file, or detail the recipient already has.
   Just ask plainly.
   Exception: the first nudge that directly addresses someone previously only cc'd should restate the concrete ask, since they may not have engaged.
+- **A repeat nudge on an already-unanswered ask shrinks further than the first** — drop the warm-up context line and any separate reassurance clause, and ask one direct binary question with the release folded into the question itself rather than tacked on after.
 - **Lead with a genuine fresh reason when you have one** — the timely hook or honest trigger for writing now, not "circling back" or "just checking in". Skip recapping what you already sent and cut the offer-to-help tail. Release the timeline through the question's own open phrasing, not by tacking on a separate "no rush" reassurance clause at the end — that's a helper tail like any other.
 - **On a sent deliverable, confirm receipt, not review, and release the timeline** — "did you get it? Look at it on whatever schedule works", not "did you get a chance to look at it?"
 - **On unanswered outreach with no attachment, use a plain open prod with a "let me know" close** — "wanted to ask again about this. Let me know what you think." Don't use receipt-confirm framing here.
@@ -322,6 +324,7 @@ Don't invent emoji outside this palette, don't stack them, and skip them entirel
 - **Energizing close** — how to execute a warm close, when **Register** calls for one: end with a brief forward-looking note ("Looking forward to it!", "This'll be great") instead of a helper-offer tail.
   When onboarding a partner or sponsor, that close can be the concrete next step their deliverable unlocks.
   Skip the note when sharing news into someone else's channel or group, or when the message already states a concrete next step (a call, a follow-up date) - that action is the close, not an added enthusiasm line on top of it.
+  These skip-exceptions apply only when **Register** hasn't already called for warmth via the leadership axis — where it has, the close holds regardless of what the message is about.
 - **React to the specific thing they shared, and warm a rote close into genuine interest.**
   Respond to the concrete detail they mentioned (where they're job-hunting, what they're building) rather than a generic well-wish, and swap "let me know how it goes" for real forward-looking interest when you care how it turns out — especially in a follow-up, where the latest message may already name the forward path.
   When someone offers sympathy or help on the job search, give a real reason or a concrete ask, not a vague status.
