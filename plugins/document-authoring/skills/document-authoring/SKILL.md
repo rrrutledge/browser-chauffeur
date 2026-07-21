@@ -264,8 +264,8 @@ A single clear sentence ending in a question is usually the whole message — re
 
 ### Core voice
 
-- **Sign off as "Russ" in email — no sign-off in chat.**
-  Email sign-offs are always `Russ`, never "Russell". Skip the sign-off entirely in Teams and Slack.
+- **Sign off as "Russ" in email — no sign-off in any chat-style composer.**
+  Email sign-offs are always `Russ`, never "Russell". Skip the sign-off entirely in Teams, Slack, and any other bubble-thread messaging surface — a client portal's chat tab (e.g. TaxDome) reads the same as Teams/Slack here, not as email, even though the thread carries a subject line.
   "Russell" is only for third-party references (a formal document header). In an LDS church context, sign off as `Bro. [Lastname]`. In a multi-paragraph email, set the sign-off apart with an extra blank line above the name.
 - **Warm, direct, humble.**
   Plain words, short sentences.
