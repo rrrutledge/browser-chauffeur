@@ -212,6 +212,7 @@ The specifics that most often separate a message that reads as Russell's from on
   - **A stated constraint or caveat** (e.g. "budget climate is tough"): release the pressure plainly ("Either way is fine") and stop; don't echo the framing back.
     When an intermediary relays why a third party is silent (they're busy), name that reason and invite them to reach out once it clears — don't introduce a new or workaround ask.
   - **A frustration mentioned as an aside alongside positive news:** close on gratitude for their concrete contribution ("Thanks for the help!"); don't open the frustration thread.
+  - **A self-critical admission of falling behind** (e.g. "I've been slack with this, been very busy"): the opposite of a stated constraint — affirm them personally ("You're doing great!") and echo the overwhelm back with warmth ("There is so much to do...") rather than releasing the pressure and stopping tersely. They're describing their own effort, not asking to be let off the hook, so match it with reassurance, not a brush-off. A genuine one-off emoji outside the usual palette (e.g. 😩) is fine here for shared commiseration over workload.
 - **Let the reply itself acknowledge their stated next step.**
   They've said what they'll do; restating it, even positively, adds pressure and implies they needed reminding.
   Where you do respond to it, affirm in a way that removes the constraint, or hedge the callback so they're free to be where they actually are.
