@@ -51,10 +51,9 @@ Remove-Item Env:\CLAUDE_CODE_SESSION_ID -ErrorAction SilentlyContinue
 Remove-Item Env:\CLAUDE_PID -ErrorAction SilentlyContinue
 
 # Ensures a session id exists and writes it to "<AnchorFile>.session" so peek.py (and anything else
-# that wants to follow this tab's live transcript) can find it later — the two launch modes used to
-# each carry their own copy of this, and only the -PromptFile copy actually ran, so a -SeedFile launch
-# (every handoff) never got a receipt and could never be peeked at. One function, called from both
-# branches below, so they can't drift out of sync again.
+# that wants to follow this tab's live transcript) can find it later. One function, called from both
+# the -PromptFile and -SeedFile branches below, so every launch mode writes a receipt and the two
+# can't drift apart.
 function Register-SessionReceipt {
   param(
     [Parameter(Mandatory)][string]$AnchorFile,
