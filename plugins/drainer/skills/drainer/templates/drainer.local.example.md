@@ -28,12 +28,9 @@ providers:
 local_dir: C:\path\to\your\drainer-local
 runtime_dir: .tmp/drainer
 
-# One schedule for everything; set it for the fastest-arriving source. Cheap sources ride along.
-cadence:
-  harvest_interval_minutes: 12
-
+# Actual poll cadence is the DrainerKeeper scheduled task's own repeat interval, not a config
+# value here - the poller has no internal cadence knob.
 presence:
-  gate_on_presence: true
   idle_threshold_seconds: 600
 
 # Continuous-keeper (run-poller.py) knobs.
