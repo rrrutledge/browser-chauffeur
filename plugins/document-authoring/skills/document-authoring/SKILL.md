@@ -75,6 +75,7 @@ Don't present a menu of options or stack a numbered list of questions.
   This applies even to a single sentence with an embedded "or"; cut it to the one ask you actually want and let them redirect.
   **Exception — when you're genuinely unsure what to do next, ask for their read instead of proposing an action.**
   State the impasse plainly ("I don't know here at all"), lay out the live options as open questions rather than a decision you've made, and end on their judgment. This is for soliciting advice from someone closer to the situation, not for stacking multiple requests-for-action onto them.
+  **Exception - when the choice is operationally theirs** (which of several equally fine mechanisms is easiest on their end, a mailed check or an ACH): name the acceptable options rather than picking one for them, since there is no decision there to steer.
 - **Flag an ask buried after dense content with a light lead-in** — Russell's go-to is "One small ask -". But when the message is short and the thread already carries the context, cut both the context and the lead-in and let the bare question stand.
 - **Frame the ask to match the recipient's role.**
   When their job is to route you to a third party (find a volunteer, recommend a speaker), make the asks conditional on that handoff rather than personal requests to them — and don't narrate the follow-up's timing.
@@ -176,8 +177,9 @@ A single clear sentence ending in a question is usually the whole message — re
 - **First-touch outreach: keep the ask to one low-commitment thing, and warm the reference to their past work.**
   After a long gap, ask for a single easy yes rather than stacking asks, and affirm that their earlier contribution still matters in plain words.
   Cut any salesy bridge before the ask.
-- **Reporting a completed task, or answering a question you researched: lead with the outcome; cut the diagnostic play-by-play and the editorial wrap-up.**
-  They want the result, not the story of what was wrong, how you found it, which options you ruled out and why, or a closing "so this means…" they can draw themselves.
+- **Reporting a completed task, stating what you'll do, or answering a question you researched: lead with the outcome; cut the diagnostic play-by-play and the editorial wrap-up.**
+  They want the result, not the story of what was wrong, how you found it, which options you ruled out and why, background color on whatever you researched, or a closing "so this means…" they can draw themselves.
+  Give a plan as one plain line and a decision on your own side as a bare fact - the timing mechanics behind the plan and the parenthetical justifying the decision both come out.
   Don't itemize each individual action once a summary phrase already implies it.
   This applies even when the ruled-out option was worth investigating - state the bottom line the research produced, not the reasoning that got you there.
 - **Proposing call times across timezones: filter to the recipient's normal work day, not just your own open calendar.**
@@ -189,7 +191,7 @@ The specifics that most often separate a message that reads as Russell's from on
 
 - **Keep a short message plain** — a quick reply is one or two plain sentences, not a structured block.
   For a multi-item status flag in chat, put each item on its own line without a leading bullet dash, and open with a vague count ("A few things stood out") rather than an exact one ("Three things stood out").
-  **Exception — a short list of edit requests on the same document** (a placeholder to fill in, a wording fix, a tagging tweak): fold them into one flowing paragraph instead of one-per-line: they're closely related corrections on one artifact, not separate status items.
+  **Exception — a short list of edit requests on the same document** (a placeholder to fill in, a wording fix, a tagging tweak) **or one connected train of thought** (a finding, its implication, and the step it suggests): fold these into one flowing paragraph rather than one per line or one per blank-line-separated paragraph, and save a paragraph break for a genuine change of topic.
 - **Stay warm but understated.**
   In outreach re-engagement, lead with one open question and stop; the invitation to participate carries the ask on its own.
 - **Speak as the org when you represent it, and add a brief warm aside.**
@@ -202,6 +204,8 @@ The specifics that most often separate a message that reads as Russell's from on
 - **When Russell owns the next step, say "I'll" — not "we'll" — and drop the trailing offer.**
   Announce work already done actively in the first person ("I drafted the posts"), not agent-less passive ("the posts are drafted").
 - **Adding a second ask mid-thread: open with the discovery, not the ask** — "found one more", not "one more ask while I have you". Scope: this is for tacking a new point onto something you already sent. When several points are compiled into one message from the start (e.g. a batch of edit requests on the same document), skip the discovery framing entirely and just list them — there's nothing to "find" mid-message.
+- **Adding a new recipient to an existing thread: state the action, don't address them.**
+  "Adding Hong directly here as well." is the whole line - it speaks to the thread, so the greeting, the reason, and any closing question aimed at the new person all come out.
 - **Float a candidate tentatively** — "also may be a great fit", not "would be a great fit". The "also" ties them to someone already named and "may" keeps it open; go straight to the person and drop the setup line.
 - **When confirming an ask, give the "why" — not how-to steps.**
   Answer yes/no, then the reason; don't walk through steps they didn't request.
@@ -211,6 +215,7 @@ The specifics that most often separate a message that reads as Russell's from on
   - **Personal or career bad news (the main point):** acknowledge briefly ("sorry to hear it") and follow with a genuine check-in ("How are things going for you now?"). Don't narrate the impact on others.
   - **A stated constraint or caveat** (e.g. "budget climate is tough"): release the pressure plainly ("Either way is fine") and stop; don't echo the framing back.
     When an intermediary relays why a third party is silent (they're busy), name that reason and invite them to reach out once it clears — don't introduce a new or workaround ask.
+    Relaying that someone else said the recipient never got back to them goes as a neutral checking question ("Did [name] reach out to you about it?"), so the recipient isn't put on the spot by the complaint itself.
   - **A frustration mentioned as an aside alongside positive news:** close on gratitude for their concrete contribution ("Thanks for the help!"); don't open the frustration thread.
   - **A self-critical admission of falling behind** (e.g. "I've been slack with this, been very busy"): the opposite of a stated constraint — affirm them personally ("You're doing great!") and echo the overwhelm back with warmth ("There is so much to do...") rather than releasing the pressure and stopping tersely. They're describing their own effort, not asking to be let off the hook, so match it with reassurance, not a brush-off. A genuine one-off emoji outside the usual palette (e.g. 😩) is fine here for shared commiseration over workload.
 - **Let the reply itself acknowledge their stated next step.**
@@ -246,11 +251,13 @@ The specifics that most often separate a message that reads as Russell's from on
   This covers asks the recipient has had time to answer; leave out one you raised in your own immediately-preceding message on the thread, since repeating it hours later reads as nagging rather than nudging.
 - **Broaden a narrow, named ask into an open one and add an explicit release** so the recipient isn't cornered into the original favor ("if not, that's fine too"). Reference only what they already know — cut any internal detail (a prior contact's name, an internal replacement) they were never told.
   A genuine personal aside can open or close the nudge.
+- **When the thing you're nudging on is stuck in the recipient's own internal process, lead with trust in their follow-through rather than a status question.**
+  "I know you're always on top of moving this through" carries the release on its own, so drop the separate no-pressure line.
 
 ### Core voice
 
-- **Sign off as "Russ" in email — no sign-off in chat.**
-  Email sign-offs are always `Russ`, never "Russell". Skip the sign-off entirely in Teams and Slack.
+- **Sign off as "Russ" in email — no sign-off in any chat-style composer.**
+  Email sign-offs are always `Russ`, never "Russell". Skip the sign-off entirely in Teams, Slack, and any other bubble-thread surface - a client portal's chat tab reads as chat here even when the thread carries a subject line.
   "Russell" is only for third-party references (a formal document header). In an LDS church context, sign off as `Bro. [Lastname]`. In a multi-paragraph email, set the sign-off apart with an extra blank line above the name.
 - **Warm, direct, humble.**
   Plain words, short sentences.
@@ -263,7 +270,8 @@ The specifics that most often separate a message that reads as Russell's from on
   **Exception — a tangential personal aside with no question and nothing to act on** (a passing "hope you're well", a remark about how a call wrapped up): it doesn't need its own acknowledgment when you're replying to a separate, substantive ask in the same thread. Answering the ask is the whole reply.
 - **Document a sequence as short bullets, and open with the current status** — not a defensive framing line.
   Let the record carry the point; skip the "I've been responsive" editorializing.
-- **Open groups with "Hey guys / folks / everyone"** — but skip the opener when replying to a specific quoted message or directly continuing an active conversation thread; the existing context replaces it.
+- **Open groups with "Hey guys / folks / everyone"** — but skip the group greeting when replying to a specific quoted message or directly continuing an active conversation thread; the existing context replaces it.
+  The greeting alone is what drops: **Open with warmth** still governs, so a short reaction to what they just said ("Sounds great!") still leads before the ask.
 - **Soften a flaw you're flagging in someone else's work into a suggestion, not a defect.** "Website would be good to point to X" reads better than "the website link is broken" when the material belongs to a teammate — say what you'd change, skip diagnosing what's wrong with it.
 - **1:1s often open with no greeting at all, or the person's name.**
 - **Address people by name mid-message** — "Thanks for looking at this, Alex" (see **Links** for representing the name itself — a real @-mention when you want them notified, a link otherwise).
@@ -272,6 +280,7 @@ The specifics that most often separate a message that reads as Russell's from on
 - **Ellipses for softening** — "If you need to leave you can just say so ... especially if we're going over time."
 - **Apologize genuinely and briefly** — "Sorry this is taking so long.", "I'm sorry I have to move this again."
   Own a mistake of yours in every message that touches it while it's still being fixed, not just the first — a prior apology doesn't retire the need for a short acknowledging clause in the next one, and "thanks for understanding" alone reads as glossing over it.
+  Reply to mail that has been sitting for weeks or months with a brief "Sorry for the delay in responding" near the sign-off.
 - **Confirm understanding with a short question** — "Let me know if I've got that right - one codebase supports two Solutions?"
 - **Close with "let me know"** — a signature phrase used constantly.
   Reach for it over near-variants ("just say the word" → "just let me know").
@@ -317,6 +326,8 @@ Don't invent emoji outside this palette, don't stack them, and skip them entirel
   Respond to the concrete detail they mentioned (where they're job-hunting, what they're building) rather than a generic well-wish, and swap "let me know how it goes" for real forward-looking interest when you care how it turns out — especially in a follow-up, where the latest message may already name the forward path.
   When someone offers sympathy or help on the job search, give a real reason or a concrete ask, not a vague status.
   When a contact offers to connect you with their contacts, respond with self-initiated follow-through ("I'll check through them and let you know"), not a direct ask for the intro now.
+  When they share a job-search resource or lead instead of an offer to connect people, thank them briefly and name the concrete future ask it earns ("if I see something where you're connected, I'll reach out for your take or an introduction") - the one reciprocal case where naming a future ask belongs.
+  With nothing new to react to, a business note to a long-standing warm contact still closes on a genuine personal check-in ("Let me know how you're doing.") rather than a transactional "let me know if you have any questions" - and never on an outcome they haven't confirmed yet.
 - **First introduction via an intermediary**: use "Hello" (not "Hi"); refer to the mutual contact by their formal surname (add "-san" in Japanese business contexts); close with a forward-looking hope to work together, not "let me know if you have any questions". **Name the topic you want to discuss, not the specific angle it might fit** (a prospective event slot, a program tie-in) - save that detail for once the conversation's underway. Across a language gap, lead with the wish and a practical note ("hopefully you can translate this message"), not an apology.
 - Short, conversational, considerate of their time and life.
 - Logistics + warmth; apologize if rescheduling.
@@ -330,12 +341,13 @@ Don't invent emoji outside this palette, don't stack them, and skip them entirel
 - Frame as helpful and low-pressure; invite a look.
 - Land on a single concrete question or request (see **Asks**).
 - Use the collective **"we"** for a committee/team ask, not "I" — including a joint recommendation to peers/co-leads ("I think we should merge these", not "I'd like to merge these"), even in a 1on1-style note to a couple of named people rather than a broad group.
-- Plain framing over clever phrasing — drop quoted catchphrases.
+- Plain framing over clever phrasing — drop quoted catchphrases, and state what a commitment costs plainly rather than selling how small or easy it is.
 - **Don't pitch why someone or their org is a good fit when asking them to participate.**
   Trust the context; the ask stands on its own — cut the "your experience in A, B, C is exactly what we need" list.
 - **Cold outreach for a commitment: open with the soft ask, not the hard one.**
   Gauge interest and invite a conversation ("is this of interest?", "can we talk?"); name the commitment lightly and later, after they've engaged.
   Ask one thing, not a menu of next steps.
+  The same softening governs pivoting an already-warm thread toward a commitment: keep it to one open "is that something we could explore together?" and cut both the concrete call-to-action and the list of benefits.
   **When the ask involves money or a formal commitment (a sponsorship, a paid slot), close with an explicit no-pressure release** — "If not, then it's fine too - no problem. I wanted to ask though to see." — so a no costs the recipient nothing to say.
 - **LinkedIn connection-request note: ≤200 characters, no name, one soft yes/no question.**
   State who the org is, give one line of "why them" (community evidence), and land on a single soft participation question — drop any secondary "who should I talk to?" ask, and don't sign it.
