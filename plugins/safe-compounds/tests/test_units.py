@@ -597,6 +597,11 @@ class TestSensitiveReadDirsExcluded:
         dest = tmp_path / "other-dir" / "resume.pdf"
         assert check_cwd_file_command(f'cp "{src}" "{dest}"', "cp") is False
 
+    def test_cp_to_dev_null_approved_regardless_of_source(self, tmp_path):
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        src = "C:/Windows/System32/drivers/etc/hosts"
+        assert check_cwd_file_command(f'cp "{src}" /dev/null', "cp") is True
+
 
 class TestSafeReadLocation:
     def test_system_temp_dir_is_safe(self, tmp_path, monkeypatch):
