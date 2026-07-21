@@ -21,7 +21,17 @@ const { dismissOverlays, openTab, closeTab } = (() => {
 })();
 
 // --- browser connection ---
-const cdpPort = process.argv.find(a => a.startsWith('--cdp-port='))?.split('=')[1] || '9222';
+// Splits only on the FIRST "=" — a bare .split('=')[1] truncates any value that
+// itself contains "=" (a URL query string, a CSS attribute selector). Any
+// ad-hoc script adding its own --flag=value argument (e.g. --url=) should copy
+// this helper rather than reintroducing the bare split pattern.
+function argValue(flag) {
+  const prefix = `--${flag}=`;
+  const arg = process.argv.find(a => a.startsWith(prefix));
+  return arg ? arg.slice(prefix.length) : undefined;
+}
+
+const cdpPort = argValue('cdp-port') || '9222';
 
 // connectOverCDP auto-attaches to EVERY open target to build its page tree. On a
 // persistent profile that has accumulated many tabs — or has a single wedged
