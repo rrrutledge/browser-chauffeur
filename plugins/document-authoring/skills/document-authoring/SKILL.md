@@ -244,6 +244,7 @@ The specifics that most often separate a message that reads as Russell's from on
 - **Don't re-paste something you already shared upthread** — a link, file, or detail the recipient already has.
   Just ask plainly.
   Exception: the first nudge that directly addresses someone previously only cc'd should restate the concrete ask, since they may not have engaged.
+- **A repeat nudge on an already-unanswered ask shrinks further than the first** — drop the warm-up context line and any separate reassurance clause, and ask one direct binary question with the release folded into the question itself rather than tacked on after.
 - **Lead with a genuine fresh reason when you have one** — the timely hook or honest trigger for writing now, not "circling back" or "just checking in". Skip recapping what you already sent and cut the offer-to-help tail. Release the timeline through the question's own open phrasing, not by tacking on a separate "no rush" reassurance clause at the end — that's a helper tail like any other.
 - **On a sent deliverable, confirm receipt, not review, and release the timeline** — "did you get it? Look at it on whatever schedule works", not "did you get a chance to look at it?"
 - **On unanswered outreach with no attachment, use a plain open prod with a "let me know" close** — "wanted to ask again about this. Let me know what you think." Don't use receipt-confirm framing here.
