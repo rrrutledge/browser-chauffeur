@@ -582,6 +582,11 @@ CWD_FILE_COMMAND_CONFIG = {
 
 
 def _dest_allowed(path):
+    # /dev/null discards whatever's written to it, so it's always a safe
+    # destination -- same carve-out is_output_redirection_safe() already
+    # makes for `> /dev/null`.
+    if path.strip().strip('"\'') == '/dev/null':
+        return True
     return (is_path_within_cwd(path) or is_path_within_git_worktree(path)
             or is_path_within_allowed_edits(path) or is_path_within_claude_plugins(path))
 
@@ -623,6 +628,12 @@ def check_cwd_file_command(seg, command):
 
     if command in ('cp', 'mv', 'ln') and len(paths) >= 2:
         dest = paths[-1].strip('"\'')
+        if dest == '/dev/null':
+            # Content copied to /dev/null is discarded, never written or
+            # exposed anywhere -- the source-location check exists to stop
+            # sensitive files from landing somewhere readable, which can't
+            # happen here, so skip it.
+            return True
         if not (_dest_allowed(dest) or is_path_within_trusted_destination(dest)):
             log_debug(f"{command} destination outside allowed areas: {dest}")
             return False
