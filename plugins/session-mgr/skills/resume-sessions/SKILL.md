@@ -147,15 +147,15 @@ instructions: |-
 
   Do **not** exclude sessions whose last message is a `<task-notification>` block. A pending
   task-notification means a background action (a Monitor watch, a browser-chauffeur command, etc.)
-  never reported back — that is itself evidence of an interrupted session, not a reason to skip it.
-  This used to be an exclusion rule; it was wrong; e.g., a session mid-way through replying to a
-  recruiter DM about a job posting had its background browser action killed by a restart, and got
-  silently skipped because the notification looked machine-generated. A `<status>killed</status>`
+  never reported back - that is itself evidence of an interrupted session, not a reason to skip it.
+  A notification looks machine-generated even when the session around it was live: a session
+  mid-way through replying to a recruiter DM about a job posting reads exactly like one, right up
+  to the moment a restart killed its background browser action. A `<status>killed</status>`
   field inside the notification is an especially strong signal the restart is exactly what
   interrupted it. If the notification instead shows a passive timeout (e.g. "Monitor timed out —
   re-arm if needed") and you want extra confidence before launching a whole tab for it, it's fine
   to spot-check whether the underlying thing being watched (a PR, a deployment) is already resolved
-  — but default to including it; do not silently drop it.
+  - but default to including it.
 
   Launch everything else — short replies, drainer seeds, mid-sentence messages, one-word answers,
   all of it. Do not guess whether the user considered a session finished.
