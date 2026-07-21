@@ -244,7 +244,7 @@ A single clear sentence ending in a question is usually the whole message — re
 - **Don't re-paste something you already shared upthread** — a link, file, or detail the recipient already has.
   Just ask plainly.
   Exception: the first nudge that directly addresses someone previously only cc'd should restate the concrete ask, since they may not have engaged.
-- **Lead with a genuine fresh reason when you have one** — the timely hook or honest trigger for writing now, not "circling back" or "just checking in". Skip recapping what you already sent, cut the offer-to-help tail, and release the timeline.
+- **Lead with a genuine fresh reason when you have one** — the timely hook or honest trigger for writing now, not "circling back" or "just checking in". Skip recapping what you already sent and cut the offer-to-help tail. Release the timeline through the question's own open phrasing, not by tacking on a separate "no rush" reassurance clause at the end — that's a helper tail like any other.
 - **On a sent deliverable, confirm receipt, not review, and release the timeline** — "did you get it? Look at it on whatever schedule works", not "did you get a chance to look at it?"
 - **On unanswered outreach with no attachment, use a plain open prod with a "let me know" close** — "wanted to ask again about this. Let me know what you think." Don't use receipt-confirm framing here.
 - **When a specific factual question went unanswered, restate that exact question** as a direct yes/no rather than a generic check-in; pair it with an explicit release if there's a plausible internal reason for the delay.
@@ -281,7 +281,7 @@ A single clear sentence ending in a question is usually the whole message — re
 - **Confirm understanding with a short question** — "Let me know if I've got that right - one codebase supports two Solutions?"
 - **Close with "let me know"** — a signature phrase used constantly.
   Reach for it over near-variants ("just say the word" → "just let me know").
-- **Light, genuine appreciation** — "Thanks!", "Thank you!", not "Thank you so much!!!". Thank once; if you thanked at the open, don't also close with "Thanks!" But a warm sponsor/partner email — or a nudge asking someone for a professional favor (e.g. HR, a former employer) — that didn't thank at the open gets a single closing "Thank you!" above the sign-off — not a helper tail.
+- **Light, genuine appreciation** — "Thanks!", "Thank you!", not "Thank you so much!!!". Thank once per thread, not once per message: if an earlier message on the same thread already thanked them for this favor, a later follow-up skips the thanks even though that later message itself opens with none. Thank once; if you thanked at the open, don't also close with "Thanks!" But a warm sponsor/partner email — or the first nudge asking someone for a professional favor (e.g. HR, a former employer) — that didn't thank at the open gets a single closing "Thank you!" above the sign-off — not a helper tail.
   In chat, thanking someone who's taking on work for you is likewise fine, not a tail.
   Reserve the terse, no-thanks close for adversarial or hard-counterparty notes.
 - **Thanking a volunteer or community contributor is the exception — warm and effusive is in-voice**, emoji and exclamation marks included ("Thank you for being with us 🙏🙏!!!!"). This is for people giving their time freely, not paid vendors, colleagues, or routine replies.
