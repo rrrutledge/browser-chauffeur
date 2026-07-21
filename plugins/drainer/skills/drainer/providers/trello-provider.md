@@ -103,9 +103,17 @@ slug, else the board default).
 
 ## CAPTURE (needs-you)
 The card itself is the item, and **we own it** — unlike inbound mail/Teams, the same card recurs every
-follow-up, so the card is a durable cache for everything needed to act. Read its description +
-structured comments FIRST; then run INITIATIVE-LOOKUP for program context; act on that before
-re-discovering anything. Write `items/<id>.json`:
+follow-up, so the card is a durable cache for everything needed to act.
+
+**Claim it before anything else.**
+Push the card's **`due`** date out - tomorrow or later - via `trello-outreach`, before reading further or
+starting any research, so the card cannot re-surface on another drain while this work is in flight.
+Bump `due` specifically, not `start`: a `start` date looks like the right field to move (a worker
+bumping a "next ping-back" date reads as claiming the card) but does nothing here - ENUMERATE only stops
+re-surfacing a card once its `due` clears the now-or-earlier window.
+
+Read its description + structured comments FIRST; then run INITIATIVE-LOOKUP for program context; act on
+that before re-discovering anything. Write `items/<id>.json`:
 `{ "id","source":"trello","triage":"needs-you","kind":"reply|work","cardId","board","list","name",`
 `"due","url","contacts":[...],"channelLabel":"<Email|Teams|Slack|...>","initiative":"<slug|null>","ts":"<ISO now>" }`
 Then find the relevant **thread** (email / Teams / Slack) for the contact + channel and read it to

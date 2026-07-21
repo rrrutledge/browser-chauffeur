@@ -223,6 +223,12 @@ complete.
 Anything irreversible / outbound-to-others waits for the user's explicit OK; safe, reversible work
 proceeds immediately.
 
+**Adopting a card from §2's check claims it the same way Trello's own CAPTURE does.**
+When §2's lookup finds an existing Trello card for this item, push its `due` date out (tomorrow or
+later, via `trello-outreach` - see `providers/trello-provider.md`'s CAPTURE section) before starting the
+work above, not after, so the card can't spawn a second tab on another drain while you're mid-research.
+This applies whether Trello is your own source or you found the card from another source entirely.
+
 ## 4. Contact the person (draft-only)
 **After step 3's work is complete**, when a message is warranted, stage the draft with the
 **message-draft** skill in the source's mode — it writes in the user's voice and owns all composer
