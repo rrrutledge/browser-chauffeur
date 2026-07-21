@@ -106,11 +106,18 @@ The card itself is the item, and **we own it** — unlike inbound mail/Teams, th
 follow-up, so the card is a durable cache for everything needed to act.
 
 **Claim it before anything else.**
-Push the card's **`due`** date out - tomorrow or later - via `trello-outreach`, before reading further or
-starting any research, so the card cannot re-surface on another drain while this work is in flight.
-Bump `due` specifically, not `start`: a `start` date looks like the right field to move (a worker
-bumping a "next ping-back" date reads as claiming the card) but does nothing here - ENUMERATE only stops
-re-surfacing a card once its `due` clears the now-or-earlier window.
+Bump every date field that is currently now-or-earlier - before reading further or starting any
+research - via `trello-outreach`, so the card cannot re-surface on another drain while this work is in
+flight.
+ENUMERATE's startable rule is an **OR** over both fields (Start now-or-earlier, OR Due now-or-earlier),
+so a claim that pushes only one still-past field out leaves the card startable through the other.
+Most claims are just `due` - a pure outreach card carries no `start` at all (see STARTABLE-TASK MODEL,
+"Outreach cards set no `Start`").
+But a task card can also carry a `start` left in the past - e.g. an old ⏳ Waiting ping-back date that
+was never cleared once active work began - and bumping only `due` on that card does nothing: ENUMERATE
+still re-queues it off the stale `start`, spinning up a duplicate worker on top of whatever's already
+mid-flight.
+Check both fields and bump whichever (or both) sit now-or-earlier.
 
 Read its description + structured comments FIRST; then run INITIATIVE-LOOKUP for program context; act on
 that before re-discovering anything. Write `items/<id>.json`:
