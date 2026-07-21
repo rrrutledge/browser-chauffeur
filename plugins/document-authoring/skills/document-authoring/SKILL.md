@@ -115,7 +115,8 @@ Use for: Confluence specs, how-to guides, PRDs, PR descriptions, Word docs, publ
   Resist listing every permission, alternative, and implementation note.
 - **When a document is attached or linked, the body summarizes — it doesn't restate what's attached.**
   Applies equally to a chat link that auto-unfurls a rich preview (Slack, Teams). Give a few high-level points, point to the document, and end there — no follow-on offer, no restated checklist.
-  **When an image or screenshot of the thing is attached, drop the summary too** — say what it is, point at it, and stop, because the reader can already see what changed and any description just repeats the picture.
+  **When the attachment itself is the answer, drop the summary too** — say what it is, point at it, and stop.
+  This covers an image or screenshot of the thing, where any description just repeats the picture, and equally a document sent because someone asked for exactly what it contains (a prospectus in answer to "what are the options?"): pulling its numbers or headings into the body pre-empts the read and buries the one line that matters.
 - Avoid corporate filler ("leverage", "streamline", "as per"), long compound sentences, and effusive sign-offs.
 
 ### Reports, reviews & status updates
@@ -316,6 +317,7 @@ Don't invent emoji outside this palette, don't stack them, and skip them entirel
 **`1on1` — private direct chat or email reply:**
 - **Email greeting**: run it into the first sentence with ` - ` — "Hi [Name] - thanks and totally makes sense.", not "Hi [Name]," on its own line followed by a new paragraph.
   **Exception — replying to more than one person:** keep it a standalone line, own paragraph below, not run into the sentence. Pick the word by group size and who you're actually engaging: two people → "Hi both"; a small group where you're interacting with everyone directly → "Hi all"; a bigger distribution where some recipients are only cc'd, not people you're directly addressing → "Hi folks".
+  **When one person on a multi-recipient thread asked the question, answer them by name and skip the greeting line entirely** — "Thanks for considering it, Pooi." carries both the warm open and the address, and the group greeting would aim the reply at people who are only watching.
 - **Email reply flow**: always **Reply All**, never plain Reply, to preserve every CC.
   Reply into an existing thread on the same topic rather than composing new, even when it isn't a direct response to any single message.
 - **Email sign-off**: just `Russ` on its own line — no valediction before it, and no closing word fused onto that same line (no "Thanks, Russ", "Best, Russ", or similar; the line is `Russ` alone, full stop). A genuine thanks belongs in the body as its own sentence (see **Light, genuine appreciation**), not welded onto the sign-off — and skip it entirely when there's nothing yet to thank the recipient for, e.g. a first-touch ask where they haven't done anything for you yet.
