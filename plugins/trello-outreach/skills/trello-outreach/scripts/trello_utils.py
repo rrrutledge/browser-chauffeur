@@ -15,6 +15,15 @@ from datetime import datetime, timezone
 
 BASE_URL = 'https://api.trello.com/1'
 
+# Every call goes through trello_request(), so this is the single point of failure for a stalled
+# connection: urlopen with no timeout blocks forever on a connection that stays open but never
+# responds (observed against a Trello CloudFront edge), which hangs the calling process indefinitely.
+# The drainer's scheduled poller task then never returns, and Task Scheduler's default policy skips
+# every subsequent trigger while it thinks that run is still in progress -- silently, since a poller
+# tab runs headless (pythonw) with no console to report to. A bounded timeout turns that into an
+# ordinary, per-cycle request failure the poller already catches and retries next cycle.
+REQUEST_TIMEOUT = 30
+
 
 def _read_windows_credential(target):
     """Read a credential from Windows Credential Manager via ctypes."""
@@ -76,7 +85,7 @@ def trello_request(method, path, session, params=None, body=None):
         data = urllib.parse.urlencode(body).encode() if body else b''
 
     req = urllib.request.Request(url, data=data, method=method)
-    with urllib.request.urlopen(req) as response:
+    with urllib.request.urlopen(req, timeout=REQUEST_TIMEOUT) as response:
         raw = response.read().decode()
         if raw:
             return json.loads(raw)
