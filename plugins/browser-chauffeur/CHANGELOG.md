@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.10.3] - 2026-07-22
+
+### Fixed
+- **`dismissOverlays` could click a real page action button, not just an overlay.** Playwright's `getByRole` name match is a case-insensitive substring match by default, so the un-exact `'Close'` lookup matched any button whose accessible name merely contained that word — including GitHub's "Close pull request" button, which the helper then clicked for real on a page that had no overlay at all. Now uses `exact: true` for the literal-text lookups (`Got it`, `Dismiss`, `Close`), and additionally requires the matched button to actually sit inside something overlay-shaped (a `dialog`/`alertdialog` role, a fixed/sticky-positioned stacking element, or a modal/cookie/consent/toast-named container) before clicking it — a plain in-page button is left alone regardless of its label.
+
 ## [1.10.1] - 2026-07-15
 
 ### Changed
