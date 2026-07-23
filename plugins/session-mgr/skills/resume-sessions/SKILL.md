@@ -16,12 +16,20 @@ instructions: |-
   It works in two parts:
   1. Scans running `claude.exe` processes for their session ID — from `--resume`/
      `--session-id` on the command line, or (for a bare launch with neither flag)
-     `CLAUDE_CODE_SESSION_ID` in the process's own environment.
+     `CLAUDE_CODE_SESSION_ID` in the process's own environment. In practice that env-var
+     fallback never matches: Claude Code only sets `CLAUDE_CODE_SESSION_ID` for the child
+     processes it spawns (hooks, the Bash tool), never on its own process.
   2. Reads the live-session registry (`~/.claude/session-mgr/live-sessions.json` — a dict of
-     `{session_id: {cwd, started_at}}` for every session that has started but not cleanly
+     `{session_id: {cwd, started_at, pid}}` for every session that has started but not cleanly
      ended, maintained by this plugin's `SessionStart`/`SessionEnd` hooks) and returns every
-     entry whose session isn't in the active set from part 1. A hard crash or forced restart
-     never triggers `SessionEnd`, so any such entry is a **confirmed** interrupted session —
+     entry whose session isn't in the active set from part 1 **and** whose recorded `pid`
+     isn't a still-live `claude.exe` either. That `pid` — the launching `claude.exe`'s PID,
+     found by walking the hook's own process ancestry at `SessionStart` — is what actually
+     covers a bare launch with no `--resume`/`--session-id`: since part 1 can't discover such a
+     session's id from either the command line or the (dead) env-var fallback, without the pid
+     check a still-open bare-launched tab would be misdetected as an orphan and get a
+     duplicate resume tab spawned on top of it. A hard crash or forced restart never triggers
+     `SessionEnd`, so any entry surviving both checks is a **confirmed** interrupted session —
      no content heuristics needed to decide whether to include it.
 
   It also applies the self-close tail check before returning anything: a session that ends
