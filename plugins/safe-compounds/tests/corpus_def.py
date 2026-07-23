@@ -104,6 +104,13 @@ CASES = [
     {"id": "close_session_plugin_script", "tool": "Bash",
      "command": "python \"C:/Users/x/.claude/plugins/cache/rrrutledge-claude-code-plugins/drainer/1.39.0/skills/drainer/scripts/close-session.py\"",
      "expect": "ALLOW"},
+    # cp/mv/ln/touch/chmod against the installed plugin cache always re-hits
+    # Claude Code's own sensitive-file confirmation regardless of this hook's
+    # decision, so it's blocked with a rewrite instead -- unlike running a
+    # plugin's own script straight from the cache (the case just above).
+    {"id": "cp_from_plugin_cache",
+     "command": 'cp "{HOME}/.claude/plugins/cache/repo/browser-chauffeur/1.10.3/templates/x.js" ".tmp/x.js"',
+     "tool": "Bash", "expect": "BLOCK"},
 
     # --- enforcement (can't statically validate -> rewrite) -----------------
     {"id": "heredoc", "tool": "Bash", "command": "cat << EOF\nhi\nEOF", "expect": "BLOCK"},
@@ -163,6 +170,10 @@ CASES = [
     {"id": "cp_outside", "tool": "Bash", "command": "cp a.txt /etc/passwd", "files": {"a.txt": "x"}, "expect": "PROMPT"},
     {"id": "cp_within_stderr_merge", "tool": "Bash", "command": "cp a.txt b.txt 2>&1",
      "files": {"a.txt": "x"}, "expect": "ALLOW"},
+    # .tmp/ is scratch space in every repo, not just the current one -- a
+    # destination under a `.tmp` dir in an unrelated directory is still safe.
+    {"id": "cp_to_unrelated_repo_tmp_dir", "tool": "Bash",
+     "command": 'cp a.txt "{HOME}/Dev/some-other-repo/.tmp/b.txt"', "files": {"a.txt": "x"}, "expect": "ALLOW"},
 
     # --- scripts (deny-by-default; trusted dir vs elsewhere) ----------------
     {"id": "pyfile_tmp", "tool": "Bash", "command": "python .tmp/run.py",

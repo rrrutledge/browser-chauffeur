@@ -22,7 +22,8 @@ from safe_compounds import paths  # noqa: E402
 from safe_compounds import procs  # noqa: E402
 from safe_compounds.mcp import classify_mcp_tool  # noqa: E402
 from safe_compounds.enforce import (  # noqa: E402
-    detect_complex_bash, detect_simple_expansion, detect_cd_compound, detect_function_definition, enforce_bash,
+    detect_complex_bash, detect_simple_expansion, detect_cd_compound, detect_function_definition,
+    detect_plugin_cache_reference, enforce_bash,
 )
 from safe_compounds.scripts import check_node_segment, get_block_reason, reset_block_reason  # noqa: E402
 from safe_compounds import ai  # noqa: E402
@@ -630,8 +631,8 @@ class TestCpFromSystemTemp:
 
 class TestTouchRespectsAllowedEditDirs:
     """touch/chmod must honor the same destination rules as cp/mv/ln's
-    destination check (CWD, worktrees, Write/Edit-allowed dirs, ~/.claude/plugins)
-    -- not just CWD."""
+    destination check (CWD, worktrees, Write/Edit-allowed dirs, ~/.claude/plugins,
+    any `.tmp` dir) -- not just CWD."""
 
     def test_touch_outside_cwd_but_within_allowed_edit_dir_approved(self, tmp_path, monkeypatch):
         os.environ['CLAUDE_CWD'] = str(tmp_path / "cwd")
@@ -641,10 +642,78 @@ class TestTouchRespectsAllowedEditDirs:
         assert check_cwd_file_command(f'touch "{target}"', "touch") is True
 
     def test_touch_outside_cwd_and_outside_allowed_dirs_denied(self, tmp_path, monkeypatch):
+        # Deliberately not under a `.tmp` segment -- that carve-out is covered
+        # separately by TestAnyTmpDirDestination, and would otherwise mask
+        # what this test is actually checking (no allowed-dir match at all).
+        os.environ['CLAUDE_CWD'] = str(tmp_path / "cwd")
+        monkeypatch.setattr(paths, "_ALLOWED_EDIT_DIRS", set())
+        target = tmp_path / "other-repo" / "output" / "marker.done"
+        assert check_cwd_file_command(f'touch "{target}"', "touch") is False
+
+
+class TestAnyTmpDirDestination:
+    """.tmp/ is scratch space in every repo, not just the current one -- a
+    cp/mv/touch/ln destination under a `.tmp` directory is approved
+    regardless of which repo (or no repo) it falls under."""
+
+    def test_is_within_any_tmp_dir_true_for_unrelated_repo(self, tmp_path):
+        target = tmp_path / "some-other-repo" / ".tmp" / "marker.done"
+        assert paths.is_within_any_tmp_dir(str(target)) is True
+
+    def test_is_within_any_tmp_dir_false_for_lookalike_segment(self, tmp_path):
+        target = tmp_path / "nottmpdir" / "marker.done"
+        assert paths.is_within_any_tmp_dir(str(target)) is False
+
+    def test_cp_into_unrelated_repos_tmp_dir_approved(self, tmp_path, monkeypatch):
+        os.environ['CLAUDE_CWD'] = str(tmp_path / "cwd")
+        monkeypatch.setattr(paths, "_ALLOWED_EDIT_DIRS", set())
+        src = tmp_path / "cwd" / "snapshot-target.js"
+        dest = tmp_path / "other-repo" / ".tmp" / "snapshot-target-copy.js"
+        assert check_cwd_file_command(f'cp "{src}" "{dest}"', "cp") is True
+
+    def test_touch_into_unrelated_repos_tmp_dir_approved(self, tmp_path, monkeypatch):
         os.environ['CLAUDE_CWD'] = str(tmp_path / "cwd")
         monkeypatch.setattr(paths, "_ALLOWED_EDIT_DIRS", set())
         target = tmp_path / "other-repo" / ".tmp" / "marker.done"
-        assert check_cwd_file_command(f'touch "{target}"', "touch") is False
+        assert check_cwd_file_command(f'touch "{target}"', "touch") is True
+
+
+class TestPluginCacheBlocking:
+    """Reading (or writing) a path under the installed plugin cache always
+    triggers Claude Code's own "sensitive file" confirmation, no matter what
+    this hook decides -- so the hook blocks with a rewrite instead of letting
+    the command reach that unavoidable prompt."""
+
+    def test_detects_forward_slash_windows_path(self):
+        cmd = 'cp "C:/Users/russe/.claude/plugins/cache/repo/plugin/1.0.0/templates/x.js" ".tmp/x.js"'
+        assert detect_plugin_cache_reference(cmd) is True
+
+    def test_detects_backslash_windows_path(self):
+        cmd = r'cp "C:\Users\russe\.claude\plugins\cache\repo\plugin\1.0.0\x.js" ".tmp\x.js"'
+        assert detect_plugin_cache_reference(cmd) is True
+
+    def test_does_not_flag_installed_plugins_dir_outside_cache(self):
+        cmd = 'cat "~/.claude/plugins/config.json"'
+        assert detect_plugin_cache_reference(cmd) is False
+
+    def test_does_not_flag_ordinary_repo_path(self):
+        cmd = 'cp "plugins/browser-chauffeur/skills/browser-chauffeur/templates/x.js" ".tmp/x.js"'
+        assert detect_plugin_cache_reference(cmd) is False
+
+    def test_does_not_flag_interpreter_running_a_plugin_script(self):
+        # Running a plugin's own script straight from the cache (python/node
+        # as the interpreter) is the normal, supported way plugins invoke
+        # their own tooling -- only cp/mv/ln/touch/chmod-style file ops on a
+        # cache path trip Claude Code's sensitive-file confirmation.
+        cmd = 'python "C:/Users/x/.claude/plugins/cache/repo/drainer/1.39.0/skills/drainer/scripts/close-session.py"'
+        assert detect_plugin_cache_reference(cmd) is False
+
+    def test_enforce_bash_blocks_with_rewrite_hint(self):
+        cmd = 'cp "C:/Users/russe/.claude/plugins/cache/repo/plugin/1.0.0/templates/x.js" ".tmp/x.js"'
+        reason = enforce_bash(cmd)
+        assert reason is not None
+        assert "plugin cache" in reason
+        assert "Read tool" in reason
 
 
 class TestCdCompoundDetection:

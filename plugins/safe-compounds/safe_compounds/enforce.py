@@ -1,10 +1,16 @@
-"""Enforcement = "rewrite into a form I can validate".
+"""Enforcement = "rewrite into a form the whole tool chain can validate".
 
 A block here does not mean "this is forbidden". It means the command is in a
-form whose safety the hook cannot statically determine (heredocs, redirection,
-inline scripts, env-var expansion, loops/conditionals/substitutions, ...), so it
-asks for an equivalent form that *can* be validated — typically a `.tmp/` Python
-script or the Write tool, both of which the hook can read and check.
+form whose safety can't be statically determined by some part of the chain
+that has to approve it before it runs — either this hook itself (heredocs,
+redirection, inline scripts, env-var expansion, loops/conditionals/
+substitutions, ...) or Claude Code's own native permission system, which
+re-prompts unconditionally for some paths (the installed plugin cache) no
+matter what this hook decides. Either way the fix is the same: ask for an
+equivalent form the whole chain can wave through without bugging the user —
+typically a `.tmp/` Python script or the Write tool for the hook's own blind
+spots, or pointing at a checked-out repo source instead of the plugin cache
+for the one Claude Code itself can never let this hook pre-approve.
 
 enforce_bash(command) returns a block-reason string, or None to let the command
 proceed to approval. Individual detectors are exposed for unit testing.
@@ -12,6 +18,7 @@ proceed to approval. Individual detectors are exposed for unit testing.
 import os
 import re
 
+from .commands import CWD_FILE_COMMAND_CONFIG
 from .log import log_debug
 from .paths import read_script_file
 from .scripts import extract_script_filename
@@ -339,6 +346,27 @@ def _subprocess_in_tmp_python(seg, word):
     return None
 
 
+PLUGIN_CACHE_PATTERN = re.compile(r'\.claude[/\\]plugins[/\\]cache[/\\]', re.IGNORECASE)
+
+
+def detect_plugin_cache_reference(command):
+    """True if a cp/mv/ln/touch/chmod segment references a path under the
+    installed plugin cache (~/.claude/plugins/cache/...). That's the same
+    command family check_cwd_file_command() already scopes destination rules
+    to (CWD_FILE_COMMAND_CONFIG) -- a script interpreter that merely takes a
+    path argument (e.g. `python .../cache/.../script.py`, the normal way a
+    plugin invokes its own tooling) is a different case and isn't included.
+    Claude Code's own permission system always shows a "sensitive file"
+    confirmation for a file-copy operation that touches the cache -- even a
+    read-only source -- independent of whatever this hook decides, and that
+    confirmation can't be suppressed from here. So route around it instead of
+    hitting it on every such command against an installed plugin."""
+    for seg in split_segments(command):
+        if first_word(seg.strip()) in CWD_FILE_COMMAND_CONFIG and PLUGIN_CACHE_PATTERN.search(seg):
+            return True
+    return False
+
+
 def enforce_bash(command):
     """Return a block-reason string for `command`, or None to allow it to
     proceed to approval. Mirrors the legacy block ordering exactly."""
@@ -346,6 +374,17 @@ def enforce_bash(command):
     if heredocs_found is not None:
         return ('BLOCKED: Heredoc syntax (<< EOF) detected. Per CLAUDE.md rules, never use heredocs. '
                 'Use the Write tool to create the file, then run it separately.')
+
+    if detect_plugin_cache_reference(command):
+        return ('BLOCKED: Command references a path under the installed plugin cache '
+                '(~/.claude/plugins/cache/...). Claude Code always shows its own "sensitive '
+                'file" confirmation for that path, no matter what this hook decides -- it '
+                'can\'t be suppressed here. If the plugin\'s source repo is checked out '
+                'locally, point the command at that checkout instead (e.g. '
+                '~/Dev/<org>/<repo>/plugins/<name>/...) -- ordinary repo content isn\'t '
+                'gated. Otherwise, read the file with the Read tool directly instead of '
+                'Bash -- that triggers just the one native prompt, without also needing '
+                'this Bash command approved.')
 
     cmdlet, alternative = detect_powershell_cmdlet(command)
     if cmdlet:
