@@ -39,6 +39,29 @@ def update_registry(mutate):
             time.sleep(0.05)
 
 
+def find_claude_ancestor_pid():
+    """Walk this hook process's own ancestry to find the claude.exe PID that launched it.
+    A bare `claude` launch (no --resume/--session-id) exposes its session id neither on its
+    command line nor — confirmed empirically — in its own process environment (Claude Code
+    only passes CLAUDE_CODE_SESSION_ID to the child processes it spawns, e.g. this hook and
+    the Bash tool, never setting it on itself). Recording the launching PID directly lets
+    find-orphans.py confirm such a session is still alive by PID liveness instead, sidestepping
+    that gap entirely. None if psutil is unavailable or no claude.exe ancestor is found."""
+    try:
+        import psutil
+    except ImportError:
+        return None
+    try:
+        proc = psutil.Process(os.getpid())
+        while proc is not None:
+            proc = proc.parent()
+            if proc is not None and (proc.name() or "").lower() == "claude.exe":
+                return proc.pid
+    except psutil.Error:
+        pass
+    return None
+
+
 def main():
     payload = json.load(sys.stdin)
     event = payload.get("hook_event_name")
@@ -49,10 +72,13 @@ def main():
         return
 
     if event == "SessionStart":
+        pid = find_claude_ancestor_pid()
+
         def add(registry):
             registry[session_id] = {
                 "cwd": cwd,
                 "started_at": datetime.datetime.now().isoformat(),
+                "pid": pid,
             }
         update_registry(add)
     elif event == "SessionEnd":

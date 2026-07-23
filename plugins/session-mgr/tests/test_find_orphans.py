@@ -98,6 +98,52 @@ def test_self_closed_tail_excluded_and_pruned():
         os.rmdir(project_dir)
 
 
+def test_bare_launch_excluded_via_live_pid():
+    print("test: a registry entry unmatched by session id, but whose recorded pid is still "
+          "a live claude.exe, is excluded (the bare `claude` launch case)")
+    session_id = f"test-find-orphans-{uuid.uuid4()}"
+    registry = find_orphans.load_registry()
+    registry[session_id] = {"cwd": "C:/fake/repo", "started_at": "2026-07-20T00:00:00",
+                             "pid": os.getpid()}
+    find_orphans.save_registry(registry)
+    orig_active = find_orphans.active_session_ids
+    orig_pid_check = find_orphans.pid_still_claude
+    find_orphans.active_session_ids = lambda: set()  # session id matches nothing
+    find_orphans.pid_still_claude = lambda pid: pid == os.getpid()  # but its pid is alive
+    try:
+        orphans = find_orphans.find_confirmed_orphans()
+        ids = {o["session_id"] for o in orphans}
+        check("not returned", session_id not in ids, f"got {ids}")
+    finally:
+        find_orphans.active_session_ids = orig_active
+        find_orphans.pid_still_claude = orig_pid_check
+        remove_registry_entry(session_id)
+
+
+def test_dead_pid_still_flagged_as_orphan():
+    print("test: a registry entry with a recorded pid that's no longer alive is still an orphan")
+    session_id = f"test-find-orphans-{uuid.uuid4()}"
+    registry = find_orphans.load_registry()
+    registry[session_id] = {"cwd": "C:/fake/repo", "started_at": "2026-07-20T00:00:00",
+                             "pid": 999999}  # not a real running pid
+    find_orphans.save_registry(registry)
+    orig_active = find_orphans.active_session_ids
+    find_orphans.active_session_ids = lambda: set()
+    try:
+        orphans = find_orphans.find_confirmed_orphans()
+        ids = {o["session_id"] for o in orphans}
+        check("orphan present", session_id in ids, f"got {ids}")
+    finally:
+        find_orphans.active_session_ids = orig_active
+        remove_registry_entry(session_id)
+
+
+def test_pid_still_claude_false_for_missing_pid():
+    print("test: pid_still_claude is False for a None/missing pid")
+    check("None pid", find_orphans.pid_still_claude(None) is False)
+    check("zero pid", find_orphans.pid_still_claude(0) is False)
+
+
 def test_cli_prints_json():
     print("test: run as a script prints a JSON array to stdout")
     result = subprocess.run([sys.executable, FIND_ORPHANS], capture_output=True, text=True)
@@ -113,6 +159,9 @@ if __name__ == "__main__":
     test_confirmed_orphan_returned()
     test_live_process_excluded()
     test_self_closed_tail_excluded_and_pruned()
+    test_bare_launch_excluded_via_live_pid()
+    test_dead_pid_still_flagged_as_orphan()
+    test_pid_still_claude_false_for_missing_pid()
     test_cli_prints_json()
     print()
     if failures:

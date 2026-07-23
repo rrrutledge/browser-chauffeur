@@ -31,9 +31,13 @@ SELF_CLOSE_RE = re.compile(r"taskkill\s+/PID\s+\S+\s+/T\s+/F|close-session\.py|e
 
 
 def active_session_ids():
-    """Session IDs of every currently-running `claude.exe` process: from its command line
-    (--resume/--session-id) or, for a bare launch with neither flag, its own
-    CLAUDE_CODE_SESSION_ID environment variable."""
+    """Session IDs of every currently-running `claude.exe` process, read from its command
+    line (--resume/--session-id). Falls back to the process's own CLAUDE_CODE_SESSION_ID
+    environment variable for a bare launch with neither flag, but that fallback has been
+    confirmed dead in practice: Claude Code only sets CLAUDE_CODE_SESSION_ID for the child
+    processes it spawns (hooks, the Bash tool), never on its own process, so a bare `claude`
+    launch never matches here by either signal. `find_confirmed_orphans()` covers that case
+    separately via `pid_still_claude()`, which doesn't depend on either signal."""
     ids = set()
     for proc in psutil.process_iter(["pid", "name", "cmdline"]):
         if (proc.info["name"] or "").lower() != "claude.exe":
@@ -51,6 +55,23 @@ def active_session_ids():
         except (psutil.AccessDenied, psutil.NoSuchProcess):
             pass
     return ids
+
+
+def pid_still_claude(pid):
+    """True if `pid` is still a live claude.exe process. This is the liveness check for a
+    bare `claude` launch (no --resume/--session-id): such a session's id appears neither on
+    its command line nor in its own process environment (see active_session_ids), so
+    session_registry.py's SessionStart hook instead records the launching claude.exe PID
+    directly (by walking its own ancestry). Checking that PID's liveness sidesteps the
+    session-id-matching gap entirely. Missing/non-numeric pid, or a PID now reused by some
+    other process, both return False."""
+    if not pid:
+        return False
+    try:
+        proc = psutil.Process(int(pid))
+        return (proc.name() or "").lower() == "claude.exe"
+    except (psutil.Error, ValueError, TypeError):
+        return False
 
 
 def load_registry():
@@ -109,6 +130,8 @@ def find_confirmed_orphans():
     to_prune = []
     for session_id, info in registry.items():
         if session_id in active:
+            continue
+        if pid_still_claude(info.get("pid")):
             continue
         if closed_itself_on_purpose(session_id):
             to_prune.append(session_id)
