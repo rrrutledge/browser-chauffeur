@@ -298,18 +298,32 @@ def read_script_file(filename):
 # temp dir and Claude's own authored content. Consumers add their own plugin
 # directories via the "trusted_script_dirs" config key.
 TRUSTED_SCRIPT_DIRS = [
-    '.tmp/', '/.tmp/', '\\.tmp\\',
-    '.claude/',
-    'plugins/',
-    'scripts/',
+    '.tmp',
+    '.claude',
+    'plugins',
+    'scripts',
 ]
+
+
+def _path_segments(path):
+    return [seg for seg in path.replace('\\', '/').split('/') if seg]
 
 
 def is_in_trusted_script_dir(filename):
     """True if the script lives in a known-safe directory (.tmp, .claude, or a
-    consumer-configured directory)."""
+    consumer-configured directory). Matches whole path segments, not a raw
+    substring -- a repo whose own name merely ends in e.g. "plugins" (like
+    this plugin's own repo) must not false-match just because that text
+    happens to appear inside the longer directory name."""
     from . import config
     resolved = _abs_against_cwd(filename)
-    normalized = resolved.replace('\\', '/')
+    path_segs = _path_segments(resolved)
     dirs = TRUSTED_SCRIPT_DIRS + list(config.get_config().get('trusted_script_dirs', []))
-    return any(d.replace('\\', '/') in normalized for d in dirs)
+    for d in dirs:
+        d_segs = _path_segments(d)
+        if not d_segs:
+            continue
+        n = len(d_segs)
+        if any(path_segs[i:i + n] == d_segs for i in range(len(path_segs) - n + 1)):
+            return True
+    return False
