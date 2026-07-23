@@ -367,6 +367,38 @@ def detect_plugin_cache_reference(command):
     return False
 
 
+GH_API_CONTENTS_PATTERN = re.compile(r'/?repos/[^\s/]+/[^\s/]+/contents/')
+
+
+def detect_gh_api_contents_write(command):
+    """True if a `gh api` call writes (PUT or DELETE) to the GitHub Contents
+    API (repos/.../contents/...) -- editing a file's bytes directly through
+    the API instead of cloning the repo and using normal file tools. Per
+    CLAUDE.md ("Writing files to other repos: clone, don't API"), this is
+    always the wrong mechanism, so it's blocked outright rather than left to
+    the approve-layer's reversibility check -- there's no version of this
+    endpoint call that should go through, only a different way to make the
+    same edit."""
+    for seg in split_segments(command):
+        tokens = shell_tokenize(seg.strip())
+        if len(tokens) < 3 or tokens[0] != 'gh' or tokens[1] != 'api':
+            continue
+        method = 'GET'
+        api_url = ''
+        i = 2
+        while i < len(tokens):
+            if tokens[i] in ('--method', '-X') and i + 1 < len(tokens):
+                method = tokens[i + 1].upper()
+                i += 2
+                continue
+            if not tokens[i].startswith('-') and not api_url:
+                api_url = tokens[i]
+            i += 1
+        if method in ('PUT', 'DELETE') and GH_API_CONTENTS_PATTERN.search(api_url):
+            return True
+    return False
+
+
 def enforce_bash(command):
     """Return a block-reason string for `command`, or None to allow it to
     proceed to approval. Mirrors the legacy block ordering exactly."""
@@ -374,6 +406,14 @@ def enforce_bash(command):
     if heredocs_found is not None:
         return ('BLOCKED: Heredoc syntax (<< EOF) detected. Per CLAUDE.md rules, never use heredocs. '
                 'Use the Write tool to create the file, then run it separately.')
+
+    if detect_gh_api_contents_write(command):
+        return ('BLOCKED: "gh api" is writing directly to the GitHub Contents API '
+                '(repos/.../contents/...) with PUT/DELETE. Per CLAUDE.md ("Writing files to '
+                'other repos: clone, don\'t API"), edit files in another repo by cloning (or '
+                'sparse-checking-out) it into .tmp/, editing the file with the Write/Edit tool, '
+                'then `git commit` and `git push` the branch -- never by hand-building a '
+                'Contents API payload. Rewrite the command that way.')
 
     if detect_plugin_cache_reference(command):
         return ('BLOCKED: Command references a path under the installed plugin cache '
