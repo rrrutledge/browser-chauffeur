@@ -23,7 +23,7 @@ from safe_compounds import procs  # noqa: E402
 from safe_compounds.mcp import classify_mcp_tool  # noqa: E402
 from safe_compounds.enforce import (  # noqa: E402
     detect_complex_bash, detect_simple_expansion, detect_cd_compound, detect_function_definition,
-    detect_plugin_cache_reference, enforce_bash,
+    detect_plugin_cache_reference, detect_gh_api_contents_write, enforce_bash,
 )
 from safe_compounds.scripts import check_node_segment, get_block_reason, reset_block_reason  # noqa: E402
 from safe_compounds import ai  # noqa: E402
@@ -714,6 +714,36 @@ class TestPluginCacheBlocking:
         assert reason is not None
         assert "plugin cache" in reason
         assert "Read tool" in reason
+
+
+class TestGhApiContentsWriteBlocking:
+    """`gh api` writing straight to the Contents API is always the wrong
+    mechanism for editing a file in another repo (CLAUDE.md: clone, don't
+    API) -- blocked outright, not left to the reversibility-based approve
+    layer that governs other gh api write methods."""
+
+    def test_detects_put(self):
+        cmd = 'gh api repos/o/r/contents/path/file.md -X PUT --input payload.json'
+        assert detect_gh_api_contents_write(cmd) is True
+
+    def test_detects_delete(self):
+        cmd = 'gh api -X DELETE repos/o/r/contents/path/file.md -f message=x -f sha=abc'
+        assert detect_gh_api_contents_write(cmd) is True
+
+    def test_get_not_flagged(self):
+        cmd = 'gh api repos/o/r/contents/path/file.md'
+        assert detect_gh_api_contents_write(cmd) is False
+
+    def test_write_to_other_endpoint_not_flagged(self):
+        cmd = 'gh api -X POST repos/o/r/issues -f title=x'
+        assert detect_gh_api_contents_write(cmd) is False
+
+    def test_enforce_bash_blocks_with_rewrite_hint(self):
+        cmd = 'gh api repos/o/r/contents/path/file.md -X PUT --input payload.json'
+        reason = enforce_bash(cmd)
+        assert reason is not None
+        assert 'Contents API' in reason
+        assert 'clone' in reason.lower()
 
 
 class TestCdCompoundDetection:

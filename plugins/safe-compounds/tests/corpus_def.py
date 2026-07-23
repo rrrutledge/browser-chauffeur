@@ -54,6 +54,17 @@ CASES = [
     {"id": "gh_repo_flag_pr_create", "tool": "Bash", "command": "gh --repo owner/repo pr create --title x --body y", "expect": "ALLOW"},
     {"id": "gh_R_flag_pr_list", "tool": "Bash", "command": "gh -R owner/repo pr list", "expect": "ALLOW"},
     {"id": "gh_repo_flag_issue_view", "tool": "Bash", "command": "gh --repo owner/repo issue view 5", "expect": "ALLOW"},
+    # Editing a file's bytes through the Contents API is always the wrong
+    # mechanism per CLAUDE.md ("clone, don't API") -- blocked outright with a
+    # rewrite hint rather than left to the reversibility-based approve layer.
+    {"id": "gh_api_contents_put_blocked", "tool": "Bash",
+     "command": 'gh api repos/o/r/contents/path/file.md -X PUT --input payload.json', "expect": "BLOCK"},
+    {"id": "gh_api_contents_delete_blocked", "tool": "Bash",
+     "command": "gh api -X DELETE repos/o/r/contents/path/file.md -f message=x -f sha=abc", "expect": "BLOCK"},
+    # Reading a file's content via the same endpoint is fine -- only the
+    # write methods are blocked.
+    {"id": "gh_api_contents_get_allowed", "tool": "Bash",
+     "command": "gh api repos/o/r/contents/path/file.md", "expect": "ALLOW"},
 
     # --- wmic (read-only get/list only) -------------------------------------
     {"id": "wmic_process_get", "tool": "Bash", "command": "wmic process where \"name='python.exe'\" get ProcessId,CommandLine", "expect": "ALLOW"},
