@@ -85,11 +85,12 @@ the summary) — never treat it as identity.
 
 ## CLEAR
 Zoom exposes **no public API to mark a Tasks step complete** (the `tasks.zoom.us` links are a UI surface,
-not a documented write endpoint). So CLEAR for this source is **internal seen-state only**: recording the
-item done (the worker writes `<id>.done`, the poller marks it cleared) means it never resurfaces — a new
-meeting summary is a new item, so nothing is lost. Honest and reversible (losing seen-state just
-re-surfaces it; never destructive). The *real* completion of an action happens in its own channel — the
-email got sent, the doc got written — and is cleared there if that channel is itself a drainer source.
+not a documented write endpoint). So CLEAR for this source is **internal seen-state only**: the item's
+seen key, written when the poller dispatched it, is what keeps it from resurfacing, and the poller's
+reconcile leaves this source alone - a new meeting summary is a new item, so nothing is lost. Honest and
+reversible (losing seen-state just re-surfaces it; never destructive). The *real* completion of an action
+happens in its own channel - the email got sent, the doc got written - and is cleared there if that
+channel is itself a drainer source.
 Optionally the worker can open the item's `url` (the `tasks.zoom.us` deep link) in **browser-chauffeur** to
 tick the step off by hand — offer it, don't assume it.
 

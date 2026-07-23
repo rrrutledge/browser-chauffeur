@@ -48,13 +48,11 @@ worker_model_complex: claude-opus-4-8    # complex items (multi-step work, code,
 triage_model: claude-sonnet-5            # the per-cycle batched triage call (also pinned, standard context)
 
 # EOD digest (run-digest.py) — the once-a-day interactive slow loop.
-digest_model: claude-opus-4-8   # the digest session (summarize fyi, group junk, reconciliation); standard context
-stale_hours: 12                 # DIGEST-ONLY: the EOD digest lists any needs-you item still dispatched past
-                                # this many hours. The poller's orphan recovery uses no timeout (see below).
-orphan_grace_minutes: 15        # orphan recovery is purely liveness-based: a worker tab whose claude
-                                # process is gone is treated as closed and re-queued the next cycle — no
-                                # time limit on open tabs. This grace only stops a just-spawned tab (process
-                                # not up yet) from being misread as dead.
+digest_model: claude-opus-4-8   # the digest session (summarize fyi, group junk); standard context
+orphan_grace_minutes: 15        # the poller re-queues any item whose source object is still unhandled with
+                                # no live worker process on it - there is no time limit on an open tab.
+                                # This grace only stops a just-spawned tab (process not up yet) from being
+                                # misread as dead.
 digest_time: "17:00"            # wall-clock time (HH:MM, 24h) the daily digest task fires (used by the installer).
 ---
 

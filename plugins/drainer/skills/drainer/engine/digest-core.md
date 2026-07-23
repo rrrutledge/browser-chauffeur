@@ -1,20 +1,17 @@
 # drainer digest-core — the once-a-day EOD digest procedure (interactive, reviewed)
 
 The fast loop (`engine/poller-core.md`) never clears fyi/junk — it queues them for this digest. The
-digest is the **slow loop**: once a day it empties that queue **with Russell in the loop** and
-re-surfaces any needs-you item whose worker never finished. It is the opposite of the poller in one
-way that governs everything below: **it is interactive and clears nothing without Russell's review.**
+digest is the **slow loop**: once a day it empties that queue **with Russell in the loop**. It is the
+opposite of the poller in one way that governs everything below: **it is interactive and clears nothing
+without Russell's review.**
 
-Before this interactive session even opens, the launcher (`run-digest.py`) runs one silent,
-deterministic step: a CLEAR-verification sweep (`reconcile_cleared`) that checks every needs-you item
-already marked `cleared` against the live mailbox, in case a worker's archive call silently failed
-despite writing `.done`. Anything still physically present gets reset for a fresh poller pass — no AI,
-nothing shown to Russell here. That's a different case from step 4 below (a worker that never finished
-at all); this doc's reconciliation section only ever sees the dispatched-but-stale kind.
+Unfinished needs-you items are not your concern - the poller's own reconcile catches them every cycle,
+by re-queuing any item whose source object is still unhandled with no live worker on it, so a crashed or
+closed worker's item is back in the drain within minutes rather than waiting for you.
 
 You are a single digest session in your own tab. Your launcher gave you the runtime facts (runtime_dir,
-repo, the seen-state helper path, the providers dir, the provider-health file, and stale_hours).
-Everything you read and clear is under `runtime_dir`.
+repo, the seen-state helper path, the providers dir, and the provider-health file). Everything you read
+and clear is under `runtime_dir`.
 
 ## 0. Provider health — surface any stuck source FIRST (the headless poller can't)
 
@@ -45,29 +42,25 @@ miss. Then continue to the queue below.
 
 ## 1. Gather (deterministic — just read state)
 
-**Snapshot once — work the batch, don't chase the queue.** Take the `queue-list` and `stale-list`
-results below at the start of the run as *the* batch for this digest, and process only that fixed set.
-The headless poller keeps draining in the background — anything it adds *after* this snapshot belongs to
-the **next** daily digest, so leave those items to ride. Re-run `queue-list` only to confirm what you've
-already cleared, never to pull freshly-arrived items into the current pass. A digest ends when the
-snapshot it opened with is handled, not when the live queue happens to read empty.
+**Snapshot once - work the batch, don't chase the queue.** Take the `queue-list` result below at the
+start of the run as *the* batch for this digest, and process only that fixed set. The headless poller
+keeps draining in the background - anything it adds *after* this snapshot belongs to the **next** daily
+digest, so leave those items to ride. Re-run `queue-list` only to confirm what you've already cleared,
+never to pull freshly-arrived items into the current pass. A digest ends when the snapshot it opened
+with is handled, not when the live queue happens to read empty.
 
 - **The digest queue:** `node <seen-state.js> queue-list <runtime_dir>` → a JSON array of
   `{ id, source, item }`. Each `item` carries at least `triage` (`fyi` | `junk` | `auto-handle`), `from`,
   `subject`, and `snippet`, plus whatever else that provider's capture recorded (e.g. a `url` and the ids
   its CLEAR needs). Split it by `item.triage` into **fyi**, **junk**, and **auto-handle** (the last is
   what a worker already did on its own — see step 2b).
-- **The stale needs-you items:** `node <seen-state.js> stale-list <runtime_dir> <stale_hours>` → a JSON
-  array of `{ id, source, ts, ageHours, item }` for every needs-you item still `dispatched` (never
-  cleared) and older than `stale_hours`. These are the reconciliation cases — a worker crashed or was
-  never finished.
 - For richer fyi summaries, read each item's captured body when the provider wrote one (its capture
   writes the body alongside `items/<id>.json`) — don't summarize from the snippet alone when the full
   body is right there.
 
-If the queue is empty AND there are no stale items AND no provider is stuck (step 0), tell Russell
-there's nothing to digest and stop. A stuck provider alone is still worth reporting — surface it even
-when the queue is otherwise empty.
+If the queue is empty AND no provider is stuck (step 0), tell Russell there's nothing to digest and
+stop. A stuck provider alone is still worth reporting - surface it even when the queue is otherwise
+empty.
 
 ## 2b. Auto-handled — report what Claude already did (no decision needed)
 
@@ -78,7 +71,7 @@ re-tagged `auto-handle` on the way into the queue). The action and the source-cl
 section (separate from fyi), one line each: what was done and the key detail (e.g. "Approved workspace
 invite for *jane@acme.com* (requested by Bob)"). Order most-notable first. On Russell's review these need
 **no provider CLEAR** (the worker already cleared the source) — just `queue-clear` them like the rest
-(step 5). If something here looks wrong — a rule fired when it shouldn't have — flag it so the AUTO-HANDLE
+(step 4). If something here looks wrong - a rule fired when it shouldn't have - flag it so the AUTO-HANDLE
 rule can be tightened; that's the one case where an auto-handled item needs follow-up.
 If an auto-handled item is itself outreach-related, apply the Trello check from step 2 too.
 
@@ -124,27 +117,17 @@ in one step.
 the proposal from it — don't hand-write a rule from memory. A company-specific `from:<sender>` filter is
 the tell that the skill was skipped.
 
-This step's proposal, and his go-ahead on it in step 5, approve **building a rule for this type of
+This step's proposal, and his go-ahead on it in step 4, approve **building a rule for this type of
 junk** — they are not approval of a rule's literal text. When the chosen stop is a mail rule, creating
 or appending it always routes through the provider's JUNK-LEARNING section, which in turn requires the
 **`mail-filters`** skill's show-literal-rule gate: show Russell the exact phrase(s), the bucket they land
 in, and the action, and create only on his explicit OK of that shown text.
 
-## 4. Reconciliation — re-surface the stale-but-unfinished
-
-List each stale needs-you item with its age, who it's from, the subject, and a one-line note on what
-it was waiting for (read its captured body if needed). These fell through the cracks; the point
-is that they stay visible. If a stale item is itself outreach-related, apply the Trello check from
-step 2 too, before listing it, so an item already tracked on a card is framed as such. For each, offer
-Russell the choice: **reopen** it (spawn a fresh worker tab the same way the poller does, or handle it
-here), or **clear** it as no-longer-needed. Take no clearing action until he chooses.
-
-## 5. Present, then clear ONLY on Russell's review
+## 4. Present, then clear ONLY on Russell's review
 
 Present the whole digest in the terminal — any stuck-provider health alerts (step 0) at the very top,
-then the **Auto-handled** section (step 2b), fyi summaries, grouped junk with stop-proposals, and the
-stale list — in one readable pass. Then **wait for Russell's go-ahead.** Nothing is disposed of
-silently.
+then the **Auto-handled** section (step 2b), fyi summaries, and grouped junk with stop-proposals - in
+one readable pass. Then **wait for Russell's go-ahead.** Nothing is disposed of silently.
 
 For **each auto-handled item** (already actioned + source-cleared by its worker), on his OK just remove
 it from the queue: `node <seen-state.js> queue-clear <runtime_dir> <id>` — no provider CLEAR.
@@ -157,11 +140,11 @@ On his OK, for **each fyi/junk item he approves clearing**:
 3. Remove it from the queue: `node <seen-state.js> queue-clear <runtime_dir> <id>`.
 
 For any junk source-stop Russell approves, apply it per that provider's JUNK-LEARNING.
-For a stale needs-you item he wants cleared, run its provider CLEAR and
-`node <seen-state.js> clear <runtime_dir> <source> <id>` to mark it cleared in seen-state.
 
 If Russell defers some items, leave them in the queue — they ride to the next digest. Empty only what
-he approved.
+he approved. **Do the provider CLEAR and the `queue-clear` together, in that order, for every item you
+empty.** An item dropped from the queue while its source object is still sitting in the inbox is one
+the poller's reconcile reads as unfinished, so it re-dispatches as a fresh worker tab.
 
 ## Hard rules (carry forward from the engine)
 
