@@ -96,8 +96,11 @@ Some commands are approved based on their *arguments*, not just their name:
 - **`curl`** — approved to `localhost:*` or configured trusted domains (any method);
   approved anywhere for reads (no write flags like `-X POST`, `-d`, `--data`).
   To add a trusted domain: add to `curl_domains` in `~/.claude/safe-compounds-config.json`.
-- **`cp`, `mv`, `touch`, `ln`, `chmod`** — approved only when the destination path is
-  within the current git repo (CWD, git worktree, or `settings.json` allowed-edit paths).
+- **`cp`, `mv`, `touch`, `ln`, `chmod`** — approved when the destination path is within
+  the current git repo (CWD, git worktree, or `settings.json` allowed-edit paths),
+  `~/.claude/plugins/`, a `trusted_destination_dirs` entry, or any `.tmp` directory
+  anywhere on disk (not just the current repo's) — `.tmp/` is always scratch space,
+  regardless of which repo it's under.
 - **`sed`** — approved unless the `-i` (in-place edit) flag is present.
 
 #### 4. AI inspection + learned store (`commands.py` — `_ai_learn`, `learned.py`)

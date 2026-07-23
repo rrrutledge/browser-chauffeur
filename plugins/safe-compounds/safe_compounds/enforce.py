@@ -1,10 +1,14 @@
 """Enforcement = "rewrite into a form I can validate".
 
-A block here does not mean "this is forbidden". It means the command is in a
-form whose safety the hook cannot statically determine (heredocs, redirection,
-inline scripts, env-var expansion, loops/conditionals/substitutions, ...), so it
-asks for an equivalent form that *can* be validated — typically a `.tmp/` Python
-script or the Write tool, both of which the hook can read and check.
+A block here does not mean "this is forbidden". Usually it means the command is
+in a form whose safety the hook cannot statically determine (heredocs,
+redirection, inline scripts, env-var expansion, loops/conditionals/substitutions,
+...), so it asks for an equivalent form that *can* be validated — typically a
+`.tmp/` Python script or the Write tool, both of which the hook can read and
+check. One detector (the installed plugin cache) blocks for a different reason:
+the form is perfectly safe, but Claude Code's own permission system re-prompts
+for it regardless of this hook's decision, so the rewrite routes around a
+prompt this hook can never suppress rather than one it can't yet validate.
 
 enforce_bash(command) returns a block-reason string, or None to let the command
 proceed to approval. Individual detectors are exposed for unit testing.
@@ -339,6 +343,30 @@ def _subprocess_in_tmp_python(seg, word):
     return None
 
 
+PLUGIN_CACHE_PATTERN = re.compile(r'\.claude[/\\]plugins[/\\]cache[/\\]', re.IGNORECASE)
+
+# Commands whose whole purpose is moving/touching a file (as opposed to a
+# script interpreter that merely takes a path argument, e.g. `python
+# .../cache/.../script.py` -- running an installed plugin's own script
+# straight from the cache is the normal, supported way plugins invoke their
+# own tooling, and doesn't trip Claude Code's sensitive-file confirmation).
+FILE_COPY_COMMANDS = {'cp', 'mv', 'ln', 'touch', 'chmod'}
+
+
+def detect_plugin_cache_reference(command):
+    """True if a cp/mv/ln/touch/chmod segment references a path under the
+    installed plugin cache (~/.claude/plugins/cache/...). Claude Code's own
+    permission system always shows a "sensitive file" confirmation for a
+    file-copy operation that touches that path -- even a read-only source --
+    independent of whatever this hook decides, and that confirmation can't be
+    suppressed from here. So route around it instead of hitting it on every
+    such command against an installed plugin."""
+    for seg in split_segments(command):
+        if first_word(seg.strip()) in FILE_COPY_COMMANDS and PLUGIN_CACHE_PATTERN.search(seg):
+            return True
+    return False
+
+
 def enforce_bash(command):
     """Return a block-reason string for `command`, or None to allow it to
     proceed to approval. Mirrors the legacy block ordering exactly."""
@@ -346,6 +374,17 @@ def enforce_bash(command):
     if heredocs_found is not None:
         return ('BLOCKED: Heredoc syntax (<< EOF) detected. Per CLAUDE.md rules, never use heredocs. '
                 'Use the Write tool to create the file, then run it separately.')
+
+    if detect_plugin_cache_reference(command):
+        return ('BLOCKED: Command references a path under the installed plugin cache '
+                '(~/.claude/plugins/cache/...). Claude Code always shows its own "sensitive '
+                'file" confirmation for that path, no matter what this hook decides -- it '
+                'can\'t be suppressed here. If the plugin\'s source repo is checked out '
+                'locally, point the command at that checkout instead (e.g. '
+                '~/Dev/<org>/<repo>/plugins/<name>/...) -- ordinary repo content isn\'t '
+                'gated. Otherwise, read the file with the Read tool directly instead of '
+                'Bash -- that triggers just the one native prompt, without also needing '
+                'this Bash command approved.')
 
     cmdlet, alternative = detect_powershell_cmdlet(command)
     if cmdlet:

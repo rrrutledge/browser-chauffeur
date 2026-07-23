@@ -139,6 +139,18 @@ def is_path_within_claude_plugins(path):
     return path_under(path, os.path.expanduser('~/.claude/plugins'))
 
 
+def is_within_any_tmp_dir(path):
+    """True if `.tmp` appears as its own path segment, anywhere -- not just
+    under the current repo's CWD. `.tmp/` is the user's universal scratch
+    convention (every repo's throwaway output lives there, per CLAUDE.md), so
+    a `.tmp` destination is disposable regardless of which repo it falls
+    under. Mirrors the same "anywhere" scope is_output_redirection_safe()
+    already gives `.tmp/` for `>`/`>>` targets."""
+    resolved = _abs_against_cwd(path)
+    normalized = normalize_path_cross_platform(resolved)
+    return '.tmp' in normalized.split('/')
+
+
 # Built into the plugin: dirs cp/mv/ln may write to even though they're
 # outside the repo. Downloads is a personal-computer staging area (build
 # outputs, exported PDFs, attachments) rather than org-specific data, so it's
