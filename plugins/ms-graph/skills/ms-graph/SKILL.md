@@ -1,6 +1,6 @@
 ---
 name: ms-graph
-description: Read/write a personal Microsoft account's Outlook mail, calendar, and contacts via the Microsoft Graph API (official @azure/msal-node + @microsoft/microsoft-graph-client). Use to list/create/update calendar events, search/read mail, draft replies, send yourself a note, or list/create People contacts — no browser needed after a one-time sign-in. For personal (consumer) Microsoft accounts.
+description: Read/write a personal Microsoft account's Outlook mail, calendar, and contacts, and read OneDrive items, via the Microsoft Graph API (official @azure/msal-node + @microsoft/microsoft-graph-client). Use to list/create/update calendar events, search/read mail, draft replies, send yourself a note, list/create People contacts, or mint a OneDrive web deep link — no browser needed after a one-time sign-in. For personal (consumer) Microsoft accounts.
 ---
 
 # Microsoft Graph — Personal Outlook Mail & Calendar
@@ -28,7 +28,7 @@ Read and write a **personal** Outlook.com mailbox, calendar, and contacts direct
 
 ## Entra app registration
 
-A delegated app supporting "personal Microsoft accounts" with redirect URI (Web) `http://localhost:8080/callback` and delegated scopes `Mail.ReadWrite Mail.Send Calendars.ReadWrite MailboxSettings.ReadWrite Contacts.ReadWrite User.Read offline_access`. The `consumers` authority targets the personal mailbox. Recreate the client secret in the portal before it expires and update `GRAPH_CLIENT_SECRET`. When a new scope is added to `SCOPES` in `graph-client.js`, add the matching Microsoft Graph delegated permission in the Entra app registration's API permissions, then re-run `auth.js` — the existing token cache won't carry the new scope until Russell re-consents.
+A delegated app supporting "personal Microsoft accounts" with redirect URI (Web) `http://localhost:8080/callback` and delegated scopes `Mail.ReadWrite Mail.Send Calendars.ReadWrite MailboxSettings.ReadWrite Contacts.ReadWrite Files.Read User.Read offline_access`. The `consumers` authority targets the personal mailbox. Recreate the client secret in the portal before it expires and update `GRAPH_CLIENT_SECRET`. When a new scope is added to `SCOPES` in `graph-client.js`, add the matching Microsoft Graph delegated permission in the Entra app registration's API permissions, then re-run `auth.js` — the existing token cache won't carry the new scope until Russell re-consents.
 
 ## Scripts
 
@@ -63,6 +63,9 @@ All under `scripts/`:
   - List: `node contacts.js --list [--top=50]` (alphabetical by display name)
   - Search: `node contacts.js --search="Foster"` (prefix match on display name)
   - Create: `node contacts.js --create --name="Stuart Foster" [--email=a@x] [--phone=555-1234] [--company=Acme] [--job-title=Director]`
+- **`drive.js`** (personal OneDrive; needs the `Files.Read` scope)
+  - Web deep link: `node drive.js weburl "Claude/job-applications/LasVegasSands"` (prints the item's `webUrl` — a one-click `onedrive.live.com` link that opens the file or folder in the browser)
+  - List a folder: `node drive.js list "Claude/job-applications"` (prints each child's name and `webUrl`; path defaults to the drive root). Paths are relative to the OneDrive root.
 
 ## Auth-error handling (do without being asked)
 
