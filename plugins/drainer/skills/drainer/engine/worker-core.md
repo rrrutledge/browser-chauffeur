@@ -338,36 +338,32 @@ completed work that left nothing for Russell (§6a) — likewise write `.done` a
 (`python <skill>/scripts/close-session.py`). A silently-resolved tab is just noise in the taskbar;
 close it.
 
-## 6b. A tab is not a tracker
-The tab and the source item are two different places to hold state — the item is always the right one.
-A delay (a send he's holding until a stated time, a reply you're waiting on, a step that can't happen
-until something else does) is not a reason to keep a tab open — it's a reason to make sure the item
-resurfaces on its own (a Trello due date, a ⏳ nudge, a calendar reminder), then close now. Keep a tab
-open only for what's actually live: something to do right now, or a question you're waiting on him to
-answer in the next few minutes. This is the same test whether you're deciding not to open a tab at all
-(a captured item's SITUATIONAL-CHECK) or closing one you already opened (below) — apply it once, the
-same way, everywhere a "should this stay open" call comes up.
-
 **Close your browser tabs when you and the user are truly finished with the item.** If you opened tabs in
 the browser (read a card, drove a web composer, clicked through a link), close them as your last act once
-§6b's test says nothing here is still live — the ideal that keeps the browser sweep a rare backstop
-rather than the norm. "Done" here is later than `.done`: `.done` frees the queue slot the moment the work
-looks complete, but your session stays live, and for most needs-you items the user still has a human step
-to do — send the draft you staged, submit the form. Keep any tab the user still needs open through that.
-Once §6b's test clears — his part is done, or what's left is a tracked delay rather than live work — close
-the tabs you opened: invoke browser-chauffeur to run `chauffeur.py --close-owned`, which closes only this
-session's tabs (never the user's, never another session's, never the browser's last page). If a tab you
-opened was never something the user needed to see — its content is already mirrored where they work (a
-Slack draft that shows in their own Slack) — close it as soon as that's clear rather than waiting.
+the item is genuinely done — the ideal that keeps the browser sweep a rare backstop rather than the norm.
+"Done" here is later than `.done`: `.done` frees the queue slot the moment the work looks complete, but
+your session stays live, and for most needs-you items the user still has a human step to do — send the
+draft you staged, submit the form — and you often have follow-up (learning from the send per §5, a tracker
+card) once they confirm. Keep any tab the user still needs open through all that. When they've told you
+their part is done and you've finished any follow-up, close the tabs you opened: invoke browser-chauffeur
+to run `chauffeur.py --close-owned`, which closes only this session's tabs (never the user's, never
+another session's, never the browser's last page). If a tab you opened was never something the user needed
+to see — its content is already mirrored where they work (a Slack draft that shows in their own Slack) —
+close it as soon as that's clear rather than waiting.
 
-**Close your own session tab too, once §6b's test clears — don't wait to be asked.** Apply the same test
-to this tab, not just to browser tabs opened along the way. Once the human step is done (Russell told you
+**Close your own session tab too, once truly finished — don't wait to be asked.** Apply the same "truly
+finished" bar to this tab, not just to browser tabs opened along the way — and the bar is about what's
+still *live*, not about whether the eventual outcome has happened yet. The tab and the source item are two
+different places to hold state, and the item is always the right one: a delay by itself (a send he's
+holding until a stated time, a reply you're waiting on, a step that can't happen until something else
+does) is not a reason to keep this tab open — make sure the item resurfaces on its own instead (a Trello
+due date, a ⏳ nudge, a calendar reminder), then close now. Once the human step is done (Russell told you
 he sent/submitted/confirmed it) and any follow-up you owed is finished (§5's learn-from-send, a tracker
 card, advancing the source item) — or once what's left is a delay already tracked on the item rather than
 something live — close this tab yourself as your very last act, by invoking the **`session-mgr:close`**
 skill. Don't ask "anything else?" and don't wait for him to type `/close` — those two extra round-trips
-are exactly what this rule removes. Stay open only when §6b's test says otherwise: there's something to
-do right now, or you're waiting on an answer from him in the next few minutes.
+are exactly what this rule removes. Stay open only when there's something to do right now, or you're
+waiting on an answer from him in the next few minutes.
 
 ## 7. Improve the source (don't just hoard facts)
 If the user had to tell you something you could have known, don't just note it — figure out *where it
