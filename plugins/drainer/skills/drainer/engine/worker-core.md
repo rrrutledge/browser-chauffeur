@@ -205,6 +205,23 @@ to see, close the tab silently:
 
 Do not present anything to Russell. The digest is how he learns about it.
 
+## 2d. Still needs-you? CLEAR now if your source allows it
+Most sources hold CLEAR until step 6, after step 3's work is verified done — see step 6 for why. A
+provider file can instead mark CLEAR safe to do immediately once this section and §2c have confirmed
+the item is real, current, and genuinely needs-you (not already answered, not actually fyi/junk).
+Email is documented this way, in `providers/email-base.md` — every email provider keys **one item per
+message**, so clearing this one can never hide some other unread item the way it could for a chat
+source sharing a single read-cursor across several messages.
+
+When your provider says CLEAR-now is safe: run it right here, before starting step 3's work. This
+relies on the **orphan-sessions** provider to catch a session that dies mid-task — it resumes the exact
+crashed session from the live-session registry regardless of what state the source item is in, so the
+un-cleared item was never the thing standing in for "not done yet" to begin with. What still must not
+slip: if step 3's work doesn't finish in this session, the normal "waiting on someone else → tracker
+card" rule (step 6) is what keeps the remaining work visible, since the source item no longer will.
+Step 6 is then a no-op for this item — nothing left to clear, just present the result once the work and
+any draft are done.
+
 ## 3. Do the action (you do the work WITH the user)
 Figure out what the item needs and **DO THE WORK in this session**. You are the implementer, not a
 task manager. Opening a PR? You open it. Filing a ticket? You file it. Completing a form? You fill it
@@ -248,8 +265,12 @@ concrete, actionable lesson to the **document-authoring skill's Voice learning l
 them what you learned.
 
 ## 6. Advance the item (source-specific)
-Only advance when step 3's work is complete — the task/action/deliverable is done. The item is your
-task list; it stays in the queue until the work itself is finished, not just until you've drafted a reply.
+If §2d already cleared this item, there's nothing left to do here — skip straight to presenting your
+result below once the work and any draft are finished.
+
+Otherwise: only advance when step 3's work is complete — the task/action/deliverable is done. The item
+is your task list; it stays in the queue until the work itself is finished, not just until you've
+drafted a reply.
 
 Clear the item so it doesn't resurface by performing your source's clear/advance — DON'T assume what
 that means, read the **CLEAR** op in `providers/<source>-provider.md`.

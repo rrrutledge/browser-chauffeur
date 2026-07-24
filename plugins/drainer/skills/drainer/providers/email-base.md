@@ -33,6 +33,22 @@ The captured item is the inbound message at capture time; the conversation may h
 
 ---
 
+## CLEAR TIMING — archive as soon as the item is confirmed (see worker-core.md §2d)
+
+Every email provider keys **one item per message**, so archiving this item can never hide some other
+unread message the way it could for a chat source sharing one read-cursor across several messages.
+Because of that, email is one of the sources worker-core.md's §2d allows to CLEAR early: once
+SITUATIONAL-CHECK above (and §2c's re-triage check) confirm this is a genuine, still-open needs-you
+item — not already answered, not actually fyi/junk — run your provider's CLEAR op right away, before
+starting any of step 3's work. Don't wait for the work to finish first.
+
+Step 6 in worker-core.md is then a no-op for email: nothing left to clear there, just present the
+result once the work and any draft are done. If the work doesn't finish in this session, the normal
+"waiting on someone else → tracker card" rule is what keeps it visible from then on — not the archived
+email.
+
+---
+
 ## DRAFT-MODE (shared rules — CLI commands are in your provider file)
 
 ### Voice gate (mandatory — do this before writing a single word)
