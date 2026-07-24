@@ -297,11 +297,17 @@ def read_script_file(filename):
 # Generic, organization-agnostic directories whose scripts are trusted: the
 # temp dir and Claude's own authored content. Consumers add their own plugin
 # directories via the "trusted_script_dirs" config key.
+#
+# 'scratchpad' covers the per-session harness scratch directory Claude Code
+# itself assigns (e.g. .../Temp/claude/<project-hash>/<session-id>/scratchpad)
+# -- the same disposable, non-shared role as .tmp/, just outside the repo and
+# under a name this plugin predates.
 TRUSTED_SCRIPT_DIRS = [
     '.tmp',
     '.claude',
     'plugins',
     'scripts',
+    'scratchpad',
 ]
 
 

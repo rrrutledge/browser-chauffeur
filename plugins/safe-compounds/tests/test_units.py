@@ -496,6 +496,32 @@ class TestCheckNodeSegment:
         assert "full absolute path" in reason
 
 
+class TestScratchpadTrustedScriptDir:
+    def test_session_scratchpad_path_is_trusted(self):
+        # Mirrors the harness's actual per-session scratch layout:
+        # .../Temp/claude/<project-hash>/<session-id>/scratchpad/<file>.js
+        path = os.path.join(
+            tempfile.gettempdir(), 'claude', 'C--Users-russe-Dev-some-repo',
+            'a9ca91a0-8176-421a-8e53-95c64e6606ae', 'scratchpad', 'get-link.js',
+        )
+        assert paths.is_in_trusted_script_dir(path) is True
+
+    def test_check_node_segment_skips_ai_for_scratchpad_script(self):
+        # A script living in the scratchpad should be trusted by location
+        # alone, with no AI content check (and thus no dependence on model
+        # availability/latency for something already safe by convention).
+        set_config()
+        scratch_dir = os.path.join(tempfile.gettempdir(), 'claude', 'proj-hash', 'sess-id', 'scratchpad')
+        os.makedirs(scratch_dir, exist_ok=True)
+        script_path = os.path.join(scratch_dir, 'probe.js')
+        with open(script_path, 'w', encoding='utf-8') as f:
+            f.write("console.log('hi')\n")
+        try:
+            assert check_node_segment(f'node "{script_path}"') is True
+        finally:
+            os.remove(script_path)
+
+
 class TestHasUnquotedWindowsDrivePath:
     def test_bare_path_flagged(self):
         assert has_unquoted_windows_drive_path(r'node C:\Users\russe\script.js') is True
