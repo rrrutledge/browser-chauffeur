@@ -14,6 +14,7 @@ Usage:
     python run-digest.py --repo C:/Users/russe/Dev/personal-ai-pod --dry-run    # print the brief only
 """
 import argparse
+import datetime
 import importlib.util
 import json
 import os
@@ -117,6 +118,27 @@ def write_seed(runtime_dir, repo, cfg):
     return prompt_file
 
 
+def _fmt_local(ts):
+    """An ISO-8601 UTC timestamp rendered in the machine's local zone, or the raw string on any error."""
+    if not ts:
+        return "never"
+    try:
+        return datetime.datetime.fromisoformat(ts).astimezone().strftime("%Y-%m-%d %I:%M %p %Z")
+    except ValueError:
+        return ts
+
+
+def _print_heartbeat(hb):
+    """Show the poller's own liveness (`_poller` heartbeat) so a run of empty cycles is legible: the
+    poller stamps this every live cycle — including a presence-gated no-op — so a stale `last_drained`
+    reads as 'correctly idle' or 'not running' instead of a silent death."""
+    if not hb:
+        print("  Poller heartbeat: none recorded yet (no live cycle has run since this was added).")
+        return
+    print(f"  Poller heartbeat: last ran {_fmt_local(hb.get('last_run_ts'))} "
+          f"(decided: {hb.get('last_decision', '?')}); last drained {_fmt_local(hb.get('last_drained_ts'))}.")
+
+
 def print_brief(runtime_dir, cfg):
     """Deterministic preview (no AI, no tab): queue counts + the stale-item list. For the dry-run ramp."""
     queue = run_node([SEEN_STATE, "queue-list", runtime_dir]).stdout
@@ -139,7 +161,8 @@ def print_brief(runtime_dir, cfg):
             health = json.load(f) or {}
     except (OSError, ValueError):
         health = {}
-    stuck = {n: h for n, h in health.items() if (h or {}).get("consecutive_failures", 0) >= 2}
+    stuck = {n: h for n, h in health.items()
+             if not n.startswith("_") and (h or {}).get("consecutive_failures", 0) >= 2}
     if stuck:
         print(f"  Provider health: {len(stuck)} stuck (>=2 consecutive failures):")
         for n, h in stuck.items():
@@ -147,6 +170,7 @@ def print_brief(runtime_dir, cfg):
                   f"failing since last OK {h.get('last_ok_ts')}\n        {h.get('last_error')}")
     else:
         print("  Provider health: all healthy (no provider with >=2 consecutive failures).")
+    _print_heartbeat(health.get("_poller") or {})
     print(f"  Digest queue: {len(q)} item(s) -> {counts['fyi']} fyi, {counts['junk']} junk, "
           f"{counts['other']} other")
     for e in q:
