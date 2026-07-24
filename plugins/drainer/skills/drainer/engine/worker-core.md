@@ -342,16 +342,19 @@ another session's, never the browser's last page). If a tab you opened was never
 to see — its content is already mirrored where they work (a Slack draft that shows in their own Slack) —
 close it as soon as that's clear rather than waiting.
 
-**Close your own session tab too, once truly finished — don't wait to be asked.** Apply the same
-"truly finished" bar to this tab, not just to browser tabs opened along the way. Once every one of
-these holds — the human step is done (Russell told you he sent/submitted/confirmed it), any
-follow-up you owed is finished (§5's learn-from-send, a tracker card, advancing the source item),
-and nothing is still open (no unanswered question back to him, no PR awaiting his merge decision, no
-draft he hasn't confirmed sending) — close this tab yourself as your very last act, by invoking the
-**`session-mgr:close`** skill. Don't ask "anything else?" and don't wait for him to type `/close` —
-those two extra round-trips are exactly what this rule removes. Stay open, as normal, whenever any of
-the above is still outstanding: a PR that's shipped but not yet merged, a question you're waiting on
-him to answer, or a draft he hasn't told you he sent.
+**Close your own session tab too, once truly finished — don't wait to be asked.** Apply the same "truly
+finished" bar to this tab, not just to browser tabs opened along the way — and the bar is about what's
+still *live*, not about whether the eventual outcome has happened yet. The tab and the source item are two
+different places to hold state, and the item is always the right one: a delay by itself (a send he's
+holding until a stated time, a reply you're waiting on, a step that can't happen until something else
+does) is not a reason to keep this tab open — make sure the item resurfaces on its own instead (a Trello
+due date, a ⏳ nudge, a calendar reminder), then close now. Once the human step is done (Russell told you
+he sent/submitted/confirmed it) and any follow-up you owed is finished (§5's learn-from-send, a tracker
+card, advancing the source item) — or once what's left is a delay already tracked on the item rather than
+something live — close this tab yourself as your very last act, by invoking the **`session-mgr:close`**
+skill. Don't ask "anything else?" and don't wait for him to type `/close` — those two extra round-trips
+are exactly what this rule removes. Stay open only when there's something to do right now, or you're
+waiting on an answer from him in the next few minutes.
 
 ## 7. Improve the source (don't just hoard facts)
 If the user had to tell you something you could have known, don't just note it — figure out *where it
