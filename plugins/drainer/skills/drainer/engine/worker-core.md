@@ -205,6 +205,36 @@ to see, close the tab silently:
 
 Do not present anything to Russell. The digest is how he learns about it.
 
+## 2d. Clear as soon as this item's scope is fully accounted for
+One rule, every source: **CLEAR the moment you can state the complete scope of what this item covers
+and every piece of that scope is accounted for** — done, staged as a draft, or tracked on a follow-up
+card. "Accounted for" is not "fully resolved" — a staged draft counts, a tracker card counts. Don't
+wait for step 6 by default; clear as soon as that bar is met, whichever step of this file you're
+actually on when it happens.
+
+What differs source to source is **how soon the bar is met**, because that depends on how soon the
+item's full scope is even knowable:
+- **Scope is the item itself, known instantly** — one email is one ask (every email provider keys one
+  item per message, per `providers/email-base.md`), and a source like `zoom` fans out one item per
+  action step. There, this section and §2c have already told you everything: the item is real, current,
+  and needs-you. The bar is met right here — CLEAR now, before starting step 3's work.
+- **Scope isn't visible until you've read the item** — a chat source (Slack, Teams) can bundle several
+  distinct asks behind one shared read-cursor; you don't know how many until the grouping read above
+  (§2, "group-then-handle") is done. The bar isn't met at capture — clearing then, before any of those
+  asks are accounted for, would silently drop all of them the moment the cursor advances. It's met once
+  every ask the grouping surfaced is handled, staged, or tracked — which for a multi-ask span can land
+  as late as step 6, but is never later than that.
+
+Clearing before step 3's work is verified complete relies on the **orphan-sessions** provider to catch a
+session that dies mid-task — it resumes the exact crashed session from the live-session registry
+regardless of what state the source item is in, so an un-cleared item was never what stood in for "not
+done yet." What still must not slip: anything this session doesn't finish before ending needs the normal
+"waiting on someone else → tracker card" rule (step 6), since the source item no longer tracks it once
+cleared.
+
+Once you've cleared under this section, step 6 is a no-op for this item — nothing left to clear there,
+just present the result once the work and any draft are done.
+
 ## 3. Do the action (you do the work WITH the user)
 Figure out what the item needs and **DO THE WORK in this session**. You are the implementer, not a
 task manager. Opening a PR? You open it. Filing a ticket? You file it. Completing a form? You fill it
@@ -248,8 +278,12 @@ concrete, actionable lesson to the **document-authoring skill's Voice learning l
 them what you learned.
 
 ## 6. Advance the item (source-specific)
-Only advance when step 3's work is complete — the task/action/deliverable is done. The item is your
-task list; it stays in the queue until the work itself is finished, not just until you've drafted a reply.
+If §2d already cleared this item, there's nothing left to do here — skip straight to presenting your
+result below once the work and any draft are finished.
+
+Otherwise: only advance when step 3's work is complete — the task/action/deliverable is done. The item
+is your task list; it stays in the queue until the work itself is finished, not just until you've
+drafted a reply.
 
 Clear the item so it doesn't resurface by performing your source's clear/advance — DON'T assume what
 that means, read the **CLEAR** op in `providers/<source>-provider.md`.

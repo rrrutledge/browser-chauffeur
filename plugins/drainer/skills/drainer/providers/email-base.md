@@ -33,6 +33,15 @@ The captured item is the inbound message at capture time; the conversation may h
 
 ---
 
+## CLEAR TIMING — the item's scope is knowable instantly (see worker-core.md §2d)
+
+Every email provider keys **one item per message**, so this item's full scope is known the moment
+SITUATIONAL-CHECK above (and §2c's re-triage check) confirm it's a genuine, still-open needs-you item —
+there's no multi-ask span to read first the way a chat source has. That means §2d's clear-now bar is
+met right there: archive it before starting any of step 3's work, not after.
+
+---
+
 ## DRAFT-MODE (shared rules — CLI commands are in your provider file)
 
 ### Voice gate (mandatory — do this before writing a single word)

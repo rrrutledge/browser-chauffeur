@@ -76,8 +76,12 @@ Advance the read cursor (the Slack "gone") — reversible and non-destructive (n
 or a newer message re-surfaces it). Narrate it. Never delete messages.
 
 Marking read advances the cursor to `ts` in one move, clearing every unread message under it — so a
-still-unhandled ask in the span silently disappears and never re-surfaces. Apply worker-core §6's clear
-guard: mark read only once every ask in the span is handled, staged, or tracked.
+still-unhandled ask in the span silently disappears and never re-surfaces. This is worker-core §2d's
+clear-as-soon-as-scope-is-accounted-for principle, same as every other source — it just lands later here
+because a Slack item's full scope (how many distinct asks the unread span holds) isn't knowable until
+the §2 grouping read is done. Once it is: mark read as soon as every ask in the span is handled, staged,
+or tracked — don't hold it for step 6 beyond that point.
+
 - **DM / group DM / channel mention / channel unread** — `node slack.js --mark --channel=<channel> --ts=<ts>`
   (`conversations.mark`). Advances the read cursor to `ts`. For a channel @-mention this clears the
   mention badge but leaves any newer messages unread (the channel may re-surface as "Unread in #channel"
