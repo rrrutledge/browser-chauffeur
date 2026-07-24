@@ -56,8 +56,9 @@ def read_config(repo):
         # Target total open Claude Code tabs system-wide — drainer worker tabs, the drainer itself,
         # and any tab Russell opened by hand. The poller drains as fast as possible (no artificial
         # per-cycle throttle) until the live tab count reaches this, then holds new dispatches until
-        # it drops back below.
-        "target_open_tabs": int(scalar("target_open_tabs", "12")),
+        # it drops back below. Read from the DRAINER_TARGET_OPEN_TABS env var (default 12) — a fresh
+        # process each poller cycle, so a changed value takes effect on the very next cycle.
+        "target_open_tabs": int(os.environ.get("DRAINER_TARGET_OPEN_TABS", "12")),
         "max_messages_per_cycle": int(scalar("max_messages_per_cycle", "50")),
         "idle_threshold_seconds": int(scalar("idle_threshold_seconds", "600")),
         # Worker tabs need an explicit model — otherwise they inherit the session default, which may be
