@@ -25,7 +25,8 @@ minutes (a ~5-min cron) and holds each source at **zero un-started actionable it
 
 - **needs-you →** the poller immediately spawns a **worker tab** so the user starts acting right away,
   dispatching as fast as possible until the count of live Claude Code tabs system-wide reaches
-  `target_open_tabs` (default 12); beyond that, items wait for a later cycle.
+  `target_open_tabs` (the `DRAINER_TARGET_OPEN_TABS` env var, default 12); beyond that, items wait
+  for a later cycle.
 - **auto-handle →** a standing-rule item; the poller spawns a worker that acts autonomously, clears the
   source, queues a digest entry, and finishes without interrupting the user.
 - **fyi / junk →** captured to a **digest queue** for a once-a-day readout; nothing is disposed of
@@ -58,9 +59,9 @@ left alone however long it's up, because it's either being worked or parked for 
 
 | In the plugin (generic) | Injected per machine |
 | --- | --- |
-| `engine/` — poller contract, worker procedure, triage rubric, provider contract; `scripts/` — the deterministic glue | `.claude/drainer.local.md` — which providers are active, per-provider config, `target_open_tabs`, `max_messages_per_cycle`, presence |
+| `engine/` — poller contract, worker procedure, triage rubric, provider contract; `scripts/` — the deterministic glue | `.claude/drainer.local.md` — which providers are active, per-provider config, `max_messages_per_cycle`, presence |
 | `providers/` — the providers (Outlook, Teams, Trello) | `context.md` (in `local_dir`) — who the user is, their systems, standing rules |
-| `docs/`, `templates/` | **credentials** (OS store / env) |
+| `docs/`, `templates/` | **credentials + tuning env vars** (OS store / env) — e.g. `DRAINER_TARGET_OPEN_TABS` |
 
 The plugin never contains anything that identifies the user or their organization.
 

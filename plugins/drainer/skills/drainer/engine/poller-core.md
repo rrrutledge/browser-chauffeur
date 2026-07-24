@@ -26,7 +26,8 @@ spawn, record — is code. No AI re-implements the loop.
 
 1. **Presence-gate** (`scripts/presence.py`) — away/locked → exit silently (skipped under `--dry-run`).
 2. **Read config** from `<project>/.claude/drainer.local.md`: enabled providers, `runtime_dir`,
-   `target_open_tabs` (default 12), `max_messages_per_cycle` (default 50), `idle_threshold_seconds`.
+   `max_messages_per_cycle` (default 50), `idle_threshold_seconds`. Also reads `target_open_tabs`
+   from the `DRAINER_TARGET_OPEN_TABS` environment variable (default 12).
 3. **Per provider — enumerate the new:** call the provider's enumerate (for outlook-graph,
    `mail.js --list-inbox --json --top=<max_messages_per_cycle>` — read+unread, newest-first, **no time
    window**: the keeper drains the whole inbox a batch at a time across cycles). Compute each item's
