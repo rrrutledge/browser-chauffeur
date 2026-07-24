@@ -54,6 +54,8 @@ CASES = [
     {"id": "gh_repo_flag_pr_create", "tool": "Bash", "command": "gh --repo owner/repo pr create --title x --body y", "expect": "ALLOW"},
     {"id": "gh_R_flag_pr_list", "tool": "Bash", "command": "gh -R owner/repo pr list", "expect": "ALLOW"},
     {"id": "gh_repo_flag_issue_view", "tool": "Bash", "command": "gh --repo owner/repo issue view 5", "expect": "ALLOW"},
+    {"id": "gh_repo_sync", "tool": "Bash", "command": "gh repo sync owner/repo --source owner/repo --branch main", "expect": "ALLOW"},
+    {"id": "gh_repo_sync_force", "tool": "Bash", "command": "gh repo sync owner/repo --branch main --force", "expect": "PROMPT"},
     # Editing a file's bytes through the Contents API is always the wrong
     # mechanism per CLAUDE.md ("clone, don't API") -- blocked outright with a
     # rewrite hint rather than left to the reversibility-based approve layer.

@@ -304,6 +304,18 @@ def _gh_api_safe(tokens):
     return True
 
 
+def _gh_repo_sync_ok(tokens):
+    """gh repo sync fast-forwards a branch from its source (like `git pull
+    --ff-only`) and fails rather than rewriting history on divergence. --force
+    lifts that guard and can discard commits, so it keeps prompting."""
+    return not any(t in ('--force', '-f') for t in tokens)
+
+
+GH_SPECIALS = {
+    'repo': {'sync': _gh_repo_sync_ok},
+}
+
+
 # gh global flags that consume the next token as their argument
 GH_GLOBAL_FLAGS_WITH_ARG = {'--repo', '-R', '--hostname', '--cwd'}
 
@@ -338,6 +350,9 @@ def is_gh_command_safe(seg):
         subs = get_subcommands(seg, skip=group_idx + 1)
         action = subs[0] if subs else ''
         if action in GH_TRUSTED_SUBCOMMANDS[group]:
+            return True
+        special = GH_SPECIALS.get(group, {}).get(action)
+        if special and special(tokens):
             return True
         pair = f'{group}:{action}'
         if pair in _gh_trusted_pairs():
