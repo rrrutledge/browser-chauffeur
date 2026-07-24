@@ -115,7 +115,7 @@ Use for: Confluence specs, how-to guides, PRDs, PR descriptions, Word docs, publ
   Resist listing every permission, alternative, and implementation note.
 - **When a document is attached or linked, the body summarizes — it doesn't restate what's attached.**
   Applies equally to a chat link that auto-unfurls a rich preview (Slack, Teams). Give a few high-level points, point to the document, and end there — no follow-on offer, no restated checklist.
-  **When the attachment itself is the answer, drop the summary too** — say what it is, point at it, and stop.
+  **When the attachment itself is the answer, drop the summary too** — say what it is, point at it, and carry in the body only what the attachment leaves out, never the facts it already states.
   This covers an image or screenshot of the thing, where any description just repeats the picture, and equally a document sent because someone asked for exactly what it contains (a prospectus in answer to "what are the options?"): pulling its numbers or headings into the body pre-empts the read and buries the one line that matters.
 - Avoid corporate filler ("leverage", "streamline", "as per"), long compound sentences, and effusive sign-offs.
 
