@@ -48,12 +48,22 @@ def seen_state(*cli_args):
 
 
 def load_seen(runtime_dir, source):
-    """Return the {id: {triage, status}} map for a source; missing/corrupt -> {} (fail-safe)."""
+    """Return the {id: {triage}} map for a source; missing/corrupt -> {} (fail-safe)."""
     try:
         with open(os.path.join(runtime_dir, "seen.json"), encoding="utf-8") as f:
             return (json.load(f) or {}).get(source, {})
     except (OSError, ValueError):
         return {}
+
+
+def write_json_atomic(path, data):
+    """Write JSON via a temp file + replace, so a reader never sees a half-written state. The Python
+    mirror of seen-state.js's writeJsonAtomic, shared by the health and reconcile state files."""
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = f"{path}.tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+    os.replace(tmp, path)
 
 
 # ---------------------------------------------------------------------------- provider health (observability)
@@ -74,12 +84,7 @@ def load_health(runtime_dir):
 
 
 def save_health(runtime_dir, health):
-    os.makedirs(runtime_dir, exist_ok=True)
-    path = os.path.join(runtime_dir, HEALTH_FILE)
-    tmp = f"{path}.tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(health, f, indent=2)
-    os.replace(tmp, path)
+    write_json_atomic(os.path.join(runtime_dir, HEALTH_FILE), health)
 
 
 def record_health_ok(health, name):
@@ -599,12 +604,8 @@ def load_handled(runtime_dir):
 
 
 def save_handled(runtime_dir, handled):
-    os.makedirs(runtime_dir, exist_ok=True)
-    path = os.path.join(runtime_dir, HANDLED_FILE)
-    tmp = f"{path}.tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump({k: sorted(v) for k, v in handled.items()}, f, indent=2)
-    os.replace(tmp, path)
+    write_json_atomic(os.path.join(runtime_dir, HANDLED_FILE),
+                      {k: sorted(v) for k, v in handled.items()})
 
 
 def reconcile_unhandled(runtime_dir, cfg, providers, dry_run=False):
