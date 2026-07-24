@@ -239,6 +239,13 @@ PIP_TRUSTED_SUBCOMMANDS = {'2>&1', 'check', 'freeze', 'install', 'list', 'show',
 PNPM_TRUSTED_SUBCOMMANDS = {'install', 'add', 'update', 'remove', 'list', 'outdated', 'prune'}
 BUN_TRUSTED_SUBCOMMANDS = {'install', 'add', 'update', 'remove', 'test'}
 SCHTASKS_TRUSTED_SUBCOMMANDS = {'/query', '//query', '/change', '//change', '/disable', '//disable', '/enable', '//enable'}
+# Read-only verbs only: qe/el/gl/gli/ep/gp just read the event log or its
+# metadata. sl/im/um mutate log config or publishers, and cl/epl/al clear,
+# export, or archive a log — all excluded so they keep prompting.
+WEVTUTIL_TRUSTED_SUBCOMMANDS = {
+    'qe', 'query-events', 'el', 'enum-logs', 'gl', 'get-log',
+    'gli', 'get-log-info', 'ep', 'enum-publishers', 'gp', 'get-publisher',
+}
 
 
 # ------------------------------------------------------------------ gh --------
@@ -368,6 +375,7 @@ SUBCOMMAND_SPECS = {
     'bun':      {'command': 'bun',      'trusted': BUN_TRUSTED_SUBCOMMANDS,      'category': 'BUN_TRUSTED_SUBCOMMANDS',      'allow_empty': True},
     'schtasks': {'command': 'schtasks', 'trusted': SCHTASKS_TRUSTED_SUBCOMMANDS, 'category': None, 'case_insensitive': True},
     'reg':      {'command': 'reg',      'trusted': {'query'},                     'category': None, 'case_insensitive': True},
+    'wevtutil': {'command': 'wevtutil', 'trusted': WEVTUTIL_TRUSTED_SUBCOMMANDS,   'category': None, 'case_insensitive': True},
     'gh':   is_gh_command_safe,
     'wmic': is_wmic_safe,
 }

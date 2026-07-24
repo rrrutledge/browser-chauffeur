@@ -91,6 +91,13 @@ CASES = [
     {"id": "schtasks_change_prompts", "tool": "Bash", "command": "schtasks /Create /TN MyTask /TR notepad.exe /SC once", "expect": "PROMPT"},
     {"id": "reg_query_capitalized", "tool": "Bash", "command": "reg QUERY HKLM\\Software\\Foo", "expect": "ALLOW"},
 
+    # --- wevtutil (read-only verbs allowed, write/destructive verbs prompt) --
+    {"id": "wevtutil_query_events", "tool": "Bash", "command": "wevtutil qe //sq:true .tmp/dk-events.xml //c:200 //rd:true //f:text", "expect": "ALLOW"},
+    {"id": "wevtutil_query_events_piped", "tool": "Bash", "command": "wevtutil qe Application //c:50 //f:text | grep Error | head -20", "expect": "ALLOW"},
+    {"id": "wevtutil_get_log_capitalized", "tool": "Bash", "command": "wevtutil GL Application", "expect": "ALLOW"},
+    {"id": "wevtutil_clear_log_prompts", "tool": "Bash", "command": "wevtutil cl Application", "expect": "PROMPT"},
+    {"id": "wevtutil_set_log_prompts", "tool": "Bash", "command": "wevtutil sl Application /ms:1", "expect": "PROMPT"},
+
     # --- unknown command (AI disabled -> defer) -----------------------------
     {"id": "unknown_cmd", "tool": "Bash", "command": "frobnicate --all", "expect": "PROMPT"},
 
