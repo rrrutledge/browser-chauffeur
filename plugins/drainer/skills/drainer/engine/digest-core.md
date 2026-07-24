@@ -24,8 +24,7 @@ the guaranteed-visible channel that closes that gap. Before anything else:
 
 - Read `<runtime_dir>/provider-health.json` (missing/empty → all providers healthy; say nothing).
   It maps each provider to `{ consecutive_failures, last_error, last_error_kind, last_error_ts,
-  last_ok_ts }`. One key, `_poller`, is not a provider — it's the poller's own heartbeat; skip it in the
-  per-provider scan below and read it separately in the heartbeat check that follows.
+  last_ok_ts }`. The `_poller` key is not a provider — skip it in the scan below (see the heartbeat bullet).
 - Report **at the very top of the digest** every provider with `consecutive_failures >= 2` (one stray
   failure is just a blip; a sustained streak means it's stuck). For each, give Russell a one-step fix:
   - Name the provider, when it last drained (`last_ok_ts`) and how many cycles it's been failing.
@@ -40,36 +39,14 @@ the guaranteed-visible channel that closes that gap. Before anything else:
   - Example: *"⚠️ **gmail** hasn't drained since 2026-06-19 14:05 — 38 cycles failing: `gmail enumerate
     failed (auth/IMAP?): …`. Likely an expired GMAIL_APP_PASSWORD (User-scope env var) — refresh it and
     the next cycle recovers."*
+- **Heartbeat** — the `_poller` entry (`{ last_run_ts, last_decision, last_drained_ts }`) is the poller's
+  own liveness, stamped every cycle including no-op ones. Flag it ONLY when `last_run_ts` is many hours
+  stale and the machine wasn't just asleep — that means DrainerKeeper stopped firing or a poller instance
+  hung (check `schtasks /query /tn DrainerKeeper /v` and running `pythonw`). A fresh `last_run_ts` with an
+  old `last_drained_ts` is just an idle/away machine — benign, say nothing.
 
 This is informational — there's nothing to clear. It just makes a silently-dead provider impossible to
-miss. Then continue to the heartbeat check below.
-
-### Poller heartbeat — is the poller itself alive?
-
-The provider streaks above catch an expired credential, but they say nothing about the poller as a
-whole: if the scheduled task stops firing, or the process dies before it writes anything, every
-`last_ok_ts` simply freezes and the digest would report "all healthy" while nothing has drained for
-hours. The `_poller` heartbeat closes that gap. Every live cycle stamps it — **including a cycle that
-does no work because the machine was away or locked** — so its absence of movement is itself a signal.
-
-Read the `_poller` entry: `{ last_run_ts, last_decision, idle_seconds, locked, last_drained_ts }`.
-`last_decision` is `drained` (a full cycle ran), `skipped-away` (input idle past the threshold), or
-`skipped-locked` (workstation locked). `last_drained_ts` advances only on a `drained` cycle.
-
-- **`last_run_ts` is many hours stale** (well beyond the ~5-min cadence, and the machine hasn't just
-  been asleep) → the scheduled task isn't firing or the poller is dying before its write. This is the
-  "poller itself never ran" failure — flag it: the DrainerKeeper task may be disabled, or a poller
-  instance may be hung holding the single-instance lock. Point Russell at Task Scheduler
-  (`schtasks /query /tn DrainerKeeper /v`) and the running `pythonw` processes.
-- **`last_run_ts` is fresh but `last_drained_ts` is old**, with a run of `skipped-away` /
-  `skipped-locked` decisions → the poller is healthy and simply idled because the machine was away or
-  locked that whole span. Benign — say so plainly rather than alarming. It's only worth a nudge if
-  Russell knows he was actively using the machine during that window, which would point at a presence
-  misread (`presence.py` idle/lock detection).
-- **`last_decision` is `drained` and recent** → the poller is fully healthy; no need to mention it
-  unless nothing else is worth reporting.
-
-Then continue to the queue below.
+miss. Then continue to the queue below.
 
 ## 1. Gather (deterministic — just read state)
 
