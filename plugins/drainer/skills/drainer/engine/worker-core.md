@@ -205,22 +205,35 @@ to see, close the tab silently:
 
 Do not present anything to Russell. The digest is how he learns about it.
 
-## 2d. Still needs-you? CLEAR now if your source allows it
-Most sources hold CLEAR until step 6, after step 3's work is verified done — see step 6 for why. A
-provider file can instead mark CLEAR safe to do immediately once this section and §2c have confirmed
-the item is real, current, and genuinely needs-you (not already answered, not actually fyi/junk).
-Email is documented this way, in `providers/email-base.md` — every email provider keys **one item per
-message**, so clearing this one can never hide some other unread item the way it could for a chat
-source sharing a single read-cursor across several messages.
+## 2d. Clear as soon as this item's scope is fully accounted for
+One rule, every source: **CLEAR the moment you can state the complete scope of what this item covers
+and every piece of that scope is accounted for** — done, staged as a draft, or tracked on a follow-up
+card. "Accounted for" is not "fully resolved" — a staged draft counts, a tracker card counts. Don't
+wait for step 6 by default; clear as soon as that bar is met, whichever step of this file you're
+actually on when it happens.
 
-When your provider says CLEAR-now is safe: run it right here, before starting step 3's work. This
-relies on the **orphan-sessions** provider to catch a session that dies mid-task — it resumes the exact
-crashed session from the live-session registry regardless of what state the source item is in, so the
-un-cleared item was never the thing standing in for "not done yet" to begin with. What still must not
-slip: if step 3's work doesn't finish in this session, the normal "waiting on someone else → tracker
-card" rule (step 6) is what keeps the remaining work visible, since the source item no longer will.
-Step 6 is then a no-op for this item — nothing left to clear, just present the result once the work and
-any draft are done.
+What differs source to source is **how soon the bar is met**, because that depends on how soon the
+item's full scope is even knowable:
+- **Scope is the item itself, known instantly** — one email is one ask (every email provider keys one
+  item per message, per `providers/email-base.md`), and a source like `zoom` fans out one item per
+  action step. There, this section and §2c have already told you everything: the item is real, current,
+  and needs-you. The bar is met right here — CLEAR now, before starting step 3's work.
+- **Scope isn't visible until you've read the item** — a chat source (Slack, Teams) can bundle several
+  distinct asks behind one shared read-cursor; you don't know how many until the grouping read above
+  (§2, "group-then-handle") is done. The bar isn't met at capture — clearing then, before any of those
+  asks are accounted for, would silently drop all of them the moment the cursor advances. It's met once
+  every ask the grouping surfaced is handled, staged, or tracked — which for a multi-ask span can land
+  as late as step 6, but is never later than that.
+
+Clearing before step 3's work is verified complete relies on the **orphan-sessions** provider to catch a
+session that dies mid-task — it resumes the exact crashed session from the live-session registry
+regardless of what state the source item is in, so an un-cleared item was never what stood in for "not
+done yet." What still must not slip: anything this session doesn't finish before ending needs the normal
+"waiting on someone else → tracker card" rule (step 6), since the source item no longer tracks it once
+cleared.
+
+Once you've cleared under this section, step 6 is a no-op for this item — nothing left to clear there,
+just present the result once the work and any draft are done.
 
 ## 3. Do the action (you do the work WITH the user)
 Figure out what the item needs and **DO THE WORK in this session**. You are the implementer, not a

@@ -131,7 +131,10 @@ newer than `firstUnreadMessageId` (present in `items/<id>.json`):
 Skip step 4 if no newer messages were found — the clear was clean.
 
 If the underlying WORK isn't finished (you only drafted a reply), do NOT clear — leave the conversation
-unread and write a "paused" note instead.
+unread and write a "paused" note instead. This is worker-core §2d's clear-as-soon-as-scope-is-accounted-for
+principle, same as every other source — it just lands this late here because a Teams item's full scope
+(how many distinct asks the unread messages hold, per MULTI-MESSAGE THREADS above) isn't knowable until
+they're all read, and marking read is all-or-nothing across the whole conversation.
 
 ## JUNK-LEARNING
 None. Teams junk is just cleared (marked read) — the user manages their own Teams mutes; don't propose
