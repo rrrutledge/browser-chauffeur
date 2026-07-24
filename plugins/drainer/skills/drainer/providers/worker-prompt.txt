@@ -7,4 +7,4 @@ the work first; ADVANCE via the provider's CLEAR only once it's done, and only a
 any send. If nothing is needed right now, resolve quietly.
 
 Your FINAL message before yielding MUST open with the briefing (who / what they asked / any deadline)
-and then what you did — the user may never have seen your earlier messages. Write items/<id>.done last.
+and then what you did - the user may never have seen your earlier messages.

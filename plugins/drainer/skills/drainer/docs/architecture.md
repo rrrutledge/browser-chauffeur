@@ -50,9 +50,10 @@ user.
 Every mechanism's worst case is *redundant work*, never a *dropped item*: seen-state is a separate id
 store (losing it re-processes, never hides); a seen-id is recorded only **after** dispatch succeeds (an
 aborted cycle retries next time); workers are idempotent (a duplicate tab's situational-check resolves
-quietly). Orphan recovery follows the same principle — a worker tab closed without writing `.done` is
-detected by **liveness** (not a timeout) and re-queued so its slot frees, while an open, live tab is
-left alone however long it's up, because it's either being worked or parked for the user.
+quietly). Completion follows the same principle - it is **observed on the source**, not reported by the
+worker: an item still unhandled in its source with no live worker session on it is re-queued for a fresh
+tab, while an open, live tab is left alone however long it's up, because it's either being worked or
+parked for the user.
 
 ## Two layers: the plugin vs. what each machine injects
 
@@ -70,7 +71,7 @@ Each contract is owned by exactly one file — this doc only points to them:
 
 - **Triage** — the one rubric, *"is there something for the user to do?"* sorted into needs-you /
   auto-handle / fyi / junk → `engine/triage.md`.
-- **Poller contract** — enumerate / cap / dispatch / record, seen-state, the orphan sweep →
+- **Poller contract** - enumerate / cap / dispatch / record, seen-state, the source-state reconcile ->
   `engine/poller-core.md`.
 - **Worker procedure** — read brain → situational-check → do → draft → advance → `engine/worker-core.md`.
 - **Daily digest** — the once-a-day interactive readout and reconciliation sweep → `engine/digest-core.md`.

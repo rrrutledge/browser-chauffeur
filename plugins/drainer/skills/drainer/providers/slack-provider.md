@@ -110,7 +110,7 @@ auto-handle — it falls back to the normal needs-you/fyi/junk triage.
    - **Action:** drive **browser-chauffeur** to the message permalink (`url` in the captured item) and
      click **"Send Invitation"**.
    - **Digest note:** "Auto-approved workspace invite: *[invitee email]* (requested by *[requester]*)."
-   - **Then** CLEAR the item (mark read) and write `.done` immediately.
+   - **Then** CLEAR the item (mark read) - that is what marks it handled.
    - This rule is for *adding a person to the workspace* only — distinguished from a Slack Connect join
      by the wording: "invite [person] to [workspace]" = this rule (approve); "join a Slack Connect
      channel" = rule 2 below (reject).
@@ -121,7 +121,7 @@ auto-handle — it falls back to the normal needs-you/fyi/junk triage.
    - **Action:** drive **browser-chauffeur** to the message permalink (`url` in the captured item) and
      click **"Decline"** (the reject/ignore action on the request — not "Accept").
    - **Digest note:** "Auto-rejected Slack Connect request: *[channel/org]* (requested by *[requester]*)."
-   - **Then** CLEAR the item (mark read) and write `.done` immediately.
+   - **Then** CLEAR the item (mark read) - that is what marks it handled.
 
 ## JUNK-LEARNING
 Stop this noise arriving again, in **priority order** (best outcome = it never pings) — propose, never

@@ -43,9 +43,9 @@ instructions: |-
     where AI is used (batched triage + the worker).
   - **`engine/worker-core.md`** — the per-item worker procedure (read brain → situational-check → do
     the work → draft in voice → learn from the send → advance the item).
-  - **`engine/digest-core.md`** — the slow loop: the once-a-day, interactive EOD digest
-    (`scripts/run-digest.py`) that empties the fyi/junk queue and re-surfaces stale needs-you items,
-    clearing nothing without Russell's review.
+  - **`engine/digest-core.md`** - the slow loop: the once-a-day, interactive EOD digest
+    (`scripts/run-digest.py`) that empties the fyi/junk queue, clearing nothing without Russell's
+    review.
   - **`engine/provider.md`** — the interface a provider implements.
 
   ### 4. Hard rules (always)
