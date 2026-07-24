@@ -134,6 +134,15 @@ CASES = [
 
     # --- enforcement (can't statically validate -> rewrite) -----------------
     {"id": "heredoc", "tool": "Bash", "command": "cat << EOF\nhi\nEOF", "expect": "BLOCK"},
+    # PowerShell here-string syntax (@'...'@) is not valid Bash: an embedded
+    # apostrophe (a contraction, e.g. "letter's") silently closes the quote
+    # early and corrupts the argument, so it's blocked rather than validated.
+    {"id": "powershell_herestring", "tool": "Bash",
+     "command": "git commit -m @'\nthe cover letter's default structure\n'@", "expect": "BLOCK"},
+    # A single-quoted string that merely contains a literal "@" on its own
+    # line (not the here-string open/close pair) must not be misdetected.
+    {"id": "at_sign_not_herestring", "tool": "Bash",
+     "command": "echo 'contact: foo@bar.com'", "expect": "ALLOW"},
     {"id": "output_redirect", "tool": "Bash", "command": "echo hi > out.txt", "expect": "BLOCK"},
     {"id": "append_redirect", "tool": "Bash", "command": "echo hi >> out.txt", "expect": "BLOCK"},
     # Regression: a quoted redirect target used to be stripped to nothing

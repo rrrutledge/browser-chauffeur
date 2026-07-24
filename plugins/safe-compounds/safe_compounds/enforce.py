@@ -139,6 +139,23 @@ def strip_heredocs(command):
     return result, (all_safe if found_any else None)
 
 
+def detect_powershell_herestring(command):
+    """Detect PowerShell here-string syntax (@'...'@ or @"..."@) in a Bash
+    command. This is not valid Bash syntax: Bash instead reads `@'` as `@`
+    plus an ordinary single-quoted string, which closes at the *first*
+    embedded quote character rather than at the matching `'@` marker. Any
+    apostrophe in the body (a contraction like "letter's", for instance)
+    silently truncates the argument and spills the remaining text into the
+    command line as further shell input. There's no reliable way to
+    statically confirm a given body is free of that character, so this is
+    always blocked rather than validated."""
+    for m in re.finditer(r'@([\'"])\r?\n', command):
+        quote = m.group(1)
+        if re.search(rf'\n{quote}@(?:\r?\n|$)', command[m.end():]):
+            return True
+    return False
+
+
 def detect_powershell_cmdlet(command):
     for seg in split_segments(command):
         word = first_word(seg.strip())
@@ -406,6 +423,15 @@ def enforce_bash(command):
     if heredocs_found is not None:
         return ('BLOCKED: Heredoc syntax (<< EOF) detected. Per CLAUDE.md rules, never use heredocs. '
                 'Use the Write tool to create the file, then run it separately.')
+
+    if detect_powershell_herestring(command):
+        return ('BLOCKED: PowerShell here-string syntax (@\'...\'@ or @"..."@) detected. This is not '
+                'valid Bash syntax -- Bash reads it as an ordinary single-quoted string that '
+                'terminates at the first embedded quote character (e.g. an apostrophe in a '
+                'contraction), silently truncating the argument and spilling the rest of the text '
+                'into the command line as further shell input. Write the multi-line text to a file '
+                'with the Write tool instead, then pass it via that file (e.g. '
+                '`git commit -F .tmp/commit-msg.txt`).')
 
     if detect_gh_api_contents_write(command):
         return ('BLOCKED: "gh api" is writing directly to the GitHub Contents API '
