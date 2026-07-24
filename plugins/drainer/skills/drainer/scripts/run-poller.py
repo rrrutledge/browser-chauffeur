@@ -837,10 +837,13 @@ def main():
     live_tabs = total_claude_tabs()
 
     # --- split: needs-you (globally ordered), auto-handle (own worker, no cap), others (digest) ---
-    # Ordered across ALL sources by (priority band, date) descending. Only job-search cards carry a
-    # non-neutral band (the trello adapter stamps `_priority_band` — see its _PRIORITY_BAND for the
-    # policy); every other item defaults to neutral and so orders purely by `received` date as before
-    # (an inbox message's arrival time, a dated card's due date, or an undated card's creation date).
+    # Ordered across ALL sources by (job-search tier, priority band, date) descending. Job Search
+    # Outreach board cards sort behind every other source's items on purpose - Russell keeps that
+    # backlog caught up via its own weekly nudge cadence, so email/Slack/etc. get first claim on tab
+    # slots and Job Search only fills in once those are drained. `_priority_band` (the trello
+    # adapter's P1/P2/P3 stamp - see its _PRIORITY_BAND) still orders cards within that tier; every
+    # other item defaults to neutral and so orders purely by `received` date as before (an inbox
+    # message's arrival time, a dated card's due date, or an undated card's creation date).
     needs_you_items = [it for it in needs_and_others if it["_bucket"] == "needs-you"]
     # orphan-sessions dispatches FIRST, ahead of every other source, explicitly — not via
     # priority-band/received-timestamp tie-breaking (a coincidentally-recent or high-priority
@@ -852,9 +855,17 @@ def main():
         key=lambda it: it.get("received") or "",
         reverse=True,
     )
+
+    def _is_job_search(it):
+        return it["_source"] == "trello" and it.get("board") == "Job Search Outreach"
+
     other_needs = sorted(
         (it for it in needs_you_items if it["_source"] != "orphan-sessions"),
-        key=lambda it: (it.get("_priority_band", NEUTRAL_PRIORITY_BAND), it.get("received") or ""),
+        key=lambda it: (
+            not _is_job_search(it),
+            it.get("_priority_band", NEUTRAL_PRIORITY_BAND),
+            it.get("received") or "",
+        ),
         reverse=True,
     )
     needs = orphan_needs + other_needs
