@@ -70,7 +70,7 @@ these steps in order:
    The poller's next cycle picks these up and spawns worker tabs for them.
 
 4. **No notes or no action items.** If AI notes don't exist or none are assigned to Russell (and Russell
-   is not the organizer), the recording is **fyi** — route to the digest queue and write `.done`.
+   is not the organizer), the recording is **fyi** - route it to the digest queue and close up.
 
 ## WEEK-IN-REVIEW ANNOUNCEMENTS
 A team Week-in-Review announcement post (the weekly post linking to that week's R&D Weekly

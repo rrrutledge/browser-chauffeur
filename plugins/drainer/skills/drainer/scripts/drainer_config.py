@@ -69,16 +69,12 @@ def read_config(repo):
         # The triage call must also pin a model — under the scheduled task it has no parent session,
         # so it would otherwise inherit a 1M-context default the account can't use. Standard Sonnet.
         "triage_model": scalar("triage_model", "claude-sonnet-5"),
-        # The once-a-day digest session. It summarizes fyi, groups junk with source-stop proposals,
-        # and runs the reconciliation scan — judgment-heavy, so a stronger standard-context model.
+        # The once-a-day digest session. It summarizes fyi and groups junk with source-stop
+        # proposals - judgment-heavy, so a stronger standard-context model.
         "digest_model": scalar("digest_model", "claude-opus-4-8"),
-        # Digest-only informational threshold: the EOD digest lists any needs-you item still
-        # dispatched-but-uncleared past this many hours. The poller's own orphan recovery is purely
-        # liveness-based (a closed worker tab, detected via its session process) and uses no timeout.
-        "stale_hours": int(scalar("stale_hours", "12")),
-        # Orphan-recovery grace: a worker tab whose claude --session-id process is gone is treated as
-        # closed and recovered, but only once it's been launched at least this many minutes — so a
-        # just-dispatched tab whose process hasn't appeared yet isn't misread as dead.
+        # Reconcile grace: a dispatched item with no live worker session is treated as unfinished and
+        # re-queued, but only once it's been launched at least this many minutes - so a just-dispatched
+        # tab whose session file isn't written yet isn't misread as dead.
         "orphan_grace_minutes": int(scalar("orphan_grace_minutes", "15")),
         # Wall-clock time (HH:MM, 24h) the daily digest task fires; consumed by the installer.
         "digest_time": scalar("digest_time", "17:00"),

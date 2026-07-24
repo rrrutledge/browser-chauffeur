@@ -38,6 +38,8 @@ from drainer_config import read_config, find_provider_file  # noqa: E402  (share
 
 SEEN_STATE = os.path.join(SCRIPT_DIR, "seen-state.js")
 HEALTH_FILE = "provider-health.json"
+HANDLED_FILE = "reconciled.json"
+POLLER_KEY = "_poller"  # the poller's own heartbeat entry in the health file — not a provider; the digest skips it
 
 
 # ---------------------------------------------------------------------------- generic helpers
@@ -47,12 +49,22 @@ def seen_state(*cli_args):
 
 
 def load_seen(runtime_dir, source):
-    """Return the {id: {triage, status}} map for a source; missing/corrupt -> {} (fail-safe)."""
+    """Return the {id: {triage}} map for a source; missing/corrupt -> {} (fail-safe)."""
     try:
         with open(os.path.join(runtime_dir, "seen.json"), encoding="utf-8") as f:
             return (json.load(f) or {}).get(source, {})
     except (OSError, ValueError):
         return {}
+
+
+def write_json_atomic(path, data):
+    """Write JSON via a temp file + replace, so a reader never sees a half-written state. The Python
+    mirror of seen-state.js's writeJsonAtomic, shared by the health and reconcile state files."""
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = f"{path}.tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+    os.replace(tmp, path)
 
 
 # ---------------------------------------------------------------------------- provider health (observability)
@@ -73,12 +85,7 @@ def load_health(runtime_dir):
 
 
 def save_health(runtime_dir, health):
-    os.makedirs(runtime_dir, exist_ok=True)
-    path = os.path.join(runtime_dir, HEALTH_FILE)
-    tmp = f"{path}.tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(health, f, indent=2)
-    os.replace(tmp, path)
+    write_json_atomic(os.path.join(runtime_dir, HEALTH_FILE), health)
 
 
 def record_health_ok(health, name):
@@ -100,6 +107,31 @@ def record_health_failure(health, name, error, kind):
     h["last_error_ts"] = datetime.now(timezone.utc).isoformat()
     h.setdefault("last_ok_ts", None)
     health[name] = h
+
+
+def record_heartbeat(health, decision, idle=None, locked=None):
+    """Stamp the poller's own liveness into the health file on every LIVE cycle — including a
+    presence-gated no-op, which otherwise writes nothing at all.
+
+    Without this, a frozen provider-health.json is ambiguous three ways that look identical: the machine
+    slept (the scheduled task never fired), it was away/locked (the poller ran and correctly did nothing),
+    or the poller broke before its health write. The per-provider failure streak catches expired
+    credentials but says nothing about the poller itself, so a genuinely dead poller is invisible. This
+    heartbeat records which of the three happened, so the daily digest can tell 'correctly idle' from
+    'silently dead'.
+
+    `decision` is one of: "drained" (ran a full cycle past the presence gate), "skipped-away" (input idle
+    past the threshold), "skipped-locked" (workstation locked). `last_drained_ts` advances only on
+    "drained", so the digest can flag a drain gone stale while the machine was demonstrably in use."""
+    h = health.setdefault(POLLER_KEY, {})
+    now = datetime.now(timezone.utc).isoformat()
+    h["last_run_ts"] = now
+    h["last_decision"] = decision
+    h["idle_seconds"] = round(idle) if idle is not None else None
+    h["locked"] = locked
+    if decision == "drained":
+        h["last_drained_ts"] = now
+    health[POLLER_KEY] = h
 
 
 # read_config / parse_provider_names live in drainer_config.py — shared with the digest launcher so
@@ -485,7 +517,7 @@ def spawn_worker(iid, json_file, repo, runtime_dir, worker_model, local_dir):
             "You are a drainer worker handling ONE item. Read `~/.claude/CLAUDE.md`, then read "
             f"`{worker_core}` in full and follow it exactly — top to bottom, including the "
             "auto-handle branch at the top and the close-up steps at the end — for the single "
-            f"captured item at `{json_file}` (its `.done` marker is `{json_file[:-5]}.done`).\n"
+            f"captured item at `{json_file}`.\n"
             "The item's `source` field names the provider — read its `<source>-provider.md` (in "
             f"`{PROVIDERS_DIR}`, or `{local_providers}` for a machine-local provider) for its "
             "CLEAR and DRAFT-MODE and use them. Draft-only: never send or post.\n"
@@ -513,28 +545,6 @@ def spawn_resume_tab(session_id, cwd, repo):
 
 
 # ---------------------------------------------------------------------------- the cycle
-
-def reconcile_done(runtime_dir):
-    """Mark any item with a worker-written <id>.done marker as cleared in seen-state, freeing a cap
-    slot. The worker writes .done on completion; the poller is the authority on seen-state status."""
-    items_dir = os.path.join(runtime_dir, "items")
-    if not os.path.isdir(items_dir):
-        return 0
-    freed = 0
-    for fn in os.listdir(items_dir):
-        if not fn.endswith(".done"):
-            continue
-        iid = fn[:-5]
-        try:
-            with open(os.path.join(items_dir, f"{iid}.json"), encoding="utf-8") as f:
-                source = json.load(f).get("source")
-        except (OSError, ValueError):
-            source = None
-        if source:
-            seen_state("clear", runtime_dir, source, iid)
-            freed += 1
-    return freed
-
 
 def live_session_ids():
     """The set of session guids that currently have a running `claude --session-id <guid>` process.
@@ -585,48 +595,120 @@ def _session_guid(runtime_dir, iid):
         return None, None
 
 
-def reconcile_orphans(runtime_dir, cfg):
-    """Self-heal orphaned worker tabs that would hold a global cap slot forever. A worker launches
-    `claude --session-id <guid>` (guid recorded in seeds/<id>.prompt.txt.session); if that process is gone
-    the tab was CLOSED and can never write <id>.done. Re-queue such an item — drop its seen key so the
-    next enumerate re-dispatches a fresh tab, freeing the slot.
+def _item_source_ref(runtime_dir, iid):
+    """(messageId, capture-time) from a captured items/<id>.json, or (None, None).
 
-    Recovery is purely LIVENESS-based: a tab whose process is still running is left alone no matter how
-    long it's been open — it's either being worked or parked waiting for the user, both of which resolve
-    on their own. So there is no time-based timeout; closed-tab detection is the whole signal. A grace
-    window (orphan_grace_minutes) keeps a just-launched tab — whose process / .session file may not be up
-    yet — from being misread as dead. No retry cap: a finished item resolves by the worker writing .done.
-    Sibling of reconcile_done — same place in the cycle, the other half of slot bookkeeping."""
+    The messageId is the handle on the source object the reconcile checks against the live inbox.
+    (None, None) covers the items that were recorded seen without a capture - correctly-filed junk -
+    and any json that can't be read; both mean there is nothing to observe."""
+    try:
+        with open(os.path.join(runtime_dir, "items", f"{iid}.json"), encoding="utf-8") as f:
+            rec = json.load(f)
+    except (OSError, ValueError):
+        return None, None
+    try:
+        ts = datetime.fromisoformat(rec["ts"]).timestamp()
+    except (KeyError, TypeError, ValueError):
+        ts = None
+    return rec.get("messageId"), ts
+
+
+def load_handled(runtime_dir):
+    """The per-source id sets whose source object has been observed gone from the inbox.
+
+    A message that left the inbox stays gone, so an item only ever needs proving handled once. The
+    memo is what keeps the reconcile's per-cycle cost flat: without it every cycle would re-read every
+    captured item's json - thousands of small reads, growing forever with seen-state - to re-derive an
+    answer that cannot change. Missing or corrupt reads as empty, and the next cycle re-derives the
+    whole set, so losing this file costs one slow cycle and nothing else."""
+    try:
+        with open(os.path.join(runtime_dir, HANDLED_FILE), encoding="utf-8") as f:
+            data = json.load(f)
+        return {k: set(v) for k, v in data.items()} if isinstance(data, dict) else {}
+    except (OSError, ValueError, TypeError):
+        return {}
+
+
+def save_handled(runtime_dir, handled):
+    write_json_atomic(os.path.join(runtime_dir, HANDLED_FILE),
+                      {k: sorted(v) for k, v in handled.items()})
+
+
+def reconcile_unhandled(runtime_dir, cfg, providers, dry_run=False):
+    """Re-queue every item whose source object is still unhandled with no live worker session on it.
+
+    Completion is read off the source itself. A worker that finished archived the message, so the
+    message is gone from the inbox and its item drops out of consideration on its own. What remains -
+    still sitting in the inbox, with no `claude --session-id` process working it - was never finished,
+    and the reason doesn't matter: the tab was closed, the worker died, or its archive call silently
+    failed. Dropping the seen key re-enumerates it as a fresh item, and the ordinary machinery takes it
+    from there (worker-core's situational-check recognizes an already-answered thread and closes
+    quietly; a genuinely open one surfaces as a normal needs-you item).
+
+    Email only. `still_in_inbox_ids()` is None on every other provider, so Slack, Teams, Trello and
+    orphan-sessions are skipped and keep resurfacing on their own source's terms.
+
+    Three guards, each load-bearing:
+      - an item awaiting the daily digest sits in the inbox BY DESIGN, so the digest queue is excluded;
+        without that every queued fyi/junk item would requeue on every cycle
+      - a live session guid means a worker tab is open on it: being worked, or parked for Russell
+      - the launch grace (orphan_grace_minutes) covers the window where a just-dispatched worker hasn't
+        written its .session file yet and so briefly looks session-less
+
+    Both fail-safes point the same way, at reconciling nothing rather than requeuing live work: a
+    process scan that can't run skips the cycle, and a provider whose inbox listing fails skips that
+    provider, since an empty id set would otherwise read as "every item is archived".
+
+    Under `dry_run` it counts and prints what it would requeue, touching no state."""
     live = live_session_ids()
     if live is None:
-        return 0  # can't see processes this cycle -> reap nothing (fail-safe); recover next cycle instead
-    try:  # stale-list with 0 hours returns EVERY dispatched needs-you item (with ages), the full slate
-        dispatched = json.loads(seen_state("stale-list", runtime_dir, "0").stdout or "[]")
+        print("reconcile: could not scan for live worker sessions; skipped this cycle.")
+        return 0
+    try:
+        queued = {r.get("id") for r in json.loads(seen_state("queue-list", runtime_dir).stdout or "[]")}
     except ValueError:
-        dispatched = []
+        queued = set()
+    handled = load_handled(runtime_dir)
     grace_s = cfg["orphan_grace_minutes"] * 60
     now = time.time()
     requeued = 0
-    for r in dispatched:
-        iid, source = r.get("id"), r.get("source")
-        if not iid or not source:
+    for provider in providers:
+        try:
+            inbox_ids = provider.still_in_inbox_ids()
+        except Exception as e:  # an adapter fault here is one skipped provider, never a failed cycle
+            print(f"{provider.name}: inbox check FAILED - {e}. Skipping reconcile for it this cycle.")
+            inbox_ids = None
+        if inbox_ids is None:
             continue
-        if source == "orphan-sessions":
-            continue  # self-heals via find-orphans.py's own liveness check; no worker-tab receipt to reconcile
-        guid, smtime = _session_guid(runtime_dir, iid)
-        if guid and guid in live:
-            continue  # process alive -> being worked or parked for the user; never reap an open tab
-        # Not alive (process exited, or the launch left no trackable session). Only reap once it's clearly
-        # past the launch grace, so a tab still spinning up isn't killed. Grace is measured from the
-        # .session file's mtime (launch time) when present, else from the item's dispatch age.
-        age_h = r.get("ageHours")
-        launched_ago = (now - smtime) if smtime is not None else (age_h * 3600 if age_h is not None else None)
-        if launched_ago is None or launched_ago >= grace_s:
-            seen_state("requeue", runtime_dir, source, iid)
-            print(f"orphan {iid} ({source}): worker tab closed -> re-queued for a fresh tab.")
+        prior, still_handled = handled.get(provider.name, set()), set()
+        for iid in load_seen(runtime_dir, provider.name):
+            if iid in prior:
+                still_handled.add(iid)  # already proven gone from the inbox; carry it forward
+                continue
+            if iid in queued:
+                continue
+            message_id, ts = _item_source_ref(runtime_dir, iid)
+            if not message_id or message_id not in inbox_ids:
+                still_handled.add(iid)
+                continue
+            guid, smtime = _session_guid(runtime_dir, iid)
+            if guid and guid in live:
+                continue
+            # Grace runs from the .session file's mtime (launch time) when there is one, else from the
+            # capture timestamp. No usable time at all means it can't be proven fresh, so it requeues.
+            launched_ago = (now - smtime) if smtime is not None else (now - ts if ts else None)
+            if launched_ago is not None and launched_ago < grace_s:
+                continue
+            verb = "would re-queue" if dry_run else "re-queued"
+            if not dry_run:
+                seen_state("requeue", runtime_dir, provider.name, iid)
+            print(f"unhandled {iid} ({provider.name}): still in the inbox, no live worker -> {verb}.")
             requeued += 1
-    if requeued:
-        print(f"orphan recovery: {requeued} re-queued.")
+        handled[provider.name] = still_handled
+    if not dry_run:
+        save_handled(runtime_dir, handled)
+        if requeued:
+            print(f"reconcile: {requeued} unhandled item(s) re-queued.")
     return requeued
 
 
@@ -651,22 +733,30 @@ def main():
     repo = os.path.abspath(args.repo)
     cfg = read_config(repo)
 
-    if not args.dry_run:
-        present, _, _ = presence.is_present(cfg["idle_threshold_seconds"])
-        if not present:
-            return  # away/locked -> silent no-op
-
     health = load_health(cfg["runtime_dir"])
+    idle = locked = None
+    if not args.dry_run:
+        present, idle, locked = presence.is_present(cfg["idle_threshold_seconds"])
+        if not present:
+            # Away/locked -> do no work, but still stamp a heartbeat and persist it. This is the ONLY
+            # write on this path, and it's what lets the digest read a frozen health file as "poller ran
+            # and correctly idled" rather than "poller silently died".
+            record_heartbeat(health, "skipped-locked" if locked else "skipped-away", idle, locked)
+            save_health(cfg["runtime_dir"], health)
+            return
+
     providers = load_providers(cfg, health)
     if not providers:
         print("No providers with a poller adapter are enabled; nothing to do.")
         if not args.dry_run:
+            record_heartbeat(health, "drained", idle, locked)  # ran a full live cycle (just nothing to drain)
             save_health(cfg["runtime_dir"], health)  # persist any config-load failures recorded above
         return
 
-    reconcile_done(cfg["runtime_dir"])  # free cap slots for items whose workers finished last cycle
-    if not args.dry_run:
-        reconcile_orphans(cfg["runtime_dir"], cfg)  # self-heal closed worker tabs (mutates -> live cycles only)
+    # Runs BEFORE the enumerate below, so anything it re-queues is picked up in this same cycle.
+    unhandled = reconcile_unhandled(cfg["runtime_dir"], cfg, providers, dry_run=args.dry_run)
+    if args.dry_run:
+        print(f"DRY-RUN - reconcile would re-queue {unhandled} unhandled item(s).")
 
     # --- enumerate ALL providers first, accumulate into one global list ---
     # Each provider's enumerate is isolated: a failure (expired creds, IMAP/API blip) is caught,
@@ -693,6 +783,7 @@ def main():
     # Dry-run is a manual diagnostic often run from a shell without the User-scope creds; persisting
     # health then would log false failures, so only a live cycle records the outcome.
     if not args.dry_run:
+        record_heartbeat(health, "drained", idle, locked)  # a full live cycle ran past the presence gate
         save_health(cfg["runtime_dir"], health)  # persist this cycle's per-provider outcomes
 
     if not all_new:
@@ -767,8 +858,8 @@ def main():
         reverse=True,
     )
     needs = orphan_needs + other_needs
-    # auto-handle items get a worker tab too (they need a browser to act), but the worker executes
-    # autonomously and writes .done immediately — so they self-clear fast and are dispatched unconditionally,
+    # auto-handle items get a worker tab too (they need a browser to act), but the worker acts and CLEARs
+    # the source without ever waiting on Russell - so they resolve fast and are dispatched unconditionally,
     # never held behind the target_open_tabs throttle that gates needs-you below, letting a standing-rule
     # action run without waiting behind tabs parked for Russell's attention.
     auto = [it for it in needs_and_others if it["_bucket"] == "auto-handle"]
@@ -816,9 +907,9 @@ def main():
         return
 
     dispatched, auto_dispatched, held, queued = 0, 0, 0, 0
-    # auto-handle first: a worker that executes a standing rule and self-clears immediately. Not throttled
-    # by target_open_tabs, recorded with its own triage so capture stamps the json and the worker takes
-    # worker-core's auto-handle branch (act -> CLEAR -> queue digest -> .done now).
+    # auto-handle first: a worker that executes a standing rule and clears the source immediately. Not
+    # throttled by target_open_tabs, recorded with its own triage so capture stamps the json and the worker
+    # takes worker-core's auto-handle branch (act -> CLEAR -> queue digest -> close up).
     for it in auto:
         provider = prov[it["_source"]]
         iid = it["_id"]

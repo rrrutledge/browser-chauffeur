@@ -3,8 +3,8 @@
 #
 # Run this BY HAND once (not from a Claude session), after the manual digest tryout is trusted. It
 # registers a Windows Scheduled Task that runs run-digest.py once a day at a fixed time; run-digest.py
-# opens ONE visible Claude tab that empties the fyi/junk queue and re-surfaces stale needs-you items,
-# with Russell reviewing before anything is cleared.
+# opens ONE visible Claude tab that empties the fyi/junk queue, with Russell reviewing before anything
+# is cleared.
 #
 #   powershell -File install-digest-schedule.ps1 -RepoDir C:/Users/russe/Dev/personal-ai-pod [-At 17:00]
 #   powershell -File install-digest-schedule.ps1 -RepoDir C:/Users/russe/Dev/personal-ai-pod -Remove

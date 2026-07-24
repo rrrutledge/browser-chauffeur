@@ -169,9 +169,9 @@ class ProviderBase:
         raise NotImplementedError
 
     def still_in_inbox_ids(self):
-        """Optional: the set of this provider's message ids currently sitting in the live Inbox, for
-        the daily digest's CLEAR-verification sweep (a worker's archive call can silently fail even
-        though it wrote .done, leaving the source item stuck forever with no self-healing check).
+        """Optional: the set of this provider's message ids currently sitting in the live Inbox. This
+        is what the poller's reconcile reads completion off - an item whose message is gone from the
+        inbox was handled; one still sitting there, with no live worker session on it, was not.
         Return None if this provider has no such check available this run (a transient failure) or no
-        meaningful notion of "still in inbox" at all (Slack, Teams, Trello) -- the sweep skips it."""
+        meaningful notion of "still in inbox" at all (Slack, Teams, Trello) -- the reconcile skips it."""
         return None

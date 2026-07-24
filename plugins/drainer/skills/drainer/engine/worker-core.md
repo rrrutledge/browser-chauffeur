@@ -33,13 +33,11 @@ Russell decided in advance — do the action without presenting or waiting, then
    `node <skill>/scripts/seen-state.js queue-add <runtime_dir> <source> <id> <path to items/<id>.json>`
    (same helper as §2b; `<runtime_dir>` is the parent of the `items/` folder). The captured `items/<id>.json`
    already carries `triage: "auto-handle"`, which is how the digest files it in the Auto-handled section.
-   If the action revealed a detail worth recording (the invitee, the requester), note it in a sibling
-   `items/<id>.done`-adjacent line or rely on the captured body — keep the digest entry self-explanatory.
-5. **Write `.done` immediately** — `items/<id>.done` with a one-line result (e.g.
-   "auto-handled: approved workspace invite for <email>"). There is **no presentation and no
-   wait-for-acknowledgment**, because nothing was put in front of Russell — the digest is how he learns
-   it happened. (Same "silent resolution writes `.done` at once" rule as §6.)
-6. **Close up as your very last step**, in this order. An auto-handle item has no one to wait for, so
+   Make the entry self-explanatory on its own - if the action revealed a detail worth recording (the
+   invitee, the requester), put it in the entry text rather than leaving it to the captured body.
+   There is **no presentation and no wait-for-acknowledgment**, because nothing was put in front of
+   Russell - the digest is how he learns it happened.
+5. **Close up as your very last step**, in this order. An auto-handle item has no one to wait for, so
    anything left open just sits there reading "finished" until Russell checks it by hand — exactly the
    interruption auto-handle exists to avoid.
    1. **Your browser tabs** — if you opened any (clicked a button, read a card in the browser), close
@@ -187,9 +185,8 @@ uses, in this engine/ folder), exactly as if that content had arrived as email:
   (junk also gets a source-stop proposal) instead of being lost: run
   `node <skill>/scripts/seen-state.js queue-add <runtime_dir> <source> <id> <path to items/<id>.json>`
   — `<runtime_dir>` is the parent of the `items/` folder your `<id>.json` lives in, `<source>` is the
-  item's `source` field, and the helper sits at `scripts/seen-state.js` under this skill. Then go
-  straight to step 6 and write `.done`; leave the source notification for the digest to clear. Then
-  **close this tab** (see §2c step 5).
+  item's `source` field, and the helper sits at `scripts/seen-state.js` under this skill. Leave the
+  source notification for the digest to clear, then **close this tab** (see §2c step 4).
 
 ## 2c. Re-triage to FYI after content examination
 Lightweight triage can't read the body, so a `needs-you` item may turn out to be FYI once you examine
@@ -202,9 +199,7 @@ to see, close the tab silently:
    the digest categorizes it correctly (not as needs-you).
 3. **Queue a digest entry**:
    `node <skill>/scripts/seen-state.js queue-add <runtime_dir> <source> <id> <path to items/<id>.json>`
-4. **Write `.done` immediately** with a one-line reason (e.g.
-   "fyi: spam digest — both messages genuine spam, auto-discarded by Google").
-5. **Close this tab** — via the Bash tool, run `python <skill>/scripts/close-session.py`
+4. **Close this tab** - via the Bash tool, run `python <skill>/scripts/close-session.py`
    (fires the SessionEnd event, then kills the tab — see the auto-handle branch's close-up step).
    If it reports `CLAUDE_HOST_PID` unset, stop normally.
 
@@ -252,22 +247,29 @@ When the user says they sent it: fetch the sent version, diff it against your dr
 concrete, actionable lesson to the **document-authoring skill's Voice learning loop**. Briefly tell
 them what you learned.
 
-## 6. Advance the item (source-specific) + signal done
+## 6. Advance the item (source-specific)
 Only advance when step 3's work is complete — the task/action/deliverable is done. The item is your
 task list; it stays in the queue until the work itself is finished, not just until you've drafted a reply.
 
 Clear the item so it doesn't resurface by performing your source's clear/advance — DON'T assume what
 that means, read the **CLEAR** op in `providers/<source>-provider.md`.
 
-If you drafted a reply in step 4 but step 3's underlying work isn't done yet, STOP — do NOT clear;
-leave the item as-is and write a "paused" marker instead.
+**The CLEAR is your completion signal - there is nothing else to write.** The keeper reads completion off
+the source object itself: an item still sitting unhandled in its source, with no live worker session on
+it, is one nobody finished, and the keeper re-queues it for a fresh tab. So an item you CLEAR is done,
+and one you leave un-cleared comes back around - which is exactly what you want when the work isn't
+finished. Your session stays open after the CLEAR, so when the user replies with new direction you keep
+working in the same session and update the source/card again as needed.
+
+If you drafted a reply in step 4 but step 3's underlying work isn't done yet, STOP - do NOT clear;
+leave the item as-is so it stays live.
 
 **Never clear while an un-handled open ask remains in the unread span.** For a conversation captured as one
 item (§2's multi-ask case), clearing (advancing the read cursor / marking the conversation read) drops
 **every** still-unread message under the one you're keyed to, including asks you haven't touched, and they
 will not resurface. So before you CLEAR, confirm every ask you grouped out of the span in §2 is completed,
 staged, or tracked on a follow-up card. If any remains open, do not clear: handle or track it first, or
-leave the item un-cleared and write a "paused" marker. Clearing is the last act after the whole span is
+leave the item un-cleared so it comes back around. Clearing is the last act after the whole span is
 handled, never a per-message step.
 
 If the situational check finds nothing to do right now (an outreach card that's not yet time to follow
@@ -284,17 +286,7 @@ date / clear without surfacing a tab or beep.
 isn't, self-close there instead of continuing below.
 
 Then **present your result to the user** — give the final briefing (per §1: restate the incoming item,
-what you did, and any draft you staged). **Write `items/<id>.done` proactively as soon as you judge the
-work complete** — the same turn you present is fine; you need not wait for the user to acknowledge. Use a
-one-line result (e.g. "completed: filed ticket #1234 and replied", "skipped: <reason>").
-
-`.done` is your **completion signal**: the keeper reads it next cycle to mark the item cleared in
-seen-state, which **frees a slot under the concurrency cap** so a new needs-you tab can open. Free that
-slot early — it costs nothing. Your session stays open after `.done`, so when the user replies with new
-direction you keep working in the same session and update the source/card again as needed; re-writing
-`.done` afterward is harmless. The goal is to keep the queue moving, so a fresh tab can open the moment
-the work looks done rather than waiting on acknowledgment. (Tab-close can't be detected reliably, so
-`.done` is the advance signal.)
+what you did, and any draft you staged).
 
 ## 6a. If the completed work leaves nothing for Russell, self-close like auto-handle
 An item can be genuinely `needs-you` at triage time — there really was something to do — and still end
@@ -305,7 +297,7 @@ in advance (that's what `auto-handle` is for, per the branch at the top of this 
 discovering it now, after doing the work, exactly because some things can't be known until you've done
 the situational check or the work itself.
 
-When that's the case, treat the close-out like `auto-handle`'s (steps 4–6 in the branch at the top) even
+When that's the case, treat the close-out like `auto-handle`'s (steps 4–5 in the branch at the top) even
 though this item was never labeled or triaged that way: log what happened somewhere Russell will find it
 later — a dated comment on the source item (a Trello card, e.g.), or a digest queue-add. **When you queue
 a digest entry, first re-tag the item's `triage` to `"auto-handle"` in `items/<id>.json` (Edit tool)
@@ -313,8 +305,7 @@ before the `queue-add` — the same re-tag §2c makes for an FYI downgrade.** Th
 digest's **"Auto-handled"** section (already done, dismiss-only), so a finished item is shown as handled
 rather than resurfacing as a live needs-you. Queue it via
 `node <skill>/scripts/seen-state.js queue-add <runtime_dir> <source> <id> <path to items/<id>.json>`,
-write `.done` immediately, and close the tab (`python <skill>/scripts/close-session.py`) instead of
-presenting-and-waiting.
+then close the tab (`python <skill>/scripts/close-session.py`) instead of presenting-and-waiting.
 
 **This is judgment, not a checklist — hold the same bar the other silent-resolution cases in this file
 already use: unsure → stay needs-you and present as normal (§1).** Self-close here only when ALL of
@@ -334,14 +325,14 @@ is narrower than it looks, and reaches only the cases above.
 
 Items you resolve WITHOUT surfacing them for the user's attention — a pointer re-triaged to fyi/junk
 (§2b), a content re-triage to FYI (§2c), a situational no-op close (nothing to do right now), or
-completed work that left nothing for Russell (§6a) — likewise write `.done` at once AND close the tab
+completed work that left nothing for Russell (§6a) - likewise close the tab at once
 (`python <skill>/scripts/close-session.py`). A silently-resolved tab is just noise in the taskbar;
 close it.
 
 **Close your browser tabs when you and the user are truly finished with the item.** If you opened tabs in
 the browser (read a card, drove a web composer, clicked through a link), close them as your last act once
 the item is genuinely done — the ideal that keeps the browser sweep a rare backstop rather than the norm.
-"Done" here is later than `.done`: `.done` frees the queue slot the moment the work looks complete, but
+"Done" here is later than the CLEAR: the CLEAR marks the item handled the moment the work is complete, but
 your session stays live, and for most needs-you items the user still has a human step to do — send the
 draft you staged, submit the form — and you often have follow-up (learning from the send per §5, a tracker
 card) once they confirm. Keep any tab the user still needs open through all that. When they've told you
@@ -351,16 +342,19 @@ another session's, never the browser's last page). If a tab you opened was never
 to see — its content is already mirrored where they work (a Slack draft that shows in their own Slack) —
 close it as soon as that's clear rather than waiting.
 
-**Close your own session tab too, once truly finished — don't wait to be asked.** Apply the same
-"truly finished" bar to this tab, not just to browser tabs opened along the way. Once every one of
-these holds — the human step is done (Russell told you he sent/submitted/confirmed it), any
-follow-up you owed is finished (§5's learn-from-send, a tracker card, advancing the source item),
-and nothing is still open (no unanswered question back to him, no PR awaiting his merge decision, no
-draft he hasn't confirmed sending) — close this tab yourself as your very last act, by invoking the
-**`session-mgr:close`** skill. Don't ask "anything else?" and don't wait for him to type `/close` —
-those two extra round-trips are exactly what this rule removes. Stay open, as normal, whenever any of
-the above is still outstanding: a PR that's shipped but not yet merged, a question you're waiting on
-him to answer, or a draft he hasn't told you he sent.
+**Close your own session tab too, once truly finished — don't wait to be asked.** Apply the same "truly
+finished" bar to this tab, not just to browser tabs opened along the way — and the bar is about what's
+still *live*, not about whether the eventual outcome has happened yet. The tab and the source item are two
+different places to hold state, and the item is always the right one: a delay by itself (a send he's
+holding until a stated time, a reply you're waiting on, a step that can't happen until something else
+does) is not a reason to keep this tab open — make sure the item resurfaces on its own instead (a Trello
+due date, a ⏳ nudge, a calendar reminder), then close now. Once the human step is done (Russell told you
+he sent/submitted/confirmed it) and any follow-up you owed is finished (§5's learn-from-send, a tracker
+card, advancing the source item) — or once what's left is a delay already tracked on the item rather than
+something live — close this tab yourself as your very last act, by invoking the **`session-mgr:close`**
+skill. Don't ask "anything else?" and don't wait for him to type `/close` — those two extra round-trips
+are exactly what this rule removes. Stay open only when there's something to do right now, or you're
+waiting on an answer from him in the next few minutes.
 
 ## 7. Improve the source (don't just hoard facts)
 If the user had to tell you something you could have known, don't just note it — figure out *where it
