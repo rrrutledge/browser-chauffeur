@@ -24,7 +24,7 @@ the guaranteed-visible channel that closes that gap. Before anything else:
 
 - Read `<runtime_dir>/provider-health.json` (missing/empty → all providers healthy; say nothing).
   It maps each provider to `{ consecutive_failures, last_error, last_error_kind, last_error_ts,
-  last_ok_ts }`.
+  last_ok_ts }`. The `_poller` key is not a provider — skip it in the scan below (see the heartbeat bullet).
 - Report **at the very top of the digest** every provider with `consecutive_failures >= 2` (one stray
   failure is just a blip; a sustained streak means it's stuck). For each, give Russell a one-step fix:
   - Name the provider, when it last drained (`last_ok_ts`) and how many cycles it's been failing.
@@ -39,6 +39,11 @@ the guaranteed-visible channel that closes that gap. Before anything else:
   - Example: *"⚠️ **gmail** hasn't drained since 2026-06-19 14:05 — 38 cycles failing: `gmail enumerate
     failed (auth/IMAP?): …`. Likely an expired GMAIL_APP_PASSWORD (User-scope env var) — refresh it and
     the next cycle recovers."*
+- **Heartbeat** — the `_poller` entry (`{ last_run_ts, last_decision, last_drained_ts }`) is the poller's
+  own liveness, stamped every cycle including no-op ones. Flag it ONLY when `last_run_ts` is many hours
+  stale and the machine wasn't just asleep — that means DrainerKeeper stopped firing or a poller instance
+  hung (check `schtasks /query /tn DrainerKeeper /v` and running `pythonw`). A fresh `last_run_ts` with an
+  old `last_drained_ts` is just an idle/away machine — benign, say nothing.
 
 This is informational — there's nothing to clear. It just makes a silently-dead provider impossible to
 miss. Then continue to the queue below.
