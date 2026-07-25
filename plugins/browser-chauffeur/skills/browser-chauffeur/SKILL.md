@@ -503,7 +503,7 @@ If another skill runs a script and it fails, that skill should follow this same 
 
 ## Phase 5: Script Validation (before running any ad-hoc script)
 
-**CRITICAL:** When you write a new ad-hoc browser automation script (in `.tmp/`), **immediately validate it before running** or reporting completion. Scan it for violations of `script-quality-standards.md`: fixed delays (`waitForTimeout`, `setTimeout`), missing verification code, CSS class selectors, or missing browser connection logic. If you find any, edit the script to fix them, explain what was wrong and what you fixed, then re-scan to confirm clean. **Do not ask permission** — violations are always wrong.
+**CRITICAL:** When you write a new ad-hoc browser automation script (in `.tmp/`), **immediately validate it before running** or reporting completion. Scan it for violations of `script-quality-standards.md`: fixed delays (`waitForTimeout`, `setTimeout`), missing verification code, CSS class selectors, missing browser connection logic, or a missing guaranteed-exit path (a bare `(async () => { ... })()` IIFE with no top-level `.catch()` leaks an orphaned process when a step throws or hangs — use the `run()`-plus-`.catch(... process.exit(1))` shape with `browser.close()` in a `finally`). If you find any, edit the script to fix them, explain what was wrong and what you fixed, then re-scan to confirm clean. **Do not ask permission** — violations are always wrong.
 
 ---
 
