@@ -3,6 +3,7 @@ param(
   [string]$PromptFile,  # (plugins/session-mgr/skills/resume-sessions/scripts/launch-session.ps1)
   [string]$SeedFile,
   [string]$SummaryFile,
+  [string]$SessionName,
   [string]$SessionId,
   [string]$Resume
 )

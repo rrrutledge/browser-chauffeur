@@ -5,6 +5,12 @@ param(
   [string]$SummaryFile, # optional (PromptFile mode): one-line item summary prepended to the seed so
                         #   Claude self-titles the tab descriptively (it names the session off its first
                         #   message). Prose-in-file per the rule below; only the path crosses the wt line.
+  [string]$SessionName, # optional descriptive name for this session — Claude Code shows it in the
+                        #   terminal tab title, the /resume picker, and (when Remote Control is connected)
+                        #   the session list at claude.ai/code and in the Claude mobile app, keeping all
+                        #   three in sync. Handoff callers pass the same short title they give the WT tab;
+                        #   drainer workers fall back to the -SummaryFile text. Titles only; never enables
+                        #   Remote Control.
   [string]$SessionId,   # optional explicit id; auto-generated in PromptFile mode
   [string]$Resume       # resume mode: session ID of an existing session to resume; combine with
                         #   -PromptFile/-SeedFile to hand the resumed session a follow-up prompt,
@@ -70,6 +76,7 @@ function Register-SessionReceipt {
 }
 
 $seed = $null
+$summaryName = ''   # drainer's one-line item summary, reused as this session's name when set
 if ($PromptFile) {
   if (-not (Test-Path -LiteralPath $PromptFile)) {
     Write-Host "launch-session: prompt file not found: $PromptFile" -ForegroundColor Red
@@ -90,10 +97,10 @@ if ($PromptFile) {
   $lead = ''
   try {
     if ($SummaryFile -and (Test-Path -LiteralPath $SummaryFile)) {
-      $lead = (Get-Content -Raw -Encoding utf8 -LiteralPath $SummaryFile -ErrorAction Stop).Trim() -replace '\s+', ' '
-      if ($lead) { $lead = $lead + " " }
+      $summaryName = (Get-Content -Raw -Encoding utf8 -LiteralPath $SummaryFile -ErrorAction Stop).Trim() -replace '\s+', ' '
+      if ($summaryName) { $lead = $summaryName + " " }
     }
-  } catch { $lead = '' }
+  } catch { $lead = ''; $summaryName = '' }
   $seed = $lead + "Your task instructions are in '$PromptFile' - open it and begin immediately without waiting for further input."
 }
 elseif ($SeedFile) {
@@ -120,6 +127,21 @@ if ($Resume) {
   $claudeArgs += @('--resume', $Resume)
 } elseif ($SessionId) {
   $claudeArgs += @('--session-id', $SessionId)
+}
+# Give this session one descriptive name. Claude Code shows it in the terminal tab title, the /resume
+# picker, and — when Remote Control is connected — the session list at claude.ai/code and in the mobile
+# app, keeping all three in sync. Without it, a session that auto-connects at startup shows the random
+# hostname-adjective-noun placeholder on the phone until an AI title catches up (and sometimes it never
+# does). Prefer an explicit -SessionName (handoffs pass the same short title as the WT tab); otherwise
+# reuse the drainer's one-line summary. --name only titles the session — it never enables Remote Control
+# (that stays the user's remote-at-startup setting) — so it is safe to pass unconditionally. Keep it ahead
+# of the seed positional so its value binds to the name, not to the seed. Skip on --resume so a resumed
+# session keeps the name it already has rather than being clobbered.
+$sessName = if ($Resume) { '' } elseif ($SessionName) { $SessionName } else { $summaryName }
+if ($sessName) {
+  $sessName = ($sessName -replace '\s+', ' ').Trim()
+  if ($sessName.Length -gt 80) { $sessName = $sessName.Substring(0, 80).Trim() }
+  if ($sessName) { $claudeArgs += @('--name', $sessName) }
 }
 if ($seed) { $claudeArgs += $seed }
 # Own any browser-chauffeur tabs this session opens. The browser-chauffeur sweep
