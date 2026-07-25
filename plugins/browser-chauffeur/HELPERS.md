@@ -12,6 +12,8 @@ node plugins/browser-chauffeur/skills/browser-chauffeur/templates/setup.js
 
 This installs `playwright-core` and writes a `browser-chauffeur-helpers` shim to `~/.claude/browser-chauffeur/node_modules/`. Scripts fall back to that location automatically when the package isn't installed in the current project.
 
+The shim looks up the active plugin version each time it is required — from the plugin registry, falling back to the newest version in the plugin cache — so a plugin update takes effect on its own. Setup does not need re-running after an upgrade.
+
 ## Usage
 
 ```javascript
