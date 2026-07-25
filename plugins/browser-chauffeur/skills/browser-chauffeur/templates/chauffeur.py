@@ -67,7 +67,6 @@ PERSISTENT_PROFILE = str(CHAUFFEUR_DIR / "profile")
 # tab-registry.js for why the state is split per tab rather than kept in one
 # shared file.
 TABS_DIR = CHAUFFEUR_DIR / "tabs"
-LEGACY_REGISTRY = CHAUFFEUR_DIR / "created-tabs.json"
 
 # Backstop tab hygiene. The primary cleanup is the owner reap — a tab is closed
 # promptly when its owning session ends (see sweep_tabs). These two are the
@@ -218,43 +217,6 @@ def record_for(target_id: str, owner_pid: int | None) -> TabRecord:
     return TabRecord(TABS_DIR / name, target_id, owner_pid, int(time.time() * 1000))
 
 
-def migrate_legacy_registry() -> None:
-    """Split a single-file registry into one file per tab, once.
-
-    Keeps ownership across the upgrade: without this, every tab open at the time
-    would look unrecorded and lose its session.
-    """
-    if not LEGACY_REGISTRY.exists():
-        return
-    try:
-        with open(LEGACY_REGISTRY) as f:
-            entries = json.load(f)
-    except (OSError, json.JSONDecodeError):
-        entries = []
-    if isinstance(entries, list):
-        for e in entries:
-            tid = e.get("targetId")
-            if not tid or not TAB_NAME_RE.match(f"0-{tid}.json"):
-                continue
-            owner = e.get("ownerPid") or e.get("nodePid")
-            rec = record_for(tid, owner)
-            if rec.path.exists():
-                continue
-            rec.write(url=e.get("url", ""), title=e.get("title", ""))
-            # Carry the recorded activity time over so the TTL and the count cap
-            # don't see every migrated tab as brand new.
-            stamp = e.get("lastActive") or e.get("ts")
-            if stamp:
-                try:
-                    os.utime(rec.path, (stamp / 1000, stamp / 1000))
-                except OSError:
-                    pass
-    try:
-        LEGACY_REGISTRY.unlink()
-    except OSError:
-        pass
-
-
 def is_cdp_alive(port: int) -> bool:
     try:
         resp = urlopen(f"http://localhost:{port}/json/version", timeout=2)
@@ -294,7 +256,6 @@ def sweep_tabs(port: int) -> None:
 
     Best-effort: any error here is swallowed so it can't block a launch.
     """
-    migrate_legacy_registry()
     now_ms = int(time.time() * 1000)
 
     # Stamped before the request, not after: a tab recorded while we were asking
