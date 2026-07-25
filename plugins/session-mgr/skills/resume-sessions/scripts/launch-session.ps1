@@ -5,6 +5,12 @@ param(
   [string]$SummaryFile, # optional (PromptFile mode): one-line item summary prepended to the seed so
                         #   Claude self-titles the tab descriptively (it names the session off its first
                         #   message). Prose-in-file per the rule below; only the path crosses the wt line.
+  [string]$SessionName, # optional Remote Control session name — the descriptive title this session
+                        #   shows at claude.ai/code and in the Claude mobile app. Handoff callers pass
+                        #   the same short title they give the WT tab; drainer workers fall back to the
+                        #   -SummaryFile text. Applied only when remote-at-startup is the user's default,
+                        #   so it labels the session that setting is already auto-connecting rather than
+                        #   forcing one on.
   [string]$SessionId,   # optional explicit id; auto-generated in PromptFile mode
   [string]$Resume       # resume mode: session ID of an existing session to resume; combine with
                         #   -PromptFile/-SeedFile to hand the resumed session a follow-up prompt,
@@ -69,7 +75,23 @@ function Register-SessionReceipt {
   return $SessionId
 }
 
+# Seeded sessions (drainer workers, handoffs) get a descriptive Remote Control name only when the user
+# has opted into remote-at-startup as their global default (settings.json `remoteControlAtStartup`).
+# Reading it here means the name we pass merely labels the session that setting is already auto-connecting;
+# with the default off we pass no --remote-control flag, so turning the setting off scopes Remote Control
+# back to manual sessions only. Any read failure returns false — naming is a nicety, never a launch blocker.
+function Test-RemoteControlDefault {
+  try {
+    $settings = Join-Path $env:USERPROFILE '.claude\settings.json'
+    if (Test-Path -LiteralPath $settings) {
+      return [bool]((Get-Content -Raw -LiteralPath $settings | ConvertFrom-Json).remoteControlAtStartup)
+    }
+  } catch {}
+  return $false
+}
+
 $seed = $null
+$summaryName = ''   # drainer's one-line item summary, reused as the Remote Control name when set
 if ($PromptFile) {
   if (-not (Test-Path -LiteralPath $PromptFile)) {
     Write-Host "launch-session: prompt file not found: $PromptFile" -ForegroundColor Red
@@ -90,10 +112,10 @@ if ($PromptFile) {
   $lead = ''
   try {
     if ($SummaryFile -and (Test-Path -LiteralPath $SummaryFile)) {
-      $lead = (Get-Content -Raw -Encoding utf8 -LiteralPath $SummaryFile -ErrorAction Stop).Trim() -replace '\s+', ' '
-      if ($lead) { $lead = $lead + " " }
+      $summaryName = (Get-Content -Raw -Encoding utf8 -LiteralPath $SummaryFile -ErrorAction Stop).Trim() -replace '\s+', ' '
+      if ($summaryName) { $lead = $summaryName + " " }
     }
-  } catch { $lead = '' }
+  } catch { $lead = ''; $summaryName = '' }
   $seed = $lead + "Your task instructions are in '$PromptFile' - open it and begin immediately without waiting for further input."
 }
 elseif ($SeedFile) {
@@ -120,6 +142,18 @@ if ($Resume) {
   $claudeArgs += @('--resume', $Resume)
 } elseif ($SessionId) {
   $claudeArgs += @('--session-id', $SessionId)
+}
+# Name this session for Remote Control (claude.ai/code + the mobile app) so it shows a descriptive title
+# instead of the random hostname-adjective-noun fallback a session grabs when it auto-connects before it
+# has any conversation to name itself from. Prefer an explicit -SessionName (handoff callers pass the same
+# short title as the WT tab); otherwise reuse the drainer's one-line summary. Gate on the user's
+# remote-at-startup default so this only LABELS a session that is already auto-connecting. Keep this flag
+# ahead of the seed positional so its optional value binds to $rcName, not to the seed.
+$rcName = if ($SessionName) { $SessionName } else { $summaryName }
+if ($rcName) {
+  $rcName = ($rcName -replace '\s+', ' ').Trim()
+  if ($rcName.Length -gt 80) { $rcName = $rcName.Substring(0, 80).Trim() }
+  if ($rcName -and (Test-RemoteControlDefault)) { $claudeArgs += @('--remote-control', $rcName) }
 }
 if ($seed) { $claudeArgs += $seed }
 # Own any browser-chauffeur tabs this session opens. The browser-chauffeur sweep
