@@ -43,6 +43,11 @@ stage drafts) flows through. Simpler to set up and headless-safe (no token to re
    draft automatically. IMAP has no way to read the account's Gmail-configured signature (that's a
    webmail-only setting with no IMAP equivalent), so this env var is the closest available substitute —
    set it once from whatever your Gmail signature actually says, and update it by hand if that changes.
+   **When `GMAIL_SIGNATURE_HTML` is set, the `--body-file` content must end on its last substantive
+   sentence — never add a name/sign-off line of your own (`Russ`, `Thanks, Russ`, etc.).** The
+   auto-appended block already names the sender, so a sign-off line above it duplicates the name and
+   is the single most common mistake when staging a draft here — check the last line of every
+   `--body-file` against this before running `--reply`/`--draft-new`.
 
 **Secrets stay machine-local.** The plugin code is shared via the marketplace; `GMAIL_ADDRESS` /
 `GMAIL_APP_PASSWORD` / `GMAIL_SIGNATURE_HTML` are per-machine, so the mailbox is only reachable (and
@@ -73,7 +78,8 @@ Under `scripts/` (run with `node`):
     instead of addressing back to the user; otherwise it's a reply-all to the sender + other recipients.
   - **`--body-file` is Markdown** — write the body in Markdown (`**bold**`, `[text](url)`, paragraphs,
     lists) and the script converts it to HTML via `marked`. HTML tags in the source pass through
-    unchanged.
+    unchanged. **If `GMAIL_SIGNATURE_HTML` is set (see Setup step 5), stop at the last content
+    sentence — no sign-off line.**
   - Draft new (never sends): `node gmail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.md [--cc=c@z]`
     (`--reply` and `--draft-new` each print a `draft-id:` line — the staged draft's Message-ID. That id
     is what `--send-draft` takes. `--reply` also replaces any prior draft on the same thread, so a thread
