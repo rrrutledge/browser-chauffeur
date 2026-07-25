@@ -47,6 +47,16 @@ that plainly carries the whole story and asks nothing — a recording notice wit
   names Russell directly or leaves an actual open ask. A group or meeting message that names Russell
   directly counts the same as the 1:1 case; only automated, mass, or not-aimed-at-him chatter (including a
   closing remark addressed to someone else in a group thread) stays fyi.
+- it **holds items awaiting his review or approval** — a moderation queue of held messages, a pending
+  invite or access request, an approval parked in his court.
+  Reason from the body, which usually lists the held items themselves (sender, subject, a preview): if
+  any of them could be legitimate, that call is his to make → **needs-you** (hint: "work"), and the
+  worker opens the queue to approve the real ones and let the rest go.
+  When the body shows every held item is plainly disposable — an obvious spam blast that auto-discards
+  on its own — nothing is left for him to decide, so it stays **fyi** (or **auto-handle** when a provider
+  rule covers it).
+  Read the body before deciding here: the subject alone ("Moderator's spam report for …") names only the
+  type, not whether anything inside is worth his time.
 - a **dated to-do** comes due — a Trello tracker or outreach card, any dated item, the moment its due
   date arrives or passes. The due date IS the queue: a due item is the action surfacing when it was
   scheduled for.
