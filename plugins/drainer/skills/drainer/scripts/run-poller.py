@@ -506,7 +506,8 @@ def _spawn_teams_mark_read(items, teams_provider, repo, runtime_dir, worker_mode
     spawn_silent(prompt_file, worker_model, repo)
 
 
-SCAN_FAILURE_ALERT_COOLDOWN_SECONDS = 3600  # don't spawn a new diagnostic tab more than once an hour
+SCAN_FAILURE_ALERT_THRESHOLD = 3  # consecutive scan failures before the first diagnostic tab
+SCAN_FAILURE_ALERT_COOLDOWN_SECONDS = 3600  # once past threshold, don't spawn another more than hourly
 
 
 def _scan_failure_alert_due(health):
@@ -520,6 +521,20 @@ def _scan_failure_alert_due(health):
     except ValueError:
         return True
     return (datetime.now(timezone.utc) - last_dt).total_seconds() >= SCAN_FAILURE_ALERT_COOLDOWN_SECONDS
+
+
+def _record_scan_failure(health):
+    """Increment the tab-scan's own consecutive-failure streak (separate from any provider's) and
+    return the new count. A single blip retries silently next cycle; only a real, sustained failure
+    (SCAN_FAILURE_ALERT_THRESHOLD in a row) is worth a diagnostic tab."""
+    h = health.setdefault(POLLER_KEY, {})
+    h["tab_scan_consecutive_failures"] = h.get("tab_scan_consecutive_failures", 0) + 1
+    return h["tab_scan_consecutive_failures"]
+
+
+def _record_scan_ok(health):
+    """Reset the tab-scan failure streak once a scan succeeds again."""
+    health.setdefault(POLLER_KEY, {})["tab_scan_consecutive_failures"] = 0
 
 
 def _spawn_scan_diagnostic(repo, runtime_dir, worker_model):
@@ -625,10 +640,11 @@ def total_claude_tabs():
     target_open_tabs is checked against this instead of the drainer's own seen-state bookkeeping.
 
     Returns None if the scan can't be run/parsed — the caller then treats this cycle as AT the cap
-    (fail CLOSED: hold every needs-you item rather than dispatch unbounded) and spawns one diagnostic
-    tab, since a scan failure is exactly the condition — a bogged-down machine — most likely to
-    coincide with a large eligible backlog, and skipping the throttle there is how a cycle dispatches
-    everything eligible at once instead of nothing."""
+    (fail CLOSED: hold every needs-you item rather than dispatch unbounded), since a scan failure is
+    exactly the condition — a bogged-down machine — most likely to coincide with a large eligible
+    backlog, and skipping the throttle there is how a cycle dispatches everything eligible at once
+    instead of nothing. A single blip retries silently next cycle; SCAN_FAILURE_ALERT_THRESHOLD
+    consecutive failures spawns one visible diagnostic tab."""
     ps = "(Get-Process -Name claude -ErrorAction SilentlyContinue | Measure-Object).Count"
     try:
         out = subprocess.run(["powershell", "-NoProfile", "-Command", ps],
@@ -890,9 +906,15 @@ def main():
 
     # --- live tab count, checked against target_open_tabs (None -> scan failed, fail closed below) ---
     live_tabs = total_claude_tabs()
-    if live_tabs is None and not args.dry_run and _scan_failure_alert_due(health):
-        _spawn_scan_diagnostic(repo, cfg["runtime_dir"], cfg["worker_model"])
-        health.setdefault(POLLER_KEY, {})["last_scan_failure_alert_ts"] = datetime.now(timezone.utc).isoformat()
+    if live_tabs is None:
+        fails = _record_scan_failure(health)
+        if (fails >= SCAN_FAILURE_ALERT_THRESHOLD and not args.dry_run
+                and _scan_failure_alert_due(health)):
+            _spawn_scan_diagnostic(repo, cfg["runtime_dir"], cfg["worker_model"])
+            health[POLLER_KEY]["last_scan_failure_alert_ts"] = datetime.now(timezone.utc).isoformat()
+        save_health(cfg["runtime_dir"], health)
+    elif health.get(POLLER_KEY, {}).get("tab_scan_consecutive_failures"):
+        _record_scan_ok(health)
         save_health(cfg["runtime_dir"], health)
 
     # --- split: needs-you (globally ordered), auto-handle (own worker, no cap), others (digest) ---
