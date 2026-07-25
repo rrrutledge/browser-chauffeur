@@ -79,6 +79,7 @@ Don't present a menu of options or stack a numbered list of questions.
 - **Flag an ask buried after dense content with a light lead-in** — Russell's go-to is "One small ask -". But when the message is short and the thread already carries the context, cut both the context and the lead-in and let the bare question stand.
 - **Frame the ask to match the recipient's role.**
   When their job is to route you to a third party (find a volunteer, recommend a speaker), make the asks conditional on that handoff rather than personal requests to them — and don't narrate the follow-up's timing.
+  On a repeat ask to someone with standing local knowledge, lean on that ("you have much more insight than me here") rather than citing a specific thing they said they'd do — the former trusts their judgment, the latter reads as holding them to an obligation.
 - **When a contact declines or gives a discouraging read, accept it humbly and stop** — don't tack on a new ask.
   Defer to their judgment and end.
   When they checked a lead that didn't pan out, close with "No problem ✅" rather than "Good to know" — the former is gracious about their effort — and add a brief "Thanks for asking." for the legwork itself.
