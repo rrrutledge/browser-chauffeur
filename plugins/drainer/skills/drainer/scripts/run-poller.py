@@ -506,6 +506,58 @@ def _spawn_teams_mark_read(items, teams_provider, repo, runtime_dir, worker_mode
     spawn_silent(prompt_file, worker_model, repo)
 
 
+SCAN_FAILURE_ALERT_COOLDOWN_SECONDS = 3600  # don't spawn a new diagnostic tab more than once an hour
+
+
+def _scan_failure_alert_due(health):
+    """Whether enough time has passed since the last scan-failure diagnostic tab to spawn another.
+    A persistently failing scan would otherwise get a fresh diagnostic tab every 5-minute cycle."""
+    last = health.get(POLLER_KEY, {}).get("last_scan_failure_alert_ts")
+    if not last:
+        return True
+    try:
+        last_dt = datetime.fromisoformat(last)
+    except ValueError:
+        return True
+    return (datetime.now(timezone.utc) - last_dt).total_seconds() >= SCAN_FAILURE_ALERT_COOLDOWN_SECONDS
+
+
+def _spawn_scan_diagnostic(repo, runtime_dir, worker_model):
+    """Spawn a single visible worker tab to diagnose why total_claude_tabs() failed to scan/parse.
+
+    A failed scan means the tab-count throttle can't see how many claude.exe processes are running,
+    so dispatch now fail-CLOSES (holds every needs-you item this cycle) instead of silently skipping
+    the cap. This tab is Russell's (or the worker's) visible signal that it happened, and a chance to
+    find and fix the real cause rather than it recurring silently every cycle.
+    """
+    seeds = os.path.join(runtime_dir, "seeds")
+    os.makedirs(seeds, exist_ok=True)
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    prompt_file = os.path.join(seeds, f"scan-failure-diagnostic-{ts}.prompt.txt")
+    with open(prompt_file, "w", encoding="utf-8") as f:
+        f.write(
+            "You are a drainer diagnostic worker. Read `~/.claude/CLAUDE.md` first.\n\n"
+            "The drainer poller's `total_claude_tabs()` (run-poller.py, drainer plugin scripts/) just "
+            "failed to run or parse its PowerShell `Get-Process -Name claude` scan. That function "
+            "throttles new worker-tab dispatch against DRAINER_TARGET_OPEN_TABS, so a failed scan "
+            "means dispatch was held back entirely this cycle rather than risking an unbounded burst.\n\n"
+            "Diagnose why the scan failed: run the exact command yourself - `powershell -NoProfile "
+            "-Command \"(Get-Process -Name claude -ErrorAction SilentlyContinue | Measure-Object).Count\"` "
+            "- and see what happens (hangs, errors, returns something unparseable). Check whether the "
+            "machine was under heavy load (many open tabs, high CPU/memory) as a likely cause. If you "
+            "find a concrete, safe fix, apply it. Either way, tell Russell plainly what you found and "
+            "whether it's fixed or still needs his attention.\n"
+        )
+    summary_file = os.path.join(seeds, f"scan-failure-diagnostic-{ts}.summary.txt")
+    with open(summary_file, "w", encoding="utf-8") as f:
+        f.write("Diagnose: drainer tab-count scan failed")
+    spawn_cmd = os.path.join(SCRIPT_DIR, "spawn-tab.cmd")
+    spawn_tab(
+        [spawn_cmd, "drainer: tab-scan failed - diagnose", repo, prompt_file, worker_model, summary_file],
+        cwd=repo,
+    )
+
+
 def spawn_worker(iid, json_file, repo, runtime_dir, worker_model, local_dir):
     seeds = os.path.join(runtime_dir, "seeds")
     os.makedirs(seeds, exist_ok=True)
@@ -572,8 +624,11 @@ def total_claude_tabs():
     Claude Code tabs competing for his attention, not how many the drainer itself has dispatched, so
     target_open_tabs is checked against this instead of the drainer's own seen-state bookkeeping.
 
-    Returns None if the scan can't be run/parsed — the caller then SKIPS the tab-count throttle this
-    cycle (fail-safe: an inability to see processes never blocks dispatch, mirroring live_session_ids)."""
+    Returns None if the scan can't be run/parsed — the caller then treats this cycle as AT the cap
+    (fail CLOSED: hold every needs-you item rather than dispatch unbounded) and spawns one diagnostic
+    tab, since a scan failure is exactly the condition — a bogged-down machine — most likely to
+    coincide with a large eligible backlog, and skipping the throttle there is how a cycle dispatches
+    everything eligible at once instead of nothing."""
     ps = "(Get-Process -Name claude -ErrorAction SilentlyContinue | Measure-Object).Count"
     try:
         out = subprocess.run(["powershell", "-NoProfile", "-Command", ps],
@@ -833,8 +888,12 @@ def main():
     correctly_junked = [it for it in all_new if it["_source"] == "outlook-graph-junk" and it["_bucket"] == "junk"]
     needs_and_others = [it for it in all_new if not (it["_source"] == "outlook-graph-junk" and it["_bucket"] == "junk")]
 
-    # --- live tab count, checked against target_open_tabs (None -> scan failed, throttle skipped) ---
+    # --- live tab count, checked against target_open_tabs (None -> scan failed, fail closed below) ---
     live_tabs = total_claude_tabs()
+    if live_tabs is None and not args.dry_run and _scan_failure_alert_due(health):
+        _spawn_scan_diagnostic(repo, cfg["runtime_dir"], cfg["worker_model"])
+        health.setdefault(POLLER_KEY, {})["last_scan_failure_alert_ts"] = datetime.now(timezone.utc).isoformat()
+        save_health(cfg["runtime_dir"], health)
 
     # --- split: needs-you (globally ordered), auto-handle (own worker, no cap), others (digest) ---
     # Ordered across ALL sources by (priority band, date) descending. Only job-search cards carry a
@@ -883,7 +942,7 @@ def main():
         print("  needs-you (orphan-sessions first, then priority band, then newest-first):")
         tabs = live_tabs
         for it in needs:
-            held = tabs is not None and tabs >= cfg["target_open_tabs"]
+            held = tabs is None or tabs >= cfg["target_open_tabs"]
             if not held and tabs is not None:
                 tabs += 1
             if it["_source"] == "orphan-sessions":
@@ -921,8 +980,8 @@ def main():
     for it in needs:
         provider = prov[it["_source"]]
         iid = it["_id"]
-        if live_tabs is not None and live_tabs >= cfg["target_open_tabs"]:
-            held += 1  # leave UNRECORDED -> retried next cycle (fail-safe throttle)
+        if live_tabs is None or live_tabs >= cfg["target_open_tabs"]:
+            held += 1  # leave UNRECORDED -> retried next cycle (fail-closed: a failed scan holds too)
             continue
         json_file = provider.capture(it, iid, cfg["runtime_dir"])
         if it["_source"] == "orphan-sessions":
