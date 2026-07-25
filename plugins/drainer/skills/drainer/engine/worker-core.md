@@ -310,11 +310,21 @@ If the situational check finds nothing to do right now (an outreach card that's 
 up, or a thread where they replied and the user already answered), resolve it quietly — bump the due
 date / clear without surfacing a tab or beep.
 
-**Waiting on someone else → tracker card.** Decide by who's holding the conversation:
+**Waiting on someone else → tracker card.** This is for delegation only - the next move belongs to a
+third party, not to Russell. Decide by who's holding the conversation:
 - *They* initiated and you've now replied → the ball is in their court by default; you're done, no card.
 - *You* initiated, they replied, and you've replied again → the ball is back with them and it's easy
   to lose track. Create a follow-up tracker card (the user's board, per `context.md`) before marking
   done, so it stays visible instead of relying on memory.
+
+**A tracker card is never a substitute for work that's Russell's own to do.** If the next step is
+something only he can produce - content only he has the judgment or standing to write, a decision only
+he can make - rather than something you're waiting on a third party for, filing a card and moving on
+does not account for it; see step 3, "you drive the keyboard." Stay in the session and make progress on
+it with him instead: draft an outline, ask him for the missing content live, start the piece you can
+start without him. A card is the right way to track that kind of work only once he's told you, in this
+session, that he wants to pick it up later rather than now - and even then, per the next section, that
+doesn't clear you to close the tab.
 
 **Before presenting, check whether there's anything left TO present** — see §6a. If there genuinely
 isn't, self-close there instead of continuing below.
@@ -379,16 +389,24 @@ close it as soon as that's clear rather than waiting.
 **Close your own session tab too, once truly finished — don't wait to be asked.** Apply the same "truly
 finished" bar to this tab, not just to browser tabs opened along the way — and the bar is about what's
 still *live*, not about whether the eventual outcome has happened yet. The tab and the source item are two
-different places to hold state, and the item is always the right one: a delay by itself (a send he's
-holding until a stated time, a reply you're waiting on, a step that can't happen until something else
-does) is not a reason to keep this tab open — make sure the item resurfaces on its own instead (a Trello
-due date, a ⏳ nudge, a calendar reminder), then close now. Once the human step is done (Russell told you
-he sent/submitted/confirmed it) and any follow-up you owed is finished (§5's learn-from-send, a tracker
-card, advancing the source item) — or once what's left is a delay already tracked on the item rather than
-something live — close this tab yourself as your very last act, by invoking the **`session-mgr:close`**
-skill. Don't ask "anything else?" and don't wait for him to type `/close` — those two extra round-trips
-are exactly what this rule removes. Stay open only when there's something to do right now, or you're
-waiting on an answer from him in the next few minutes.
+different places to hold state, and they serve different jobs: the source item's own mechanism (a Trello
+due date, a resurfaced email) is what brings the item back around on its own schedule, but **the open tab
+is Russell's immediate reminder that something is waiting on him right now**. Closing it early throws that
+reminder away and substitutes nothing until whatever due date you set eventually fires - far too late for
+something he meant to do today, like sending a draft you staged.
+
+So a staged draft he hasn't confirmed sending, or a piece of work that's genuinely his to do and hasn't
+been done yet (even if you've filed a tracker card for it), is not a closable delay - stay open. A delay
+is only safe to walk away from when something *other than this tab* will reliably bring it back to him:
+a reply you're waiting on from a third party, a step blocked on an external dependency, or a send he
+explicitly told you - in this session - he'll handle later and doesn't need the tab open for.
+
+Once the human step is done (Russell told you he sent/submitted/confirmed it, or explicitly said to close)
+and any follow-up you owed is finished (§5's learn-from-send, a tracker card, advancing the source item) —
+close this tab yourself as your very last act, by invoking the **`session-mgr:close`** skill. Don't ask
+"anything else?" and don't wait for him to type `/close` — those two extra round-trips are exactly what
+this rule removes. But stay open whenever a draft you staged hasn't been sent yet, whenever work that's
+his to do is still undone, or whenever you're waiting on an answer from him.
 
 ## 7. Improve the source (don't just hoard facts)
 If the user had to tell you something you could have known, don't just note it — figure out *where it
