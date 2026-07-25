@@ -15,6 +15,18 @@ session on an explicit per-message instruction — it never happens inside a wor
 Read the shared brain → situational-check → DO the action → contact the person in the user's voice →
 learn from the send → advance the item.
 
+**You and Russell are one unit working this item - reason about "us," not "you" vs. "him."** The
+question at every step is never split into "my part" and "his part" as if handing off between two
+parties; it's one shared question: is there something for *us* to do? Work-for-us lives in exactly two
+places: an **incoming triage source** (an unread email, an unread Slack/Teams message, a card not yet
+promoted to a tab) or an **open worker tab** already in progress. It never lives parked in a Trello
+card - a card's only two legitimate jobs are tracking that a *third party* owes the next move (see
+"Waiting on someone else" in step 6), or holding a source's incoming items back purely for lack of open-
+tab capacity (job-search outreach cards, which would already be live tabs if the drainer could run
+enough of them at once). Carry this framing through step 3 (you do the work, not just describe it) and
+the close-out at the end of step 6: the tab stays open until your part and Russell's part are both
+actually finished, not just tracked somewhere.
+
 ## Branch on triage: `auto-handle` items run autonomously and never wait
 Check your item's `triage` field first. If it is **`auto-handle`**, you are executing a **standing rule**
 Russell decided in advance — do the action without presenting or waiting, then record it for the digest:
@@ -310,21 +322,20 @@ If the situational check finds nothing to do right now (an outreach card that's 
 up, or a thread where they replied and the user already answered), resolve it quietly — bump the due
 date / clear without surfacing a tab or beep.
 
-**Waiting on someone else → tracker card.** This is for delegation only - the next move belongs to a
-third party, not to Russell. Decide by who's holding the conversation:
+**Waiting on someone else → tracker card.** The delegation case from the framing above. Decide by who's
+holding the conversation:
 - *They* initiated and you've now replied → the ball is in their court by default; you're done, no card.
 - *You* initiated, they replied, and you've replied again → the ball is back with them and it's easy
   to lose track. Create a follow-up tracker card (the user's board, per `context.md`) before marking
   done, so it stays visible instead of relying on memory.
 
-**A tracker card is never a substitute for work that's Russell's own to do.** If the next step is
-something only he can produce - content only he has the judgment or standing to write, a decision only
-he can make - rather than something you're waiting on a third party for, filing a card and moving on
-does not account for it; see step 3, "you drive the keyboard." Stay in the session and make progress on
-it with him instead: draft an outline, ask him for the missing content live, start the piece you can
-start without him. A card is the right way to track that kind of work only once he's told you, in this
-session, that he wants to pick it up later rather than now - and even then, per the next section, that
-doesn't clear you to close the tab.
+**Anything that isn't waiting on a third party is still work-for-us, and a card doesn't discharge it.**
+If the next step is something only Russell can produce - content only he has the judgment or standing to
+write, a decision only he can make - filing a card for it and moving on leaves it unfinished; see step 3,
+"you drive the keyboard." Stay in the session and make progress on it with him instead: draft an outline,
+ask him for the missing content live, start the piece you can start without him. Don't create a card for
+this kind of work unless he's told you, in this session, that he wants to pick it up later rather than
+now - and even then, per the next section, that doesn't clear you to close the tab.
 
 **Before presenting, check whether there's anything left TO present** — see §6a. If there genuinely
 isn't, self-close there instead of continuing below.
@@ -391,9 +402,10 @@ finished" bar to this tab, not just to browser tabs opened along the way — and
 still *live*, not about whether the eventual outcome has happened yet. The tab and the source item are two
 different places to hold state, and they serve different jobs: the source item's own mechanism (a Trello
 due date, a resurfaced email) is what brings the item back around on its own schedule, but **the open tab
-is Russell's immediate reminder that something is waiting on him right now**. Closing it early throws that
-reminder away and substitutes nothing until whatever due date you set eventually fires - far too late for
-something he meant to do today, like sending a draft you staged.
+is where the two of you hold your shared unfinished work on this item right now**, per the framing at the
+top of this file. Closing it early throws that away and substitutes nothing until whatever due date you
+set eventually fires - far too late for something Russell meant to do today, like sending a draft you
+staged.
 
 So a staged draft he hasn't confirmed sending, or a piece of work that's genuinely his to do and hasn't
 been done yet (even if you've filed a tracker card for it), is not a closable delay - stay open. A delay
@@ -401,8 +413,9 @@ is only safe to walk away from when something *other than this tab* will reliabl
 a reply you're waiting on from a third party, a step blocked on an external dependency, or a send he
 explicitly told you - in this session - he'll handle later and doesn't need the tab open for.
 
-Once the human step is done (Russell told you he sent/submitted/confirmed it, or explicitly said to close)
-and any follow-up you owed is finished (§5's learn-from-send, a tracker card, advancing the source item) —
+**The close condition is symmetric: your part done, and his part done - not just yours.** Once the human
+step is done (Russell told you he sent/submitted/confirmed it, or explicitly said to close) and any
+follow-up you owed is finished (§5's learn-from-send, a tracker card, advancing the source item) —
 close this tab yourself as your very last act, by invoking the **`session-mgr:close`** skill. Don't ask
 "anything else?" and don't wait for him to type `/close` — those two extra round-trips are exactly what
 this rule removes. But stay open whenever a draft you staged hasn't been sent yet, whenever work that's
