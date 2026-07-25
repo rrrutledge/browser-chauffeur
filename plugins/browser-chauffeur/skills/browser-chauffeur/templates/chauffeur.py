@@ -35,8 +35,11 @@ Notes baked in (so callers don't have to remember them):
 """
 
 import argparse
+import csv
+import io
 import json
 import os
+import re
 import socket
 import subprocess
 import sys
@@ -58,7 +61,13 @@ EDGE_DISABLE_FEATURES = (
 CHAUFFEUR_DIR = Path.home() / ".claude" / "browser-chauffeur"
 STATE_FILE = str(CHAUFFEUR_DIR / "state.json")
 PERSISTENT_PROFILE = str(CHAUFFEUR_DIR / "profile")
-TAB_REGISTRY = CHAUFFEUR_DIR / "created-tabs.json"
+# One file per open tab: tabs/<ownerPid>-<targetId>.json, with mtime as the
+# tab's last-activity time. Owner and targetId live in the filename, so the
+# sweep answers "whose session has ended" from a directory listing alone. See
+# tab-registry.js for why the state is split per tab rather than kept in one
+# shared file.
+TABS_DIR = CHAUFFEUR_DIR / "tabs"
+LEGACY_REGISTRY = CHAUFFEUR_DIR / "created-tabs.json"
 
 # Backstop tab hygiene. The primary cleanup is the owner reap — a tab is closed
 # promptly when its owning session ends (see sweep_tabs). These two are the
@@ -95,6 +104,155 @@ def is_pid_running(pid: int) -> bool:
         capture_output=True, text=True,
     )
     return str(pid) in result.stdout
+
+
+def running_pids() -> set[int] | None:
+    """Every running PID, from ONE tasklist call.
+
+    The sweep tests liveness for every tab it knows about. Asking tasklist per
+    tab costs a process spawn each time, which runs to tens of seconds at a
+    couple of dozen tabs and grows exactly as concurrent sessions add them — so
+    every session's launch pays for it. One call plus a set membership test is
+    the same answer at constant cost.
+
+    Returns None when the probe itself failed, which is NOT the same as "no PIDs
+    are running": callers must treat None as unknown liveness and leave
+    ownership alone, or a transient tasklist failure would look like every
+    session had ended and reap all their tabs at once.
+    """
+    try:
+        result = subprocess.run(
+            ["tasklist", "/FO", "CSV", "/NH"],
+            capture_output=True, text=True, timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if result.returncode != 0:
+        return None
+    pids = set()
+    for row in csv.reader(io.StringIO(result.stdout)):
+        # CSV columns: "Image Name","PID","Session Name","Session#","Mem Usage"
+        if len(row) >= 2 and row[1].strip().isdigit():
+            pids.add(int(row[1].strip()))
+    return pids or None
+
+
+# tabs/<ownerPid>-<targetId>.json — `unowned` for a tab nobody claimed.
+TAB_NAME_RE = re.compile(r"^(unowned|\d+)-([0-9A-Fa-f]+)\.json$")
+
+
+class TabRecord:
+    """One tab's file: owner and targetId from the name, activity from mtime."""
+
+    __slots__ = ("path", "target_id", "owner_pid", "last_active_ms")
+
+    def __init__(self, path: Path, target_id: str, owner_pid: int | None, last_active_ms: int):
+        self.path = path
+        self.target_id = target_id
+        self.owner_pid = owner_pid
+        self.last_active_ms = last_active_ms
+
+    def content(self) -> dict:
+        try:
+            with open(self.path) as f:
+                data = json.load(f)
+            return data if isinstance(data, dict) else {}
+        except (OSError, json.JSONDecodeError):
+            return {}
+
+    def write(self, **updates) -> None:
+        """Merge updates into this tab's own file.
+
+        No lock: the file describes exactly one tab, so a racing writer is
+        writing that same tab's current state rather than a list it could
+        truncate. Reading first preserves fields this writer doesn't set.
+        """
+        data = self.content()
+        data.update({"targetId": self.target_id, "ownerPid": self.owner_pid}, **updates)
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = self.path.with_name(self.path.name + f".{os.getpid()}.tmp")
+            with open(tmp, "w") as f:
+                json.dump(data, f)
+            os.replace(tmp, self.path)
+        except OSError:
+            pass
+
+    def bump(self) -> None:
+        """Mark active without rewriting content."""
+        try:
+            os.utime(self.path)
+        except OSError:
+            pass
+
+    def remove(self) -> None:
+        try:
+            self.path.unlink()
+        except OSError:
+            pass
+
+
+def read_tabs() -> list[TabRecord]:
+    """Every recorded tab. Missing directory reads as no tabs."""
+    records = []
+    try:
+        names = os.listdir(TABS_DIR)
+    except OSError:
+        return records
+    for name in names:
+        m = TAB_NAME_RE.match(name)
+        if not m:
+            continue
+        p = TABS_DIR / name
+        try:
+            mtime_ms = int(p.stat().st_mtime * 1000)
+        except OSError:
+            continue  # vanished between listing and stat
+        owner = None if m.group(1) == "unowned" else int(m.group(1))
+        records.append(TabRecord(p, m.group(2), owner, mtime_ms))
+    return records
+
+
+def record_for(target_id: str, owner_pid: int | None) -> TabRecord:
+    name = f"{'unowned' if owner_pid is None else owner_pid}-{target_id}.json"
+    return TabRecord(TABS_DIR / name, target_id, owner_pid, int(time.time() * 1000))
+
+
+def migrate_legacy_registry() -> None:
+    """Split a single-file registry into one file per tab, once.
+
+    Keeps ownership across the upgrade: without this, every tab open at the time
+    would look unrecorded and lose its session.
+    """
+    if not LEGACY_REGISTRY.exists():
+        return
+    try:
+        with open(LEGACY_REGISTRY) as f:
+            entries = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        entries = []
+    if isinstance(entries, list):
+        for e in entries:
+            tid = e.get("targetId")
+            if not tid or not TAB_NAME_RE.match(f"0-{tid}.json"):
+                continue
+            owner = e.get("ownerPid") or e.get("nodePid")
+            rec = record_for(tid, owner)
+            if rec.path.exists():
+                continue
+            rec.write(url=e.get("url", ""), title=e.get("title", ""))
+            # Carry the recorded activity time over so the TTL and the count cap
+            # don't see every migrated tab as brand new.
+            stamp = e.get("lastActive") or e.get("ts")
+            if stamp:
+                try:
+                    os.utime(rec.path, (stamp / 1000, stamp / 1000))
+                except OSError:
+                    pass
+    try:
+        LEGACY_REGISTRY.unlink()
+    except OSError:
+        pass
 
 
 def is_cdp_alive(port: int) -> bool:
@@ -136,8 +294,13 @@ def sweep_tabs(port: int) -> None:
 
     Best-effort: any error here is swallowed so it can't block a launch.
     """
+    migrate_legacy_registry()
     now_ms = int(time.time() * 1000)
 
+    # Stamped before the request, not after: a tab recorded while we were asking
+    # for the target list isn't in the answer, so treating its file as stale
+    # would strip a brand-new tab of its owner.
+    snapshot_ms = int(time.time() * 1000)
     try:
         resp = urlopen(f"http://localhost:{port}/json", timeout=5)
         targets = json.loads(resp.read())
@@ -148,98 +311,90 @@ def sweep_tabs(port: int) -> None:
     if not live:
         return
 
-    try:
-        with open(TAB_REGISTRY) as f:
-            entries = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        entries = []
+    recs: dict[str, TabRecord] = {}
+    for rec in read_tabs():
+        if rec.target_id in live:
+            # A tab can briefly have both an owned file and an `unowned` one, if
+            # a sweep adopted it in the window before its session recorded it.
+            # The owned file is the truth; the loser is left to be cleaned up as
+            # a stale file once the tab closes.
+            prev = recs.get(rec.target_id)
+            if prev is None or (prev.owner_pid is None and rec.owner_pid is not None):
+                recs[rec.target_id] = rec
+        elif rec.last_active_ms < snapshot_ms:
+            # The tab is gone and its file predates the snapshot, so it is
+            # genuinely stale. A file newer than the snapshot belongs to a tab
+            # opened after we looked — leave it be.
+            rec.remove()
 
-    # Index the registry by targetId, dropping entries whose tab is already
-    # gone. Preserve the recorded owner/ts so a live session's tab isn't lost.
-    reg: dict[str, dict] = {}
-    for e in entries:
-        tid = e.get("targetId")
-        if tid not in live:
-            continue
+    # Passive activity signal: a tab whose URL or title changed since we last
+    # looked was navigated or worked in between sweeps, so refresh its activity
+    # time. This needs no cooperation from the scripts that touched the tab.
+    # Writing here is safe without a lock because each file holds one tab, and
+    # the value written is that tab's current URL either way.
+    for tid, rec in recs.items():
         cur = live[tid]
-        # Passive activity signal: if the tab's URL or title changed since we
-        # last saw it, it was navigated/worked in between sweeps — refresh its
-        # activity time so eviction favors genuinely idle tabs. This needs no
-        # cooperation from the scripts that touched the tab.
-        if e.get("url") != cur.get("url", "") or e.get("title") != cur.get("title", ""):
-            e["lastActive"] = now_ms
-        e["url"] = cur.get("url", "")
-        e["title"] = cur.get("title", "")
-        e.setdefault("ts", now_ms)
-        e.setdefault("lastActive", e["ts"])
-        reg[tid] = e
-    # Adopt any live tab we don't already track (opened without openTab, or by
-    # the user). Record first-seen time so TTL/cap can age it out later.
+        recorded = rec.content()
+        if recorded.get("url") != cur.get("url", "") or recorded.get("title") != cur.get("title", ""):
+            rec.write(url=cur.get("url", ""), title=cur.get("title", ""))
+            rec.last_active_ms = now_ms
+
+    # Adopt any live tab nobody recorded (opened without openTab, or by the
+    # user), so its idleness can be tracked from first sight. Re-list first: a
+    # session may have recorded one of these tabs while the work above was in
+    # flight, and adopting it would leave a second, ownerless file for it.
+    recorded_ids = {r.target_id for r in read_tabs()}
     for tid, t in live.items():
-        if tid not in reg:
-            reg[tid] = {"targetId": tid, "ownerPid": None,
-                        "url": t.get("url", ""), "title": t.get("title", ""),
-                        "ts": now_ms, "lastActive": now_ms}
+        if tid in recs or tid in recorded_ids:
+            continue
+        rec = record_for(tid, None)
+        rec.write(url=t.get("url", ""), title=t.get("title", ""))
+        recs[tid] = rec
 
     open_ids = set(live)
 
-    def recency(e: dict) -> int:
-        # Least-recently-active first. Falls back to creation time for entries
-        # predating lastActive tracking.
-        return e.get("lastActive") or e.get("ts") or 0
-
-    def close(tid: str) -> bool:
+    def close(rec: TabRecord) -> bool:
         # Never close the browser's last page — that would exit the browser.
         if len(open_ids) <= 1:
             return False
         try:
-            urlopen(f"http://localhost:{port}/json/close/{tid}", timeout=5).read()
+            urlopen(f"http://localhost:{port}/json/close/{rec.target_id}", timeout=5).read()
         except (URLError, OSError):
             return False
-        open_ids.discard(tid)
-        reg.pop(tid, None)
+        open_ids.discard(rec.target_id)
+        rec.remove()
         return True
 
-    def owner_pid(e: dict):
-        # ownerPid is the current field; nodePid is the pre-1.9 name.
-        return e.get("ownerPid") or e.get("nodePid")
+    # One process listing for the whole sweep. None means the probe failed, in
+    # which case no tab is reaped for a dead owner — an unanswered liveness
+    # question must never read as "the session ended".
+    alive = running_pids()
 
     closed = 0
     # Layers 1 & 2 — owner reap (session ended) + age-out (idle past TTL),
     # least-recently-active first. Both apply regardless of whether some other
     # session is alive: a tab is reclaimed on its owner ending OR on its own
     # idleness, never held open just because unrelated sessions are running.
-    for e in sorted(reg.values(), key=recency):
-        tid = e["targetId"]
-        if tid not in open_ids:
+    for rec in sorted(recs.values(), key=lambda r: r.last_active_ms):
+        if rec.target_id not in open_ids:
             continue
-        pid = owner_pid(e)
-        owner_ended = pid is not None and not is_pid_running(pid)
-        is_idle = (now_ms - recency(e)) >= TAB_TTL_SECONDS * 1000
+        owner_ended = (rec.owner_pid is not None and alive is not None
+                       and rec.owner_pid not in alive)
+        is_idle = (now_ms - rec.last_active_ms) >= TAB_TTL_SECONDS * 1000
         if owner_ended or is_idle:
-            if close(tid):
+            if close(rec):
                 closed += 1
 
     # Layer 3 — hard ceiling. Close the least-recently-active until back under
     # the cap, ownership-agnostic: an actively-used tab has recent activity so
     # it's never the one chosen; whatever's been idle longest goes first.
-    for e in sorted(reg.values(), key=recency):
+    for rec in sorted(recs.values(), key=lambda r: r.last_active_ms):
         if len(open_ids) <= MAX_TABS:
             break
-        tid = e["targetId"]
-        if tid not in open_ids:
+        if rec.target_id not in open_ids:
             continue
-        if close(tid):
+        if close(rec):
             closed += 1
-
-    try:
-        TAB_REGISTRY.parent.mkdir(parents=True, exist_ok=True)
-        tmp = TAB_REGISTRY.with_name(TAB_REGISTRY.name + f".{os.getpid()}.tmp")
-        with open(tmp, "w") as f:
-            json.dump(list(reg.values()), f)
-        os.replace(tmp, TAB_REGISTRY)
-    except OSError:
-        pass
 
     if closed:
         print(f"Swept {closed} tab(s) to keep the browser healthy.")
@@ -291,37 +446,23 @@ def close_owned_tabs() -> int:
     live = {t["id"] for t in targets if t.get("type") == "page" and "id" in t}
     open_count = len(live)
 
-    try:
-        with open(TAB_REGISTRY) as f:
-            entries = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        entries = []
-
-    kept: list[dict] = []
     closed = 0
-    for e in entries:
-        tid = e.get("targetId")
-        e_owner = e.get("ownerPid") or e.get("nodePid")
+    for rec in read_tabs():
+        if rec.owner_pid != owner:
+            continue  # another session's tab, or one nobody claimed
+        if rec.target_id not in live:
+            rec.remove()  # my tab, already gone
+            continue
         # Close my own tabs, but never the browser's last remaining page.
-        if tid in live and e_owner == owner and open_count > 1:
-            try:
-                urlopen(f"http://localhost:{port}/json/close/{tid}", timeout=5).read()
-                closed += 1
-                open_count -= 1
-                continue  # drop from the registry
-            except (URLError, OSError):
-                pass
-        if tid in live:
-            kept.append(e)
-
-    try:
-        TAB_REGISTRY.parent.mkdir(parents=True, exist_ok=True)
-        tmp = TAB_REGISTRY.with_name(TAB_REGISTRY.name + f".{os.getpid()}.tmp")
-        with open(tmp, "w") as f:
-            json.dump(kept, f)
-        os.replace(tmp, TAB_REGISTRY)
-    except OSError:
-        pass
+        if open_count <= 1:
+            continue
+        try:
+            urlopen(f"http://localhost:{port}/json/close/{rec.target_id}", timeout=5).read()
+        except (URLError, OSError):
+            continue
+        rec.remove()
+        closed += 1
+        open_count -= 1
 
     print(f"Closed {closed} tab(s) owned by this session.")
     return 0
