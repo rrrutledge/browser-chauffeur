@@ -95,6 +95,14 @@ Marks a tab **you own** active (the lower-level primitive `findTab` uses). Call 
 - **Parameters**: `context` - Playwright browser context; `page` - the Playwright page
 - **Returns**: Promise<void>
 
+### Where tab state lives
+
+One file per open tab, at `~/.claude/browser-chauffeur/tabs/<ownerPid>-<targetId>.json`, with the file's mtime as that tab's last-activity time.
+The owning session and the CDP target are both in the filename, so `ls` answers most questions on its own — which tabs a session owns, which owners are no longer running, what the browser is holding.
+The file's contents (`url`, `title`) are there for the sweep's change detection and for reading by hand.
+
+Splitting the state per tab is what lets concurrent sessions record tabs without coordinating: each writer only ever touches the file for the tab it is acting on, so no session can drop another's tab and no lock is needed.
+
 ### Login detection
 
 **Do not try to detect login state with scripts. Detect it with the LLM via screenshot inspection.**

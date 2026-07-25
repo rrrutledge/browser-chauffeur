@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.11.0] - 2026-07-25
+
+Keeps tab ownership intact when several Claude sessions drive the browser at once.
+Ownership itself was already sound — a session could not navigate or reuse another session's tab — but the state recording that ownership lost entries whenever two sessions wrote at the same moment, and a tab with no entry has no owner, so it escaped both `--close-owned` and the sweep's owner reap and lingered until the idle/count backstop.
+That is where the ownerless tabs accumulating in the browser were coming from.
+Measured on a 6-process, 18-tab run: 5 of 18 tabs lost their record before, 0 of 18 after.
+
+### Changed
+- **Tab state is one file per tab, not one file for all of them.** `~/.claude/browser-chauffeur/tabs/<ownerPid>-<targetId>.json`, with the file's mtime as that tab's last-activity time. Recording a tab in a single shared file meant reading the whole list, appending, and writing it all back, so two sessions doing that at the same moment both started from the same list and the second write silently discarded the first one's tab. Now every writer only ever touches the file for the tab it is acting on: there is nothing of anyone else's in it to lose, so the race cannot happen and no lock is needed to prevent it. Owner and target are in the filename, so "which tabs are mine" and "whose session has ended" are answered by listing the directory with no file read at all — and `ls` now shows the browser's whole tab state by hand. Tabs already open at the upgrade are adopted on the next sweep, so they age out on idleness rather than being reaped the moment their session ends; that resolves itself as those tabs close.
+- **Owner liveness costs one process listing per sweep instead of one per tab.** Each tab used to spawn its own `tasklist`, so the sweep slowed down as sessions added tabs — exactly backwards, since every session runs a sweep at launch. A full launch and sweep now takes 5–6s where it took 12s at a comparable tab count. One listing is taken up front and every tab answered from it.
+
+### Fixed
+- **The sweep no longer erases records for tabs it did not touch.** It built its picture of the state up front, then spent seconds on process listings and tab closes, then wrote that now-stale picture back over the file — deleting every tab another session had recorded in the meantime. With per-tab files it never rewrites anything but the tabs it is actually acting on, so a tab recorded mid-sweep is untouched by construction. `--close-owned` had the same flaw and now reads and removes only its own session's files.
+- **A failed process listing no longer reads as "every session ended."** Owner reap treated an unanswerable liveness question as a dead owner, so a single failed probe could reap every session's tabs at once. Liveness is now three-valued: unknown leaves ownership alone and lets the idle and count layers do the work.
+- **A tab adopted mid-registration no longer ends up recorded twice.** When a sweep saw a brand-new tab before its session had recorded it, it adopted it as ownerless, and the session's own record then landed alongside. The sweep now re-checks for an existing record before adopting, prefers the owned file over an ownerless one when both exist, and cleans up the loser once the tab closes.
+
 ## [1.10.3] - 2026-07-22
 
 ### Fixed
