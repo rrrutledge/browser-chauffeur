@@ -34,8 +34,12 @@ spawn, record — is code. No AI re-implements the loop.
 4. **Per provider — enumerate the new:** call the provider's enumerate (for outlook-graph,
    `mail.js --list-inbox --json --top=<max_messages_per_cycle>` — read+unread, newest-first, **no time
    window**: the keeper drains the whole inbox a batch at a time across cycles). Compute each item's
-   stable id, drop any already in seen-state (`scripts/seen-state.js`), and keep up to
-   `max_messages_per_cycle` new ones.
+   stable id and drop any already in seen-state (`scripts/seen-state.js`).
+   `max_messages_per_cycle` bounds each inbox provider's own enumerate call, since those items still need
+   an AI triage call and a per-item capture. Trello is exempt: every card is pre-triaged deterministically
+   (step 5 skips the AI call for it) and `get_board_cards()` already fetches every card regardless of what
+   the adapter returns, so trello's enumerate returns every eligible card across every board, unsliced —
+   the dispatch throttle in step 6 is the only cap that applies to it.
 5. **Triage** the new items in one `claude -p` call → bucket (needs-you / auto-handle / fyi / junk) +
    kind + complexity (simple / complex). The triage prompt embeds `engine/triage.md`, the local
    `context.md`, **and each enabled provider's AUTO-HANDLE section** (so the model can recognize a
