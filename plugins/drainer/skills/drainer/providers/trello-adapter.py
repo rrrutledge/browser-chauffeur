@@ -418,18 +418,14 @@ class Provider(ProviderBase):
         # (most-recent-first; an undated card by its creation date, set above, or `now` if even that
         # couldn't be derived).
         items.sort(key=lambda it: (it["_priority_band"], it["_due_sort"] or now), reverse=True)
-        # `limit` (max_messages_per_cycle) exists to bound the AI triage batch and per-item capture cost
-        # for inbox providers. Neither applies here: every Trello card is pre-triaged deterministically
-        # (no AI call — see run-poller.py's pre_triaged branch) and get_board_cards() already fetched every
-        # card regardless of what we return, so slicing here is pure ranking, not cost control. The real
-        # throttle is the poller's cross-source (priority band, date) sort against target_open_tabs
-        # (run-poller.py ~line 936) — that sort sees every source's needs-you together, so a quiet email
-        # cycle correctly lets job-search cards fill slots. Slicing here instead shares one board-local
-        # budget across only Trello's own boards: once the OTHER boards' neutral-band cards alone exceed
-        # `limit` (job-search's P1/P2/P3 cards always rank below neutral — see _PRIORITY_BAND), every
-        # job-search card is truncated away before the poller's real throttle ever sees it, every cycle,
-        # regardless of how many tabs are actually free. Returning the full ranked list lets the poller
-        # decide instead.
+        # `limit` is ignored: there is no per-cycle work cap anywhere in the poller (see poller-core.md
+        # step 4) — get_board_cards() already fetched every card on every board regardless, and the
+        # poller's cross-source (priority band, date) sort against target_open_tabs (run-poller.py's
+        # `needs` list) is what decides how much actually gets dispatched. Truncating here instead would
+        # share one board-local budget across only Trello's own boards: once the OTHER boards' neutral-band
+        # cards alone outnumbered a cap, every job-search card (always ranked below neutral — see
+        # _PRIORITY_BAND) would be cut before the poller's real throttle ever saw it, regardless of how
+        # many tabs were actually free. Returning the full ranked list lets the poller decide instead.
         return items
 
     def stable_id(self, item):

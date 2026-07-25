@@ -33,10 +33,10 @@ runtime_dir: .tmp/drainer
 presence:
   idle_threshold_seconds: 600
 
-# Continuous-keeper (run-poller.py) knobs. The target open-tab count is tuned separately via the
-# DRAINER_TARGET_OPEN_TABS environment variable (default 12), not here.
-max_messages_per_cycle: 50   # how many inbox items each cycle enumerates (newest-first, NO time window);
-                             # the keeper drains the whole inbox a batch at a time across cycles to zero.
+# The continuous-keeper (run-poller.py) has no per-cycle work cap: every cycle enumerates everything
+# eligible from every source. The target open-tab count — tuned via the DRAINER_TARGET_OPEN_TABS
+# environment variable (default 12), not here — is the only thing that throttles how much of it
+# actually gets dispatched at once; anything held simply retries next cycle.
 
 # Worker model per item — the poller picks by triage complexity (simple -> worker_model,
 # complex -> worker_model_complex). Set an EXPLICIT model so workers don't inherit a 1M-context
