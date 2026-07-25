@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.13.0] - 2026-07-25
+
+### Changed
+- **The `browser-chauffeur-helpers` shim finds the active helpers when it is required, instead of naming one version's path.** The plugin installs under a version-numbered directory, so a path chosen at setup time stopped being right the moment the plugin updated: scripts kept loading the previous version's helpers until something re-ran setup or re-pointed the shim by hand, and a version bump that changed helper behaviour silently didn't take. The shim now asks the plugin registry which version each scope actually has installed — preferring the entry governing the current project, so a project deliberately held back still gets its own version — and falls back to the newest version in the plugin cache, then to the path that was current when it was written. Versions are ranked numerically, so 1.12.0 outranks 1.8.1. An update now applies on its own, with no setup run and nothing to re-point.
+
 ## [1.12.0] - 2026-07-25
 
 Makes the count cap stop evicting tabs a running session still needs, and gives owner identity enough precision that a recycled PID can't keep a dead session's tabs alive.
