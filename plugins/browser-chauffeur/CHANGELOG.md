@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.12.0] - 2026-07-25
+
+Makes the count cap stop evicting tabs a running session still needs, and gives owner identity enough precision that a recycled PID can't keep a dead session's tabs alive.
+
+### Changed
+- **The count cap gives up unclaimed tabs before a live session's.** It ordered purely by idleness, so once the browser was over the ceiling it would close whichever tab had been quiet longest — including one a running session was mid-flow on, while a tab nobody owned survived for having been touched more recently. Eviction is now tiered: tabs with no owner go first, and a live session's tabs are touched only if the browser is still over the ceiling afterwards. Least-recently-active still decides within each tier, which is what keeps a tab you are working in — including one you opened by hand, since interacting with it moves its URL or title and the sweep marks it active.
+- **Owner identity is the session's PID plus its process start time.** Windows hands out PID numbers again after a process exits, so a PID being live was never evidence that the session which recorded it was still running: a later, unrelated process inheriting the number made a dead session's tabs look owned and alive, leaving them to sit until the 12h idle age-out. Start time is unique per process, so comparing it identifies the impostor. The launcher records it beside the PID; a record written without one still works, falling back to matching the PID alone. Comparison allows two seconds of slack, since the value is written by PowerShell and read back through the Win32 API — a real recycle cannot hide inside that window, because the replacement process starts no earlier than the moment the original exited.
+- **Liveness is read from the OS directly instead of by running a process lister.** Asking Win32 costs about 4 microseconds against a subprocess spawn, and it answers the start-time question in the same call. It also distinguishes a PID that no process holds from one this user may not query: the second case now reads as unknown and leaves ownership alone, where a process lister could only say "absent" and risk reaping a live session's tabs.
+
+### Fixed
+- **A rename that Windows refuses no longer drops the write and strands the temp file.** Records are written to a temp file and renamed into place so no reader ever sees a half-written file, but Windows refuses that rename while another process has the target open. On a single attempt the update was silently lost and the temp left on disk for good. The rename now retries briefly across that moment, and the temp is removed either way.
+
 ## [1.11.0] - 2026-07-25
 
 Keeps tab ownership intact when several Claude sessions drive the browser at once.

@@ -35,8 +35,8 @@ Notes baked in (so callers don't have to remember them):
 """
 
 import argparse
-import csv
-import io
+import ctypes
+import ctypes.wintypes as wintypes
 import json
 import os
 import re
@@ -97,59 +97,127 @@ def find_free_port(start: int = 9222, count: int = 5) -> int | None:
     return None
 
 
-def is_pid_running(pid: int) -> bool:
-    result = subprocess.run(
-        ["tasklist", "/FI", f"PID eq {pid}", "/NH"],
-        capture_output=True, text=True,
-    )
-    return str(pid) in result.stdout
+ALIVE, DEAD, UNKNOWN = "alive", "dead", "unknown"
+
+_PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+_ERROR_INVALID_PARAMETER = 87  # no process holds this PID
+_ERROR_ACCESS_DENIED = 5       # a process holds it, but we may not ask about it
+
+try:
+    _K32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    _K32.OpenProcess.restype = wintypes.HANDLE
+    _K32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    _K32.CloseHandle.argtypes = [wintypes.HANDLE]
+except (OSError, AttributeError):  # pragma: no cover - non-Windows
+    _K32 = None
 
 
-def running_pids() -> set[int] | None:
-    """Every running PID, from ONE tasklist call.
+def probe_owner(pid: int) -> tuple[str, int | None]:
+    """Ask the OS about a session's process: (state, start_time).
 
-    The sweep tests liveness for every tab it knows about. Asking tasklist per
-    tab costs a process spawn each time, which runs to tens of seconds at a
-    couple of dozen tabs and grows exactly as concurrent sessions add them — so
-    every session's launch pays for it. One call plus a set membership test is
-    the same answer at constant cost.
+    Returns ALIVE with the process's creation time, DEAD when no process holds
+    the PID, or UNKNOWN when the question can't be answered. Start time is what
+    separates the real owner from an impostor: Windows recycles PIDs, so a PID
+    being live is not evidence that the session which recorded it is still
+    running — a later process can inherit the number. Creation time is unique
+    per process, so comparing it catches the impostor.
 
-    Returns None when the probe itself failed, which is NOT the same as "no PIDs
-    are running": callers must treat None as unknown liveness and leave
-    ownership alone, or a transient tasklist failure would look like every
-    session had ended and reap all their tabs at once.
+    UNKNOWN is deliberately distinct from DEAD. A process we lack the rights to
+    open still exists, and treating "I couldn't tell" as "the session ended"
+    would reap a live session's tabs.
+
+    Uses the Win32 API directly rather than spawning a process lister: the sweep
+    asks this for every tab it knows about, and at roughly 4 microseconds a call
+    that cost stays invisible however many tabs accumulate.
     """
+    if _K32 is None:
+        return UNKNOWN, None
+    ctypes.set_last_error(0)
+    handle = _K32.OpenProcess(_PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+    if not handle:
+        err = ctypes.get_last_error()
+        if err == _ERROR_INVALID_PARAMETER:
+            return DEAD, None
+        if err == _ERROR_ACCESS_DENIED:
+            return ALIVE, None  # exists; start time simply unavailable
+        return UNKNOWN, None
     try:
-        result = subprocess.run(
-            ["tasklist", "/FO", "CSV", "/NH"],
-            capture_output=True, text=True, timeout=30,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return None
-    if result.returncode != 0:
-        return None
-    pids = set()
-    for row in csv.reader(io.StringIO(result.stdout)):
-        # CSV columns: "Image Name","PID","Session Name","Session#","Mem Usage"
-        if len(row) >= 2 and row[1].strip().isdigit():
-            pids.add(int(row[1].strip()))
-    return pids or None
+        creation, exited, kernel, user = (wintypes.FILETIME() for _ in range(4))
+        ok = _K32.GetProcessTimes(handle, ctypes.byref(creation), ctypes.byref(exited),
+                                  ctypes.byref(kernel), ctypes.byref(user))
+        if not ok:
+            return ALIVE, None
+        return ALIVE, (creation.dwHighDateTime << 32) | creation.dwLowDateTime
+    finally:
+        _K32.CloseHandle(handle)
+
+
+# Start times are compared with slack rather than for equality, because the two
+# sides are written by different runtimes: the launcher records what PowerShell
+# reports for the session, the sweep reads what the Win32 API reports. Both are
+# FILETIMEs, but demanding they agree to the tick would make any rounding
+# difference look like a recycled PID and reap every live session's tabs at once
+# — a catastrophic answer to a cosmetic disagreement. Two seconds cannot hide a
+# real recycle: the replacement process starts no earlier than the moment the
+# original exited, so mistaking one for the other needs the original to have
+# lived under two seconds, which a session host never does.
+START_TIME_SLACK_TICKS = 2 * 10**7  # FILETIME ticks are 100ns
+
+
+def owner_has_ended(owner_pid: int, recorded_start: int | None) -> bool:
+    """Is the session that recorded this tab definitely gone?
+
+    True only on evidence: no process holds the PID, or one does but it started
+    at a different time than the session we recorded, which makes it a different
+    process wearing a recycled PID. Anything unproven answers False, so a tab is
+    left to the idle and count layers rather than reaped on a guess.
+    """
+    state, start = probe_owner(owner_pid)
+    if state == DEAD:
+        return True
+    if state == ALIVE and recorded_start is not None and start is not None:
+        return abs(start - recorded_start) > START_TIME_SLACK_TICKS
+    return False
 
 
 # tabs/<ownerPid>-<targetId>.json — `unowned` for a tab nobody claimed.
 TAB_NAME_RE = re.compile(r"^(unowned|\d+)-([0-9A-Fa-f]+)\.json$")
 
+# Sentinel for "this field hasn't been read off disk yet", distinct from a
+# record that genuinely has no start time.
+_UNREAD = object()
+
+
+def replace_atomically(tmp: Path, target: Path, attempts: int = 5) -> None:
+    """Rename tmp over target, retrying briefly if Windows refuses.
+
+    A rename onto a file another process currently has open fails on Windows.
+    Left at one attempt that surfaces as a silently dropped write — the update
+    never lands and the temp file is stranded — which is how a shared registry
+    quietly loses records. Retrying covers the moment a concurrent reader holds
+    the file; the caller removes the temp either way.
+    """
+    for attempt in range(attempts):
+        try:
+            os.replace(tmp, target)
+            return
+        except OSError:
+            if attempt == attempts - 1:
+                raise
+            time.sleep(0.02 * (attempt + 1))
+
 
 class TabRecord:
     """One tab's file: owner and targetId from the name, activity from mtime."""
 
-    __slots__ = ("path", "target_id", "owner_pid", "last_active_ms")
+    __slots__ = ("path", "target_id", "owner_pid", "last_active_ms", "_owner_start")
 
     def __init__(self, path: Path, target_id: str, owner_pid: int | None, last_active_ms: int):
         self.path = path
         self.target_id = target_id
         self.owner_pid = owner_pid
         self.last_active_ms = last_active_ms
+        self._owner_start = _UNREAD
 
     def content(self) -> dict:
         try:
@@ -158,6 +226,19 @@ class TabRecord:
             return data if isinstance(data, dict) else {}
         except (OSError, json.JSONDecodeError):
             return {}
+
+    @property
+    def owner_start(self) -> int | None:
+        """The owning process's creation time, or None if it wasn't recorded.
+
+        Lives in the file rather than the name so the layout is unchanged and a
+        record written before this existed still reads cleanly — it simply has
+        no start time, and ownership falls back to matching the PID alone.
+        """
+        if self._owner_start is _UNREAD:
+            value = self.content().get("ownerStart")
+            self._owner_start = value if isinstance(value, int) else None
+        return self._owner_start
 
     def write(self, **updates) -> None:
         """Merge updates into this tab's own file.
@@ -170,12 +251,23 @@ class TabRecord:
         data.update({"targetId": self.target_id, "ownerPid": self.owner_pid}, **updates)
         try:
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            tmp = self.path.with_name(self.path.name + f".{os.getpid()}.tmp")
+        except OSError:
+            return
+        tmp = self.path.with_name(self.path.name + f".{os.getpid()}.tmp")
+        try:
             with open(tmp, "w") as f:
                 json.dump(data, f)
-            os.replace(tmp, self.path)
+            replace_atomically(tmp, self.path)
         except OSError:
             pass
+        finally:
+            # A rename that never happened would otherwise strand the temp file
+            # on disk for good.
+            try:
+                tmp.unlink()
+            except OSError:
+                pass
+        self._owner_start = _UNREAD
 
     def bump(self) -> None:
         """Mark active without rewriting content."""
@@ -326,10 +418,16 @@ def sweep_tabs(port: int) -> None:
         rec.remove()
         return True
 
-    # One process listing for the whole sweep. None means the probe failed, in
-    # which case no tab is reaped for a dead owner — an unanswered liveness
-    # question must never read as "the session ended".
-    alive = running_pids()
+    # Answered once per owner, since many tabs usually share a session.
+    ended_cache: dict[tuple[int, int | None], bool] = {}
+
+    def owner_ended(rec: TabRecord) -> bool:
+        if rec.owner_pid is None:
+            return False  # nobody claimed it; layers 2 and 3 handle it
+        key = (rec.owner_pid, rec.owner_start)
+        if key not in ended_cache:
+            ended_cache[key] = owner_has_ended(rec.owner_pid, rec.owner_start)
+        return ended_cache[key]
 
     closed = 0
     # Layers 1 & 2 — owner reap (session ended) + age-out (idle past TTL),
@@ -339,17 +437,23 @@ def sweep_tabs(port: int) -> None:
     for rec in sorted(recs.values(), key=lambda r: r.last_active_ms):
         if rec.target_id not in open_ids:
             continue
-        owner_ended = (rec.owner_pid is not None and alive is not None
-                       and rec.owner_pid not in alive)
         is_idle = (now_ms - rec.last_active_ms) >= TAB_TTL_SECONDS * 1000
-        if owner_ended or is_idle:
+        if owner_ended(rec) or is_idle:
             if close(rec):
                 closed += 1
 
-    # Layer 3 — hard ceiling. Close the least-recently-active until back under
-    # the cap, ownership-agnostic: an actively-used tab has recent activity so
-    # it's never the one chosen; whatever's been idle longest goes first.
-    for rec in sorted(recs.values(), key=lambda r: r.last_active_ms):
+    # Layer 3 — hard ceiling. Evict by how much the tab is worth keeping, not by
+    # idleness alone: a tab nobody claimed has no session depending on it, while
+    # one owned by a running session may be mid-flow in work the sweep can't
+    # see. So unclaimed tabs go first and a live session's tabs are touched only
+    # if the browser is still over the ceiling afterwards. Within each tier the
+    # least-recently-active goes first, which is what protects a tab you are
+    # using — including one you opened by hand, since interacting with it moves
+    # its URL or title and the sweep bumps its activity.
+    def eviction_order(rec: TabRecord) -> tuple[int, int]:
+        return (0 if rec.owner_pid is None else 1, rec.last_active_ms)
+
+    for rec in sorted(recs.values(), key=eviction_order):
         if len(open_ids) <= MAX_TABS:
             break
         if rec.target_id not in open_ids:
@@ -471,7 +575,7 @@ def run_persistent(url: str) -> int:
             print(f"PORT={port}")
             print(f"PROFILE_DIR={profile_dir}")
             return 0
-        elif is_pid_running(pid):
+        elif probe_owner(pid)[0] != DEAD:
             print(f"Warning: PID {pid} running but CDP port {port} not responding. Launching new browser.")
             # PID exists but CDP dead - likely a different process reused the PID
 
