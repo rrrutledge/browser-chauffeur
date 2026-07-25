@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.14.0] - 2026-07-25
+
+Stops a hung or failed automation script from lingering as an orphaned process.
+A script talks to the browser over a live CDP socket, and that open socket holds Node's event loop open, so a script that threw or hung never exited on its own: it survived until the browser itself closed hours later, and a long session's worth of them piled up faster than they drained and could exhaust the machine's memory.
+
+### Added
+- **Requiring the helpers now installs a process guard that force-exits a script the moment its work can no longer finish.** Every automation script requires `browser-chauffeur-helpers`, so the guard reaches every script, including a quick ad-hoc one that skips the template's own exit path. Two nets: an unhandled-rejection handler exits promptly when a script's top-level promise rejects with no `.catch()` (a bare IIFE), rather than leaving it hanging behind the socket; and a wall-clock watchdog force-exits a script still alive after a timeout (default 30 minutes, override with `BROWSER_CHAUFFEUR_SCRIPT_TIMEOUT_MS`). The watchdog is generous by design so a legitimately long single script — a large batch, or a wait for a long media playback — is never cut off, and it's unref'd so it never delays a script that finishes cleanly. A script that must run past the window calls the new `cancelScriptWatchdog()` export.
+- **A `✅ REQUIRED: Guaranteed Process Exit` rule in the script quality standards, checked in Phase 5 validation.** Scripts wrap their body in `try { ... } finally { await browser.close(); }` and end with `run().catch(e => { console.error(e.message); process.exit(1); })`, so a throw or a rejection can never leave the process alive behind the open socket. This is the prompt exit; the process guard is the backstop when a script skips it.
+
 ## [1.13.0] - 2026-07-25
 
 ### Changed
