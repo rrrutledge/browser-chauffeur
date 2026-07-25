@@ -6,7 +6,9 @@ param(
                         #   Claude self-titles the tab descriptively (it names the session off its first
                         #   message). Prose-in-file per the rule below; only the path crosses the wt line.
   [string]$SessionId,   # optional explicit id; auto-generated in PromptFile mode
-  [string]$Resume       # resume mode: session ID of an existing session to resume (no seed needed)
+  [string]$Resume       # resume mode: session ID of an existing session to resume; combine with
+                        #   -PromptFile/-SeedFile to hand the resumed session a follow-up prompt,
+                        #   or pass alone to just reopen it with nothing queued up
 )
 # Shared primitive: launch a fresh Claude session inside a Windows Terminal tab.
 # This is the REAL launcher — the single copy — living inside the session-mgr
@@ -19,9 +21,11 @@ param(
 #     file and forwards to it, so a worker is never launched from a floating
 #     dev-clone branch. Keep that resolver's param block in sync with the one below
 #     — a param not declared there is silently dropped instead of forwarded.
-# Both callers route through here:
+# Callers route through here:
 #   - drainer/spawn-tab.cmd  -> -PromptFile (browser loop; model = session default)
 #   - the handoff launcher   -> -SeedFile -Model "claude-opus-4-8[1m]"
+#   - resuming with a follow-up prompt -> -Resume <id> -PromptFile/-SeedFile (-SeedFile for a
+#     one-off ask, -PromptFile when the instructions are already a standing file on disk)
 # Always invoked via `powershell -File` (NOT inline -Command): wt treats ';' as a tab
 # delimiter and would truncate an inline command. `pwsh` is absent — use `powershell`.
 # No startup beep on purpose — Claude Code's own notifications beep when it actually needs
@@ -66,14 +70,6 @@ function Register-SessionReceipt {
 }
 
 $seed = $null
-if ($Resume) {
-  $claudeArgs = @('--resume', $Resume)
-  if ($Model) { $claudeArgs = @('--model', $Model) + $claudeArgs }
-  # Own browser-chauffeur tabs for this resumed session (see note below).
-  $env:BROWSER_CHAUFFEUR_OWNER_PID = $PID
-  claude @claudeArgs
-  return
-}
 if ($PromptFile) {
   if (-not (Test-Path -LiteralPath $PromptFile)) {
     Write-Host "launch-session: prompt file not found: $PromptFile" -ForegroundColor Red
@@ -110,15 +106,22 @@ elseif ($SeedFile) {
   $SessionId = Register-SessionReceipt -AnchorFile $SeedFile -SessionId $SessionId
   $seed = (Get-Content -Raw -LiteralPath $SeedFile).Trim()
 }
-else {
+elseif (-not $Resume) {
   Write-Host "launch-session: supply -PromptFile, -SeedFile, or -Resume <session-id>" -ForegroundColor Red
   return
 }
 
+# -Resume takes an existing session id instead of minting a new one; -PromptFile/-SeedFile above
+# may still have set $seed, letting a resumed session be handed a follow-up prompt the same way a
+# fresh one is. Bare -Resume (no seed) reopens the session with nothing queued up, same as before.
 $claudeArgs = @()
-if ($Model)     { $claudeArgs += @('--model', $Model) }
-if ($SessionId) { $claudeArgs += @('--session-id', $SessionId) }
-$claudeArgs += $seed
+if ($Model) { $claudeArgs += @('--model', $Model) }
+if ($Resume) {
+  $claudeArgs += @('--resume', $Resume)
+} elseif ($SessionId) {
+  $claudeArgs += @('--session-id', $SessionId)
+}
+if ($seed) { $claudeArgs += $seed }
 # Own any browser-chauffeur tabs this session opens. The browser-chauffeur sweep
 # keeps a tab alive while its owner process is running and reclaims it when the
 # owner is gone, so tying ownership to THIS host process (which lives exactly as
