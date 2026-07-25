@@ -113,9 +113,34 @@ function writeTab(ownerPid, targetId, updates) {
   }
   // Unique temp name per process so concurrent writers don't clobber the temp.
   const tmp = `${file}.${process.pid}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify({ ...existing, targetId, ownerPid, ...updates }));
-  fs.renameSync(tmp, file);
+  try {
+    fs.writeFileSync(tmp, JSON.stringify({ ...existing, targetId, ownerPid, ...updates }));
+    renameWithRetry(tmp, file);
+  } finally {
+    // A rename that never happened would otherwise strand the temp on disk.
+    try { fs.unlinkSync(tmp); } catch { /* renamed away, as expected */ }
+  }
   return file;
+}
+
+// Windows refuses a rename onto a file another process currently has open. Left
+// at a single attempt that surfaces as a silently dropped write, since callers
+// treat recording as best-effort — so retry across the moment a concurrent
+// reader holds the file.
+function renameWithRetry(tmp, file, attempts = 5) {
+  for (let i = 0; ; i++) {
+    try {
+      fs.renameSync(tmp, file);
+      return;
+    } catch (e) {
+      if (i >= attempts - 1) throw e;
+      sleepSync(20 * (i + 1));
+    }
+  }
+}
+
+function sleepSync(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
 // Mark a tab active without touching its content.
@@ -137,11 +162,20 @@ function bumpMtime(file) {
 // session"). If it's unset, ownership falls back to this short-lived node
 // process — the tab is then reclaimed soon after this script finishes, not at
 // session end.
+// BROWSER_CHAUFFEUR_OWNER_START is that session's process creation time, which
+// is what tells its tabs apart from those of a later process that inherited the
+// same PID — Windows recycles PIDs, so the number alone can outlive the session
+// and keep dead tabs looking owned. The launcher exports it alongside the PID;
+// when it's absent the record simply carries no start time and ownership falls
+// back to matching the PID, exactly as before.
 function ownerInfo() {
   const envPid = Number(process.env.BROWSER_CHAUFFEUR_OWNER_PID);
-  return {
-    ownerPid: Number.isInteger(envPid) && envPid > 0 ? envPid : process.pid,
-  };
+  const envStart = Number(process.env.BROWSER_CHAUFFEUR_OWNER_START);
+  const usingEnvPid = Number.isInteger(envPid) && envPid > 0;
+  const info = { ownerPid: usingEnvPid ? envPid : process.pid };
+  // Only meaningful for the PID it was captured for.
+  if (usingEnvPid && Number.isFinite(envStart) && envStart > 0) info.ownerStart = envStart;
+  return info;
 }
 
 // Every tab this session owns, as targetId -> { file, mtimeMs }. Built from

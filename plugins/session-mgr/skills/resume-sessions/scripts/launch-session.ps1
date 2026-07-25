@@ -128,4 +128,9 @@ if ($seed) { $claudeArgs += $seed }
 # long as this WT tab) means the browser tab is cleaned up when the tab closes —
 # not orphaned. Every node script the session spawns inherits these env vars.
 $env:BROWSER_CHAUFFEUR_OWNER_PID = $PID
+# Paired with the PID so the sweep can tell this session's tabs from those of a
+# later process that inherits the same PID — Windows recycles PID numbers, and a
+# recycled one makes a dead session's tabs look owned and alive indefinitely.
+# Expressed as a Windows FILETIME, matching what the sweep reads back from the OS.
+$env:BROWSER_CHAUFFEUR_OWNER_START = (Get-Process -Id $PID).StartTime.ToFileTime()
 claude @claudeArgs
