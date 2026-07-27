@@ -12,6 +12,8 @@ node plugins/browser-chauffeur/skills/browser-chauffeur/templates/setup.js
 
 This installs `playwright-core` and writes a `browser-chauffeur-helpers` shim to `~/.claude/browser-chauffeur/node_modules/`. Scripts fall back to that location automatically when the package isn't installed in the current project.
 
+The shim looks up the active plugin version each time it is required — from the plugin registry, falling back to the newest version in the plugin cache — so a plugin update takes effect on its own. Setup does not need re-running after an upgrade.
+
 ## Usage
 
 ```javascript
@@ -40,11 +42,15 @@ async function run() {
     await screenshotOnFailure(context, 'example-error');
     throw e;
   } finally {
-    await closeTab(page);   // close (or park, if last tab) + unregister
+    await closeTab(page);           // close (or park, if last tab) + unregister
+    await browser.close().catch(() => {});
   }
 }
 
-run().catch(console.error);
+// Guaranteed exit: close the process when the work ends, and on a rejection too —
+// the live CDP socket keeps the event loop alive, so a script that only logs its
+// error (run().catch(console.error)) lingers as an orphan. Always exit(1).
+run().catch(e => { console.error(e.message); process.exit(1); });
 ```
 
 ## Available Helpers
@@ -94,6 +100,22 @@ Marks a tab **you own** active (the lower-level primitive `findTab` uses). Call 
 
 - **Parameters**: `context` - Playwright browser context; `page` - the Playwright page
 - **Returns**: Promise<void>
+
+### `cancelScriptWatchdog()`
+
+Cancels the process watchdog that requiring the helpers installs (see **Process guard** below). Call it only in a script that legitimately needs to run past the watchdog window — for example, one that waits out a long media playback.
+
+- **Parameters**: none
+- **Returns**: void
+
+### Process guard
+
+Requiring `browser-chauffeur-helpers` installs a process guard that keeps a hung or failed script from lingering as an orphan. A script talks to the browser over a live CDP socket, and that open socket holds Node's event loop open, so a script that throws or hangs never exits on its own — it survives until the browser closes hours later, and a session's worth of them can exhaust memory. Two nets, both automatic:
+
+- **Watchdog** — force-exits a script that is still alive after a wall-clock timeout (default 30 minutes, override with `BROWSER_CHAUFFEUR_SCRIPT_TIMEOUT_MS`). Generous by design so a legitimately long single script isn't cut off; the timer is unref'd, so it never delays a script that finishes cleanly. A script that must run even longer calls `cancelScriptWatchdog()`.
+- **Unhandled rejection** — a script whose top-level promise rejects with no `.catch()` (a bare IIFE) is exited promptly with the error printed, rather than left hanging behind the socket.
+
+The guard is the safety net, not the plan: a well-formed script still exits promptly through its own `finally { await browser.close(); }` and `run().catch(e => { console.error(e.message); process.exit(1); })` — see **Guaranteed Process Exit** in `script-quality-standards.md`.
 
 ### Where tab state lives
 

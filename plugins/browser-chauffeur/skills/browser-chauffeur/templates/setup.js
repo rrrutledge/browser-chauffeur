@@ -40,18 +40,28 @@ function installPlaywrightCore() {
   }
 }
 
+// Installs helpers-shim.js, which finds the active helpers.js when it is
+// required instead of naming one version's path. The plugin lives under a
+// version-numbered directory, so a path fixed at setup time goes stale on the
+// next update and leaves every script loading the previous version until
+// something rewrites the shim. Resolving per require means an update applies by
+// itself. The current path is still substituted in as a last-resort fallback.
 function writeHelpersShim() {
   const helpersJs = path.resolve(__dirname, '..', '..', '..', 'helpers.js');
   if (!fs.existsSync(helpersJs)) {
     console.warn('Warning: helpers.js not found at', helpersJs, '— skipping shim.');
     return;
   }
+  const template = path.join(__dirname, 'helpers-shim.js');
+  if (!fs.existsSync(template)) {
+    console.warn('Warning: helpers-shim.js not found at', template, '— skipping shim.');
+    return;
+  }
+  const source = fs.readFileSync(template, 'utf8')
+    .replace("'__BAKED_HELPERS_PATH__'", JSON.stringify(helpersJs));
   const shimDir = path.join(SHARED_NM, 'browser-chauffeur-helpers');
   fs.mkdirSync(shimDir, { recursive: true });
-  fs.writeFileSync(
-    path.join(shimDir, 'index.js'),
-    `module.exports = require(${JSON.stringify(helpersJs)});\n`
-  );
+  fs.writeFileSync(path.join(shimDir, 'index.js'), source);
   fs.writeFileSync(
     path.join(shimDir, 'package.json'),
     JSON.stringify({ name: 'browser-chauffeur-helpers', version: '1.0.0', main: 'index.js' }, null, 2) + '\n'

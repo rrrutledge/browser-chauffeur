@@ -75,6 +75,20 @@ Scripts receive `--cdp-port=<port>` from Claude. Connect with the hardened `conn
 
 Scripts must navigate to their target URL themselves — don't assume the browser is already there. Since Phase 0 already validated that the target loads, navigating again is just a reload and keeps the script self-contained.
 
+## ✅ REQUIRED: Guaranteed Process Exit
+
+Every script — a quick one-off as much as one built from the full template — must guarantee its process exits when its work ends. A script connects to the browser over a live CDP socket, and that open socket keeps Node's event loop alive: if a step throws or hangs, `browser.close()` never runs, the socket stays open, and the process lingers as an orphan (with the shell and console host that launched it) until the browser closes hours later. Accumulate a session's worth of these and they exhaust memory.
+
+Wrap the whole body in `try { ... } finally { await closeTab(page); await browser.close().catch(() => {}); }`, and end the file with the guaranteed-exit line so a rejection can never leave the process hanging:
+
+```javascript
+run().catch(e => { console.error(e.message); process.exit(1); });
+```
+
+A bare `(async () => { ... })()` IIFE with no top-level `.catch()` fails this: a throw anywhere inside leaves the rejection unhandled while the socket keeps the process alive. Either use the `run()`-plus-`.catch()` shape above, or attach `.catch(e => { console.error(e.message); process.exit(1); })` to the IIFE's own promise.
+
+**Backstop (automatic, no action needed):** requiring `browser-chauffeur-helpers` installs a process guard — an unhandled-rejection handler that force-exits, and a wall-clock watchdog (default 30 min, override with `BROWSER_CHAUFFEUR_SCRIPT_TIMEOUT_MS`) that force-exits a genuinely hung script. This catches a script that skips the pattern above, but it's the safety net, not the plan: a correct script still exits promptly through its own `finally`. A script that legitimately runs past the watchdog window (a long media wait) calls `cancelScriptWatchdog()` from the helpers.
+
 ## Additional Requirements
 
 - `console.log` after each major step for progress tracking

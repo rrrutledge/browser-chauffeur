@@ -185,6 +185,7 @@ A single clear sentence ending in a question is usually the whole message — re
   Give a plan as one plain line and a decision on your own side as a bare fact - the timing mechanics behind the plan and the parenthetical justifying the decision both come out.
   Don't itemize each individual action once a summary phrase already implies it.
   This applies even when the ruled-out option was worth investigating - state the bottom line the research produced, not the reasoning that got you there.
+  **When a live discussion is already scheduled to follow** (a call, a meeting), this goes further: report the observations and stop - don't propose your own fix or float a question in writing, since working out what to do about it is what the live conversation is for.
 - **Proposing call times across timezones: filter to the recipient's normal work day, not just your own open calendar.**
   Converting your free slots to their local time isn't enough — a slot that's open for you can still be very late or very early for them. Before offering a window, check it against a normal work day (roughly 8am-6pm) in *their* timezone and drop anything outside it, even if it's technically free on your end.
 
@@ -194,7 +195,7 @@ The specifics that most often separate a message that reads as Russell's from on
 
 - **Keep a short message plain** — a quick reply is one or two plain sentences, not a structured block.
   For a multi-item status flag in chat, put each item on its own line without a leading bullet dash, and open with a vague count ("A few things stood out") rather than an exact one ("Three things stood out").
-  **Exception — a short list of edit requests on the same document** (a placeholder to fill in, a wording fix, a tagging tweak) **or one connected train of thought** (a finding, its implication, and the step it suggests): fold these into one flowing paragraph rather than one per line or one per blank-line-separated paragraph, and save a paragraph break for a genuine change of topic.
+  **Exception — a short list of edit requests on the same document** (a placeholder to fill in, a wording fix, a tagging tweak), **one connected train of thought** (a finding, its implication, and the step it suggests), **or several examples backing one shared finding** (three separate emails that all illustrate the same underlying product flaw): fold these into one flowing paragraph rather than one per line or one per bullet, and save a paragraph break for a genuine change of topic.
 - **Stay warm but understated.**
   In outreach re-engagement, lead with one open question and stop; the invitation to participate carries the ask on its own.
   Say the thing plainly rather than reaching for a punchy interjection, a colorful idiom, or a dry aside — "she had a tough first week", not "she got a rude awakening" followed by "so that was interesting."
@@ -207,7 +208,7 @@ The specifics that most often separate a message that reads as Russell's from on
   That evidence only supports a decision already made; the asker wanted the answer, not the paper trail behind it.
 - **When Russell owns the next step, say "I'll" — not "we'll" — and drop the trailing offer.**
   Announce work already done actively in the first person ("I drafted the posts"), not agent-less passive ("the posts are drafted").
-- **Adding a second ask mid-thread: open with the discovery, not the ask** — "found one more", not "one more ask while I have you". Scope: this is for tacking a new point onto something you already sent. When several points are compiled into one message from the start (e.g. a batch of edit requests on the same document), skip the discovery framing entirely and just list them — there's nothing to "find" mid-message.
+- **Adding a second ask mid-thread: lead into it, don't tack the ask on cold — but don't reuse one fixed opener every time.** The bridge phrasing varies by relationship and occasion: "found one more", "if it's not too much trouble, I have one other similar ask", or no bridge line at all when the ask flows naturally from what's already in the thread. Scope: this is for tacking a new point onto something you already sent. When several points are compiled into one message from the start (e.g. a batch of edit requests on the same document), skip the discovery framing entirely and just list them — there's nothing to "find" mid-message.
 - **Adding a new recipient to an existing thread: state the action, don't address them.**
   "Adding Hong directly here as well." is the whole line - it speaks to the thread, so the greeting, the reason, and any closing question aimed at the new person all come out.
 - **Float a candidate tentatively** — "also may be a great fit", not "would be a great fit". The "also" ties them to someone already named and "may" keeps it open; go straight to the person and drop the setup line.
@@ -269,6 +270,7 @@ The specifics that most often separate a message that reads as Russell's from on
 - **Open with warmth** — a brief positive or appreciative line before the business, regardless of persona or whether the other person did anything special.
   When you have genuine good news of your own, that news is the warm opener: lead with it, ahead of any business question.
   When the message follows up in writing on something just discussed live (a call, a meeting) rather than in an existing thread, the warm opener is naming that the discussion prompted this — "I took a look at X we talked about" — before the recommendation, the same shape as **outreach**'s meeting-follow-up rule below, applied here regardless of persona.
+  **Before critiquing something the recipient built or owns, the warmth needs to be genuine praise for the work itself** ("This is really neat work, and I'm glad you've built it"), not just a neutral status line standing in for one — real credit for the thing, ahead of the flaws in it.
 - **Answer the question first.**
   Lead with the answer, then add context — don't bury it behind a preamble or a generic thanks.
   When someone raises more than one point, answer each one by name rather than a single blanket acknowledgment — this includes an earlier, question-free message where they shared research or effort on your behalf: thank them for the specific contribution and note your own follow-through on it before pivoting to a fresh, unrelated ask in the same reply.

@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.14.0] - 2026-07-25
+
+Stops a hung or failed automation script from lingering as an orphaned process.
+A script talks to the browser over a live CDP socket, and that open socket holds Node's event loop open, so a script that threw or hung never exited on its own: it survived until the browser itself closed hours later, and a long session's worth of them piled up faster than they drained and could exhaust the machine's memory.
+
+### Added
+- **Requiring the helpers now installs a process guard that force-exits a script the moment its work can no longer finish.** Every automation script requires `browser-chauffeur-helpers`, so the guard reaches every script, including a quick ad-hoc one that skips the template's own exit path. Two nets: an unhandled-rejection handler exits promptly when a script's top-level promise rejects with no `.catch()` (a bare IIFE), rather than leaving it hanging behind the socket; and a wall-clock watchdog force-exits a script still alive after a timeout (default 30 minutes, override with `BROWSER_CHAUFFEUR_SCRIPT_TIMEOUT_MS`). The watchdog is generous by design so a legitimately long single script — a large batch, or a wait for a long media playback — is never cut off, and it's unref'd so it never delays a script that finishes cleanly. A script that must run past the window calls the new `cancelScriptWatchdog()` export.
+- **A `✅ REQUIRED: Guaranteed Process Exit` rule in the script quality standards, checked in Phase 5 validation.** Scripts wrap their body in `try { ... } finally { await browser.close(); }` and end with `run().catch(e => { console.error(e.message); process.exit(1); })`, so a throw or a rejection can never leave the process alive behind the open socket. This is the prompt exit; the process guard is the backstop when a script skips it.
+
+## [1.13.0] - 2026-07-25
+
+### Changed
+- **The `browser-chauffeur-helpers` shim finds the active helpers when it is required, instead of naming one version's path.** The plugin installs under a version-numbered directory, so a path chosen at setup time stopped being right the moment the plugin updated: scripts kept loading the previous version's helpers until something re-ran setup or re-pointed the shim by hand, and a version bump that changed helper behaviour silently didn't take. The shim now asks the plugin registry which version each scope actually has installed — preferring the entry governing the current project, so a project deliberately held back still gets its own version — and falls back to the newest version in the plugin cache, then to the path that was current when it was written. Versions are ranked numerically, so 1.12.0 outranks 1.8.1. An update now applies on its own, with no setup run and nothing to re-point.
+
+## [1.12.0] - 2026-07-25
+
+Makes the count cap stop evicting tabs a running session still needs, and gives owner identity enough precision that a recycled PID can't keep a dead session's tabs alive.
+
+### Changed
+- **The count cap gives up unclaimed tabs before a live session's.** It ordered purely by idleness, so once the browser was over the ceiling it would close whichever tab had been quiet longest — including one a running session was mid-flow on, while a tab nobody owned survived for having been touched more recently. Eviction is now tiered: tabs with no owner go first, and a live session's tabs are touched only if the browser is still over the ceiling afterwards. Least-recently-active still decides within each tier, which is what keeps a tab you are working in — including one you opened by hand, since interacting with it moves its URL or title and the sweep marks it active.
+- **Owner identity is the session's PID plus its process start time.** Windows hands out PID numbers again after a process exits, so a PID being live was never evidence that the session which recorded it was still running: a later, unrelated process inheriting the number made a dead session's tabs look owned and alive, leaving them to sit until the 12h idle age-out. Start time is unique per process, so comparing it identifies the impostor. The launcher records it beside the PID; a record written without one still works, falling back to matching the PID alone. Comparison allows two seconds of slack, since the value is written by PowerShell and read back through the Win32 API — a real recycle cannot hide inside that window, because the replacement process starts no earlier than the moment the original exited.
+- **Liveness is read from the OS directly instead of by running a process lister.** Asking Win32 costs about 4 microseconds against a subprocess spawn, and it answers the start-time question in the same call. It also distinguishes a PID that no process holds from one this user may not query: the second case now reads as unknown and leaves ownership alone, where a process lister could only say "absent" and risk reaping a live session's tabs.
+
+### Fixed
+- **A rename that Windows refuses no longer drops the write and strands the temp file.** Records are written to a temp file and renamed into place so no reader ever sees a half-written file, but Windows refuses that rename while another process has the target open. On a single attempt the update was silently lost and the temp left on disk for good. The rename now retries briefly across that moment, and the temp is removed either way.
+
 ## [1.11.0] - 2026-07-25
 
 Keeps tab ownership intact when several Claude sessions drive the browser at once.
