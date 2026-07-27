@@ -70,10 +70,19 @@ const MailComposer = require('nodemailer/lib/mail-composer');
 // the user has picked a different default under Settings > General > Default text style. An HTML
 // body posted via IMAP APPEND with no font-family renders in the client's fallback font instead, so
 // if the recipient (or Russell himself, editing before send) types alongside it, the two visibly
-// mismatch. Wrap every composed body in that same default up front so any typed addition blends in.
+// mismatch. A single wrapping <div> is fragile against a rich-text editor's own normalize-on-open
+// pass (confirmed for Outlook: it drops an inherited wrapper style from existing paragraphs while
+// stamping newly-typed text with its own explicit font) - style each paragraph directly instead, so
+// the font is baked into content Gmail's editor would otherwise treat as already "finished."
 const DEFAULT_FONT_STYLE = 'font-family:Arial,Helvetica,sans-serif; font-size:small; color:rgb(0,0,0)';
 function withDefaultFont(html) {
-  return `<div style="${DEFAULT_FONT_STYLE}">${html}</div>`;
+  let styled = html.replace(/<p(\s[^>]*)?>/gi, (m, attrs) => {
+    attrs = attrs || '';
+    if (/style\s*=/i.test(attrs)) return m; // already styled - leave it
+    return `<p${attrs} style="${DEFAULT_FONT_STYLE}">`;
+  });
+  if (!/<p[\s>]/i.test(styled)) styled = `<p style="${DEFAULT_FONT_STYLE}">${styled}</p>`;
+  return styled;
 }
 
 const args = Object.fromEntries(
