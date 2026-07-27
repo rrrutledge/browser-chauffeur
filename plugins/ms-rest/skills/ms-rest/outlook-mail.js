@@ -41,6 +41,19 @@ const fs = require('fs');
 // mail and calendar share exactly one auth path.
 const { getToken, apiCall, enc } = require('./outlook-core');
 
+// Outlook's own compose editor stamps newly-typed text with Calibri 12pt black. An HTML body posted
+// via the API with no font-family renders in the client's fallback font instead (often a serif), so
+// if Russell types alongside it, his edits visibly mismatch the drafted text. Wrap every HTML body in
+// that same default up front so anything he adds blends in without a follow-up fix.
+const DEFAULT_FONT_STYLE = 'font-family:Calibri,Helvetica,sans-serif; font-size:12pt; color:rgb(0,0,0)';
+function withDefaultFont(html) {
+  if (/<body[^>]*style=/i.test(html)) return html; // already carries an explicit style - leave it
+  if (/<body[^>]*>/i.test(html)) {
+    return html.replace(/<body([^>]*)>/i, `<body$1 style="${DEFAULT_FONT_STYLE}">`);
+  }
+  return `<div style="${DEFAULT_FONT_STYLE}">${html}</div>`;
+}
+
 const PAGE_SIZE = 100;     // per-request page; enumerate follows nextLink until exhausted
 
 // Normalize a recipient (string address or {address,name}) to the REST shape.
@@ -114,9 +127,10 @@ function readJsonArg(p) {
 async function cmdCreateDraft(jsonPath) {
   const spec = readJsonArg(jsonPath);
   if (!spec.body) throw new Error('create-draft payload needs a "body" (HTML or text)');
+  const bodyType = spec.bodyType || 'HTML';
   const msg = {
     Subject: spec.subject || '',
-    Body: { ContentType: (spec.bodyType || 'HTML'), Content: spec.body },
+    Body: { ContentType: bodyType, Content: bodyType === 'HTML' ? withDefaultFont(spec.body) : spec.body },
     ToRecipients: (spec.to || []).map(toRecipient),
     CcRecipients: (spec.cc || []).map(toRecipient),
   };
@@ -143,7 +157,7 @@ async function cmdCreateReply(id, jsonPath) {
   if (got.status !== 200) throw new Error(`create-reply read-back HTTP ${got.status}: ${got.body.slice(0, 400)}`);
   const d = JSON.parse(got.body);
   const original = (d.Body || {}).Content || '';
-  const merged = `<div>${comment}</div>${original}`;
+  const merged = `<div style="${DEFAULT_FONT_STYLE}">${comment}</div>${original}`;
 
   const patch = await apiCall('PATCH', `/me/messages/${enc(draft.Id)}`,
     { Body: { ContentType: 'HTML', Content: merged } });

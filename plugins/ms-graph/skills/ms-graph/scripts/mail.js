@@ -45,6 +45,19 @@ const fs = require('fs');
 const path = require('path');
 const { getGraphClient } = require('./graph-client');
 
+// Outlook's own compose editor stamps newly-typed text with Calibri 12pt black. An HTML body posted
+// via the API with no font-family renders in the client's fallback font instead (often a serif),
+// so if Russell types alongside it, his edits visibly mismatch the drafted text. Wrap every HTML body
+// in that same default up front so anything he adds blends in without a follow-up fix.
+const DEFAULT_FONT_STYLE = 'font-family:Calibri,Helvetica,sans-serif; font-size:12pt; color:rgb(0,0,0)';
+function withDefaultFont(html) {
+  if (/<body[^>]*style=/i.test(html)) return html; // already carries an explicit style - leave it
+  if (/<body[^>]*>/i.test(html)) {
+    return html.replace(/<body([^>]*)>/i, `<body$1 style="${DEFAULT_FONT_STYLE}">`);
+  }
+  return `<div style="${DEFAULT_FONT_STYLE}">${html}</div>`;
+}
+
 const args = Object.fromEntries(
   process.argv.slice(2).map(a => {
     const m = a.match(/^--([^=]+)(?:=(.*))?$/);
@@ -208,7 +221,7 @@ async function reply(client) {
   const html = fs.readFileSync(args['body-file'], 'utf8');
   const draft = await client.api(`/me/messages/${args['message-id']}/createReplyAll`).post({});
   const quoted = draft.body?.content || '';
-  await client.api(`/me/messages/${draft.id}`).patch({ body: { contentType: 'html', content: html + quoted } });
+  await client.api(`/me/messages/${draft.id}`).patch({ body: { contentType: 'html', content: withDefaultFont(html) + quoted } });
   console.log(`Draft reply created in thread (id ${draft.id.slice(0, 20)}...). Review in Outlook Drafts.`);
 }
 
@@ -226,7 +239,8 @@ async function createDraft(client, { to, subject, body = '', cc, attach, replace
     for (const m of existing.value || []) await client.api(`/me/messages/${m.id}`).delete();
   }
   const recip = (s) => String(s).split(',').map(a => ({ emailAddress: { address: a.trim() } }));
-  const message = { subject, body: { contentType, content: body }, toRecipients: recip(to) };
+  const finalBody = contentType === 'html' ? withDefaultFont(body) : body;
+  const message = { subject, body: { contentType, content: finalBody }, toRecipients: recip(to) };
   if (cc) message.ccRecipients = recip(cc);
   const attachPaths = Array.isArray(attach)
     ? attach
