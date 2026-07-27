@@ -10,6 +10,7 @@
 //                    --start="2026-06-20T15:00:00" --end="2026-06-20T16:00:00" \
 //                    [--location="..."] [--body="..."] [--attendees=a@x,b@y] [--reminder=N]
 // Update reminder: node calendar.js --update --subject="Dentist" --reminder=off
+// Delete event:    node calendar.js --delete="Dentist" (exact subject match, upcoming events only)
 //
 // Times are interpreted in --tz (default America/Chicago). Events have NO reminder by
 // default; --reminder=N turns on a pop-up N minutes before start (0 = at start), --reminder=off
@@ -73,6 +74,19 @@ async function createEvent(client) {
   }
   const created = await client.api('/me/events').post(event);
   console.log(`Created: "${created.subject}" on ${created.start.dateTime} (${created.id.slice(0, 16)}...)`);
+}
+
+async function deleteEvent(client) {
+  if (!args.delete) throw new Error('--delete requires a value: --delete="Exact Subject"');
+  const now = new Date();
+  const end = new Date(now.getTime() + 365 * 86400000);
+  const data = await client.api('/me/calendarView')
+    .query({ startDateTime: now.toISOString(), endDateTime: end.toISOString() })
+    .top(100).orderby('start/dateTime').select('subject,id,start').get();
+  const match = (data.value || []).find(e => e.subject === args.delete);
+  if (!match) throw new Error(`No upcoming event with subject "${args.delete}"`);
+  await client.api(`/me/events/${match.id}`).delete();
+  console.log(`Deleted: "${match.subject}" on ${match.start.dateTime}`);
 }
 
 async function updateReminder(client) {
@@ -163,6 +177,7 @@ if (require.main === module) {
     }
     const client = await getGraphClient();
     if (args.create) return createEvent(client);
+    if (args.delete) return deleteEvent(client);
     if (args.update) return updateReminder(client);
     return listUpcoming(client);
   })().catch(e => { console.error('Error:', e.message); process.exit(1); });
