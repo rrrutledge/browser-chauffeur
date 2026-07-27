@@ -26,16 +26,19 @@ spawn, record — is code. No AI re-implements the loop.
 
 1. **Presence-gate** (`scripts/presence.py`) — away/locked → exit silently (skipped under `--dry-run`).
 2. **Read config** from `<project>/.claude/drainer.local.md`: enabled providers, `runtime_dir`,
-   `max_messages_per_cycle` (default 50), `idle_threshold_seconds`. Also reads `target_open_tabs`
-   from the `DRAINER_TARGET_OPEN_TABS` environment variable (default 12).
+   `idle_threshold_seconds`. Also reads `target_open_tabs` from the `DRAINER_TARGET_OPEN_TABS`
+   environment variable (default 12) — the only per-cycle throttle in the whole loop (see step 6).
 3. **Reconcile** (`reconcile_unhandled()`) — re-queue any email item whose source object is still
    unhandled with no live worker session on it, so it re-enumerates below. See the section after this
    list for the rule and its guards.
-4. **Per provider — enumerate the new:** call the provider's enumerate (for outlook-graph,
-   `mail.js --list-inbox --json --top=<max_messages_per_cycle>` — read+unread, newest-first, **no time
-   window**: the keeper drains the whole inbox a batch at a time across cycles). Compute each item's
-   stable id, drop any already in seen-state (`scripts/seen-state.js`), and keep up to
-   `max_messages_per_cycle` new ones.
+4. **Per provider — enumerate everything eligible:** call the provider's enumerate (for outlook-graph,
+   `mail.js --list-inbox --json --top=<ENUMERATE_PAGE_SIZE>` — read+unread, newest-first, no time
+   window). There is no per-cycle work cap: every cycle asks every source for everything it currently
+   has to offer (`ENUMERATE_PAGE_SIZE`, a generous constant in `run-poller.py`, bounds only how many
+   rows one API call requests — a technical page size, not a throttle; a backlog bigger than that one
+   page just carries into the next cycle). Compute each item's stable id and drop any already in
+   seen-state (`scripts/seen-state.js`). Whatever remains all becomes triage/dispatch input this cycle;
+   `target_open_tabs` in step 6 is what actually limits how much of it gets worked on at once.
 5. **Triage** the new items in one `claude -p` call → bucket (needs-you / auto-handle / fyi / junk) +
    kind + complexity (simple / complex). The triage prompt embeds `engine/triage.md`, the local
    `context.md`, **and each enabled provider's AUTO-HANDLE section** (so the model can recognize a

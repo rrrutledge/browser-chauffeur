@@ -319,7 +319,7 @@ class Provider(ProviderBase):
         if not self.boards:
             return []
         try:
-            return self._enumerate(limit)
+            return self._enumerate()
         except ProviderError:
             raise  # already typed (kind preserved) — don't re-wrap as auth
         except Exception as e:
@@ -336,7 +336,7 @@ class Provider(ProviderBase):
             self._my_member_id = me.get("id") if isinstance(me, dict) else None
         return self._my_member_id
 
-    def _enumerate(self, limit):
+    def _enumerate(self):
         now = datetime.now(timezone.utc)
         my_id = self._my_id()
         items = []
@@ -416,10 +416,16 @@ class Provider(ProviderBase):
                 })
         # Ranked (band, date) descending — band leads (see _PRIORITY_BAND), date breaks ties within a band
         # (most-recent-first; an undated card by its creation date, set above, or `now` if even that
-        # couldn't be derived). This is also the truncation order: over `limit`, the lowest-priority oldest
-        # cards drop and resurface on a later cycle.
+        # couldn't be derived).
         items.sort(key=lambda it: (it["_priority_band"], it["_due_sort"] or now), reverse=True)
-        return items[:limit]
+        # Return every eligible card, untruncated: get_board_cards() already fetched all of them
+        # regardless, and the poller's cross-source (priority band, date) sort against target_open_tabs
+        # (run-poller.py's `needs` list) is what decides how much actually gets dispatched. Truncating
+        # here instead would share one board-local budget across only Trello's own boards: once the OTHER
+        # boards' neutral-band cards alone outnumbered it, every job-search card (always ranked below
+        # neutral — see _PRIORITY_BAND) would be cut before the poller's real throttle ever saw it,
+        # regardless of how many tabs were actually free.
+        return items
 
     def stable_id(self, item):
         # The go-live date is PART OF the identity, not just a field: a card recurs every cycle (a

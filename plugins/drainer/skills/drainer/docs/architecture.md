@@ -36,15 +36,17 @@ minutes (a ~5-min cron) and holds each source at **zero un-started actionable it
 
 ## The poller is code; AI is judgment
 
-The loop — enumerate → drop already-seen → cap → dispatch → record — is a deterministic algorithm, so it
-lives in a script (`scripts/run-poller.py`): cheaper and more reliable than asking an AI to follow it
-each cycle. AI is used for exactly two things: **one batched triage call per cycle** (the bucket
-judgment for all new items) and **the per-item worker session** (the actual reply/work, draft-only).
+The loop — enumerate everything eligible → drop already-seen → dispatch against `target_open_tabs` →
+record — is a deterministic algorithm, so it lives in a script (`scripts/run-poller.py`): cheaper and
+more reliable than asking an AI to follow it each cycle. There is no per-cycle work cap upstream of
+that: every source is asked for everything it currently has. AI is used for exactly two things: **one
+batched triage call per cycle** (the bucket judgment for all new items) and **the per-item worker
+session** (the actual reply/work, draft-only).
 
 This is the **poller / worker split**: the poller enumerates and triages but never does an item's work;
 each needs-you item gets its **own worker** that handles it to completion in a fresh context (its own
-tab), so context stays bounded and nothing is half-done. The cap, not a queue, bounds how many face the
-user.
+tab), so context stays bounded and nothing is half-done. `target_open_tabs`, not a queue, bounds how
+many face the user at once.
 
 ## Fail-safe, never miss
 
@@ -60,7 +62,7 @@ parked for the user.
 
 | In the plugin (generic) | Injected per machine |
 | --- | --- |
-| `engine/` — poller contract, worker procedure, triage rubric, provider contract; `scripts/` — the deterministic glue | `.claude/drainer.local.md` — which providers are active, per-provider config, `max_messages_per_cycle`, presence |
+| `engine/` — poller contract, worker procedure, triage rubric, provider contract; `scripts/` — the deterministic glue | `.claude/drainer.local.md` — which providers are active, per-provider config, presence |
 | `providers/` — the providers (Outlook, Teams, Trello) | `context.md` (in `local_dir`) — who the user is, their systems, standing rules |
 | `docs/`, `templates/` | **credentials + tuning env vars** (OS store / env) — e.g. `DRAINER_TARGET_OPEN_TABS` |
 

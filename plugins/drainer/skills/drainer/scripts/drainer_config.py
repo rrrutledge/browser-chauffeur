@@ -59,7 +59,6 @@ def read_config(repo):
         # it drops back below. Read from the DRAINER_TARGET_OPEN_TABS env var (default 12) — a fresh
         # process each poller cycle, so a changed value takes effect on the very next cycle.
         "target_open_tabs": int(os.environ.get("DRAINER_TARGET_OPEN_TABS", "12")),
-        "max_messages_per_cycle": int(scalar("max_messages_per_cycle", "50")),
         "idle_threshold_seconds": int(scalar("idle_threshold_seconds", "600")),
         # Worker tabs need an explicit model — otherwise they inherit the session default, which may be
         # a 1M-context model the account can't use. The poller picks per item by triage complexity:

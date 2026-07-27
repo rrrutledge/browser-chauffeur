@@ -39,6 +39,13 @@ from drainer_config import read_config, find_provider_file  # noqa: E402  (share
 SEEN_STATE = os.path.join(SCRIPT_DIR, "seen-state.js")
 HEALTH_FILE = "provider-health.json"
 HANDLED_FILE = "reconciled.json"
+# A page-size ceiling for each provider's own API list call — not a per-cycle work throttle. There is
+# no such throttle: every cycle enumerates everything currently eligible from every source, and
+# target_open_tabs is the only thing that gates how much of it actually gets dispatched (held items
+# retry next cycle). This constant only bounds how many rows one API call asks for, generous enough
+# that a real inbox/board/channel backlog fits in a single page; if a source's backlog ever exceeds
+# it, that source's overflow just carries to the next cycle same as a held dispatch would.
+ENUMERATE_PAGE_SIZE = 500
 POLLER_KEY = "_poller"  # the poller's own heartbeat entry in the health file — not a provider; the digest skips it
 
 
@@ -785,7 +792,7 @@ def reconcile_unhandled(runtime_dir, cfg, providers, dry_run=False):
 
 def collect_new(provider, cfg):
     """Enumerate a provider, stamp ids/source, drop already-seen; return (new_items, total, seen)."""
-    raw = provider.enumerate(cfg["max_messages_per_cycle"])
+    raw = provider.enumerate(ENUMERATE_PAGE_SIZE)
     seen = load_seen(cfg["runtime_dir"], provider.name)
     new = []
     for it in raw:
