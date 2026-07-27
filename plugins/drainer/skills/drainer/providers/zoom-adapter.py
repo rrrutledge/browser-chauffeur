@@ -226,14 +226,12 @@ class Provider(ProviderBase):
         out = {}
         for m in templates:
             st = m.get("start_time")
-            if st and from_ts <= st <= to_ts and m.get("uuid") not in out:
-                out[m["uuid"]] = {"topic": m.get("topic"), "uuid": m["uuid"], "id": m.get("id"), "start_time": st}
-            # Only recurring meetings (Zoom type 3/8) have separate past instances; a one-time meeting's
-            # occurrence is its own start_time (added just above), so skip its per-template instances call.
-            # Unknown type -> call it anyway (safe fallback).
-            mtype = m.get("type")
-            if mtype is not None and mtype not in (3, 8):
-                continue
+            # A meeting's own listed uuid is its *scheduled* uuid, not necessarily the uuid of the
+            # occurrence that actually ran — Zoom mints a distinct occurrence uuid once a meeting is
+            # started, for one-time (type 2) meetings too, and the summary endpoint only recognizes that
+            # occurrence uuid. So resolve via past_meetings/instances for every meeting, regardless of
+            # type, and only fall back to the listed uuid if that call finds nothing in-window.
+            found = False
             status, body = self._get(token, f"/v2/past_meetings/{m.get('id')}/instances")
             if status == 200:
                 for inst in body.get("meetings", []) or []:
@@ -241,6 +239,9 @@ class Provider(ProviderBase):
                     if ist and from_ts <= ist <= to_ts and inst.get("uuid") not in out:
                         out[inst["uuid"]] = {"topic": m.get("topic"), "uuid": inst["uuid"],
                                              "id": m.get("id"), "start_time": ist}
+                        found = True
+            if not found and st and from_ts <= st <= to_ts and m.get("uuid") not in out:
+                out[m["uuid"]] = {"topic": m.get("topic"), "uuid": m["uuid"], "id": m.get("id"), "start_time": st}
         return sorted(out.values(), key=lambda x: x["start_time"])
 
     @staticmethod
