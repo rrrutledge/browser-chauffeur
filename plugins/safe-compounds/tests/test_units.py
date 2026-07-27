@@ -314,6 +314,9 @@ class TestMcp:
     def test_reversible_write(self):
         assert classify_mcp_tool("mcp__s__create_thing") is True
 
+    def test_copy_is_reversible_write(self):
+        assert classify_mcp_tool("mcp__s__copy_file") is True
+
     def test_destructive(self):
         assert classify_mcp_tool("mcp__s__delete_thing") is False
 
