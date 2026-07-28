@@ -235,6 +235,7 @@ The specifics that most often separate a message that reads as Russell's from on
 - **Handing off a finished deliverable: make it a direct invitation to look, not a passing mention.**
   Give the artifact its own sentence and invite the reader to open it, rather than burying it in a subordinate clause.
   **Exception — a quick status flag that has supporting detail behind it:** state the findings plainly and stop; don't auto-attach the backing document unless handing it off is the actual point of the message. Share it separately, if and when it's asked for.
+  **When the deliverable is unsolicited and its use is genuinely uncertain** (a resume sent ahead of an introduction that may or may not happen), name the specific thing you're thanking them for by what they actually offered — not a generic "thanks for reconnecting" — and close the handoff with an explicit low-pressure release ("either way is fine") so they don't feel obligated to act on it.
 - **Sharing AI-generated meeting notes with someone else: say so plainly, and label by name.**
   Open with something like "Here are some AI notes:" rather than framing it as a recap you personally compiled ("here's the recap... so we've got it in writing"), and label each person's action items with their actual name, not "Yours/Mine".
   Let that line itself be the opener — skip a separate warm-up sentence ("Good session today!") before it.
