@@ -1,6 +1,7 @@
 """Unit tests for the pure parsing/classification helpers — the pieces most
 prone to subtle regression during refactoring."""
 import os
+import subprocess
 import sys
 import tempfile
 
@@ -29,6 +30,7 @@ from safe_compounds.scripts import check_node_segment, get_block_reason, reset_b
 from safe_compounds import ai  # noqa: E402
 from safe_compounds import workflow  # noqa: E402
 from safe_compounds.workflow import classify_workflow_tool  # noqa: E402
+from safe_compounds.worktree_tool import classify_enter_worktree  # noqa: E402
 
 
 def set_config(**kwargs):
@@ -421,6 +423,45 @@ class TestWorkflow:
         set_config()
         assert classify_workflow_tool({"scriptPath": "/definitely/not/a/real/workflow.js"}) is False
         assert workflow.get_block_reason() is None
+
+
+def _init_repo(repo_dir):
+    subprocess.run(["git", "init"], cwd=repo_dir, check=True, capture_output=True)
+    subprocess.run(["git", "-C", str(repo_dir), "config", "user.email", "a@b.c"], check=True, capture_output=True)
+    subprocess.run(["git", "-C", str(repo_dir), "config", "user.name", "a"], check=True, capture_output=True)
+    (repo_dir / "f.txt").write_text("x", encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo_dir), "add", "."], check=True, capture_output=True)
+    subprocess.run(["git", "-C", str(repo_dir), "commit", "-m", "init"], check=True, capture_output=True)
+
+
+class TestEnterWorktree:
+    def test_no_path_creates_new_worktree_approves(self):
+        assert classify_enter_worktree({}) is True
+
+    def test_name_only_creates_new_worktree_approves(self):
+        assert classify_enter_worktree({"name": "some-feature"}) is True
+
+    def test_registered_worktree_path_approves_even_outside_dot_claude(self, tmp_path):
+        # A project's own worktree convention (e.g. `.worktrees/`, not
+        # `.claude/worktrees/`) is just as safe -- git's own bookkeeping is
+        # the proof, not the directory name.
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        _init_repo(repo)
+        wt = tmp_path / ".worktrees" / "feature"
+        subprocess.run(
+            ["git", "-C", str(repo), "worktree", "add", str(wt), "-b", "feature"],
+            check=True, capture_output=True,
+        )
+        assert classify_enter_worktree({"path": str(wt)}) is True
+
+    def test_unregistered_directory_prompts(self, tmp_path):
+        random_dir = tmp_path / "not-a-worktree"
+        random_dir.mkdir()
+        assert classify_enter_worktree({"path": str(random_dir)}) is False
+
+    def test_nonexistent_path_prompts_without_crash(self):
+        assert classify_enter_worktree({"path": "/definitely/not/a/real/path/xyz"}) is False
 
 
 class TestComplexBash:
