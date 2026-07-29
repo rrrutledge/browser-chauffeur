@@ -235,7 +235,6 @@ The specifics that most often separate a message that reads as Russell's from on
 - **Handing off a finished deliverable: make it a direct invitation to look, not a passing mention.**
   Give the artifact its own sentence and invite the reader to open it, rather than burying it in a subordinate clause.
   **Exception — a quick status flag that has supporting detail behind it:** state the findings plainly and stop; don't auto-attach the backing document unless handing it off is the actual point of the message. Share it separately, if and when it's asked for.
-  **When the deliverable is unsolicited and its use is genuinely uncertain** (a resume sent ahead of an introduction that may or may not happen), name the specific thing you're thanking them for by what they actually offered — not a generic "thanks for reconnecting" — and close the handoff with an explicit low-pressure release ("either way is fine") so they don't feel obligated to act on it.
 - **Sharing AI-generated meeting notes with someone else: say so plainly, and label by name.**
   Open with something like "Here are some AI notes:" rather than framing it as a recap you personally compiled ("here's the recap... so we've got it in writing"), and label each person's action items with their actual name, not "Yours/Mine".
   Let that line itself be the opener — skip a separate warm-up sentence ("Good session today!") before it.
@@ -292,6 +291,7 @@ The specifics that most often separate a message that reads as Russell's from on
 - **Confirm understanding with a short question** — "Let me know if I've got that right - one codebase supports two Solutions?"
 - **Close with "let me know"** — a signature phrase used constantly.
   Reach for it over near-variants ("just say the word" → "just let me know").
+- **Close nearly any ask, offer, or unsolicited handoff with an explicit no-pressure release** — "If not, then it's fine too - no problem." / "Either way is fine." — so saying no, or not using what you sent, costs the recipient nothing. This is a default habit, not special to money or a formal commitment.
 - **Light, genuine appreciation** — "Thanks!", "Thank you!", not "Thank you so much!!!". Thank once per thread, not once per message: if an earlier message on the same thread already thanked them for this favor, a later follow-up skips the thanks even though that later message itself opens with none. Thank once; if you thanked at the open, don't also close with "Thanks!" But a warm sponsor/partner email — or the first nudge asking someone for a professional favor (e.g. HR, a former employer) — that didn't thank at the open gets a single closing "Thank you!" above the sign-off — not a helper tail.
   In chat, thanking someone who's taking on work for you is likewise fine, not a tail.
   Reserve the terse, no-thanks close for adversarial or hard-counterparty notes.
@@ -357,8 +357,7 @@ Don't invent emoji outside this palette, don't stack them, and skip them entirel
 - **Cold outreach for a commitment: open with the soft ask, not the hard one.**
   Gauge interest and invite a conversation ("is this of interest?", "can we talk?"); name the commitment lightly and later, after they've engaged.
   Ask one thing, not a menu of next steps.
-  The same softening governs pivoting an already-warm thread toward a commitment: keep it to one open "is that something we could explore together?" and cut both the concrete call-to-action and the list of benefits.
-  **When the ask involves money or a formal commitment (a sponsorship, a paid slot), close with an explicit no-pressure release** — "If not, then it's fine too - no problem. I wanted to ask though to see." — so a no costs the recipient nothing to say.
+  The same softening governs pivoting an already-warm thread toward a commitment: keep it to one open "is that something we could explore together?" and cut both the concrete call-to-action and the list of benefits — then close with a no-pressure release per **Core voice**, same as any other ask.
 - **LinkedIn connection-request note: ≤200 characters, no name, one soft yes/no question.**
   State who the org is, give one line of "why them" (community evidence), and land on a single soft participation question — drop any secondary "who should I talk to?" ask, and don't sign it.
 - *Samples:*
