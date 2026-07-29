@@ -53,11 +53,20 @@ class TestSplitSegments:
     def test_double_quotes_protect_pipe(self):
         assert split_segments('echo "x | y"') == ['echo "x | y"']
 
-    def test_newlines_treated_as_whitespace(self):
-        # Newlines in multi-line commands should not split segments
-        assert split_segments("grep -iE\n      \"pattern\"") == ["grep -iE\n      \"pattern\""]
-        # But semicolons should still split
-        assert split_segments("echo foo\necho bar; echo baz") == ["echo foo\necho bar", " echo baz"]
+    def test_bare_newline_splits_like_semicolon(self):
+        # A bare (unquoted) newline terminates a statement in real bash,
+        # exactly like `;` -- so each line of a multi-command Bash call (e.g.
+        # `git checkout main\ngit pull\ngit worktree remove ...`) is evaluated
+        # as its own independently-trusted segment.
+        assert split_segments("echo foo\necho bar; echo baz") == ["echo foo", "echo bar", " echo baz"]
+
+    def test_backslash_newline_continuation_stays_joined(self):
+        # A trailing backslash before the newline is bash's real line
+        # continuation syntax -- it does not terminate the statement.
+        assert split_segments("grep -iE \\\n      \"pattern\"") == ["grep -iE \\\n      \"pattern\""]
+
+    def test_newline_inside_quotes_does_not_split(self):
+        assert split_segments('echo "a\nb"') == ['echo "a\nb"']
 
 
 class TestFirstWord:
