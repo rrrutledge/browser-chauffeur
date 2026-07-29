@@ -9,6 +9,8 @@ Decision order (preserved from the original single-file hook):
                        or an AI safety verdict on an inline script's agent() prompts)
   EnterWorktree    -> worktree_tool.classify_enter_worktree (new worktree, or an
                        existing path confirmed via `git worktree list`)
+  ExitWorktree     -> worktree_tool.classify_exit_worktree (keep, or a remove the
+                       tool itself won't force past unsaved work)
   Bash             -> enforce.enforce_bash (deny), then per-segment trust (allow)
   anything else    -> defer (no output)
 
@@ -34,7 +36,7 @@ from safe_compounds.shell import split_segments  # noqa: E402
 from safe_compounds.trust import get_trusted  # noqa: E402
 from safe_compounds import workflow  # noqa: E402
 from safe_compounds.workflow import classify_workflow_tool  # noqa: E402
-from safe_compounds.worktree_tool import classify_enter_worktree  # noqa: E402
+from safe_compounds.worktree_tool import classify_enter_worktree, classify_exit_worktree  # noqa: E402
 from safe_compounds.writes import decide_write_edit  # noqa: E402
 
 POWERSHELL_TOOL_REASON = (
@@ -167,6 +169,12 @@ def dispatch(data):
     if tool == 'EnterWorktree':
         if classify_enter_worktree(tool_input):
             log_debug(f"DECISION: Allow EnterWorktree {tool_input.get('path') or tool_input.get('name')}")
+            allow()
+        defer()
+
+    if tool == 'ExitWorktree':
+        if classify_exit_worktree(tool_input):
+            log_debug(f"DECISION: Allow ExitWorktree action={tool_input.get('action')}")
             allow()
         defer()
 
