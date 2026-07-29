@@ -90,9 +90,13 @@ def has_unquoted_windows_drive_path(segment):
 
 
 def split_segments(cmd):
-    """Split a compound command into segments on &&, ||, ;, and | operators,
-    only when those operators appear outside quotes. Newlines are treated as
-    whitespace, not command separators, to support multi-line command formatting."""
+    """Split a compound command into segments on &&, ||, ;, |, and bare newline
+    operators, only when those operators appear outside quotes -- matching real
+    bash, where an unquoted newline terminates a statement exactly like `;`.
+    A backslash-newline line continuation is consumed whole by consume_escape()
+    before reaching this check, so it stays part of the current segment instead
+    of splitting -- exactly like a `\\<newline>`-continued command runs as one
+    statement in bash."""
     segments = []
     current = []
     tok = ShellTokenizer(cmd)
@@ -115,7 +119,7 @@ def split_segments(cmd):
                 current = []
                 tok.advance(2)
                 continue
-            if tok.peek() in (';', '|'):
+            if tok.peek() in (';', '|', '\n'):
                 segments.append(''.join(current))
                 current = []
                 tok.advance()
