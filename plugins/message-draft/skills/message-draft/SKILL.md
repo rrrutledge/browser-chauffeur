@@ -134,9 +134,13 @@ drainer item — its `channel` + `ts` + optional `threadTs` + permalink), the me
 4. **Links.** Slack renders a pasted URL as a link automatically; for anchor-text links, type the phrase
    and apply a link via the composer's link affordance (Ctrl+K inside the Slack composer opens its
    link dialog — distinct from the quick switcher, which is Ctrl+K when no composer is focused).
-5. **Leave as draft.** Do NOT press Enter / click Send. Slack shows a **Draft** badge on the conversation
-   in the sidebar (the draft is client/session-bound — the user reviews and sends it before it's lost).
-   Read the composer back (`.ql-editor` innerText) and verify it holds the intended body.
+5. **Save the draft, then leave it.** Do NOT press Enter / click Send.
+   A Slack composer draft is saved only once the composer loses focus and Slack's save request fires, so typing and then immediately navigating to another conversation (or ending the script) discards it before it ever saves.
+   After typing, blur the composer (`el.blur()`) and let the save settle (`page.waitForLoadState('networkidle')`) before moving to the next conversation or finishing.
+   Verify it saved the hard way: reload the page and confirm the body is still in the composer.
+   A draft that survives a reload is saved server-side, so it syncs to the user's own Slack - the sidebar shows a **Draft** badge on the conversation and it appears under **Drafts & sent**, which is where they review and send it.
+   A draft that is empty after the reload never saved; re-type it, blur, and re-verify.
+   When staging several drafts in one run, save-and-verify each one before opening the next, since a not-yet-saved draft is the one a navigation silently drops.
 
 ## Mode: `outlook`
 
