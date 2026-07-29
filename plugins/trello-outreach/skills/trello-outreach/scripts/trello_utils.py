@@ -229,7 +229,9 @@ def extract_github_field_value(field_values, field_name):
 # is a PUSH: finishing an upstream card runs cascade_unblock, which strips the blocked label and sets
 # Start = today on every card whose LAST remaining blocker just cleared. Nothing polls the blocked card.
 
-_BLOCKED_BY_RE = re.compile(r'^\s*blocked-by\s*:(.*)$', re.IGNORECASE | re.MULTILINE)
+# Card descriptions in this project write every field in bold markdown (`**Blocked-by:**`), so the
+# label and colon tolerate up to two leading/trailing `*` — a bare `Blocked-by:` still matches too.
+_BLOCKED_BY_RE = re.compile(r'^\s*\*{0,2}\s*blocked-by\s*:\s*\*{0,2}(.*)$', re.IGNORECASE | re.MULTILINE)
 # A shortlink is the 8-char code after /c/ in a card URL, or a bare 8-char token delimited by
 # whitespace/commas — the delimiter guard keeps 8-letter slug words (…/12-ping-kristine) from matching.
 _URL_SHORTLINK_RE = re.compile(r'trello\.com/c/([A-Za-z0-9]{8})')
