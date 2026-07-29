@@ -30,7 +30,7 @@ from safe_compounds.scripts import check_node_segment, get_block_reason, reset_b
 from safe_compounds import ai  # noqa: E402
 from safe_compounds import workflow  # noqa: E402
 from safe_compounds.workflow import classify_workflow_tool  # noqa: E402
-from safe_compounds.worktree_tool import classify_enter_worktree  # noqa: E402
+from safe_compounds.worktree_tool import classify_enter_worktree, classify_exit_worktree  # noqa: E402
 
 
 def set_config(**kwargs):
@@ -462,6 +462,30 @@ class TestEnterWorktree:
 
     def test_nonexistent_path_prompts_without_crash(self):
         assert classify_enter_worktree({"path": "/definitely/not/a/real/path/xyz"}) is False
+
+
+class TestExitWorktree:
+    def test_keep_approves(self):
+        assert classify_exit_worktree({"action": "keep"}) is True
+
+    def test_plain_remove_approves(self):
+        # The tool itself refuses this call when there's uncommitted work or
+        # unmerged commits, so a plain remove (no override) is safe to allow.
+        assert classify_exit_worktree({"action": "remove"}) is True
+
+    def test_remove_with_discard_changes_prompts(self):
+        # discard_changes=True forces the tool past unsaved/unmerged work --
+        # a genuinely destructive override, so this must not auto-approve.
+        assert classify_exit_worktree({"action": "remove", "discard_changes": True}) is False
+
+    def test_remove_with_discard_changes_false_approves(self):
+        assert classify_exit_worktree({"action": "remove", "discard_changes": False}) is True
+
+    def test_unrecognized_action_prompts(self):
+        assert classify_exit_worktree({"action": "bogus"}) is False
+
+    def test_missing_action_prompts(self):
+        assert classify_exit_worktree({}) is False
 
 
 class TestComplexBash:
