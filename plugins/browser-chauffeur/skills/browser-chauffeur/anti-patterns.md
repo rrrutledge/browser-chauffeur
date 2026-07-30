@@ -251,3 +251,113 @@ await page.keyboard.press('Enter');
 **Real incident:** Repeated Tab+Enter attempts to reach a "Continue" button in a SCORM player resulted in the page navigating back to the course launch screen, requiring the entire session to restart.
 
 **Solution:** Never use keyboard navigation for cross-origin iframe content. Use direct DOM `.click()` via `Runtime.evaluate` (see **Anti-Pattern 6**).
+
+---
+
+## Anti-Pattern 10: Generic Scroll-to-Bottom Doesn't Render Virtualized Grid Rows
+
+**Problem:**
+```javascript
+// ❌ Scrolls the DOM element, but off-screen rows never appear
+await page.evaluate(() => {
+  [...document.querySelectorAll('*')]
+    .filter(el => el.scrollHeight > el.clientHeight + 50)
+    .forEach(el => { el.scrollTop = el.scrollHeight; });
+});
+```
+
+**Why it fails:** Virtualized grids and lists (Vaadin Grid, react-window, react-virtualized, ag-grid, and similar) only mount DOM nodes for currently-visible rows and recycle them as the user scrolls. Setting `scrollTop` on the wrong element — or even the right one — doesn't guarantee the component's internal virtualization logic renders the rows you actually need; a generic "find every scrollable element and scroll it" sweep can miss the grid's real internal scroller entirely, or scroll a wrapper that has no effect on which rows are materialized. Real incident: dozens of `innerText` dumps and `scrollTo`/`scrollTop` attempts across a BrightFeed (Vaadin) feeds-management table never surfaced a section of rows sitting below the fold — the section existed and was fully functional, but no amount of generic scrolling made it appear in the DOM.
+
+**Solution — use the component's own scroll-to API when one exists:**
+```javascript
+// ✅ Vaadin Grid exposes scrollToIndex directly
+await page.evaluate(() => {
+  const grid = document.querySelector('vaadin-grid');
+  if (grid && typeof grid.scrollToIndex === 'function') grid.scrollToIndex(30); // overshoot past the last row
+});
+```
+Other virtualization libraries expose analogous methods (react-window's `list.scrollToItem`, ag-grid's `api.ensureIndexVisible`) — check for one before assuming a plain `scrollTop` sweep will work. If no such API exists, `locator.scrollIntoViewIfNeeded()` on a specific target (found by text) combined with a poll loop is the fallback — never a blind "scroll everything" pass.
+
+**Verify the fix worked before proceeding:** re-check with `document.body.innerText.includes(expectedText)` after scrolling — don't assume the scroll call succeeded just because it didn't throw.
+
+---
+
+## Anti-Pattern 11: Locating and Clicking in Separate Script Runs Hits the Wrong Recycled Row
+
+**Problem:**
+```javascript
+// ❌ Script A: measure a row's position, note the coordinates, exit
+const rect = /* ...getBoundingClientRect() on the target row... */;
+console.log(rect.x, rect.y);
+
+// ❌ Script B (separate invocation, run moments later): click those coordinates
+await page.mouse.click(rect.x, rect.y);
+```
+
+**Why it fails:** A virtualized grid recycles its small pool of physical row elements as the user scrolls, and — separately from that — the grid's scroll position is not guaranteed to stay put between two independent script invocations against the same live page, even with no explicit navigation in between (a background sync, a re-render, or the grid's own idle recalculation can shift it). Coordinates or matched elements captured in one script run can silently refer to a completely different row by the time a later script run acts on them. Real incident: measuring a specific feed row's delete button in one script call, then clicking those exact coordinates in the next call, hit a "Professional Messages" row instead of the intended target — caught only because a confirmation dialog named the wrong feed before anything was actually deleted.
+
+**Solution — locate and act in the same `page.evaluate()` call, so nothing can shift in between:**
+```javascript
+// ✅ Single evaluate: find the row, then click its button, atomically
+const result = await page.evaluate((namePrefix) => {
+  const nameCell = [...document.querySelectorAll('*')]
+    .find(el => el.children.length === 0 && el.textContent.trim().startsWith(namePrefix));
+  if (!nameCell) return { error: 'not found' };
+  const nameRect = nameCell.getBoundingClientRect();
+  const btn = [...document.querySelectorAll('vaadin-button, button, [role="button"]')]
+    .filter(b => b.getBoundingClientRect().x > nameRect.x)
+    .sort((a, b) => Math.abs(a.getBoundingClientRect().y - nameRect.y) - Math.abs(b.getBoundingClientRect().y - nameRect.y))[0];
+  btn.click();
+  return { clickedNear: nameCell.textContent.trim() };
+}, 'Target Row Name');
+```
+Then **verify the resulting confirmation dialog (or post-click state) names the thing you meant to act on** before confirming anything destructive — never trust that a prior measurement still applies.
+
+---
+
+## Anti-Pattern 12: Screenshot Pixel Coordinates Aren't CSS Pixel Coordinates
+
+**Problem:**
+```javascript
+// ❌ Read an (x, y) off a saved screenshot image, then click those raw numbers
+await page.mouse.click(1760, 864); // coordinates eyeballed from a .png
+```
+
+**Why it fails:** `page.mouse.click(x, y)` operates in CSS/viewport pixels, but a saved screenshot can be rendered at a different pixel density (`devicePixelRatio` — e.g. 1.25x is common on Windows). A viewport that's actually 1528px wide (per `document.body.clientWidth`) can produce a screenshot image that's ~1910px wide. Reading a coordinate off the image and feeding it straight to `mouse.click()` lands roughly 25% off from the intended target — enough to miss the button entirely with no error, since the click just hits empty space or an unrelated element.
+
+**Solution — get real element bounding rects via `getBoundingClientRect()` instead of reading pixels off an image:**
+```javascript
+const rect = await page.evaluate(() => {
+  const el = /* ...find your target... */;
+  const r = el.getBoundingClientRect();
+  return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+});
+await page.mouse.click(rect.x, rect.y);
+```
+`getBoundingClientRect()` always returns CSS pixels matching what `page.mouse` expects, regardless of device pixel ratio. Reserve screenshots for visual confirmation (reading them with the Read tool), never as a coordinate source for clicks.
+
+---
+
+## Anti-Pattern 13: Framework Tooltips Aren't Always on the Element's `title`/`aria-label`
+
+**Problem:**
+```javascript
+// ❌ Checks the button's own attributes — comes back empty even though a tooltip clearly exists
+const hasDeleteBtn = await page.evaluate(() =>
+  [...document.querySelectorAll('button, [role="button"]')]
+    .some(b => /delete/i.test(b.getAttribute('aria-label') || '') || /delete/i.test(b.getAttribute('title') || ''))
+);
+// hasDeleteBtn === false, even on a page with a working "Delete feed" icon and tooltip
+```
+
+**Why it fails:** Some component libraries (Vaadin among them) implement tooltips as a separate `<vaadin-tooltip>` element rendered alongside the control, not as a `title`/`aria-label` attribute on the control itself, and not always linked back via a standard `for`/`id` pair. Scanning the button's own attributes — or even doing a full shadow-DOM-piercing walk of the button subtree — finds nothing, because the tooltip text lives in a sibling element elsewhere in the tree. This produced a false "no delete control exists" conclusion in a real session, when the control was present and working the whole time.
+
+**Solution — search for the framework's dedicated tooltip element directly, independent of the button:**
+```javascript
+// ✅ Vaadin: just list every vaadin-tooltip's text on the page
+const tooltips = await page.evaluate(() =>
+  [...document.querySelectorAll('vaadin-tooltip')].map(t => t.getAttribute('text') || t.textContent || '')
+);
+console.log(tooltips); // includes "Delete feed" even though no button had that in title/aria-label
+```
+When a control's purpose isn't obvious from its own attributes, check for the UI framework's tooltip component by tag name before concluding the feature doesn't exist.
