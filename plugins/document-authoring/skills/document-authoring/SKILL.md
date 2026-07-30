@@ -56,7 +56,7 @@ A rendered preview hides which words carry a link, so spell out the URL next to 
 - **A person referenced but not being addressed, or not on that platform** — link their name to their profile/permalink on the same platform, otherwise to their LinkedIn profile.
 - **An event** — link its name to the event's page.
 - **A document** — link its title to the document itself.
-- **A meeting or call you're offering to set up** — anchor the offer to Russell's booking page (https://calendly.com/russell-rutledge) so the recipient can self-book, rather than a bare "we could set up a call". Include the link the first time a call is proposed on a thread; drop it on later nudges per "Don't re-paste".
+- **A meeting or call you're offering to set up** — anchor the offer to Russell's booking page (https://calendly.com/russell-rutledge) so the recipient can self-book, rather than a bare "we could set up a call", and name the second path too: they can pick a slot there, or just send Russell a direct meeting invite for a time that already shows as free on his calendar. Include the link the first time a call is proposed on a thread; drop it on later nudges per "Don't re-paste".
 
 ---
 
@@ -322,6 +322,7 @@ Don't invent emoji outside this palette, don't stack them, and skip them entirel
 - **Email greeting**: run it into the first sentence with ` - ` — "Hi [Name] - thanks and totally makes sense.", not "Hi [Name]," on its own line followed by a new paragraph.
   **Exception — replying to more than one person:** keep it a standalone line, own paragraph below, not run into the sentence. Pick the word by group size and who you're actually engaging: two people → "Hi both"; a small group where you're interacting with everyone directly → "Hi all"; a bigger distribution where some recipients are only cc'd, not people you're directly addressing → "Hi folks".
   **When one person on a multi-recipient thread asked the question, answer them by name and skip the greeting line entirely** — "Thanks for considering it, Pooi." carries both the warm open and the address, and the group greeting would aim the reply at people who are only watching.
+  **When someone hands you off to a third party within the same thread — introducing them and stepping back ("feel free to coordinate directly with him")** — treat the reply as two parts, not one shared greeting: a brief close with the person handing off (react to what they said - their own news, their own next step), then a fresh open with the new contact as a first introduction. Skip the plural "Hi both" here too - the message is closing one relationship-thread and opening another, not addressing two people at once.
 - **Email reply flow**: always **Reply All**, never plain Reply, to preserve every CC.
   Reply into an existing thread on the same topic rather than composing new, even when it isn't a direct response to any single message.
 - **Email sign-off**: just `Russ` on its own line — no valediction before it, and no closing word fused onto that same line (no "Thanks, Russ", "Best, Russ", or similar; the line is `Russ` alone, full stop). A genuine thanks belongs in the body as its own sentence (see **Light, genuine appreciation**), not welded onto the sign-off — and skip it entirely when there's nothing yet to thank the recipient for, e.g. a first-touch ask where they haven't done anything for you yet.
