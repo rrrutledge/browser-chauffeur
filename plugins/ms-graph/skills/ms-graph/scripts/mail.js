@@ -46,6 +46,25 @@ const fs = require('fs');
 const path = require('path');
 const { getGraphClient } = require('./graph-client');
 
+// Outlook's own compose editor stamps newly-typed text with Calibri 12pt black. An HTML body posted
+// via the API with no font-family renders in the client's fallback font instead (often a serif), so
+// if Russell types alongside it, his edits visibly mismatch the drafted text. A style on <body> alone
+// doesn't survive - Outlook re-normalizes the whole draft the moment it's opened for editing, and that
+// pass drops an inherited body-level font from the existing paragraphs (confirmed: it stamped a
+// Russell-typed addition with explicit Calibri while leaving the pre-existing paragraphs unstyled).
+// Match Outlook's own per-paragraph convention instead - the same margin + font style it stamps on
+// text as you type - so the styling reads as Outlook's own and survives that normalization pass.
+const DEFAULT_FONT_STYLE = 'margin-top:1em; margin-bottom:1em; font-family:Calibri,Helvetica,sans-serif; font-size:12pt; color:rgb(0,0,0)';
+function withDefaultFont(html) {
+  let styled = html.replace(/<p(\s[^>]*)?>/gi, (m, attrs) => {
+    attrs = attrs || '';
+    if (/style\s*=/i.test(attrs)) return m; // already styled - leave it
+    return `<p${attrs} style="${DEFAULT_FONT_STYLE}">`;
+  });
+  if (!/<p[\s>]/i.test(styled)) styled = `<p style="${DEFAULT_FONT_STYLE}">${styled}</p>`;
+  return styled;
+}
+
 const args = Object.fromEntries(
   process.argv.slice(2).map(a => {
     const m = a.match(/^--([^=]+)(?:=(.*))?$/);
@@ -222,7 +241,7 @@ async function reply(client) {
   const html = fs.readFileSync(args['body-file'], 'utf8');
   const draft = await client.api(`/me/messages/${args['message-id']}/createReplyAll`).post({});
   const quoted = draft.body?.content || '';
-  await client.api(`/me/messages/${draft.id}`).patch({ body: { contentType: 'html', content: html + quoted } });
+  await client.api(`/me/messages/${draft.id}`).patch({ body: { contentType: 'html', content: withDefaultFont(html) + quoted } });
   const attachments = buildAttachments(args.attach);
   for (const a of attachments) {
     await client.api(`/me/messages/${draft.id}/attachments`).post(a);
@@ -245,7 +264,8 @@ async function createDraft(client, { to, subject, body = '', cc, attach, replace
     for (const m of existing.value || []) await client.api(`/me/messages/${m.id}`).delete();
   }
   const recip = (s) => String(s).split(',').map(a => ({ emailAddress: { address: a.trim() } }));
-  const message = { subject, body: { contentType, content: body }, toRecipients: recip(to) };
+  const finalBody = contentType === 'html' ? withDefaultFont(body) : body;
+  const message = { subject, body: { contentType, content: finalBody }, toRecipients: recip(to) };
   if (cc) message.ccRecipients = recip(cc);
   const attachments = buildAttachments(attach);
   if (attachments.length) message.attachments = attachments;
