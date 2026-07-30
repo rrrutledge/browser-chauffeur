@@ -149,6 +149,14 @@ def delete_card(card_id, session):
     return trello_request('DELETE', f'/cards/{card_id}', session)
 
 
+def add_comment(card_id, text, session):
+    """Post a comment on a card. This is the typed wrapper for the dated status
+    comments every advance/nudge writes, so no caller has to hand-build the
+    /actions/comments request."""
+    return trello_request('POST', f'/cards/{card_id}/actions/comments', session,
+                          body={'text': text})
+
+
 def get_board_cards(board_id, session, fields=None):
     """List a board's open cards. Pass fields='all' (or a comma-separated list) to control which
     card fields come back — the default Trello card payload omits the newer `start` date, so callers

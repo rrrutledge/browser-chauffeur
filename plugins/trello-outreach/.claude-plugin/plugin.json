@@ -1,7 +1,7 @@
 {
   "name": "trello-outreach",
-  "version": "1.3.4",
-  "description": "Create and update Trello cards, checklists, and labels on any Trello tracking board. Board IDs and configuration come from the project's trello-boards.yaml registry.",
+  "version": "1.4.0",
+  "description": "Two skills over Trello: `trello`, the API client for any read or write (cards, comments, labels, checklists, lists, blocking) through trello_utils.py; and `trello-outreach`, the outreach-funnel process layer (when to open, advance, dedupe, and route cards) over the trello-boards.yaml registry.",
   "author": {
     "name": "Russell Rutledge"
   },

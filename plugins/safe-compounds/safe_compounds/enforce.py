@@ -416,6 +416,42 @@ def detect_gh_api_contents_write(command):
     return False
 
 
+_TRELLO_API_HOST = 'api.trello.com'
+_CURL_BODY_FLAGS = {
+    '-d', '--data', '--data-raw', '--data-binary', '--data-urlencode',
+    '-F', '--form', '--form-string', '-T', '--upload-file', '--json',
+}
+
+
+def detect_raw_trello_write(command):
+    """True if a curl segment writes to the Trello REST API (api.trello.com) --
+    a POST/PUT/DELETE/PATCH, or any request carrying a body that defaults the
+    method off GET. A raw write to Trello is always the wrong mechanism: every
+    card/comment/label/checklist/list mutation goes through the `trello` skill's
+    trello_utils.py, which owns the credentials, base URL, bounded timeout, and
+    read-after-write verification. So it's blocked outright with a pointer to
+    that path, the same way a `gh api` Contents write is. A plain GET read to
+    api.trello.com is left alone -- lower stakes, and it still auto-approves."""
+    for seg in split_segments(command):
+        tokens = shell_tokenize(seg.strip())
+        if not tokens or tokens[0] != 'curl':
+            continue
+        if not any(_TRELLO_API_HOST in t for t in tokens):
+            continue
+        method = None
+        has_body = False
+        for i, t in enumerate(tokens[1:], 1):
+            if t in ('-X', '--request') and i + 1 < len(tokens):
+                method = tokens[i + 1].upper()
+            elif t.startswith('-X') and len(t) > 2:
+                method = t[2:].upper()
+            elif t == '-d' or t.startswith('--data') or t in _CURL_BODY_FLAGS:
+                has_body = True
+        if method in ('POST', 'PUT', 'DELETE', 'PATCH') or (has_body and method != 'GET'):
+            return True
+    return False
+
+
 def enforce_bash(command):
     """Return a block-reason string for `command`, or None to allow it to
     proceed to approval. Mirrors the legacy block ordering exactly."""
@@ -440,6 +476,16 @@ def enforce_bash(command):
                 'sparse-checking-out) it into .tmp/, editing the file with the Write/Edit tool, '
                 'then `git commit` and `git push` the branch -- never by hand-building a '
                 'Contents API payload. Rewrite the command that way.')
+
+    if detect_raw_trello_write(command):
+        return ('BLOCKED: This curl writes to the Trello REST API (api.trello.com). Every Trello '
+                'mutation -- card, comment, label, checklist, list -- goes through the `trello` '
+                'skill\'s trello_utils.py, which owns the credentials, base URL, bounded timeout, '
+                'and read-after-write verification. Write a .tmp/ Python script that imports '
+                'trello_utils (get_trello_session plus the typed wrapper for what you\'re doing, or '
+                'trello_request for anything without one -- e.g. add_comment for a card comment) and '
+                'run it with `python .tmp/script.py`. See the `trello` skill\'s SKILL.md for the '
+                'import pattern.')
 
     if detect_plugin_cache_reference(command):
         return ('BLOCKED: Command references a path under the installed plugin cache '

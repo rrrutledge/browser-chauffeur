@@ -8,7 +8,7 @@ import sys
 sys.stdout.reconfigure(encoding="utf-8")
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SCRIPTS_DIR = os.path.abspath(os.path.join(HERE, "..", "skills", "trello-outreach", "scripts"))
+SCRIPTS_DIR = os.path.abspath(os.path.join(HERE, "..", "skills", "trello", "scripts"))
 sys.path.insert(0, SCRIPTS_DIR)
 
 from trello_utils import parse_blocked_by  # noqa: E402
