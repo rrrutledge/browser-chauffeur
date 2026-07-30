@@ -129,6 +129,25 @@ the only thing such a script can actually do. DANGEROUS blocks with a reason; ot
 it prompts as usual. See the docstrings in `workflow.py`/`scripts.py` for the full
 reasoning.
 
+#### 7. EnterWorktree / ExitWorktree tool calls (`worktree_tool.py`)
+
+Creating a new worktree (no `path` given) is always approved — it's the EnterWorktree
+equivalent of `git worktree add` under `.claude/worktrees/`, already a trusted git
+subcommand. Switching into an *existing* worktree (`path` given) is approved once the
+hook independently confirms the path is a real, registered worktree by running
+`git worktree list --porcelain` against it — the same guarantee the tool itself enforces
+before acting, so a project's own worktree convention (e.g. a top-level `.worktrees/`
+directory instead of `.claude/worktrees/`) is approved too, without needing a config entry.
+An unregistered directory still falls through to a manual prompt.
+
+ExitWorktree takes no path — it only ever acts on the one worktree the current session
+entered via EnterWorktree, tracked internally by the harness rather than supplied by the
+model. `action: "keep"` is always approved (nothing is deleted). `action: "remove"` mirrors
+`git branch -d`: the tool itself refuses when the worktree has uncommitted files or commits
+that never landed on the original branch, so a plain remove is approved; only
+`discard_changes: true`, which forces the removal through and knowingly throws away
+unsaved work, falls through to a manual prompt.
+
 ### Learned → source promotion (`tools/sync_learned.py`)
 
 At **session end** (and on-demand via `/safe-compounds:sync-learned`), learned approvals
@@ -193,5 +212,6 @@ are promoted back to the plugin source via a GitHub PR on a rolling branch
 | `plugins/safe-compounds/safe_compounds/enforce.py` | Bash form validation + block messages |
 | `plugins/safe-compounds/safe_compounds/learned.py` | Machine-local learned store read/write |
 | `plugins/safe-compounds/safe_compounds/workflow.py` | Classifies Workflow tool calls: `workflow_blanket_names` for saved workflows, AI content check for inline scripts |
+| `plugins/safe-compounds/safe_compounds/worktree_tool.py` | Classifies EnterWorktree (new worktrees always approved, existing paths approved once confirmed via `git worktree list`) and ExitWorktree (`keep` and plain `remove` approved, `discard_changes` prompts) tool calls |
 | `plugins/safe-compounds/tools/sync_learned.py` | Promotes learned approvals to a GitHub PR |
 | `plugins/safe-compounds/safe_compounds/config.py` | Config file schema + loader |

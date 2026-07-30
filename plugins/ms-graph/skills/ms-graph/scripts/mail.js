@@ -11,8 +11,9 @@
 //                (drafts folder, most-recently-edited first; same block format with id)
 // Search:        node mail.js --search="Griffiths" [--top=10]
 // Show one:      node mail.js --show=<messageId>
-// Draft a reply: node mail.js --reply --message-id=<id> --body-file=reply.html
-//                (creates a DRAFT reply-all in the thread; never sends)
+// Draft a reply: node mail.js --reply --message-id=<id> --body-file=reply.html [--attach=file1.pdf,file2.png]
+//                (creates a DRAFT reply-all in the thread; never sends. --attach adds file
+//                 attachments, same syntax as --draft-new.)
 // Draft new:     node mail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.html \
 //                  [--cc=c@z] [--attach=file1.pdf,file2.png] [--replace] [--text]
 //                (creates a fresh DRAFT to specific recipients; never sends. --attach adds file
@@ -220,6 +221,19 @@ async function listDrafts(client) {
   }
 }
 
+// Reusable: normalize an --attach value (path, comma-separated string, or array) into Graph
+// fileAttachment objects.
+function buildAttachments(attach) {
+  const attachPaths = Array.isArray(attach)
+    ? attach
+    : (attach ? String(attach).split(',').map(s => s.trim()).filter(Boolean) : []);
+  return attachPaths.map(p => ({
+    '@odata.type': '#microsoft.graph.fileAttachment',
+    name: path.basename(p),
+    contentBytes: fs.readFileSync(p).toString('base64'),
+  }));
+}
+
 async function reply(client) {
   if (!args['message-id'] || !args['body-file']) {
     throw new Error('--reply requires --message-id and --body-file');
@@ -228,7 +242,12 @@ async function reply(client) {
   const draft = await client.api(`/me/messages/${args['message-id']}/createReplyAll`).post({});
   const quoted = draft.body?.content || '';
   await client.api(`/me/messages/${draft.id}`).patch({ body: { contentType: 'html', content: withDefaultFont(html) + quoted } });
-  console.log(`Draft reply created in thread (id ${draft.id.slice(0, 20)}...). Review in Outlook Drafts.`);
+  const attachments = buildAttachments(args.attach);
+  for (const a of attachments) {
+    await client.api(`/me/messages/${draft.id}/attachments`).post(a);
+  }
+  const extra = attachments.length ? ` with ${attachments.length} attachment(s)` : '';
+  console.log(`Draft reply created in thread${extra} (id ${draft.id.slice(0, 20)}...). Review in Outlook Drafts.`);
 }
 
 // Reusable: create a draft message (never sends). Returns the created draft.
@@ -248,16 +267,8 @@ async function createDraft(client, { to, subject, body = '', cc, attach, replace
   const finalBody = contentType === 'html' ? withDefaultFont(body) : body;
   const message = { subject, body: { contentType, content: finalBody }, toRecipients: recip(to) };
   if (cc) message.ccRecipients = recip(cc);
-  const attachPaths = Array.isArray(attach)
-    ? attach
-    : (attach ? String(attach).split(',').map(s => s.trim()).filter(Boolean) : []);
-  if (attachPaths.length) {
-    message.attachments = attachPaths.map(p => ({
-      '@odata.type': '#microsoft.graph.fileAttachment',
-      name: path.basename(p),
-      contentBytes: fs.readFileSync(p).toString('base64'),
-    }));
-  }
+  const attachments = buildAttachments(attach);
+  if (attachments.length) message.attachments = attachments;
   return client.api('/me/messages').post(message);
 }
 

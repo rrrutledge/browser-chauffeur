@@ -1,6 +1,7 @@
 """Unit tests for the pure parsing/classification helpers — the pieces most
 prone to subtle regression during refactoring."""
 import os
+import subprocess
 import sys
 import tempfile
 
@@ -29,6 +30,7 @@ from safe_compounds.scripts import check_node_segment, get_block_reason, reset_b
 from safe_compounds import ai  # noqa: E402
 from safe_compounds import workflow  # noqa: E402
 from safe_compounds.workflow import classify_workflow_tool  # noqa: E402
+from safe_compounds.worktree_tool import classify_enter_worktree, classify_exit_worktree  # noqa: E402
 
 
 def set_config(**kwargs):
@@ -51,11 +53,20 @@ class TestSplitSegments:
     def test_double_quotes_protect_pipe(self):
         assert split_segments('echo "x | y"') == ['echo "x | y"']
 
-    def test_newlines_treated_as_whitespace(self):
-        # Newlines in multi-line commands should not split segments
-        assert split_segments("grep -iE\n      \"pattern\"") == ["grep -iE\n      \"pattern\""]
-        # But semicolons should still split
-        assert split_segments("echo foo\necho bar; echo baz") == ["echo foo\necho bar", " echo baz"]
+    def test_bare_newline_splits_like_semicolon(self):
+        # A bare (unquoted) newline terminates a statement in real bash,
+        # exactly like `;` -- so each line of a multi-command Bash call (e.g.
+        # `git checkout main\ngit pull\ngit worktree remove ...`) is evaluated
+        # as its own independently-trusted segment.
+        assert split_segments("echo foo\necho bar; echo baz") == ["echo foo", "echo bar", " echo baz"]
+
+    def test_backslash_newline_continuation_stays_joined(self):
+        # A trailing backslash before the newline is bash's real line
+        # continuation syntax -- it does not terminate the statement.
+        assert split_segments("grep -iE \\\n      \"pattern\"") == ["grep -iE \\\n      \"pattern\""]
+
+    def test_newline_inside_quotes_does_not_split(self):
+        assert split_segments('echo "a\nb"') == ['echo "a\nb"']
 
 
 class TestFirstWord:
@@ -314,6 +325,9 @@ class TestMcp:
     def test_reversible_write(self):
         assert classify_mcp_tool("mcp__s__create_thing") is True
 
+    def test_copy_is_reversible_write(self):
+        assert classify_mcp_tool("mcp__s__copy_file") is True
+
     def test_destructive(self):
         assert classify_mcp_tool("mcp__s__delete_thing") is False
 
@@ -418,6 +432,69 @@ class TestWorkflow:
         set_config()
         assert classify_workflow_tool({"scriptPath": "/definitely/not/a/real/workflow.js"}) is False
         assert workflow.get_block_reason() is None
+
+
+def _init_repo(repo_dir):
+    subprocess.run(["git", "init"], cwd=repo_dir, check=True, capture_output=True)
+    subprocess.run(["git", "-C", str(repo_dir), "config", "user.email", "a@b.c"], check=True, capture_output=True)
+    subprocess.run(["git", "-C", str(repo_dir), "config", "user.name", "a"], check=True, capture_output=True)
+    (repo_dir / "f.txt").write_text("x", encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo_dir), "add", "."], check=True, capture_output=True)
+    subprocess.run(["git", "-C", str(repo_dir), "commit", "-m", "init"], check=True, capture_output=True)
+
+
+class TestEnterWorktree:
+    def test_no_path_creates_new_worktree_approves(self):
+        assert classify_enter_worktree({}) is True
+
+    def test_name_only_creates_new_worktree_approves(self):
+        assert classify_enter_worktree({"name": "some-feature"}) is True
+
+    def test_registered_worktree_path_approves_even_outside_dot_claude(self, tmp_path):
+        # A project's own worktree convention (e.g. `.worktrees/`, not
+        # `.claude/worktrees/`) is just as safe -- git's own bookkeeping is
+        # the proof, not the directory name.
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        _init_repo(repo)
+        wt = tmp_path / ".worktrees" / "feature"
+        subprocess.run(
+            ["git", "-C", str(repo), "worktree", "add", str(wt), "-b", "feature"],
+            check=True, capture_output=True,
+        )
+        assert classify_enter_worktree({"path": str(wt)}) is True
+
+    def test_unregistered_directory_prompts(self, tmp_path):
+        random_dir = tmp_path / "not-a-worktree"
+        random_dir.mkdir()
+        assert classify_enter_worktree({"path": str(random_dir)}) is False
+
+    def test_nonexistent_path_prompts_without_crash(self):
+        assert classify_enter_worktree({"path": "/definitely/not/a/real/path/xyz"}) is False
+
+
+class TestExitWorktree:
+    def test_keep_approves(self):
+        assert classify_exit_worktree({"action": "keep"}) is True
+
+    def test_plain_remove_approves(self):
+        # The tool itself refuses this call when there's uncommitted work or
+        # unmerged commits, so a plain remove (no override) is safe to allow.
+        assert classify_exit_worktree({"action": "remove"}) is True
+
+    def test_remove_with_discard_changes_prompts(self):
+        # discard_changes=True forces the tool past unsaved/unmerged work --
+        # a genuinely destructive override, so this must not auto-approve.
+        assert classify_exit_worktree({"action": "remove", "discard_changes": True}) is False
+
+    def test_remove_with_discard_changes_false_approves(self):
+        assert classify_exit_worktree({"action": "remove", "discard_changes": False}) is True
+
+    def test_unrecognized_action_prompts(self):
+        assert classify_exit_worktree({"action": "bogus"}) is False
+
+    def test_missing_action_prompts(self):
+        assert classify_exit_worktree({}) is False
 
 
 class TestComplexBash:

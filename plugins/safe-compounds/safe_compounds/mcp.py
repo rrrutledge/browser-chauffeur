@@ -17,7 +17,7 @@ MCP_READONLY_VERBS = (
 MCP_REVERSIBLE_WRITE_VERBS = (
     'create', 'add', 'update', 'edit', 'comment', 'transition', 'link',
     'set', 'put', 'post', 'append', 'rename', 'move', 'assign', 'label',
-    'tag', 'upsert', 'write', 'attach', 'star', 'watch', 'subscribe',
+    'tag', 'upsert', 'write', 'attach', 'star', 'watch', 'subscribe', 'copy',
 )
 MCP_DESTRUCTIVE_VERBS = (
     'delete', 'remove', 'purge', 'drop', 'destroy', 'trash', 'erase',
