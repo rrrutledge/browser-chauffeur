@@ -66,6 +66,25 @@ const { marked } = require('marked');
 const nodemailer = require('nodemailer');
 const MailComposer = require('nodemailer/lib/mail-composer');
 
+// Gmail's own compose editor defaults newly-typed text to Arial/sans-serif at "small" size unless
+// the user has picked a different default under Settings > General > Default text style. An HTML
+// body posted via IMAP APPEND with no font-family renders in the client's fallback font instead, so
+// if the recipient (or Russell himself, editing before send) types alongside it, the two visibly
+// mismatch. A single wrapping <div> is fragile against a rich-text editor's own normalize-on-open
+// pass (confirmed for Outlook: it drops an inherited wrapper style from existing paragraphs while
+// stamping newly-typed text with its own explicit font) - style each paragraph directly instead, so
+// the font is baked into content Gmail's editor would otherwise treat as already "finished."
+const DEFAULT_FONT_STYLE = 'font-family:Arial,Helvetica,sans-serif; font-size:small; color:rgb(0,0,0)';
+function withDefaultFont(html) {
+  let styled = html.replace(/<p(\s[^>]*)?>/gi, (m, attrs) => {
+    attrs = attrs || '';
+    if (/style\s*=/i.test(attrs)) return m; // already styled - leave it
+    return `<p${attrs} style="${DEFAULT_FONT_STYLE}">`;
+  });
+  if (!/<p[\s>]/i.test(styled)) styled = `<p style="${DEFAULT_FONT_STYLE}">${styled}</p>`;
+  return styled;
+}
+
 const args = Object.fromEntries(
   process.argv.slice(2).map(a => {
     const m = a.match(/^--([^=]+)(?:=(.*))?$/);
@@ -249,7 +268,7 @@ function attachments() {
 async function buildMime({ to, cc, subject, html, inReplyTo, references }) {
   const mail = {
     from: USER, to, cc, subject,
-    html,
+    html: withDefaultFont(html),
     attachments: attachments(),
     inReplyTo: inReplyTo ? `<${stripId(inReplyTo)}>` : undefined,
     references: references,
