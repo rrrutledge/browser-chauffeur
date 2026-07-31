@@ -676,11 +676,23 @@ def check_cwd_file_command(seg, command):
 
 # ----------------------------------------------- output redirection ----------
 def is_output_redirection_safe(segment):
-    """True if any > / >> redirect targets a relative path, .tmp/, or /dev/null."""
-    match = re.search(r'(?:^|[;\|&]|\s)(>>?)\s*([^\s;&|]+)', segment)
+    """True if any > / >> redirect targets a relative path, .tmp/, or /dev/null.
+
+    Quoted spans are masked (length-preserving, so match positions still line
+    up with the original string) before scanning for the '>' operator, so a
+    literal '>' inside a quoted argument (e.g. a grep pattern like ">$886")
+    isn't mistaken for a real redirect operator. The target is then read back
+    from the original (unmasked) string, so a genuinely quoted redirect
+    target like `> ".tmp/foo.txt"` still extracts correctly."""
+    masked = re.sub(
+        r'"[^"\\]*(?:\\.[^"\\]*)*"|\'[^\'\\]*(?:\\.[^\'\\]*)*\'',
+        lambda m: '\0' * len(m.group(0)),
+        segment,
+    )
+    match = re.search(r'(?:^|[;\|&]|\s)(>>?)\s*([^\s;&|]+)', masked)
     if not match:
         return True
-    target = match.group(2).strip().strip('"\'')
+    target = segment[match.start(2):match.end(2)].strip().strip('"\'')
     if not re.match(r'^([a-zA-Z]:|/|\\)', target):
         return True
     if target.startswith('.tmp/') or target.startswith('.tmp\\'):
