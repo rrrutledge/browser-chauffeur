@@ -16,9 +16,14 @@
       "description": "Create polished, professional reveal.js presentations with themes, multi-column layouts, code highlighting, charts, animations, and speaker notes. Generates HTML + CSS with no build step required."
     },
     {
+      "name": "trello",
+      "source": "./plugins/trello",
+      "description": "The Trello API client for any board: read or write cards, comments, labels, checklists, and lists, plus the blocked-card dependency model, through trello_utils.py - never the REST API directly. The outreach-funnel process layer over these mechanics is the separate trello-outreach plugin."
+    },
+    {
       "name": "trello-outreach",
       "source": "./plugins/trello-outreach",
-      "description": "Two skills over Trello: `trello`, the API client for any read or write (cards, comments, labels, checklists, lists, blocking) through trello_utils.py; and `trello-outreach`, the outreach-funnel process layer (when to open, advance, dedupe, and route cards) over the trello-boards.yaml registry."
+      "description": "The outreach-funnel process layer over Trello: when and why to open, advance, dedupe, and route cards across the outreach boards, plus the board registry and initiative model. The Trello API mechanics (card/comment/label/checklist CRUD, the client library) are the separate `trello` plugin."
     },
     {
       "name": "marketing-confluence-page",

@@ -1,6 +1,6 @@
 """Test for scripts/trello_utils.py's parse_blocked_by.
 
-Run directly: python plugins/trello-outreach/tests/test_parse_blocked_by.py
+Run directly: python plugins/trello/tests/test_parse_blocked_by.py
 """
 import os
 import sys

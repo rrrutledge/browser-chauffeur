@@ -1,7 +1,7 @@
 {
   "name": "trello-outreach",
-  "version": "1.4.0",
-  "description": "Two skills over Trello: `trello`, the API client for any read or write (cards, comments, labels, checklists, lists, blocking) through trello_utils.py; and `trello-outreach`, the outreach-funnel process layer (when to open, advance, dedupe, and route cards) over the trello-boards.yaml registry.",
+  "version": "2.0.0",
+  "description": "The outreach-funnel process layer over Trello: when and why to open, advance, dedupe, and route cards across the outreach boards, plus the board registry and initiative model. The Trello API mechanics (card/comment/label/checklist CRUD, the client library) are the separate `trello` plugin.",
   "author": {
     "name": "Russell Rutledge"
   },
