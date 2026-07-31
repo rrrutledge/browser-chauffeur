@@ -92,6 +92,16 @@ never a bare URL. Order by what's most worth knowing first.
 `triage.md`). Open and summarize the real content per the resolve-a-pointer step in `worker-core.md`
 § 2b — the same mechanic a worker uses for needs-you, here at digest time for fyi.
 
+**A recap is a summary, not a to-do list — never re-surface its action items.** A meeting recap (a `zoom`
+meeting recap, a Fireflies recap) is fyi precisely because the owner's action items from that meeting are
+captured as their **own separate needs-you items**, each already dispatched to its own worker. So
+summarize the meeting's gist — what was discussed, the decisions, any date or number worth knowing — and
+stop there. Do **not** pull the recap's "next steps" back out and list the owner's action items as things
+for Russell to do: those items already exist and are already being worked, so re-listing them here
+surfaces the same action twice — once as a live worker, once as a phantom digest to-do. The recap's own
+body says as much ("your action items from this meeting are tracked as their own separate drainer items");
+honor it, and keep the summary to the gist.
+
 **Before framing any item as still needing Russell** — an open ask, an awaited reply, anything that
 implies he still owes a response — run that provider's **SITUATIONAL-CHECK** first (search Sent +
 Drafts; read `<providers_dir>/<source>-provider.md` → SITUATIONAL-CHECK). The captured snippet is the
