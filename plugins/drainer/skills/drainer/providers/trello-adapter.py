@@ -1,4 +1,4 @@
-"""trello poller adapter — outreach boards via the trello-outreach skill's trello_utils.py (Trello REST).
+"""trello poller adapter — outreach boards via the `trello` skill's trello_utils.py (Trello REST).
 
 All Trello mechanics live HERE, alongside the prose contract in `trello-provider.md`: locating
 trello_utils.py, reading the `providers.trello` board config out of `.claude/drainer.local.md`, the
@@ -86,10 +86,10 @@ class Provider(ProviderBase):
     # --------------------------------------------------------------- locate the trello-outreach helper
     @staticmethod
     def _import_trello_utils():
-        """Locate the trello-outreach skill's trello_utils.py across dev-repo and installed-cache layouts.
+        """Locate the `trello` plugin's trello_utils.py across dev-repo and installed-cache layouts.
 
-        Dev repo:   <plugins>/trello-outreach/skills/trello-outreach/scripts/trello_utils.py
-        Installed:  <plugins>/cache/<marketplace>/trello-outreach/<ver>/skills/.../trello_utils.py
+        Dev repo:   <plugins>/trello/skills/trello/scripts/trello_utils.py          (sibling of drainer)
+        Installed:  <plugins>/cache/<marketplace>/trello/<ver>/skills/trello/scripts/trello_utils.py
         Walk up to the first `plugins` dir, then try the sibling path, else glob for any trello_utils.py
         beneath it and take the highest-versioned (lexically greatest) path. Mirrors how gmail-adapter
         finds gmail.js.
@@ -103,13 +103,13 @@ class Provider(ProviderBase):
             d = parent
         path = None
         if d:
-            sibling = os.path.join(d, "trello-outreach", "skills", "trello-outreach", "scripts",
+            sibling = os.path.join(d, "trello", "skills", "trello", "scripts",
                                    "trello_utils.py")
             if os.path.exists(sibling):
                 path = sibling
             else:
                 matches = glob.glob(
-                    os.path.join(d, "**", "trello-outreach", "**", "scripts", "trello_utils.py"),
+                    os.path.join(d, "**", "trello", "**", "scripts", "trello_utils.py"),
                     recursive=True)
                 if matches:
                     path = sorted(matches)[-1]

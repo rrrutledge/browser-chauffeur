@@ -24,7 +24,8 @@ from safe_compounds import procs  # noqa: E402
 from safe_compounds.mcp import classify_mcp_tool  # noqa: E402
 from safe_compounds.enforce import (  # noqa: E402
     detect_complex_bash, detect_simple_expansion, detect_cd_compound, detect_function_definition,
-    detect_plugin_cache_reference, detect_gh_api_contents_write, enforce_bash,
+    detect_plugin_cache_reference, detect_gh_api_contents_write, detect_raw_trello_write,
+    enforce_bash,
 )
 from safe_compounds.scripts import check_node_segment, get_block_reason, reset_block_reason  # noqa: E402
 from safe_compounds import ai  # noqa: E402
@@ -847,6 +848,51 @@ class TestGhApiContentsWriteBlocking:
         assert reason is not None
         assert 'Contents API' in reason
         assert 'clone' in reason.lower()
+
+
+class TestRawTrelloWriteBlocking:
+    """A raw curl write to api.trello.com is always the wrong mechanism -- every
+    Trello mutation goes through the `trello` skill's trello_utils.py. Writes are
+    blocked with a pointer to that path; a plain GET read is left alone."""
+
+    def test_detects_post_with_verb(self):
+        cmd = 'curl -X POST "https://api.trello.com/1/cards/abc/actions/comments?key=K&token=T" -d text=hi'
+        assert detect_raw_trello_write(cmd) is True
+
+    def test_detects_put(self):
+        cmd = 'curl -X PUT "https://api.trello.com/1/cards/abc?key=K&token=T&due=2026-08-01"'
+        assert detect_raw_trello_write(cmd) is True
+
+    def test_detects_delete(self):
+        cmd = 'curl -X DELETE "https://api.trello.com/1/cards/abc/idLabels/xyz?key=K&token=T"'
+        assert detect_raw_trello_write(cmd) is True
+
+    def test_detects_glued_verb(self):
+        cmd = 'curl -XPOST "https://api.trello.com/1/cards?key=K&token=T&name=x&idList=y"'
+        assert detect_raw_trello_write(cmd) is True
+
+    def test_detects_body_flag_implying_post(self):
+        cmd = 'curl "https://api.trello.com/1/cards/abc/actions/comments" --data-urlencode "text=hi"'
+        assert detect_raw_trello_write(cmd) is True
+
+    def test_get_read_not_flagged(self):
+        cmd = 'curl "https://api.trello.com/1/boards/abc/cards?key=K&token=T"'
+        assert detect_raw_trello_write(cmd) is False
+
+    def test_explicit_get_with_body_not_flagged(self):
+        cmd = 'curl -X GET "https://api.trello.com/1/boards/abc?key=K&token=T"'
+        assert detect_raw_trello_write(cmd) is False
+
+    def test_non_trello_write_not_flagged(self):
+        cmd = 'curl -X POST "https://example.com/api/thing" -d foo=bar'
+        assert detect_raw_trello_write(cmd) is False
+
+    def test_enforce_bash_blocks_with_skill_pointer(self):
+        cmd = 'curl -X POST "https://api.trello.com/1/cards/abc/actions/comments?key=K&token=T" -d text=hi'
+        reason = enforce_bash(cmd)
+        assert reason is not None
+        assert 'trello_utils' in reason
+        assert 'api.trello.com' in reason
 
 
 class TestCdCompoundDetection:

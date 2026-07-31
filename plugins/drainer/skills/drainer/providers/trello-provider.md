@@ -6,8 +6,11 @@ Due now-or-earlier, OR undated — and not wearing a ⛔ Blocked label. Outreach
 they queue purely on their **due date** (the follow-up date) exactly as before. Task cards use the
 **startable model** (see STARTABLE-TASK MODEL): Start = the "work-on-it-next / ping-back" date, Due =
 a real deadline. It rides the single schedule with no special cadence. All Trello reads and mutations
-go through the **`trello-outreach`** skill (don't reimplement the Trello API here). Implements
-`../engine/provider.md`; classify by `../engine/triage.md`. id prefix: `trello-`.
+go through the **`trello`** skill's `trello_utils.py` - never the Trello REST API directly. The
+credentials sit in the environment, so a raw `curl` to `api.trello.com` is tempting; it skips the
+shared auth, timeout, and read-after-write verification, and a raw write is blocked by the
+safe-compounds hook, which points back to `trello_utils`. Implements `../engine/provider.md`; classify
+by `../engine/triage.md`. id prefix: `trello-`.
 
 ## Config
 - **Boards** — the single source of truth is `<repo>/trello-boards.yaml` (a `boards:` list of
@@ -40,7 +43,7 @@ go through the **`trello-outreach`** skill (don't reimplement the Trello API her
   - `status_labels` — dependency-state labels held out of contact classification (default
     `[Blocked, Waiting]`), so a ⛔/⏳ label is never read as a person's name.
   - `label_vocab` — `{channels: [...], features: [...]}`; any label not in those is a contact name.
-Credentials: `TRELLO_API_KEY` / `TRELLO_TOKEN` in the environment (used by `trello-outreach`).
+Credentials: `TRELLO_API_KEY` / `TRELLO_TOKEN` in the environment (used by the `trello` skill).
 
 ## AUTH-GLANCE
 Confirm `TRELLO_API_KEY`/`TRELLO_TOKEN` are set. If not, tell the user to set them and stop.
@@ -57,7 +60,7 @@ Two facts live in native Trello fields, two in labels + a description convention
   matcher reads it).
 - **⛔ Blocked** (label) = blocked on **another card** finishing. Suppressed entirely (`skip_labels`)
   until unblocked. Record `Blocked-by: <upstream-shortlink>[, …]` in the description; optionally attach
-  the upstream card for a human-visible link. (`trello-outreach`'s SKILL.md owns applying this at
+  the upstream card for a human-visible link. (The `trello` skill's SKILL.md owns applying this at
   creation time — it's the mechanics layer every Trello write goes through.)
 
 **Unblock has a push and a pull.** When an upstream card is finished (moved to a terminal/skip list or
@@ -78,7 +81,7 @@ needs freeing, so a blocked card is guaranteed to resurface once its blockers fi
 remember to call cascade_unblock, and cross-board blocking just works.
 
 ## ENUMERATE
-Via `trello-outreach`, list cards across the configured boards that sit in an **active** list (not in
+Via the `trello` skill, list cards across the configured boards that sit in an **active** list (not in
 `skip_lists`), are **not** wearing a `skip_labels` label (⛔ Blocked), and are **startable** — Start
 now-or-earlier, OR Due now-or-earlier (overdue counts), OR carrying neither date. Rank dated cards by
 their **go-live date** (the earliest of Start/Due, most recent first) and undated cards by their
@@ -107,7 +110,7 @@ follow-up, so the card is a durable cache for everything needed to act.
 
 **Claim it before anything else.**
 Bump every date field that is currently now-or-earlier - before reading further or starting any
-research - via `trello-outreach`, so the card cannot re-surface on another drain while this work is in
+research - via the `trello` skill, so the card cannot re-surface on another drain while this work is in
 flight.
 ENUMERATE's startable rule is an **OR** over both fields (Start now-or-earlier, OR Due now-or-earlier),
 so a claim that pushes only one still-past field out leaves the card startable through the other.
@@ -143,7 +146,7 @@ A card's last comment can also point to a different channel entirely than the on
 
 **Cache back to the card.** Anything you learn that the next pass would otherwise re-derive — the
 thread deep link, the contact's role/handle, where they are in the outreach, the last message
-gist/date, the agreed next step — write into the card's description/comments via `trello-outreach`, in
+gist/date, the agreed next step — write into the card's description/comments via the `trello` skill, in
 a stable structured shape. CLEAR (advance) then updates that cache. Over time a card should carry
 enough that a follow-up needs almost no re-discovery. (A dedicated card schema for this is worth
 designing — see the project's Trello-caching follow-up.)
@@ -201,7 +204,7 @@ is usually to **advance** the card (CLEAR) rather than send again; if it's simpl
 up, silently bump the due date (CLEAR) and surface no tab.
 
 ## CLEAR (advance the card)
-Only **after** the user confirms they sent/handled the message, advance the card via `trello-outreach`:
+Only **after** the user confirms they sent/handled the message, advance the card via the `trello` skill:
 - **nudge** — bump the due date out N days (they haven't replied; follow up later). Use the cadence below.
 - **advance** — move to a later stage + set the next due date (it progressed).
 - **stop** — move to Abandoned + clear the due date (not pursuing). If a message draft was staged for
