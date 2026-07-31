@@ -15,8 +15,8 @@ from safe_compounds.shell import (  # noqa: E402
 )
 from safe_compounds import config  # noqa: E402
 from safe_compounds.commands import (  # noqa: E402
-    is_git_command_safe, is_curl_safe, is_sed_command_safe, is_start_safe, is_taskkill_safe,
-    strip_safe_redirections, check_cwd_file_command,
+    is_git_command_safe, is_curl_safe, is_output_redirection_safe, is_sed_command_safe, is_start_safe,
+    is_taskkill_safe, strip_safe_redirections, check_cwd_file_command,
 )
 from safe_compounds.paths import is_safe_read_location  # noqa: E402
 from safe_compounds import paths  # noqa: E402
@@ -284,6 +284,27 @@ class TestSelfTabHostPid:
     def test_cycle_returns_none(self):
         snap = {100: (200, 'python.exe'), 200: (100, 'sh.exe')}
         assert procs.self_tab_host_pid(start_pid=100, snapshot=snap) is None
+
+
+class TestOutputRedirectionSafe:
+    def test_literal_gt_inside_quoted_pattern_is_not_a_redirect(self):
+        # Regression: a literal '>' inside a quoted grep pattern (e.g. matching
+        # ">$886" in a report) used to be misread as a real redirect operator,
+        # producing a bogus absolute-path "target" and failing the segment.
+        seg = 'grep -oE "eight to one|>\\$886" "report.html"'
+        assert is_output_redirection_safe(seg) is True
+
+    def test_quoted_tmp_target_still_recognized_safe(self):
+        assert is_output_redirection_safe('echo hi > ".tmp/foo.txt"') is True
+
+    def test_quoted_absolute_path_target_still_recognized_unsafe(self):
+        assert is_output_redirection_safe('echo hi > "/etc/passwd"') is False
+
+    def test_real_absolute_path_redirect_is_unsafe(self):
+        assert is_output_redirection_safe('echo hi > /etc/passwd') is False
+
+    def test_devnull_merge_is_safe(self):
+        assert is_output_redirection_safe('cmd 2>/dev/null') is True
 
 
 class TestStripSafeRedirections:
