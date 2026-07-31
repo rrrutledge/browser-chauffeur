@@ -100,7 +100,11 @@ behalf) already replied after the captured message, present it as **✅ already 
 the summary entirely — never list it as a to-do. Summarize as actionable only what the situational
 check confirms is still open. Do not append a speculative "things still to do" list assembled from
 unverified captured snippets — that is exactly how an already-answered thread gets re-surfaced as if it
-needs attention.
+needs attention. A **recap** (a `zoom` or Fireflies meeting recap) is the same trap in another form: its
+"next steps" are not a to-do list to reproduce, because the owner's action items from that meeting are
+already captured as their own separate needs-you items, each with its own worker. Summarize the recap's
+gist — what was discussed, the decisions, any date or number worth knowing — and never re-list those
+action items here, or the same action shows up twice: once as a live worker, once as a phantom digest to-do.
 
 The same principle applies to outreach: **before framing any item as new** — an introduction, or a
 reply from a company or individual who might already be a tracked contact — check `<repo>/trello-boards.yaml`
