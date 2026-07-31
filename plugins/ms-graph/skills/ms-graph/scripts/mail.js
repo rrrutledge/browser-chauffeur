@@ -28,6 +28,10 @@
 //                (un-junks a message: moves it to Inbox and reports it "not junk" to Microsoft's
 //                 filter so future mail from that sender is less likely to be misfiled. Uses the
 //                 beta reportMessage action; falls back to a plain move-to-Inbox if that ever fails.)
+// Get attachments: node mail.js --get-attachments=<messageId> [--out-dir=.tmp]
+//                (downloads every file attachment on a message to --out-dir, default the
+//                 current directory; prints each saved path. Skips non-file attachments, e.g.
+//                 inline/reference attachments Graph can't materialize as bytes.)
 //
 // --- Inbox rules (server-side filters) ---
 // List rules:    node mail.js --list-rules [--json]
@@ -174,6 +178,27 @@ async function notJunk(client) {
     console.log(`reportMessage (beta) failed [${e.message}] — fell back to a plain move to Inbox `
       + `(id ${String(id).slice(0, 20)}...). Filter was not retrained.`);
   }
+}
+
+async function getAttachments(client) {
+  const id = args['get-attachments'];
+  const outDir = args['out-dir'] || '.';
+  fs.mkdirSync(outDir, { recursive: true });
+  const data = await client.api(`/me/messages/${id}/attachments`).get();
+  const atts = data.value || [];
+  if (!atts.length) { console.log('No attachments on this message.'); return []; }
+  const saved = [];
+  for (const a of atts) {
+    if (a['@odata.type'] !== '#microsoft.graph.fileAttachment' || !a.contentBytes) {
+      console.log(`Skipped (not a downloadable file attachment): ${a.name} [${a['@odata.type']}]`);
+      continue;
+    }
+    const outPath = path.join(outDir, a.name);
+    fs.writeFileSync(outPath, Buffer.from(a.contentBytes, 'base64'));
+    saved.push(outPath);
+    console.log(`Saved: ${outPath} (${a.contentType || 'unknown type'}, ${a.size} bytes)`);
+  }
+  return saved;
 }
 
 async function search(client) {
@@ -404,10 +429,11 @@ if (require.main === module) {
     if (args['send-self']) return sendSelf(client);
     if (args.delete) return del(client);
     if (args['not-junk']) return notJunk(client);
+    if (args['get-attachments']) return getAttachments(client);
     if (args['list-rules']) return listRules(client);
     if (args['create-rule']) return createRule(client);
     if (args['append-rule']) return appendRule(client);
     if (args['delete-rule']) return deleteRule(client);
-    throw new Error('Specify --list-unread, --list-inbox, --list-junk, --list-drafts, --search, --show, --reply, --draft-new, --send-self, --delete, --not-junk, --list-rules, --create-rule, --append-rule, or --delete-rule');
+    throw new Error('Specify --list-unread, --list-inbox, --list-junk, --list-drafts, --search, --show, --reply, --draft-new, --send-self, --delete, --not-junk, --get-attachments, --list-rules, --create-rule, --append-rule, or --delete-rule');
   })().catch(e => { console.error('Error:', e.message); process.exit(1); });
 }
