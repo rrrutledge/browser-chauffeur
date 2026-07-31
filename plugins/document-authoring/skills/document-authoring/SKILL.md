@@ -85,8 +85,8 @@ Don't present a menu of options or stack a numbered list of questions.
   When they checked a lead that didn't pan out, close with "No problem ✅" rather than "Good to know" — the former is gracious about their effort — and add a brief "Thanks for asking." for the legwork itself.
 - **When the ask rested on your own mistake, own it plainly, release the other person, and don't pivot to a replacement ask.**
   Say you got mixed up, tell them not to bother, and stop.
-- **When asking someone to do something, just ask — don't embed how-to instructions.**
-  State what you need and trust them to execute; cut a supplied script, a suggested approach, or step-by-step notes.
+- **When asking someone to do something — or for their genuine read on an open question — just ask; don't pre-fill the answer.**
+  State what you need and trust them to fill it; cut a supplied script, a suggested approach, step-by-step notes, or a list of candidate answers appended to your own question — the examples quietly narrow and lead the reply you get back.
 - **Phrase a requested edit to someone else's draft as a question, not a flat correction** — "can you make it X?" reads as collaborative even when you already know exactly what should change; save the flat "should be X" framing for reference material, not a live ask.
 - **When a decision-relevant fact is still outstanding, get it before committing — and don't let the wait look like stalling.**
   Hold off until the number, document, or valuation is in hand even if the other side wants a yes now; keep the tone warm and move straight to what you still need, so it reads as diligence.
