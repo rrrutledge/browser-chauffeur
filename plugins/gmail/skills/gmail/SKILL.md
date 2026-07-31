@@ -76,6 +76,11 @@ Under `scripts/` (run with `node`):
     `<id>` is looked up in both the **inbox and All Mail**, so pass the **most recent** message in the
     thread to thread off — even one the user sent. When that message is the user's own, the reply keeps its recipients (To/CC)
     instead of addressing back to the user; otherwise it's a reply-all to the sender + other recipients.
+    **Skip a Gmail emoji-reaction email as the threading target** — a bare 👍/❤️ sent via Gmail's
+    in-app reaction feature is a real message with a real Message-ID, but Gmail renders it specially and
+    shows blank when opened, so a reply threaded off it looks empty to the recipient in the Gmail UI even
+    though the draft itself is fine. When the most recent message in the thread is a reaction, thread off
+    the nearest message before it that carries real content instead.
   - **`--body-file` is Markdown** — write the body in Markdown (`**bold**`, `[text](url)`, paragraphs,
     lists) and the script converts it to HTML via `marked`. HTML tags in the source pass through
     unchanged. **If `GMAIL_SIGNATURE_HTML` is set (see Setup step 5), stop at the last content
