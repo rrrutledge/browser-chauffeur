@@ -173,12 +173,14 @@ A single clear sentence ending in a question is usually the whole message — re
   Hedge with "that I know of" when not fully certain.
 - **Keep asks open and tentative — don't pre-commit.**
   Write as though the outcome is still open and give room to say no: hedge with "may"/"wondering", include alternatives, and avoid pinning the person to a specific action.
+  When the primary ask is a harder commitment (money, sponsorship), pair it with an explicit lower-commitment fallback framed as a floor — "at the very least, X" — so declining the main ask still leaves an easy yes on the table.
   "Please consider" lands softer than a direct question for an internal favor; prefer "can" over "should" in a joint ask; soften a named prestigious slot to the general role ("speaker", not "keynote"). When the ask could read as ungrateful — pressing a lapsed commitment, an underpayment — make the gratitude explicit, frame it as sharing the point to ask whether it helps *them*, and point to the concrete record rather than asserting the fact.
   When asking an existing contributor for more, name a peer already committed as the nudge and hand the choice back with an explicit release ("so it's fine either way").
   On a repeated ask, recast a phrasing that presumes an answer already exists ("who do we have lined up") into one that asks whether it exists at all ("is there anyone we can line up") - the presumptive form reads as chasing a decision already made, the open form as a genuine question.
 - **First-touch outreach: keep the ask to one low-commitment thing, and warm the reference to their past work.**
   After a long gap, ask for a single easy yes rather than stacking asks, and affirm that their earlier contribution still matters in plain words.
   Cut any salesy bridge before the ask.
+  Warm the reference with a specific, curious question about a known piece of their work rather than general praise ("Are you the one who created X? I had fun seeing that.") — a genuine detail that shows you engaged with it lands better than admiration stated abstractly.
 - **Reporting a completed task, stating what you'll do, sharing a recommendation, or answering a question you researched: lead with the outcome; cut the diagnostic play-by-play and the editorial wrap-up.**
   They want the result, not the story of what was wrong, how you found it, which options you ruled out and why, background color on whatever you researched, or a closing "so this means…" they can draw themselves.
   Give a plan as one plain line and a decision on your own side as a bare fact - the timing mechanics behind the plan and the parenthetical justifying the decision both come out.
