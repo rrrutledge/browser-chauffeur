@@ -225,8 +225,8 @@ The specifics that most often separate a message that reads as Russell's from on
     Relaying that someone else said the recipient never got back to them goes as a neutral checking question ("Did [name] reach out to you about it?"), so the recipient isn't put on the spot by the complaint itself.
   - **A frustration mentioned as an aside alongside positive news:** close on gratitude for their concrete contribution ("Thanks for the help!"); don't open the frustration thread.
   - **A self-critical admission of falling behind** (e.g. "I've been slack with this, been very busy"): the opposite of a stated constraint — affirm them personally ("You're doing great!") and echo the overwhelm back with warmth ("There is so much to do...") rather than releasing the pressure and stopping tersely. They're describing their own effort, not asking to be let off the hook, so match it with reassurance, not a brush-off. A genuine one-off emoji outside the usual palette (e.g. 😩) is fine here for shared commiseration over workload.
-- **Let the reply itself acknowledge their stated next step.**
-  They've said what they'll do; restating it, even positively, adds pressure and implies they needed reminding.
+- **Let the reply itself acknowledge their stated next step or a reported completed action.**
+  They've said what they'll do, or that they already did it; restating the specifics back to them, even positively, adds pressure and implies they needed reminding — a generic "thanks for doing it" carries the acknowledgment without the recap.
   Where you do respond to it, affirm in a way that removes the constraint, or hedge the callback so they're free to be where they actually are.
 - **Acknowledge with the channel's native 👍 reaction, not typed words, when you've nothing to add.**
   Use it when everything they said sounds good and any positive line would be over the top — most of all when they've plainly agreed to do something, where added words read as piling on.
@@ -261,6 +261,8 @@ The specifics that most often separate a message that reads as Russell's from on
   A genuine personal aside can open or close the nudge.
 - **When the thing you're nudging on is stuck in the recipient's own internal process, lead with trust in their follow-through rather than a status question.**
   "I know you're always on top of moving this through" carries the release on its own, so drop the separate no-pressure line.
+  Reaching out at all is what reminds them — the nudge doesn't need an explicit question to land, so a plain acknowledgment or even a wordless reaction can do the job.
+  On a first touch a bare reaction is often enough; hold a worded reply in reserve for the next round, once a second touch is actually due.
 
 ### Core voice
 
