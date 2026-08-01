@@ -560,12 +560,12 @@ def _spawn_scan_diagnostic(repo, runtime_dir, worker_model):
         f.write(
             "You are a drainer diagnostic worker. Read `~/.claude/CLAUDE.md` first.\n\n"
             "The drainer poller's `total_claude_tabs()` (run-poller.py, drainer plugin scripts/) just "
-            "failed to run or parse its PowerShell `Get-Process -Name claude` scan. That function "
-            "throttles new worker-tab dispatch against DRAINER_TARGET_OPEN_TABS, so a failed scan "
-            "means dispatch was held back entirely this cycle rather than risking an unbounded burst.\n\n"
-            "Diagnose why the scan failed: run the exact command yourself - `powershell -NoProfile "
-            "-Command \"(Get-Process -Name claude -ErrorAction SilentlyContinue | Measure-Object).Count\"` "
-            "- and see what happens (hangs, errors, returns something unparseable). Check whether the "
+            "failed to run or parse its `tasklist` scan. That function throttles new worker-tab "
+            "dispatch against DRAINER_TARGET_OPEN_TABS, so a failed scan means dispatch was held back "
+            "entirely this cycle rather than risking an unbounded burst.\n\n"
+            "Diagnose why the scan failed: run the exact command yourself - `tasklist /FI \"IMAGENAME "
+            "eq claude.exe\" /NH /FO CSV` - and see what happens (hangs, errors, returns something "
+            "unparseable). Check whether the "
             "machine was under heavy load (many open tabs, high CPU/memory) as a likely cause. If you "
             "find a concrete, safe fix, apply it. Either way, tell Russell plainly what you found and "
             "whether it's fixed or still needs his attention.\n"
@@ -651,13 +651,17 @@ def total_claude_tabs():
     exactly the condition — a bogged-down machine — most likely to coincide with a large eligible
     backlog, and skipping the throttle there is how a cycle dispatches everything eligible at once
     instead of nothing. A single blip retries silently next cycle; SCAN_FAILURE_ALERT_THRESHOLD
-    consecutive failures spawns one visible diagnostic tab."""
-    ps = "(Get-Process -Name claude -ErrorAction SilentlyContinue | Measure-Object).Count"
+    consecutive failures spawns one visible diagnostic tab.
+
+    Uses tasklist rather than PowerShell's Get-Process: Get-Process resolves each match's file
+    version info, which under load (many concurrent tabs, high CPU/memory pressure) can stall well
+    past this function's timeout; tasklist reads the process table directly and stays fast under the
+    same load."""
     try:
-        out = subprocess.run(["powershell", "-NoProfile", "-Command", ps],
-                             capture_output=True, text=True, timeout=30,
+        out = subprocess.run(["tasklist", "/FI", "IMAGENAME eq claude.exe", "/NH", "/FO", "CSV"],
+                             capture_output=True, text=True, timeout=10,
                              creationflags=NO_WINDOW).stdout
-        return int(out.strip())
+        return sum(1 for line in out.splitlines() if line.lower().startswith('"claude.exe"'))
     except (OSError, subprocess.SubprocessError, ValueError):
         return None
 
