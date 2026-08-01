@@ -180,7 +180,7 @@ A single clear sentence ending in a question is usually the whole message — re
 - **First-touch outreach: keep the ask to one low-commitment thing, and warm the reference to their past work.**
   After a long gap, ask for a single easy yes rather than stacking asks, and affirm that their earlier contribution still matters in plain words.
   Cut any salesy bridge before the ask.
-  Warm the reference with a specific, curious question about a known piece of their work rather than general praise ("Are you the one who created X? I had fun seeing that.") — a genuine detail that shows you engaged with it lands better than admiration stated abstractly.
+  Warm the reference with a specific personal experience Russell has had with a known piece of their work — not a question, necessarily, just a genuine detail that shows he engaged with it — rather than praise stated abstractly. When the specific experience isn't known, don't invent one or default to a generic question: leave a `[CONFIRM: …]` placeholder (see **When unsure** below) for Russell to fill in.
 - **Reporting a completed task, stating what you'll do, sharing a recommendation, or answering a question you researched: lead with the outcome; cut the diagnostic play-by-play and the editorial wrap-up.**
   They want the result, not the story of what was wrong, how you found it, which options you ruled out and why, background color on whatever you researched, or a closing "so this means…" they can draw themselves.
   Give a plan as one plain line and a decision on your own side as a bare fact - the timing mechanics behind the plan and the parenthetical justifying the decision both come out.
