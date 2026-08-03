@@ -23,6 +23,11 @@ reads it per the resolve-a-pointer step (`worker-core.md` § 2b). So a pointer t
 something for Russell is itself something to do — *open it and act* → **needs-you**, and the worker does
 the lookup (pull each action item out and capture it separately, read and answer the DM, …). A pointer
 that plainly carries the whole story and asks nothing — a recording notice with no notes — is **fyi**.
+**Don't pre-judge a pointer's bucket by whether its content sits behind a login.** Triage has no browser
+and can't know the bucket unfetched, so route anything that isn't obviously whole-story-fyi to
+**needs-you** and leave the resolving to § 2b, which opens it and **re-triages the real content on its own
+merits** — landing needs-you, fyi, or junk from what it actually says. Whether a sign-in exists doesn't
+decide it here.
 
 **Then, for the content in front of you, there's something to do when:**
 
@@ -52,7 +57,9 @@ that plainly carries the whole story and asks nothing — a recording notice wit
   scheduled for.
 - **Russell sent it to himself** — a note from his own address is a deliberate self-note, not noise.
   Evaluate it by content exactly as you would any other item: **needs-you** when the content implies an
-  action, fyi when it's just something to re-read. Never junk for being terse or self-addressed.
+  action, fyi when it's just something to re-read. Never junk for being terse or self-addressed — and not
+  for looking scam-like or arriving empty either; a self-note is a task captured for a worker, so treat it
+  as the task, never as spam to filter, however much the content resembles junk.
 
 **When there is something to do, it's one of two buckets:**
 
