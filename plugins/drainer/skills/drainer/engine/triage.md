@@ -25,10 +25,9 @@ the lookup (pull each action item out and capture it separately, read and answer
 that plainly carries the whole story and asks nothing — a recording notice with no notes — is **fyi**.
 **Don't pre-judge a pointer's bucket by whether its content sits behind a login** — you can't know the
 bucket until it's fetched, and the test is whether Claude can get the content, not whether a sign-in
-exists. So route anything that isn't obviously whole-story-fyi to **needs-you**, and let § 2b try to read
-it: it resolves and silently downgrades most of them (a church/library notice, a hosted newsletter behind
-a session browser-chauffeur already holds), and keeps it needs-you only when Claude genuinely can't get
-past the wall (an app needing the user's own login), handing the user the deep link.
+exists. Route anything that isn't obviously whole-story-fyi to **needs-you** and let § 2b try to read it:
+it resolves and silently downgrades most, and keeps it needs-you only when Claude genuinely can't get past
+the wall, handing the user the deep link.
 
 **Then, for the content in front of you, there's something to do when:**
 
@@ -58,10 +57,9 @@ past the wall (an app needing the user's own login), handing the user the deep l
   scheduled for.
 - **Russell sent it to himself** — a note from his own address is a deliberate self-note, not noise.
   Evaluate it by content exactly as you would any other item: **needs-you** when the content implies an
-  action, fyi when it's just something to re-read. Never junk for being terse or self-addressed — and
-  not for looking scam-like or arriving empty either. If he mails himself the text of a filing notice, an
-  "obtain your EIN" prompt, or a bare subject with no body, he's capturing a task for a worker to act on;
-  treat that as the task, never as spam to filter, however much the content resembles junk.
+  action, fyi when it's just something to re-read. Never junk for being terse or self-addressed — and not
+  for looking scam-like or arriving empty either; a self-note is a task captured for a worker, so treat it
+  as the task, never as spam to filter, however much the content resembles junk.
 
 **When there is something to do, it's one of two buckets:**
 

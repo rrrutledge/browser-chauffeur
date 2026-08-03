@@ -241,13 +241,10 @@ When unsure, default to infrequent. When the ask requires real commitment or int
 
 If the situational check finds **nothing to do right now**, silently bump the due date and finish —
 surface no tab. But hold a high bar for "nothing to do," because a card comes due precisely so its
-follow-up gets sent. It's genuinely nothing-to-do only when the wait is still legitimate: the contact
-gave a concrete reply-by time that hasn't passed, a nudge went out so recently the cadence above hasn't
-elapsed, or they replied and the user already answered. When instead the card is due, they still haven't
-replied, **and** the nudge interval has elapsed, the move is to **draft the follow-up nudge** (needs-you)
-— that is the action the due date surfaced. Repeatedly bumping a due card out without ever sending a
-follow-up is the failure mode to avoid: a sponsorship ask emailed weeks ago with no reply is due for a
-nudge, not another silent bump.
+follow-up gets sent: it's genuinely nothing-to-do only while the wait is still legitimate (a reply-by
+time not yet passed, a nudge sent within the cadence above, or they replied and the user already
+answered). When the card is due, they still haven't replied, **and** the nudge interval has elapsed,
+**draft the follow-up nudge** (needs-you) rather than bumping the date out again.
 
 ## JUNK-LEARNING
 N/A — outreach cards are curated, not inbound noise.
