@@ -23,11 +23,11 @@ reads it per the resolve-a-pointer step (`worker-core.md` § 2b). So a pointer t
 something for Russell is itself something to do — *open it and act* → **needs-you**, and the worker does
 the lookup (pull each action item out and capture it separately, read and answer the DM, …). A pointer
 that plainly carries the whole story and asks nothing — a recording notice with no notes — is **fyi**.
-**Don't pre-judge a pointer's bucket by whether its content sits behind a login** — you can't know the
-bucket until it's fetched, and the test is whether Claude can get the content, not whether a sign-in
-exists. Route anything that isn't obviously whole-story-fyi to **needs-you** and let § 2b try to read it:
-it resolves and silently downgrades most, and keeps it needs-you only when Claude genuinely can't get past
-the wall, handing the user the deep link.
+**Don't pre-judge a pointer's bucket by whether its content sits behind a login.** Triage has no browser
+and can't know the bucket unfetched, so route anything that isn't obviously whole-story-fyi to
+**needs-you** and leave the resolving to § 2b, which opens it and **re-triages the real content on its own
+merits** — landing needs-you, fyi, or junk from what it actually says. Whether a sign-in exists doesn't
+decide it here.
 
 **Then, for the content in front of you, there's something to do when:**
 

@@ -174,11 +174,12 @@ never hand the lookup back to the user ("go read the message yourself").
 
 **The rule is dynamic — *try* to read it; don't pre-judge the bucket by whether there's a sign-in.**
 The test is whether Claude can get the content, not whether a login exists: browser-chauffeur already
-holds live sessions for many authenticated surfaces, so open them and resolve them like any other
-pointer, downgrading to fyi/junk and closing silently (§2c) when the content needs nothing. **Hand the
-user the direct deep link (needs-you) only when Claude genuinely cannot get the content** — it needs the
-user's own credentials, or lives in an app Claude holds no session for. Attempt the fetch first every
-time; the hand-back is the fallback for a wall you actually hit, not a guess made from the URL.
+holds live sessions for many authenticated surfaces, so open them and then re-triage what you find on its
+merits (the step below) — that is what sets the bucket. **The one time you don't reach that re-triage is a
+wall Claude genuinely can't pass** — the content needs the user's own credentials, or lives in an app
+Claude holds no session for — and then the pointer stays **needs-you**: hand the user the direct deep
+link. Attempt the fetch first every time; the hand-back is the fallback for a wall you actually hit, not a
+guess made from the URL.
 
 **Exception: LinkedIn/Facebook "X just messaged you" pointers** — the stricter form of that fallback,
 where you must not even *attempt* the fetch. Never drive browser-chauffeur to

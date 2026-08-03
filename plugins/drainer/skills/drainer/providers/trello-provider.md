@@ -240,11 +240,12 @@ Otherwise, when no such timeframe was given, pick the tier based on how closely 
 When unsure, default to infrequent. When the ask requires real commitment or internal approval from the contact (e.g. sponsorship money, a formal agreement), start at **2 weeks** instead of 1 — regardless of how closely the user works with them.
 
 If the situational check finds **nothing to do right now**, silently bump the due date and finish —
-surface no tab. But hold a high bar for "nothing to do," because a card comes due precisely so its
-follow-up gets sent: it's genuinely nothing-to-do only while the wait is still legitimate (a reply-by
-time not yet passed, a nudge sent within the cadence above, or they replied and the user already
-answered). When the card is due, they still haven't replied, **and** the nudge interval has elapsed,
-**draft the follow-up nudge** (needs-you) rather than bumping the date out again.
+surface no tab. "Not yet time to follow up" is decided by the **nudge cadence above**: it's
+nothing-to-do only while that interval hasn't elapsed since the last outbound message (or they replied
+and the user already answered). Once the card is due, they still haven't replied, **and** the cadence
+interval has elapsed, it *is* time to follow up — **draft the nudge** (needs-you), don't bump the date
+again. (A due card whose cadence has run out is not "nothing to do" — that misread is what turns a card
+into one that gets bumped forever without a follow-up ever going out.)
 
 ## JUNK-LEARNING
 N/A — outreach cards are curated, not inbound noise.
