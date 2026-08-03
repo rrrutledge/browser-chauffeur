@@ -172,7 +172,19 @@ else**, with the right tool for that surface: a plain fetch when the page is sta
 shell to a plain fetch). Summarize the real content as if it had arrived inline. Reading it is YOUR job;
 never hand the lookup back to the user ("go read the message yourself").
 
-**Exception: LinkedIn/Facebook "X just messaged you" pointers.** Never drive browser-chauffeur to
+**The rule is dynamic — *try* to read it; don't pre-judge the bucket by whether there's a sign-in.**
+Whether a login exists is the wrong test; whether Claude can get the content is the right one. Most
+authenticated surfaces are readable, because browser-chauffeur already holds a live session for them (a
+church letters library, a portal the user stays signed into) — so open them and resolve them like any
+other pointer, downgrading to fyi/junk and closing silently (§2c) when the content turns out to need
+nothing. **Hand it back to the user only when Claude genuinely cannot get the content** — the surface
+needs the user's *own* credentials, or lives in an app Claude holds no session for (a Securus/JPay-type
+inmate-messaging inbox, a personal bank message center). Then the pointer stays **needs-you**: give the
+user the direct deep link so they open and act on it themselves. Attempt the fetch first every time; the
+hand-back is the fallback for a wall you actually hit, not a guess made from the URL.
+
+**Exception: LinkedIn/Facebook "X just messaged you" pointers** — the stricter form of that fallback,
+where you must not even *attempt* the fetch. Never drive browser-chauffeur to
 linkedin.com or facebook.com for any reason — LinkedIn suspended Russell's account for automation in
 July 2026. Pull the deep link out of the notification and present it as a clickable link in the
 terminal, routed straight to **needs-you** — Russell clicks it and reads/replies himself; you never
