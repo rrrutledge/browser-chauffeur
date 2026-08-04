@@ -33,7 +33,10 @@ best per-message cost is zero.
 The whole strategy turns on one skill: **never build a filter for a single sender's single message.**
 If one company sent this type of mail, others will too, now and in the future. So the filter should
 catch the **type**, across every sender — and the way it does that is by matching a **phrase**, chosen
-with judgment.
+with judgment. It follows that **the phrase never contains a company, bank, product, or brand name** - a
+name identifies one sender, so a rule built on it is exactly the single-sender filter this rule forbids.
+When the only distinctive text a piece of junk offers is its brand name, the type isn't filterable: stop
+it at the source (unsubscribe, or turn the notification off at the sender), never a brand-named rule.
 
 ### The two-sided test
 
