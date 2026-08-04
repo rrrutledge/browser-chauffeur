@@ -44,22 +44,13 @@ met right there: archive it before starting any of step 3's work, not after.
 
 ## DRAFT-MODE (shared rules — CLI commands are in your provider file)
 
-### Voice gate (mandatory — do this before writing a single word)
+### Voice gate (mandatory — follow the full loop, not just Read)
 
-Invoke the `document-authoring` skill (call the Skill tool to load it) and read its **Conversational
-writing** + **"Never do these"** sections. Compose the draft against what you just read — do not
-write from memory. This is a gate: it happens before drafting, not as an after-the-fact check. A
-draft written from memory reliably leaks the tokens those rules ban.
-
-### Review before staging (mandatory)
-
-Before creating the draft via your provider's CLI, run the composed body through the
-`document-authoring:writing-review` skill — dispatch it as that skill describes, treating the draft as
-an outward message so it checks both `authoring-rules` and `document-authoring`'s message-specific
-rules (voice, and the Links section's every-referenced-entity-gets-a-link check). Revise against what
-it finds before staging. The voice gate above puts the rules in front of you before you write; this
-gate catches what you read past while writing — a rule that's already on the page but wasn't what the
-drafting mind was holding at the moment, e.g. a card or document named without its link.
+Invoke the `document-authoring` skill (call the Skill tool to load it) and follow its mandatory
+**Read → Write → Verify → Stage → Learn** drafting loop for this message — not just the Read step.
+Verify in that loop dispatches an independent review before the draft is staged, so nothing extra is
+needed here to get that check; skipping straight to composing from the Read section alone, without
+carrying the draft through Verify, is what lets a rule slip through uncaught.
 
 ### After composing
 
