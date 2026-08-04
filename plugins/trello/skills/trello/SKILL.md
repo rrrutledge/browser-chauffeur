@@ -75,6 +75,26 @@ instructions: |-
 
   ---
 
+  ## Claim a new card before ending the turn
+
+  A card with no Start and no Due is immediately startable under the drainer's "hungry to start" default
+  (see the drainer's `trello-provider.md`, STARTABLE-TASK MODEL). If you create a card for work you're
+  about to work yourself, or that you're about to hand off to another session, the drainer's next poll
+  cycle can pick the same card up and spin up a duplicate worker on top of it.
+
+  Whenever you create a card you (or a handoff session) are about to start on right away, set its Start
+  date at least one day out before ending the turn:
+
+  ```python
+  card = create_card(list_id, {'title': '...', 'description': '...'}, session)
+  trello_request('PUT', f"/cards/{card['id']}", session, body={'start': '<tomorrow-or-later, ISO 8601>'})
+  ```
+
+  This doesn't apply to a card left for later with nobody actively on it yet - e.g. a new outreach lead
+  just noted into the funnel. It's only for a card you or a handoff session are picking up immediately.
+
+  ---
+
   ## Checklists
 
   Checklists have no typed wrapper - use `trello_request` directly:
