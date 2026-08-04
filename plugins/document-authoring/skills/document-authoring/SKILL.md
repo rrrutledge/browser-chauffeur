@@ -281,6 +281,7 @@ The specifics that most often separate a message that reads as Russell's from on
   Lead with the answer, then add context — don't bury it behind a preamble or a generic thanks.
   When someone raises more than one point, answer each one by name rather than a single blanket acknowledgment — this includes an earlier, question-free message where they shared research or effort on your behalf: thank them for the specific contribution and note your own follow-through on it before pivoting to a fresh, unrelated ask in the same reply.
   **Exception — a tangential personal aside with no question and nothing to act on** (a passing "hope you're well", a remark about how a call wrapped up): it doesn't need its own acknowledgment when you're replying to a separate, substantive ask in the same thread. Answering the ask is the whole reply.
+  **Leave out the internal mechanics behind the answer** — a tracking-board card move, a due-date change, an internal process step taken to get there — unless the recipient asked about the mechanism itself. Give them the answer, not the record of how it was produced; that record stays in the internal tracker.
 - **Document a sequence as short bullets, and open with the current status** — not a defensive framing line.
   Let the record carry the point; skip the "I've been responsive" editorializing.
 - **Open groups with "Hey guys / folks / everyone"** — but skip the group greeting when replying to a specific quoted message or directly continuing an active conversation thread; the existing context replaces it.
