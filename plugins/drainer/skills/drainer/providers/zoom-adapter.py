@@ -354,11 +354,26 @@ class Provider(ProviderBase):
             uuid = inst["uuid"]
             in_window.add(uuid)
             s = (cache.get(uuid) or {}).get("summary")
-            if s is None:  # not cached — fetch it
+            # Self-heal a stale empty shell: a cached summary with no content was cached before the content
+            # gate below existed (or by an older build) and must be re-fetched, not resurfaced as an empty
+            # recap. Treating it as a miss lets a summary that has since been generated get picked up.
+            if s is not None and not (s.get("summary_overview") or s.get("next_steps")):
+                s = None
+            if s is None:  # not cached (or cached-empty) — fetch it
                 enc = urllib.parse.quote(urllib.parse.quote(uuid, safe=""), safe="")
                 status, fetched = self._get(token, f"/v2/meetings/{enc}/meeting_summary")
                 if status != 200 or not isinstance(fetched, dict):
                     continue  # 404 = no AI summary; other non-200 = transient, retry next cycle
+                # Content gate: for the first tens of minutes after a meeting ends, this endpoint returns a
+                # 200 *shell* — meeting metadata + summary_title + a summary_last_modified_time frozen at the
+                # meeting's start — minutes before AI Companion actually generates the recap and next_steps.
+                # Zoom exposes no "still generating" flag; the absence of summary_overview/next_steps IS the
+                # signal. Caching that shell would freeze an empty summary as "final", and the real one,
+                # generated later, would never be fetched (the uuid is already cached). So an un-generated
+                # summary is skipped and re-fetched next cycle, exactly like a 404 — until content lands or
+                # the meeting ages out of the lookback window.
+                if not (fetched.get("summary_overview") or fetched.get("next_steps")):
+                    continue
                 modified = fetched.get("summary_last_modified_time") or fetched.get("summary_created_time")
                 # Finality gate: the AI keeps refining a summary for tens of minutes after a meeting;
                 # capturing early would miss next_steps added later. Until it's been quiet for
