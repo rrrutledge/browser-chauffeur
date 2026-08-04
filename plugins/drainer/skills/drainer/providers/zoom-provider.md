@@ -44,9 +44,13 @@ so if the owner is Sam, a step like "Priya: share the script *with Sam*" is Priy
   refresh token on every refresh, so two independent caches would invalidate each other).
 - **`lookback_hours`** (default 48) — how far back each poll looks. Bounds the API cost; older summaries
   are assumed already captured (seen-state dedups anyway).
-- **`cooldown_minutes`** (default 30) — a summary is treated as **final** only once its
+- **`cooldown_minutes`** (default 30) — a generated summary is treated as **final** only once its
   `summary_last_modified_time` has been quiet this long. Zoom keeps refining a summary for tens of minutes
-  after a meeting ends; the cooldown stops the drainer from capturing a half-written summary.
+  after a meeting ends; the cooldown stops the drainer from capturing a half-written summary. Distinct from
+  the cooldown, a summary with no content yet — Zoom returns a metadata-only shell (title + start time, no
+  recap or next steps) for the first tens of minutes, before AI Companion generates it — is skipped and
+  re-fetched next cycle rather than cached, so an un-generated summary is never frozen in place of the real
+  one.
 - **`poll_interval_minutes`** (default 20) — self-throttle: the meeting walk is heavy (many API calls), so
   the adapter skips it if it ran within this window. Nothing is lost — seen-state dedups and the cooldown
   means a just-finished meeting isn't ready yet anyway.
