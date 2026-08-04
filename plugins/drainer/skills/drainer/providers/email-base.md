@@ -51,6 +51,16 @@ writing** + **"Never do these"** sections. Compose the draft against what you ju
 write from memory. This is a gate: it happens before drafting, not as an after-the-fact check. A
 draft written from memory reliably leaks the tokens those rules ban.
 
+### Review before staging (mandatory)
+
+Before creating the draft via your provider's CLI, run the composed body through the
+`document-authoring:writing-review` skill — dispatch it as that skill describes, treating the draft as
+an outward message so it checks both `authoring-rules` and `document-authoring`'s message-specific
+rules (voice, and the Links section's every-referenced-entity-gets-a-link check). Revise against what
+it finds before staging. The voice gate above puts the rules in front of you before you write; this
+gate catches what you read past while writing — a rule that's already on the page but wasn't what the
+drafting mind was holding at the moment, e.g. a card or document named without its link.
+
 ### After composing
 
 - The voice loop still applies: after the user sends, diff sent-vs-draft and append a concrete lesson
