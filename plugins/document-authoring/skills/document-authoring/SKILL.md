@@ -359,6 +359,8 @@ A second exception is personal-friend banter (per **Register** above) — joking
 **`outreach` — offering a resource or asking someone to adopt something:**
 - After a recent meeting or interaction, acknowledge it first ("Thanks for the great call.") then transition to the action — skip only for transactional one-liners with close collaborators.
 - Lead with the person's name, then hand them the thing plainly with the link anchored to its title.
+- **When handing over both something the recipient asked for and something of your own, put their ask first and treat your own work as a brief aside.**
+  Deliver the requested resource(s) as the substance of the message, then mention your own related piece low-key near the end ("I also wrote up my own [Title](URL) recently") rather than leading with it or giving it equal billing.
 - Frame as helpful and low-pressure; invite a look.
 - Land on a single concrete question or request (see **Asks**).
 - Use the collective **"we"** for a committee/team ask, not "I" — including a joint recommendation to peers/co-leads ("I think we should merge these", not "I'd like to merge these"), even in a 1on1-style note to a couple of named people rather than a broad group.
