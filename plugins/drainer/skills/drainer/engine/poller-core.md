@@ -10,9 +10,14 @@ rationale is in `docs/superpowers/specs/2026-06-17-drainer-continuous-keeper-red
 
 The script owns everything deterministic. AI is invoked for exactly two things:
 
-1. **One batched triage call per cycle** — `run-poller.py` sends all new items to `claude -p` once and
-   gets back a JSON verdict per item (bucket + kind), judged against `engine/triage.md`, the local
-   `context.md`, and each provider's AUTO-HANDLE rules. This is the only per-cycle AI cost.
+1. **One triage call per new item per cycle** — `run-poller.py` builds the general-rules brain once
+   per cycle (`engine/triage.md`, the local `context.md`, each provider's AUTO-HANDLE rules — gated
+   against the whole cycle's batch, same as before), then sends `claude -p` one call per item with
+   that brain as a byte-identical prefix and the single item's payload as the only variable part. Full
+   model attention lands on one item at a time instead of splitting across a whole cycle's items, and
+   the repeated stable prefix lets the API's automatic prompt caching serve it cheaply after the first
+   item's call writes it — paid once per cycle, cheap delta per item. The first item runs alone (to
+   finish writing the cache); the rest run concurrently, capped at `TRIAGE_PARALLEL_CALLS`.
 2. **The per-item worker session** — each needs-you (or auto-handle) item opens a worker tab running
    `engine/worker-core.md` (the actual reply/work, draft-only; auto-handle runs the standing rule and
    self-clears without surfacing to the user).
@@ -39,10 +44,12 @@ spawn, record — is code. No AI re-implements the loop.
    page just carries into the next cycle). Compute each item's stable id and drop any already in
    seen-state (`scripts/seen-state.js`). Whatever remains all becomes triage/dispatch input this cycle;
    `target_open_tabs` in step 6 is what actually limits how much of it gets worked on at once.
-5. **Triage** the new items in one `claude -p` call → bucket (needs-you / auto-handle / fyi / junk) +
-   kind + complexity (simple / complex). The triage prompt embeds `engine/triage.md`, the local
-   `context.md`, **and each enabled provider's AUTO-HANDLE section** (so the model can recognize a
-   standing-rule item; the rules live in the provider docs, surfaced here at triage time).
+5. **Triage** each new item with its own `claude -p` call → bucket (needs-you / auto-handle / fyi /
+   junk) + kind + complexity (simple / complex). Every call this cycle shares one prompt prefix —
+   `engine/triage.md`, the local `context.md`, and each enabled provider's AUTO-HANDLE section (so
+   the model can recognize a standing-rule item; the rules live in the provider docs, surfaced here at
+   triage time) — with only the one item's payload varying per call, so the model spends its full
+   attention on that item instead of a whole cycle's batch at once.
 6. **Dispatch** (deterministic):
    - **needs-you** → if live Claude Code tabs system-wide (`total_claude_tabs()` — every running
      `claude.exe` process: drainer worker tabs, the drainer itself, and any tab Russell opened by hand)
