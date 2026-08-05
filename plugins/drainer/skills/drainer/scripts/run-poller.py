@@ -2,8 +2,9 @@
 
 The loop itself (enumerate -> drop seen -> cap -> dispatch -> record) is a deterministic algorithm, so
 it lives here in Python — cheaper and more reliable than asking an AI to follow it each cycle. AI is used
-for exactly two things: a single batched **triage** call per cycle (the needs-you / fyi / junk judgment,
-per engine/triage.md) and the per-item **worker** session (the actual reply/work, draft-only).
+for exactly two things: one **triage** call per new item per cycle (the needs-you / fyi / junk judgment,
+per engine/triage.md, each call scored against the same cached general-rules prefix) and the per-item
+**worker** session (the actual reply/work, draft-only).
 
 The orchestration below is **provider-agnostic**: it reads which providers are enabled from
 `.claude/drainer.local.md` and drives each through a small adapter (enumerate / stable_id / capture).
@@ -26,6 +27,7 @@ import shutil
 import subprocess
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -330,34 +332,46 @@ def _auto_handle_rules(providers_by_name, local_dir, items=None):
     return "\n\n".join(out)
 
 
-def triage(items, repo, local_dir, model, providers_by_name):
-    claude = shutil.which("claude") or "claude"
+TRIAGE_PARALLEL_CALLS = 5  # concurrency cap for the per-item calls after the first (cache-priming) one
+
+
+def _triage_brain(items, repo, local_dir, providers_by_name):
+    """The general-rules prefix shared by every per-item call THIS cycle: instructions + rubric +
+    provider AUTO-HANDLE sections + context.md — gated once against the whole `items` batch (same
+    gating `_context_for_batch`/`_auto_handle_rules` always did), not re-gated per item. Building it
+    once and holding it byte-identical across every `_triage_one` call in the cycle is what lets the
+    API's automatic prompt caching (first-party — see the claude-api skill's platform-availability
+    table) serve item 2+ off the prefix the first call wrote, instead of paying full price per item."""
     rubric = _read(os.path.join(SCRIPT_DIR, "..", "engine", "triage.md"))  # embed -> self-contained
     context = _context_for_batch(local_dir, items)
     auto_rules = _auto_handle_rules(providers_by_name, local_dir, items)
-
-    def preview(it):
-        # The owning adapter supplies the text triage sees: its `triage_text` returns the new message
-        # body (quote-stripped) rather than just the subject. Adapters whose enumerate carries no preview
-        # (gmail) override it to fetch the body for these new items; the default just returns `preview`.
-        p = providers_by_name.get(it["_source"])
-        return p.triage_text(it) if p else (it.get("preview") or "")
-
-    payload = [{"id": it["_id"], "source": it["_source"], "from": it.get("from"),
-                "subject": it.get("subject"), "received": it.get("received"),
-                "isRead": it.get("isRead"), "preview": preview(it)} for it in items]
     auto_block = (
         f"## Auto-handle rules (per provider — use bucket=auto-handle only when one plainly matches)\n"
         f"{auto_rules}\n\n" if auto_rules else ""
     )
-    prompt = (
+    return (
         f"{TRIAGE_INSTRUCTIONS}\n\n## Rubric (engine/triage.md)\n{rubric}\n\n"
         f"{auto_block}"
         f"## World-knowledge (drainer context.md)\n{context}\n\n"
-        f"## New items to triage (JSON)\n{json.dumps(payload, indent=2)}\n"
     )
+
+
+def _triage_one(item, brain, repo, model, providers_by_name):
+    """Classify ONE item: the shared brain (byte-identical every call this cycle) as the stable
+    prefix, this item's payload as the sole variable suffix — so the model's full attention lands
+    on one item against the general rules, instead of splitting across a whole cycle's batch."""
+    claude = shutil.which("claude") or "claude"
+    p = providers_by_name.get(item["_source"])
+    # The owning adapter supplies the text triage sees: its `triage_text` returns the new message
+    # body (quote-stripped) rather than just the subject. Adapters whose enumerate carries no preview
+    # (gmail) override it to fetch the body for these new items; the default just returns `preview`.
+    preview = p.triage_text(item) if p else (item.get("preview") or "")
+    payload = [{"id": item["_id"], "source": item["_source"], "from": item.get("from"),
+                "subject": item.get("subject"), "received": item.get("received"),
+                "isRead": item.get("isRead"), "preview": preview}]
+    prompt = f"{brain}## New item to triage (JSON)\n{json.dumps(payload, indent=2)}\n"
     res = subprocess.run(
-        # Triage is pure text-in / JSON-out (rubric + context are embedded below), so it needs no
+        # Triage is pure text-in / JSON-out (rubric + context are embedded above), so it needs no
         # tools and no elevated permissions; --setting-sources "" keeps the call lightweight.
         [claude, "-p", "--model", model, "--output-format", "json", "--setting-sources", ""],
         input=prompt,  # prompt goes on stdin (too long for an argv on Windows)
@@ -365,7 +379,7 @@ def triage(items, repo, local_dir, model, providers_by_name):
         creationflags=NO_WINDOW,  # no console flash under pythonw
     )
     if res.returncode != 0:
-        raise SystemExit(f"triage call failed: {res.stderr.strip()[:400]}")
+        raise SystemExit(f"triage call failed for {item['_id']}: {res.stderr.strip()[:400]}")
     result = res.stdout
     try:  # claude --output-format json wraps the text in {"result": "..."}
         result = json.loads(res.stdout).get("result", res.stdout)
@@ -373,8 +387,37 @@ def triage(items, repo, local_dir, model, providers_by_name):
         pass
     m = re.search(r"\[.*\]", result, re.DOTALL)
     if not m:
-        raise SystemExit(f"triage returned no JSON array:\n{result[:400]}")
-    return {v["id"]: v for v in json.loads(m.group(0))}
+        raise SystemExit(f"triage returned no JSON array for {item['_id']}:\n{result[:400]}")
+    parsed = json.loads(m.group(0))
+    return parsed[0] if parsed else {}
+
+
+def triage(items, repo, local_dir, model, providers_by_name):
+    """One `claude -p` call PER item, not one batched call for the whole cycle — with ~30 items and
+    hundreds of lines of rules in a single prompt, attention spread thin enough that a correct,
+    already-present general rule got skipped. One item + the general rules, with full attention, is
+    the condition under which the model applies them reliably.
+
+    The first item runs alone so its response finishes writing the shared brain into the API's
+    prompt cache; the rest run concurrently (bounded by TRIAGE_PARALLEL_CALLS) so they can read that
+    cache instead of racing to write it themselves (see the claude-api skill's prompt-caching guide,
+    "Concurrent-request timing")."""
+    if not items:
+        return {}
+    brain = _triage_brain(items, repo, local_dir, providers_by_name)
+    verdicts = {}
+
+    first, rest = items[0], items[1:]
+    v = _triage_one(first, brain, repo, model, providers_by_name)
+    if v.get("id"):
+        verdicts[v["id"]] = v
+
+    if rest:
+        with ThreadPoolExecutor(max_workers=min(TRIAGE_PARALLEL_CALLS, len(rest))) as pool:
+            for v in pool.map(lambda it: _triage_one(it, brain, repo, model, providers_by_name), rest):
+                if v.get("id"):
+                    verdicts[v["id"]] = v
+    return verdicts
 
 
 # ---------------------------------------------------------------------------- dispatch
