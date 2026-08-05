@@ -1,8 +1,9 @@
 // Drainer seen-state helper - fail-safe processed-id store and digest queue.
 //
 // State lives under the project's runtime_dir (e.g. ~/Dev/personal-ai-pod/.tmp/drainer/):
-//   seen.json         { "<source>": { "<id>": { "triage" } } }
-//   digest-queue.json [ { "id", "source", "item": {...} }, ... ]
+//   seen.json          { "<source>": { "<id>": { "triage" } } }
+//   digest-queue.json  [ { "id", "source", "item": {...} }, ... ]
+//   reclassified.json  [ { "id", "source", "bucket" }, ... ] — items awaiting the poller's next-cycle dispatch
 //
 // seen.json answers one question - has this id been dispatched? - so an entry's presence is the whole
 // signal and `triage` rides along as a human-readable label of how it was classified. Whether the work
@@ -19,12 +20,19 @@
 //   node seen-state.js queue-list  <runtimeDir>                          -> prints the queue as JSON
 //   node seen-state.js queue-clear <runtimeDir> <id>                     -> removes one item from the queue
 //   node seen-state.js requeue     <runtimeDir> <source> <id>            -> drop the seen key so the item re-enumerates and re-dispatches a fresh tab
+//   node seen-state.js reclassify  <runtimeDir> <id> <needs-you|auto-handle>
+//                                                                        -> correct a miscategorized fyi/junk item: retag items/<id>.json and its
+//                                                                           seen-state entry to the new bucket, drop it from the digest queue, and
+//                                                                           stage it in reclassified.json so the poller dispatches it next cycle
+//                                                                           without re-running triage (the human verdict is authoritative)
 
 const fs = require('fs');
 const path = require('path');
 
 const SEEN_FILE = 'seen.json';
 const QUEUE_FILE = 'digest-queue.json';
+const RECLASSIFIED_FILE = 'reclassified.json';
+const RECLASSIFY_TARGETS = ['needs-you', 'auto-handle'];
 
 function readJson(file, fallback) {
   try {
@@ -43,6 +51,8 @@ function writeJsonAtomic(file, data) {
 
 function seenPath(runtimeDir) { return path.join(runtimeDir, SEEN_FILE); }
 function queuePath(runtimeDir) { return path.join(runtimeDir, QUEUE_FILE); }
+function reclassifiedPath(runtimeDir) { return path.join(runtimeDir, RECLASSIFIED_FILE); }
+function itemPath(runtimeDir, id) { return path.join(runtimeDir, 'items', `${id}.json`); }
 
 function loadSeen(runtimeDir) {
   const data = readJson(seenPath(runtimeDir), {});
@@ -100,8 +110,41 @@ function requeue(runtimeDir, source, id) {
   }
 }
 
+// The human override for a triage miss: a fyi/junk item that should have been needs-you (or
+// auto-handle) is stuck today, because fyi/junk items never spawn workers and the poller's reconcile
+// explicitly skips the digest queue. This is the one-step correction — the human verdict is
+// authoritative, so the poller dispatches the staged item next cycle without re-running triage on it.
+function reclassify(runtimeDir, id, newBucket) {
+  if (!RECLASSIFY_TARGETS.includes(newBucket)) {
+    throw new Error(`reclassify target must be one of ${RECLASSIFY_TARGETS.join('/')} (got: ${newBucket})`);
+  }
+  const file = itemPath(runtimeDir, id);
+  const item = readJson(file, null);
+  if (item === null) throw new Error(`could not read captured item: ${file}`);
+  const source = item.source;
+  if (!source) throw new Error(`captured item ${id} has no "source" field: ${file}`);
+
+  // Retag the captured item and its seen-state entry so both agree with the human verdict — a plain
+  // record() would no-op here since the id is already present under its original (wrong) triage.
+  item.triage = newBucket;
+  writeJsonAtomic(file, item);
+  const seen = loadSeen(runtimeDir);
+  if (!seen[source]) seen[source] = {};
+  seen[source][id] = { triage: newBucket };
+  writeJsonAtomic(seenPath(runtimeDir), seen);
+
+  // Drop it from the digest queue — it's no longer fyi/junk waiting on review.
+  queueClear(runtimeDir, id);
+
+  // Stage it for the poller's dispatch step, which loads this entry, spawns a worker straight off the
+  // already-captured item.json (no re-enumeration, no re-triage), then removes the entry once dispatched.
+  const staged = readJson(reclassifiedPath(runtimeDir), []).filter(e => e.id !== id);
+  staged.push({ id, source, bucket: newBucket });
+  writeJsonAtomic(reclassifiedPath(runtimeDir), staged);
+}
+
 module.exports = {
-  isSeen, record, queueAdd, queueList, queueClear, requeue,
+  isSeen, record, queueAdd, queueList, queueClear, requeue, reclassify,
 };
 
 if (require.main === module) {
@@ -133,8 +176,12 @@ if (require.main === module) {
         requeue(rest[0], rest[1], rest[2]);
         console.log(`requeued ${rest[2]}`);
         break;
+      case 'reclassify':
+        reclassify(rest[0], rest[1], rest[2]);
+        console.log(`reclassified ${rest[1]} -> ${rest[2]}`);
+        break;
       default:
-        throw new Error('Usage: seen-state.js <seen|record|queue-add|queue-list|queue-clear|requeue> ...');
+        throw new Error('Usage: seen-state.js <seen|record|queue-add|queue-list|queue-clear|requeue|reclassify> ...');
     }
   } catch (e) {
     console.error('Error:', e.message);
