@@ -116,6 +116,24 @@ spawns, no queueing, no records, no clears, and no re-queues.
 - Completion is observed on the source, never reported: an item is done because its source object is
   handled, so a worker that dies, is closed, or fails its own archive call re-queues rather than vanishing.
 
+## Reclassify: the human override for a triage miss
+
+fyi/junk items never spawn workers, and the reconcile above explicitly skips the digest queue, so a
+miscategorized item — filed fyi/junk when it should have been needs-you — has no way back into the
+dispatch flow on its own; the only recourse used to be handling it by hand outside the drainer entirely.
+`node seen-state.js reclassify <runtimeDir> <id> <needs-you|auto-handle>` closes that gap: it retags the
+captured `items/<id>.json` and its `seen.json` entry to the new bucket, drops it from the digest queue,
+and appends `{id, source, bucket}` to `reclassified.json`.
+
+Each cycle, before the "0 new items" early-exit, the poller loads every staged entry
+(`reclassified_synth_items()`) and turns it into a synthetic triaged item carrying its human-assigned
+bucket — so it flows through the exact same needs-you/auto-handle split and dispatch loops as anything
+freshly triaged this cycle, dispatched straight off its already-captured `items/<id>.json` (no
+re-enumeration, no re-triage call: the human verdict is authoritative). A needs-you entry queues behind
+`target_open_tabs` like any other; an auto-handle entry dispatches unconditionally like any other. Once
+a staged entry's worker is spawned, it's removed from `reclassified.json`; an entry whose captured item
+has since vanished is dropped the same way, so nothing accumulates forever.
+
 ## Provider-agnostic orchestration
 `run-poller.py` reads which providers are enabled from `drainer.local.md` and **dynamically loads each
 one's adapter** from `providers/<name>-adapter.py` (beside its prose `providers/<name>-provider.md`).

@@ -39,6 +39,7 @@ from drainer_config import read_config, find_provider_file  # noqa: E402  (share
 SEEN_STATE = os.path.join(SCRIPT_DIR, "seen-state.js")
 HEALTH_FILE = "provider-health.json"
 HANDLED_FILE = "reconciled.json"
+RECLASSIFIED_FILE = "reclassified.json"  # items/<id>.json ids a human corrected via seen-state.js reclassify
 # A page-size ceiling for each provider's own API list call — not a per-cycle work throttle. There is
 # no such throttle: every cycle enumerates everything currently eligible from every source, and
 # target_open_tabs is the only thing that gates how much of it actually gets dispatched (held items
@@ -794,6 +795,56 @@ def reconcile_unhandled(runtime_dir, cfg, providers, dry_run=False):
     return requeued
 
 
+def load_reclassified(runtime_dir):
+    """The [{id, source, bucket}, ...] staged by `seen-state.js reclassify` — a human's one-step
+    correction of a miscategorized fyi/junk item. Missing/corrupt reads as empty (fail-safe, same as
+    every other state file here)."""
+    try:
+        with open(os.path.join(runtime_dir, RECLASSIFIED_FILE), encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, list) else []
+    except (OSError, ValueError):
+        return []
+
+
+def remove_reclassified(runtime_dir, iid):
+    """Drop one dispatched (or no-longer-resolvable) id from the staged reclassify list."""
+    staged = [e for e in load_reclassified(runtime_dir) if e.get("id") != iid]
+    write_json_atomic(os.path.join(runtime_dir, RECLASSIFIED_FILE), staged)
+
+
+def reclassified_synth_items(runtime_dir, dry_run=False):
+    """Turn each staged reclassify entry into a synthetic triaged item so it rides the SAME dispatch
+    code as a freshly-triaged item — no re-enumeration, no re-triage call, since the human verdict is
+    authoritative. An entry whose captured items/<id>.json has vanished (hand-deleted, or already
+    dispatched by a prior cycle that crashed before removing it) is dropped here rather than retried
+    forever — except under `--dry-run`, which touches no state, so it's only skipped for the report,
+    not actually removed."""
+    synth = []
+    for entry in load_reclassified(runtime_dir):
+        iid, source = entry.get("id"), entry.get("source")
+        bucket = entry.get("bucket") or "needs-you"
+        if not iid or not source:
+            continue
+        item_file = os.path.join(runtime_dir, "items", f"{iid}.json")
+        if not os.path.exists(item_file):
+            if not dry_run:
+                remove_reclassified(runtime_dir, iid)
+            continue
+        try:
+            with open(item_file, encoding="utf-8") as f:
+                received = (json.load(f) or {}).get("ts") or ""
+        except (OSError, ValueError):
+            received = ""
+        _label, subject, who = _item_bits(item_file)
+        synth.append({
+            "_id": iid, "_source": source, "_bucket": bucket, "_kind": None,
+            "_complexity": "simple", "_reclassified": True,
+            "received": received, "subject": subject, "from": who,
+        })
+    return synth
+
+
 def collect_new(provider, cfg):
     """Enumerate a provider, stamp ids/source, drop already-seen; return (new_items, total, seen)."""
     raw = provider.enumerate(ENUMERATE_PAGE_SIZE)
@@ -868,7 +919,11 @@ def main():
         record_heartbeat(health, "drained", idle, locked)  # a full live cycle ran past the presence gate
         save_health(cfg["runtime_dir"], health)  # persist this cycle's per-provider outcomes
 
-    if not all_new:
+    # Items a human corrected via `seen-state.js reclassify` — staged independently of this cycle's
+    # enumerate, so they must still get a look even on a cycle where every source enumerates 0 new.
+    reclassified_synth = reclassified_synth_items(cfg["runtime_dir"], dry_run=args.dry_run)
+
+    if not all_new and not reclassified_synth:
         print("0 new items across all sources. Nothing to dispatch.")
         return
 
@@ -914,6 +969,12 @@ def main():
     # already in the right place, so record them as seen with zero noise (no capture, no queue-add).
     correctly_junked = [it for it in all_new if it["_source"] == "outlook-graph-junk" and it["_bucket"] == "junk"]
     needs_and_others = [it for it in all_new if not (it["_source"] == "outlook-graph-junk" and it["_bucket"] == "junk")]
+    # Reclassified items ride the same needs-you/auto-handle split and dispatch loops below as anything
+    # freshly triaged this cycle — they already carry their human-assigned `_bucket`, so they never touch
+    # the AI triage call above.
+    needs_and_others += reclassified_synth
+    if reclassified_synth:
+        print(f"  {len(reclassified_synth)} reclassified item(s) -> dispatch per their staged bucket (bypassing triage)")
 
     # --- live tab count, checked against target_open_tabs (None -> scan failed, fail closed below) ---
     live_tabs = total_claude_tabs()
@@ -970,7 +1031,8 @@ def main():
             print("  auto-handle (autonomous worker, not capped):")
             for it in auto:
                 model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
-                print(f"    [{it['_source']:20}] {it['_id']}  ->  spawn auto-worker [{it['_complexity']} -> {model}]\n"
+                tag = " (reclassified, bypassing triage)" if it.get("_reclassified") else ""
+                print(f"    [{it['_source']:20}] {it['_id']}  ->  spawn auto-worker [{it['_complexity']} -> {model}]{tag}\n"
                       f"        {it.get('received')} | {it.get('from')} | {it.get('subject')}")
         print("  needs-you (orphan-sessions first, then priority band, then newest-first):")
         tabs = live_tabs
@@ -984,7 +1046,8 @@ def main():
                       f"        {it.get('received')} | cwd={it.get('cwd')} | session={it.get('session_id')}")
                 continue
             model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
-            action = "HOLD (at cap)" if held else f"spawn worker [{it['_complexity']} -> {model}]"
+            tag = " (reclassified, bypassing triage)" if it.get("_reclassified") else ""
+            action = "HOLD (at cap)" if held else f"spawn worker [{it['_complexity']} -> {model}]{tag}"
             print(f"    [{it['_source']:20}] {it['_id']}  ->  {action}\n"
                   f"        {it.get('received')} | {it.get('from')} | {it.get('subject')}")
         if others:
@@ -1003,26 +1066,37 @@ def main():
     # throttled by target_open_tabs, recorded with its own triage so capture stamps the json and the worker
     # takes worker-core's auto-handle branch (act -> CLEAR -> queue digest -> close up).
     for it in auto:
-        provider = prov[it["_source"]]
         iid = it["_id"]
         model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
-        json_file = provider.capture(it, iid, cfg["runtime_dir"])
+        # A reclassified item is already captured (that's the whole point — the human verdict is
+        # authoritative on an item the poller already has full context for), so dispatch straight off
+        # its existing items/<id>.json rather than re-running the provider's capture.
+        if it.get("_reclassified"):
+            json_file = os.path.join(cfg["runtime_dir"], "items", f"{iid}.json")
+        else:
+            json_file = prov[it["_source"]].capture(it, iid, cfg["runtime_dir"])
         spawn_worker(iid, json_file, repo, cfg["runtime_dir"], model, cfg["local_dir"])
         seen_state("record", cfg["runtime_dir"], it["_source"], iid, "auto-handle")
+        if it.get("_reclassified"):
+            remove_reclassified(cfg["runtime_dir"], iid)
         auto_dispatched += 1
     for it in needs:
-        provider = prov[it["_source"]]
         iid = it["_id"]
         if live_tabs is None or live_tabs >= cfg["target_open_tabs"]:
             held += 1  # leave UNRECORDED -> retried next cycle (fail-closed: a failed scan holds too)
             continue
-        json_file = provider.capture(it, iid, cfg["runtime_dir"])
+        if it.get("_reclassified"):
+            json_file = os.path.join(cfg["runtime_dir"], "items", f"{iid}.json")
+        else:
+            json_file = prov[it["_source"]].capture(it, iid, cfg["runtime_dir"])
         if it["_source"] == "orphan-sessions":
             spawn_resume_tab(it["session_id"], it["cwd"], repo)
         else:
             model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
             spawn_worker(iid, json_file, repo, cfg["runtime_dir"], model, cfg["local_dir"])
         seen_state("record", cfg["runtime_dir"], it["_source"], iid, "needs-you")
+        if it.get("_reclassified"):
+            remove_reclassified(cfg["runtime_dir"], iid)
         if live_tabs is not None:
             live_tabs += 1
         dispatched += 1
