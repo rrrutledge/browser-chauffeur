@@ -22,6 +22,12 @@
 //                 instead of HTML.)
 // Send to self:  node mail.js --send-self --subject="..." --body-file=note.txt
 //                (sends a plain-text mail to your own inbox; handy for phone copy-paste)
+// Send a draft:  node mail.js --send-draft --message-id=<draftId>
+//                (promotes ONE staged draft — from --reply or --draft-new — to a real send via
+//                 Graph's own send action; transmits exactly what's saved in Drafts, then Graph
+//                 auto-files the sent copy in Sent Items. The only path that emits real mail —
+//                 reserved for Russ's explicit per-message "send it" after he's reviewed this
+//                 exact draft.)
 // Delete one:    node mail.js --delete=<messageId>
 //                (moves the message to Archive — reversible, keeps it searchable, never a permanent purge)
 // Not junk:      node mail.js --not-junk=<messageId>
@@ -310,6 +316,17 @@ async function draftNew(client) {
   console.log(`Draft created to ${args.to} (id ${draft.id.slice(0, 20)}...)${extra}. Review in Outlook Drafts; never sent.`);
 }
 
+async function sendDraft(client) {
+  // Promotes ONE staged draft to a real send via Graph's own /send action on the message — it
+  // transmits the draft's saved recipients/body exactly as staged, then Graph auto-files the sent
+  // copy in Sent Items and removes it from Drafts. This is the only path that emits real mail —
+  // gated upstream on Russ's explicit per-message instruction after he reviewed this exact draft.
+  const id = args['message-id'];
+  if (!id || id === true) throw new Error('--send-draft requires --message-id (the draft id printed when it was staged)');
+  await client.api(`/me/messages/${id}/send`).post({});
+  console.log(`Sent (id ${String(id).slice(0, 20)}...). Moved from Drafts to Sent Items.`);
+}
+
 async function sendSelf(client) {
   if (!args.subject || !args['body-file']) {
     throw new Error('--send-self requires --subject and --body-file');
@@ -427,6 +444,7 @@ if (require.main === module) {
     if (args.reply) return reply(client);
     if (args['draft-new']) return draftNew(client);
     if (args['send-self']) return sendSelf(client);
+    if (args['send-draft']) return sendDraft(client);
     if (args.delete) return del(client);
     if (args['not-junk']) return notJunk(client);
     if (args['get-attachments']) return getAttachments(client);
@@ -434,6 +452,6 @@ if (require.main === module) {
     if (args['create-rule']) return createRule(client);
     if (args['append-rule']) return appendRule(client);
     if (args['delete-rule']) return deleteRule(client);
-    throw new Error('Specify --list-unread, --list-inbox, --list-junk, --list-drafts, --search, --show, --reply, --draft-new, --send-self, --delete, --not-junk, --get-attachments, --list-rules, --create-rule, --append-rule, or --delete-rule');
+    throw new Error('Specify --list-unread, --list-inbox, --list-junk, --list-drafts, --search, --show, --reply, --draft-new, --send-self, --send-draft, --delete, --not-junk, --get-attachments, --list-rules, --create-rule, --append-rule, or --delete-rule');
   })().catch(e => { console.error('Error:', e.message); process.exit(1); });
 }

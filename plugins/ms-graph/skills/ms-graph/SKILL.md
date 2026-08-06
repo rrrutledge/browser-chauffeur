@@ -52,6 +52,7 @@ All under `scripts/`:
   - Draft reply-all (never sends): `node mail.js --reply --message-id=<id> --body-file=reply.html`
   - Draft new to recipients (never sends): `node mail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.html [--cc=c@z] [--attach=file1.pdf,file2.png] [--replace] [--text]` (`--attach` adds file attachments; `--replace` deletes any existing drafts with the same subject first, so re-runs don't pile up duplicates; `--text` treats the body-file as plain text instead of HTML)
   - Send to self: `node mail.js --send-self --subject="..." --body-file=note.txt`
+  - Send a staged draft: `node mail.js --send-draft --message-id=<draftId>` (promotes a draft from `--reply`/`--draft-new` to a real send via Graph's own send action, transmitting exactly what's saved in Drafts; the only path that emits real mail — use only on Russ's explicit per-message instruction after he's reviewed this exact draft)
   - Delete one (reversible): `node mail.js --delete=<messageId>` (moves to Deleted Items, never a permanent purge)
   - Reusable from other scripts: `require('<…>/mail.js')` exports `createDraft(client, {to, subject, body, cc, attach, replace, contentType})` (CLI is `require.main`-guarded).
   - **Inbox rules** (server-side filters):
@@ -74,5 +75,5 @@ Access tokens auto-refresh via MSAL. If a call fails with "Not signed in" or an 
 ## Notes
 
 - `$search` and `$orderby` can't be combined on `/me/messages` — search returns relevance order; don't add `orderby`.
-- Draft replies (`--reply`) land in **Drafts** and are never sent — the user reviews and sends.
+- Draft replies (`--reply`) land in **Drafts** and are never sent automatically — the user reviews and sends, or gives an explicit per-message "send it" that triggers `--send-draft` on that exact reviewed draft.
 - `--send-self` is the reliable "transfer text to my phone" path (arrives in Outlook mobile) when a self-chat isn't available.
