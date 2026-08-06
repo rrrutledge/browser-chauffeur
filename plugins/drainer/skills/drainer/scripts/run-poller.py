@@ -379,7 +379,7 @@ def _triage_one(item, brain, repo, model, providers_by_name):
         creationflags=NO_WINDOW,  # no console flash under pythonw
     )
     if res.returncode != 0:
-        raise SystemExit(f"triage call failed for {item['_id']}: {res.stderr.strip()[:400]}")
+        raise RuntimeError(f"triage call failed for {item['_id']}: {res.stderr.strip()[:400]}")
     result = res.stdout
     try:  # claude --output-format json wraps the text in {"result": "..."}
         result = json.loads(res.stdout).get("result", res.stdout)
@@ -387,9 +387,25 @@ def _triage_one(item, brain, repo, model, providers_by_name):
         pass
     m = re.search(r"\[.*\]", result, re.DOTALL)
     if not m:
-        raise SystemExit(f"triage returned no JSON array for {item['_id']}:\n{result[:400]}")
+        raise RuntimeError(f"triage returned no JSON array for {item['_id']}:\n{result[:400]}")
     parsed = json.loads(m.group(0))
     return parsed[0] if parsed else {}
+
+
+def _triage_one_safe(item, brain, repo, model, providers_by_name):
+    """`_triage_one`, but a failure for THIS item (API hiccup, timeout, malformed response) is caught
+    and logged rather than left to propagate. One bad item must not cost the whole cycle its dispatch:
+    before this wrapper, an uncaught failure here unwound through `triage()` and crashed the poller
+    process before it ever reached the dispatch loop, holding EVERY item back — not just the one that
+    failed — until the next cycle happened not to hit the same failure. Returning {} on failure leaves
+    the item out of `verdicts`, and the caller's existing `verdicts.get(id, {"bucket": "needs-you", ...})`
+    fallback already treats an unjudged item as needs-you, so this degrades to that same fail-safe
+    default instead of losing the cycle."""
+    try:
+        return _triage_one(item, brain, repo, model, providers_by_name)
+    except Exception as e:
+        print(f"triage failed for {item['_id']}, defaulting to needs-you: {e}")
+        return {}
 
 
 def triage(items, repo, local_dir, model, providers_by_name):
@@ -408,13 +424,13 @@ def triage(items, repo, local_dir, model, providers_by_name):
     verdicts = {}
 
     first, rest = items[0], items[1:]
-    v = _triage_one(first, brain, repo, model, providers_by_name)
+    v = _triage_one_safe(first, brain, repo, model, providers_by_name)
     if v.get("id"):
         verdicts[v["id"]] = v
 
     if rest:
         with ThreadPoolExecutor(max_workers=min(TRIAGE_PARALLEL_CALLS, len(rest))) as pool:
-            for v in pool.map(lambda it: _triage_one(it, brain, repo, model, providers_by_name), rest):
+            for v in pool.map(lambda it: _triage_one_safe(it, brain, repo, model, providers_by_name), rest):
                 if v.get("id"):
                     verdicts[v["id"]] = v
     return verdicts
