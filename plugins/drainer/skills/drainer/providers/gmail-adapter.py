@@ -82,6 +82,16 @@ class Provider(ProviderBase):
             return item.get("preview") or ""
         return self._new_message_excerpt(show.stdout)
 
+    def _fetch_body(self, item):
+        """The new-message text, for relay-correspondent extraction when a relay's name isn't already in
+        the subject/preview. Only reached for a recognized relay sender whose cheap fields missed, so this
+        per-item IMAP fetch stays rare; reuses the same quote-stripped excerpt triage sees."""
+        message_id = item.get("id")
+        if not message_id:
+            return ""
+        show = run_node([self.gmailjs, f"--show={message_id}"])
+        return self._new_message_excerpt(show.stdout) if show.returncode == 0 else ""
+
     @staticmethod
     def _new_message_excerpt(raw, limit=1500):
         """From a `gmail.js --show` dump (Subject/From/To/Cc/Date header lines, then the body), keep the
@@ -130,7 +140,8 @@ class Provider(ProviderBase):
             "id": iid, "source": self.name, "triage": item["_bucket"], "kind": item.get("_kind"),
             "from": item.get("from"), "subject": item.get("subject"), "received": item.get("received"),
             "snippet": item.get("preview"), "url": web_link, "messageId": message_id,
-            "emailFile": email_file, "ts": datetime.now(timezone.utc).isoformat(),
+            "correspondent": item.get("_correspondent"), "emailFile": email_file,
+            "ts": datetime.now(timezone.utc).isoformat(),
         }
         json_file = os.path.join(items_dir, f"{iid}.json")
         with open(json_file, "w", encoding="utf-8") as f:

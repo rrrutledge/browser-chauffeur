@@ -139,6 +139,83 @@ def slug(s, maxlen=18):
     return s[:maxlen].strip("-")
 
 
+# ---------------------------------------------------------------------------- correspondent identity
+#
+# The poller holds a second item from the same correspondent out of dispatch while an earlier one of
+# theirs is still being worked, so one tab reads both with full context instead of two racing. That
+# needs a stable answer to "who is this from" per item. For a DIRECT sender the envelope From address
+# is that answer. For a RELAY sender it is NOT: a shared no-reply address (Securus/JPay's
+# donotreply@jpay.com serves every incarcerated contact; LinkedIn notification mail comes from
+# LinkedIn, not the person who wrote) fronts many real people, so the real identity has to be parsed
+# out of the notification body. `RELAY_CORRESPONDENTS` is that per-relay parse; extend it by adding an
+# entry.
+
+RELAY_CORRESPONDENTS = (
+    # Securus / JPay inmate-messaging notifications: "...new Message from: TYLER COSSEY Please login...".
+    {
+        "tag": "securus",
+        "from_rx": re.compile(r"@(?:jpay|securustech)\.(?:com|net)", re.I),
+        "name_rxs": (re.compile(r"Message from:\s*(.+?)(?:\s+Please\b|[.\n]|$)", re.I),),
+    },
+    # LinkedIn message notifications: the person's name is in the subject, never the sender address.
+    {
+        "tag": "linkedin",
+        "from_rx": re.compile(r"@linkedin\.com", re.I),
+        "name_rxs": (
+            re.compile(r"(?:new )?messages? from\s+(.+?)(?:\s+on LinkedIn|[.\n]|$)", re.I),
+            re.compile(r"^(.+?)\s+sent you a message", re.I),
+        ),
+    },
+)
+
+
+def from_identity(item):
+    """The default correspondent identity for a DIRECT sender: their email address, lowercased. When a
+    person emails from their own address the From address IS the correspondent, so two messages from them
+    share this key. Returns None when there is no address at all (a source with no sender notion), so
+    such items are never held."""
+    addr = (item.get("fromAddress") or "").strip().lower()
+    if not addr:
+        m = re.search(r"<([^>]+)>", item.get("from") or "")
+        addr = (m.group(1) if m else (item.get("from") or "")).strip().lower()
+    return addr or None
+
+
+def relay_correspondent(item, get_body):
+    """Correspondent identity for a RELAY sender, whose envelope From is a shared no-reply that fronts
+    many real people and so does not identify who wrote. Returns one of three things:
+      - a namespaced identity string when the item is from a known relay and the correspondent's name is
+        extractable from its subject / preview / body (e.g. Securus's "Message from: TYLER COSSEY"),
+      - None when it IS a relay but the name can't be extracted — so the caller holds nothing rather than
+        falling back to the shared From address, which would wrongly collapse two different real people
+        onto one key,
+      - False when the sender is NOT a relay, so the caller uses the ordinary from-address identity.
+
+    The tag namespaces the extracted name so it can never collide with a real from-address, and the body
+    (`get_body()`, an expensive per-item fetch) is consulted only after the cheap in-memory subject and
+    preview both miss."""
+    sender = item.get("fromAddress") or item.get("from") or ""
+    for relay in RELAY_CORRESPONDENTS:
+        if not relay["from_rx"].search(sender):
+            continue
+
+        def extract(text):
+            for rx in relay["name_rxs"]:
+                m = rx.search(text or "")
+                if m:
+                    name = re.sub(r"\s+", " ", m.group(1)).strip().lower()
+                    if name:
+                        return f"relay|{relay['tag']}|{name}"
+            return None
+
+        for text in (item.get("subject"), item.get("preview")):
+            hit = extract(text)
+            if hit:
+                return hit
+        return extract(get_body())  # body fetched only after the cheap fields miss; None -> never hold
+    return False
+
+
 class ProviderBase:
     """The interface the poller drives. Subclasses live in providers/<name>-adapter.py."""
     name = None
@@ -159,6 +236,21 @@ class ProviderBase:
         quote-stripped excerpt of the new message — so triage classifies on real content, not just the
         subject line. Called only for the NEW items being triaged, so a per-item fetch here stays cheap."""
         return item.get("preview") or ""
+
+    def _fetch_body(self, item):
+        """The message body used only for relay-correspondent extraction, and only when the subject and
+        preview don't already carry the name. Empty by default; email adapters that can fetch a body
+        override it so a relay whose name lives only in the body still resolves."""
+        return ""
+
+    def correspondent(self, item):
+        """A stable identity for WHO an item is from, used to hold a second item from the same
+        correspondent out of dispatch while an earlier one of theirs is still being worked. A direct
+        sender keys on their from-address; a relay sender (a shared no-reply fronting many real people,
+        e.g. Securus/JPay) keys on the name parsed from the notification instead — see
+        `relay_correspondent`. None means there is no identity to hold on, so the item always dispatches."""
+        relay = relay_correspondent(item, lambda: self._fetch_body(item))
+        return relay if relay is not False else from_identity(item)
 
     def stable_id(self, item):
         """A deterministic id for an item (stable across cycles), used for seen-state."""

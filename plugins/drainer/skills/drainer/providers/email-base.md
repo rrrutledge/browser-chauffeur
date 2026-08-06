@@ -11,9 +11,11 @@ CLEAR, JUNK-LEARNING step 3, and DRAFT-MODE CLI commands. Everything here applie
 Every email provider writes two files per dispatched item:
 - `items/<id>.email.md` — header block (From, Received, Link, MessageId) + full body text.
 - `items/<id>.json` — `{ "id","source","triage","kind","from","subject","received","snippet","url",`
-  `"messageId","emailFile","ts" }`.
+  `"messageId","correspondent","emailFile","ts" }`.
 
 `messageId` is the **load-bearing field** — the worker needs it for the reply draft and for CLEAR.
+`correspondent` is written for the poller's dispatch step, not the worker (which never reads it); its
+purpose lives in `poller-core.md`.
 Its exact format varies by provider (RFC822 Message-ID for Gmail; opaque API id for Graph/REST), but
 the field name is always `messageId` and it is always present.
 

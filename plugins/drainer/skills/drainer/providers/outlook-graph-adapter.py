@@ -67,6 +67,13 @@ class Provider(ProviderBase):
             return None
         return {m["id"] for m in msgs if m.get("id")}
 
+    def _fetch_body(self, item):
+        """The message body, for relay-correspondent extraction when a relay's name isn't already in the
+        subject/preview. Only reached for a recognized relay sender whose cheap fields missed, so this
+        per-item Graph fetch stays rare."""
+        show = run_node([self.mailjs, f"--show={item['id']}"])
+        return show.stdout if show.returncode == 0 else ""
+
     def stable_id(self, item):
         # Timestamp to the second (plus ms when Graph supplies them) so two messages from the same
         # sender with the same opening subject in the same minute don't collide and silently drop one.
@@ -89,7 +96,8 @@ class Provider(ProviderBase):
             "id": iid, "source": self.name, "triage": item["_bucket"], "kind": item.get("_kind"),
             "from": item.get("from"), "subject": item.get("subject"), "received": item.get("received"),
             "snippet": item.get("preview"), "url": item.get("webLink"), "messageId": item["id"],
-            "emailFile": email_file, "ts": datetime.now(timezone.utc).isoformat(),
+            "correspondent": item.get("_correspondent"), "emailFile": email_file,
+            "ts": datetime.now(timezone.utc).isoformat(),
         }
         json_file = os.path.join(items_dir, f"{iid}.json")
         with open(json_file, "w", encoding="utf-8") as f:
