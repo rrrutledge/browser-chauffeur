@@ -417,11 +417,14 @@ top of this file. Closing it early throws that away and substitutes nothing unti
 set eventually fires - far too late for something Russell meant to do today, like sending a draft you
 staged.
 
-So a staged draft he hasn't confirmed sending, or a piece of work that's genuinely his to do and hasn't
-been done yet (even if you've filed a tracker card for it), is not a closable delay - stay open. A delay
-is only safe to walk away from when something *other than this tab* will reliably bring it back to him:
-a reply you're waiting on from a third party, a step blocked on an external dependency, or a send he
-explicitly told you - in this session - he'll handle later and doesn't need the tab open for.
+So a staged draft he hasn't confirmed sending, or a piece of work he could still do today, is not a
+closable delay - stay open. **The moment the remaining work has genuinely moved to a different day**
+- he told you (or it's otherwise clear) he can't check on it until tomorrow or later - file a tracker
+card carrying that due date (the user's board, per `context.md`) and close: the card, not the tab, is
+what reliably brings it back to him next time. A delay is only safe to walk away from when something
+*other than this tab* will reliably bring it back to him: a next-day-or-later follow-up now tracked on
+a card, a reply you're waiting on from a third party, a step blocked on an external dependency, or a
+send he explicitly told you - in this session - he'll handle later and doesn't need the tab open for.
 
 **The close condition is symmetric: your part done, and his part done - not just yours.** Once the human
 step is done (Russell told you he sent/submitted/confirmed it, or explicitly said to close) and any
@@ -429,7 +432,8 @@ follow-up you owed is finished (§5's learn-from-send, a tracker card, advancing
 close this tab yourself as your very last act, by invoking the **`session-mgr:close`** skill. Don't ask
 "anything else?" and don't wait for him to type `/close` — those two extra round-trips are exactly what
 this rule removes. But stay open whenever a draft you staged hasn't been sent yet, whenever work that's
-his to do is still undone, or whenever you're waiting on an answer from him.
+his to do is still undone and actionable today, or whenever you're waiting on an answer from him that
+isn't itself now tracked on a next-day-or-later card.
 
 ## 7. Improve the source (don't just hoard facts)
 If the user had to tell you something you could have known, don't just note it — figure out *where it
