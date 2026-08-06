@@ -918,8 +918,11 @@ def main():
     # --- deterministic pre-triage rules ---
     # (1) every active Trello card is always needs-you — see comments below for why
     # (2) junk-bucket items from outlook-graph-junk silently record as seen (already correctly filed)
+    # (3) a Slack item matching a configured auto-clear pattern is silently marked read (see below)
+    prov = {p.name: p for p in providers}  # name -> adapter (used here and for cross-source dispatch)
     pre_triaged = []
     correctly_junked = []
+    slack_auto_cleared = []
     ai_triage = []
     for it in all_new:
         if it["_source"] == "trello":
@@ -937,11 +940,17 @@ def main():
             it["_bucket"], it["_kind"] = "needs-you", "resume"
             it["_complexity"] = "simple"
             pre_triaged.append(it)
+        elif it["_source"] == "slack" and prov.get("slack") and prov["slack"].is_auto_clear(it):
+            # Configured Slack boilerplate (e.g. a bot's new-member welcome) — a standing "just clear it"
+            # the user set via providers.slack.auto_clear_patterns. Skip the AI call (a pure text match)
+            # and silence it: marked read + recorded seen below, never captured or queued. A later human
+            # reply in the same conversation has a new ts and isn't the template, so it still surfaces.
+            it["_bucket"], it["_kind"] = "junk", None
+            slack_auto_cleared.append(it)
         else:
             ai_triage.append(it)
 
     # --- one combined triage call over all sources (remaining items) ---
-    prov = {p.name: p for p in providers}  # name -> adapter (also used below for cross-source dispatch)
     if ai_triage:
         verdicts = triage(ai_triage, repo, cfg["local_dir"], cfg["triage_model"], prov)
     else:
@@ -956,7 +965,10 @@ def main():
     # Split off correctly-junked items AFTER triage: outlook-graph-junk items triaged as junk are
     # already in the right place, so record them as seen with zero noise (no capture, no queue-add).
     correctly_junked = [it for it in all_new if it["_source"] == "outlook-graph-junk" and it["_bucket"] == "junk"]
-    needs_and_others = [it for it in all_new if not (it["_source"] == "outlook-graph-junk" and it["_bucket"] == "junk")]
+    silenced_ids = {it["_id"] for it in slack_auto_cleared}
+    needs_and_others = [it for it in all_new
+                        if not (it["_source"] == "outlook-graph-junk" and it["_bucket"] == "junk")
+                        and it["_id"] not in silenced_ids]
 
     # --- live tab count, checked against target_open_tabs (None -> scan failed, fail closed below) ---
     live_tabs = total_claude_tabs()
@@ -1006,7 +1018,8 @@ def main():
         total_all = sum(totals.values())
         print(f"DRY-RUN — {len(all_new)} new of {total_all} across {len(providers)} source(s) | "
               f"{counts['needs-you']} needs-you, {counts['auto-handle']} auto-handle, "
-              f"{counts['fyi']} fyi, {counts['junk']} junk ({len(correctly_junked)} correctly-filed junk) | "
+              f"{counts['fyi']} fyi, {counts['junk']} junk ({len(correctly_junked)} correctly-filed junk, "
+              f"{len(slack_auto_cleared)} slack auto-cleared) | "
               f"target open tabs {cfg['target_open_tabs']}, currently open "
               f"{live_tabs if live_tabs is not None else 'unknown'}")
         if auto:
@@ -1085,12 +1098,23 @@ def main():
         seen_state("record", cfg["runtime_dir"], it["_source"], iid, "junk")
         correctly_junked_count += 1
 
+    # Configured-boilerplate Slack items: mark read (advance the cursor, non-destructive) and record
+    # seen — no capture, no queue-add. Seen is recorded even if the mark call fails, so a transient
+    # write error can't loop the item forever; the worst case is a stale unread badge, not a re-dispatch.
+    slack_auto_cleared_count = 0
+    for it in slack_auto_cleared:
+        if prov.get("slack"):
+            prov["slack"].auto_clear(it)
+        seen_state("record", cfg["runtime_dir"], "slack", it["_id"], "junk")
+        slack_auto_cleared_count += 1
+
     teams_others = [it for it in others if it["_source"] == "teams"]
     if teams_others and prov.get("teams"):
         _spawn_teams_mark_read(teams_others, prov["teams"], repo, cfg["runtime_dir"], cfg["worker_model"])
 
     print(f"dispatched {dispatched} worker tab(s), {auto_dispatched} auto-handle worker(s), "
           f"queued {queued} for digest, {correctly_junked_count} correctly-filed junk (no action), "
+          f"{slack_auto_cleared_count} slack auto-cleared (marked read, no action), "
           f"held {held} at target open tabs of {cfg['target_open_tabs']}. "
           f"Poller never clears.")
 

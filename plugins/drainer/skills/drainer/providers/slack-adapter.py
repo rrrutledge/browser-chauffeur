@@ -28,6 +28,66 @@ class Provider(ProviderBase):
 
     def __init__(self):
         self.slackjs = self._find_slack_js()
+        self._auto_clear_needles = []
+
+    def configure(self, cfg):
+        """Read the machine-local slack knobs. `auto_clear_patterns` is a list of case-insensitive
+        substrings; any unread item whose text contains one is silently marked read by the poller and
+        never surfaced (see is_auto_clear / auto_clear). Empty (the default) turns the feature off."""
+        block = self._slack_block(cfg.get("repo"))
+        self._auto_clear_needles = self._list_knob(block, "auto_clear_patterns")
+
+    @staticmethod
+    def _slack_block(repo):
+        """The `  slack:` block from `<repo>/.claude/drainer.local.md` (bare-stdlib parse, no PyYAML —
+        the poller runs on stdlib only), same convention the other adapters use."""
+        if not repo:
+            return ""
+        try:
+            with open(os.path.join(repo, ".claude", "drainer.local.md"), encoding="utf-8") as f:
+                text = f.read()
+        except OSError:
+            return ""
+        out, in_block = [], False
+        for line in text.splitlines():
+            if re.match(r"^  slack\s*:\s*$", line):
+                in_block = True
+                continue
+            if in_block:
+                if re.match(r"^  \S", line) or re.match(r"^\S", line):
+                    break
+                out.append(line)
+        return "\n".join(out)
+
+    @staticmethod
+    def _list_knob(block, key):
+        m = re.search(rf"^\s*{re.escape(key)}\s*:\s*\[(.*?)\]\s*$", block, re.MULTILINE)
+        if not m or not m.group(1).strip():
+            return []
+        return [x.strip().strip('"\'') for x in m.group(1).split(",") if x.strip()]
+
+    def is_auto_clear(self, item):
+        """True when this item is configured boilerplate to silently clear (e.g. a bot's new-member
+        welcome in a group DM). Matches each `auto_clear_patterns` needle as a case-insensitive substring
+        against the item's text — its preview plus every message in the unread span. Empty config -> always
+        False. A later human reply produces a new ts (a fresh item whose text isn't the template), so it
+        surfaces normally; only the boilerplate itself is silenced."""
+        if not self._auto_clear_needles:
+            return False
+        hay = item.get("preview") or ""
+        for m in item.get("unread") or []:
+            hay += "\n" + (m.get("text") or "")
+        hay = hay.lower()
+        return any(n.lower() in hay for n in self._auto_clear_needles)
+
+    def auto_clear(self, item):
+        """Advance the read cursor past this item — the same non-destructive CLEAR (conversations.mark /
+        subscriptions.thread.mark) a worker would run, here driven by the poller so a matched-boilerplate
+        item is cleared without a tab or a digest line. Returns True on success."""
+        cmd = [self.slackjs, "--mark", f"--channel={item['channel']}", f"--ts={item['ts']}"]
+        if item.get("channelType") == "thread" and item.get("threadTs"):
+            cmd.append(f"--thread-ts={item['threadTs']}")
+        return run_node(cmd).returncode == 0
 
     @staticmethod
     def _find_slack_js():
