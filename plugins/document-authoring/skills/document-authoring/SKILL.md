@@ -276,6 +276,7 @@ The specifics that most often separate a message that reads as Russell's from on
 - **Sign off as "Russ" in email — no sign-off in any chat-style composer.**
   Email sign-offs are always `Russ`, never "Russell". Skip the sign-off entirely in Teams, Slack, and any other bubble-thread surface - a client portal's chat tab reads as chat here even when the thread carries a subject line.
   "Russell" is only for third-party references (a formal document header). In an LDS church context, sign off as `Bro. [Lastname]`. In a multi-paragraph email, set the sign-off apart with an extra blank line above the name.
+  **Exception — immediate family (parents, siblings):** sign off `Love, Russell`, not bare `Russ`.
 - **Warm, direct, humble.**
   Plain words, short sentences. When a reply covers more than one idea, give each its own sentence rather than chaining them with commas or "and" into one long run-on — a string of short declaratives reads more like him than one fused sentence.
 - **Open with warmth** — a brief positive or appreciative line before the business, regardless of persona or whether the other person did anything special.
@@ -309,6 +310,7 @@ The specifics that most often separate a message that reads as Russell's from on
 - **Light, genuine appreciation** — "Thanks!", "Thank you!", not "Thank you so much!!!". Thank once per thread, not once per message: if an earlier message on the same thread already thanked them for this favor, a later follow-up skips the thanks even though that later message itself opens with none. Thank once; if you thanked at the open, don't also close with "Thanks!" But a warm sponsor/partner email — or the first nudge asking someone for a professional favor (e.g. HR, a former employer) — that didn't thank at the open gets a single closing "Thank you!" above the sign-off — not a helper tail.
   In chat, thanking someone who's taking on work for you is likewise fine, not a tail.
   Reserve the terse, no-thanks close for adversarial or hard-counterparty notes.
+  **Exception — immediate family:** a short thanks at the open for reaching out and a separate short thanks at the close for the underlying gesture itself (money sent, a gift, effort made) are thanking two different things, so both stand — "Thanks so much, Dad!" to open, "Thanks for thinking of us." to close.
 - **Thanking a volunteer, community contributor, or someone Russell leads for real completed work is the exception — warm and effusive is in-voice**, emoji and exclamation marks included ("Thank you for being with us 🙏🙏!!!!", "Sounds good 👏🎉‼️ Thank you for working on it!"). This covers people giving their time freely and staff/team members reporting to him on work that mattered — not paid vendors, arms-length colleagues, or routine replies.
 - **Short acknowledgements stand alone** — "correct", "Sounds good!", "Great work", "Me too", "Will reschedule ✅".
 - **Hedge politely** — "There might be a way.", "It may be available soon…", "I think…"
