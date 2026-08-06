@@ -1,6 +1,6 @@
 {
   "name": "screenshot",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Auto-loads the most recent Windows screenshot when user references a screenshot without providing a file path",
   "author": {
     "name": "Russell Rutledge"
