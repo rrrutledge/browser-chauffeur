@@ -36,13 +36,19 @@ Innocent: "used to" as passive voice, where *used* means employed - "the key use
 **State guidance positively.**
 Describe the desired behavior directly; a correction names only what to do, not the rejected alternative alongside it.
 Reserve a negative for a real, tempting failure mode a positive instruction won't prevent on its own, and write it as a single standalone guardrail.
-**Check:** a "don't do X, do Y" couplet where "do Y" alone would carry it; a prohibition where a recipe would bind better.
+**Check:** a "don't do X, do Y" couplet where "do Y" alone would carry it; a definition that says what something is for and then appends what it is not for ("A is for X; not for Y", "goes on X instead, not here"), where the positive half stands alone; a prohibition where a recipe would bind better.
 
 **No helper tail.**
 Stop the moment the point is made.
 Treat any sentence after the main point as guilty until proven necessary: cut reassurance, offers, hedges, restated context, and invitations to react.
 **Check:** does this sentence hand the reader something they don't already have? Watch for a close starting "happy to", "let me know if you'd like", "if you'd rather", "hope this helps", "feel free to"; a final paragraph restating what was already said; unrequested reassurance.
 Innocent: a genuinely open decision, asked as one direct question and stopped there.
+
+**Point to a source of truth; don't restate what it holds.**
+When you name a canonical source for something - a registry, a config file, another doc - let the pointer carry it; don't also summarize the content you just delegated there.
+The inline copy is what drifts when the source changes, which is the reason you pointed at the source in the first place.
+**Check:** a sentence naming a source as authoritative for X ("see Y for Z", "Y is the source of truth for Z") followed by an inline restatement of that same Z.
+Innocent: naming in a few words what the source covers, or quoting one specific value the reader needs right now while pointing to the source for the rest.
 
 **No em dash.**
 Use a spaced hyphen ` - ` instead.
