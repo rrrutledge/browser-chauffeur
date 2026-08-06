@@ -51,14 +51,16 @@ spawn, record — is code. No AI re-implements the loop.
    triage time) — with only the one item's payload varying per call, so the model spends its full
    attention on that item instead of a whole cycle's batch at once.
 6. **Dispatch** (deterministic):
-   - **needs-you** → if live Claude Code tabs system-wide (`total_claude_tabs()` — every running
-     `claude.exe` process: drainer worker tabs, the drainer itself, and any tab Russell opened by hand)
-     is below `target_open_tabs`: capture to `items/<id>.json`, spawn a worker tab (`spawn-tab.cmd`)
-     **with an explicit model chosen by complexity** (`worker_model` for simple, `worker_model_complex`
-     for complex — so a worker never inherits a 1M-context session default the account can't use), then
-     record seen **after** the spawn succeeds. At the target: leave it **unrecorded** so a later cycle
-     picks it up (throttle + fail-safe). If the live-tab scan itself fails, the throttle is skipped
-     entirely for that cycle (fail-safe: never block dispatch just because tabs couldn't be counted).
+   - **needs-you** → hold this item if an earlier item from the **same correspondent** is still open (see
+     "Hold by correspondent" below); otherwise, if live Claude Code tabs system-wide (`total_claude_tabs()`
+     — every running `claude.exe` process: drainer worker tabs, the drainer itself, and any tab Russell
+     opened by hand) is below `target_open_tabs`: capture to `items/<id>.json`, spawn a worker tab
+     (`spawn-tab.cmd`) **with an explicit model chosen by complexity** (`worker_model` for simple,
+     `worker_model_complex` for complex — so a worker never inherits a 1M-context session default the
+     account can't use), then record seen **after** the spawn succeeds. At the target: leave it
+     **unrecorded** so a later cycle picks it up (throttle + fail-safe). If the live-tab scan itself fails,
+     the throttle is skipped entirely for that cycle (fail-safe: never block dispatch just because tabs
+     couldn't be counted).
    - **auto-handle** → capture + spawn a worker tab too (it needs a browser to act), but the worker runs
      the standing rule autonomously and clears the source right away, so it resolves fast and is
      dispatched unconditionally, never throttled by `target_open_tabs`. It's recorded with its own
@@ -114,6 +116,49 @@ knows to refresh the credential. (Dry-run doesn't write it — it's often run wi
 **Dry-run** (`--dry-run`) does steps 1–5 and prints a triage report (counts + per-item bucket + intended
 action, including any held at the cap) plus the count of items the reconcile would re-queue, with no
 spawns, no queueing, no records, no clears, and no re-queues.
+
+## Hold by correspondent: one open item per person, so one tab reads them all
+
+Two items from the same person close together should be handled by **one tab reading both**, not two
+tabs racing independently and possibly drafting two separate replies.
+This is the general case behind exact-duplicate notifications (a stack of Securus "new mail" notices for
+the same incarcerated contact) as well as a real person sending two genuinely different emails minutes
+apart.
+The fix is not to detect sameness - that needs content judgment and is fragile.
+It is to **hold a second item from a correspondent out of dispatch while an earlier item from them is
+still open**, and let the worker's existing situational-check (it reads the whole thread across
+Inbox/Archive/Deleted Items before drafting) do the grouping once, in one tab, with full context.
+
+At dispatch, before spawning a worker for a needs-you item, the poller compares its **correspondent
+identity** against the correspondents that currently have an open item.
+If one matches, the item is left **unrecorded** - the exact "leave it for a later cycle" pattern the
+`target_open_tabs` throttle uses - so it just waits in the source and re-evaluates next cycle.
+
+"Currently has an open item" is recomputed **every cycle from live state**, never a persisted "waiting"
+flag - a hold that could get stuck waiting forever (a crashed worker, a bug) would be worse than the
+problem it solves.
+The signal is the same liveness test `reconcile_unhandled` trusts: a correspondent is held-open when a
+live `claude --session-id` worker is running on one of their captured items (`open_correspondents`),
+plus any correspondent already dispatched earlier in this same cycle (so even two duplicates arriving in
+one cycle don't both spawn - the first claims the identity, the rest wait).
+If a worker dies without clearing, reconcile re-queues *its* item within one cycle, and on that same
+cycle the hold behind it also goes false - it is read off the same signal, not a separate flag.
+Worst case is one poll cycle's delay, never indefinite starvation.
+A live-session scan that fails yields no held-open set, so a cross-cycle hold **fails open** (dispatch
+proceeds); the same-cycle dedup still holds a burst.
+
+**Correspondent identity is per-provider, not always the envelope From address.**
+For direct email the From address *is* the correspondent, so two messages from the same person share it.
+For a **relay** sender the From address does not identify who wrote - Securus/JPay's shared
+`donotreply@jpay.com` fronts every incarcerated contact, LinkedIn notification mail is from LinkedIn
+itself - so keying on it would wrongly collapse unrelated people onto one identity.
+For a recognized relay the identity is instead the name parsed out of the notification (for Securus, the
+"Message from: &lt;NAME&gt;" line), namespaced so it can never collide with a real address; when the name
+can't be extracted the item is treated as having **no** identity (never held) rather than falling back to
+the shared address, so two different real people are never merged.
+The per-relay recognition and extraction live in `provider_base.RELAY_CORRESPONDENTS`; each captured
+email item persists its resolved `correspondent` in `items/<id>.json` so `open_correspondents` can read
+it back off a live session. New relays plug in by adding a registry entry.
 
 ## Fail-safe (why "process twice" is fine, "miss once" never happens)
 

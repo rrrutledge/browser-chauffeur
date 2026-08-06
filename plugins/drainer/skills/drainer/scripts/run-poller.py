@@ -36,6 +36,7 @@ PROVIDERS_DIR = os.path.join(SKILL_DIR, "providers")
 sys.path.insert(0, SCRIPT_DIR)
 import presence  # noqa: E402  (sibling module)
 from provider_base import run_node, NO_WINDOW, ProviderError, spawn_tab, spawn_silent, NEUTRAL_PRIORITY_BAND  # noqa: E402  (subprocess helper + typed provider failure)
+_LIVE_UNSET = object()  # reconcile_unhandled sentinel: scan for live sessions itself unless one is passed in
 from drainer_config import read_config, find_provider_file  # noqa: E402  (shared .claude/drainer.local.md reader + provider resolution)
 
 SEEN_STATE = os.path.join(SCRIPT_DIR, "seen-state.js")
@@ -683,6 +684,58 @@ def live_session_ids():
     return set(re.findall(r"session-id\s+([0-9a-fA-F-]{36})", out))
 
 
+def open_correspondents(runtime_dir, live):
+    """The correspondent identities that currently have a LIVE worker session on a captured item.
+
+    A second item from one of these is held out of dispatch (see the needs loop in main) while an
+    earlier one of theirs is still being worked, so one tab reads both with full context instead of two
+    racing independently and possibly drafting two separate replies. Recomputed fresh every cycle from
+    the same live-session signal `reconcile_unhandled` trusts — never a persisted "waiting" flag — so a
+    worker that dies without clearing releases the hold within one cycle: reconcile re-queues that item,
+    and on the same cycle this set no longer contains its correspondent, so anything behind it dispatches.
+    Worst case is one poll cycle's delay, never indefinite starvation.
+
+    Keyed off `live` (the running `claude --session-id` guids): for each worker session file whose guid
+    is live, read its captured item's persisted `correspondent`. Bounded by the number of session files,
+    the same order of per-cycle work reconcile already does. A None/empty `live` (scan failed, or nothing
+    open) yields the empty set, so a cross-cycle hold fails open — the in-cycle dedup in main still holds
+    a same-cycle burst."""
+    if not live:
+        return set()
+    seeds_dir = os.path.join(runtime_dir, "seeds")
+    items_dir = os.path.join(runtime_dir, "items")
+    suffix = ".prompt.txt.session"
+    try:
+        names = os.listdir(seeds_dir)
+    except OSError:
+        return set()
+    out = set()
+    for fn in names:
+        if not fn.endswith(suffix):
+            continue
+        try:
+            with open(os.path.join(seeds_dir, fn), encoding="utf-8") as f:
+                guid = f.read().strip()
+        except OSError:
+            continue
+        if guid not in live:
+            continue
+        try:
+            with open(os.path.join(items_dir, f"{fn[:-len(suffix)]}.json"), encoding="utf-8") as f:
+                corr = (json.load(f) or {}).get("correspondent")
+        except (OSError, ValueError):
+            continue
+        if corr:
+            out.add(corr)
+    return out
+
+
+def held_for_correspondent(corr, active):
+    """Whether an item should wait: it has a non-empty correspondent identity that is already active
+    this cycle — an open worker on one of theirs, or one dispatched earlier in this same cycle's loop."""
+    return bool(corr) and corr in active
+
+
 def total_claude_tabs():
     """Count of every running claude.exe process system-wide — drainer worker tabs, the drainer
     itself, and any tab Russell opened by hand. The real constraint on dispatch speed is total open
@@ -759,7 +812,7 @@ def save_handled(runtime_dir, handled):
                       {k: sorted(v) for k, v in handled.items()})
 
 
-def reconcile_unhandled(runtime_dir, cfg, providers, dry_run=False):
+def reconcile_unhandled(runtime_dir, cfg, providers, dry_run=False, live=_LIVE_UNSET):
     """Re-queue every item whose source object is still unhandled with no live worker session on it.
 
     Completion is read off the source itself. A worker that finished archived the message, so the
@@ -784,8 +837,13 @@ def reconcile_unhandled(runtime_dir, cfg, providers, dry_run=False):
     process scan that can't run skips the cycle, and a provider whose inbox listing fails skips that
     provider, since an empty id set would otherwise read as "every item is archived".
 
-    Under `dry_run` it counts and prints what it would requeue, touching no state."""
-    live = live_session_ids()
+    Under `dry_run` it counts and prints what it would requeue, touching no state.
+
+    `live` (the running `claude --session-id` guids) is normally scanned here, but the caller may pass
+    the set it already scanned this cycle so the correspondent-hold below reuses it — keeping the whole
+    cycle to one process scan."""
+    if live is _LIVE_UNSET:
+        live = live_session_ids()
     if live is None:
         print("reconcile: could not scan for live worker sessions; skipped this cycle.")
         return 0
@@ -878,8 +936,12 @@ def main():
             save_health(cfg["runtime_dir"], health)  # persist any config-load failures recorded above
         return
 
-    # Runs BEFORE the enumerate below, so anything it re-queues is picked up in this same cycle.
-    unhandled = reconcile_unhandled(cfg["runtime_dir"], cfg, providers, dry_run=args.dry_run)
+    # One live-session scan for the whole cycle: reconcile reads it to spot dead workers, and the
+    # dispatch step below reuses it to hold a second item from a correspondent whose earlier item still
+    # has a live worker (open_correspondents). Runs BEFORE the enumerate, so anything reconcile re-queues
+    # is picked up in this same cycle.
+    live = live_session_ids()
+    unhandled = reconcile_unhandled(cfg["runtime_dir"], cfg, providers, dry_run=args.dry_run, live=live)
     if args.dry_run:
         print(f"DRY-RUN - reconcile would re-queue {unhandled} unhandled item(s).")
 
@@ -1000,6 +1062,14 @@ def main():
     auto = [it for it in needs_and_others if it["_bucket"] == "auto-handle"]
     others = [it for it in needs_and_others if it["_bucket"] not in ("needs-you", "auto-handle")]
 
+    # Correspondents that already have an open worker this cycle — seed of the dispatch hold below. A
+    # second needs-you item from one of these waits, so one tab reads both with full context instead of
+    # two racing. Grown as items dispatch (auto-handle and needs-you both register their correspondent),
+    # so even two duplicates arriving in the SAME cycle don't both spawn — the first claims the identity
+    # and the rest wait. Recomputed each cycle from live sessions, never a stored flag, so a dead worker
+    # frees it within one cycle (see open_correspondents).
+    active_correspondents = open_correspondents(cfg["runtime_dir"], live)
+
     if args.dry_run:
         counts = {b: sum(1 for it in all_new if it["_bucket"] == b)
                   for b in ("needs-you", "auto-handle", "fyi", "junk")}
@@ -1012,22 +1082,31 @@ def main():
         if auto:
             print("  auto-handle (autonomous worker, not capped):")
             for it in auto:
+                c = prov[it["_source"]].correspondent(it)
+                if c:
+                    active_correspondents.add(c)  # a same-cycle needs-you duplicate waits behind it
                 model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
                 print(f"    [{it['_source']:20}] {it['_id']}  ->  spawn auto-worker [{it['_complexity']} -> {model}]\n"
                       f"        {it.get('received')} | {it.get('from')} | {it.get('subject')}")
         print("  needs-you (orphan-sessions first, then priority band, then newest-first):")
         tabs = live_tabs
         for it in needs:
-            held = tabs is None or tabs >= cfg["target_open_tabs"]
-            if not held and tabs is not None:
-                tabs += 1
+            corr = prov[it["_source"]].correspondent(it)
+            corr_held = held_for_correspondent(corr, active_correspondents)
+            held = corr_held or tabs is None or tabs >= cfg["target_open_tabs"]
+            if not held:
+                if tabs is not None:
+                    tabs += 1
+                if corr:
+                    active_correspondents.add(corr)
+            hold_label = "HOLD (same correspondent)" if corr_held else "HOLD (at cap)"
             if it["_source"] == "orphan-sessions":
-                action = "HOLD (at cap)" if held else "spawn resume tab"
+                action = hold_label if held else "spawn resume tab"
                 print(f"    [{it['_source']:20}] {it['_id']}  ->  {action}\n"
                       f"        {it.get('received')} | cwd={it.get('cwd')} | session={it.get('session_id')}")
                 continue
             model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
-            action = "HOLD (at cap)" if held else f"spawn worker [{it['_complexity']} -> {model}]"
+            action = hold_label if held else f"spawn worker [{it['_complexity']} -> {model}]"
             print(f"    [{it['_source']:20}] {it['_id']}  ->  {action}\n"
                   f"        {it.get('received')} | {it.get('from')} | {it.get('subject')}")
         if others:
@@ -1041,24 +1120,37 @@ def main():
                   + ", ".join(it.get("convId") or it["_id"] for it in teams_others))
         return
 
-    dispatched, auto_dispatched, held, queued = 0, 0, 0, 0
+    dispatched, auto_dispatched, held, held_corr, queued = 0, 0, 0, 0, 0
     # auto-handle first: a worker that executes a standing rule and clears the source immediately. Not
     # throttled by target_open_tabs, recorded with its own triage so capture stamps the json and the worker
-    # takes worker-core's auto-handle branch (act -> CLEAR -> queue digest -> close up).
+    # takes worker-core's auto-handle branch (act -> CLEAR -> queue digest -> close up). Its correspondent
+    # is stamped and registered so a same-cycle needs-you duplicate from the same person waits behind it.
     for it in auto:
         provider = prov[it["_source"]]
         iid = it["_id"]
         model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
+        it["_correspondent"] = provider.correspondent(it)
         json_file = provider.capture(it, iid, cfg["runtime_dir"])
         spawn_worker(iid, json_file, repo, cfg["runtime_dir"], model, cfg["local_dir"])
         seen_state("record", cfg["runtime_dir"], it["_source"], iid, "auto-handle")
+        if it["_correspondent"]:
+            active_correspondents.add(it["_correspondent"])
         auto_dispatched += 1
     for it in needs:
         provider = prov[it["_source"]]
         iid = it["_id"]
+        corr = provider.correspondent(it)
+        if held_for_correspondent(corr, active_correspondents):
+            # An earlier item from this correspondent is still open (a live worker, or one dispatched
+            # earlier this cycle). Leave this UNRECORDED so it re-enumerates next cycle; once that worker
+            # clears, the hold is gone and one tab has already read the full context.
+            held += 1
+            held_corr += 1
+            continue
         if live_tabs is None or live_tabs >= cfg["target_open_tabs"]:
             held += 1  # leave UNRECORDED -> retried next cycle (fail-closed: a failed scan holds too)
             continue
+        it["_correspondent"] = corr
         json_file = provider.capture(it, iid, cfg["runtime_dir"])
         if it["_source"] == "orphan-sessions":
             spawn_resume_tab(it["session_id"], it["cwd"], repo)
@@ -1066,6 +1158,8 @@ def main():
             model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
             spawn_worker(iid, json_file, repo, cfg["runtime_dir"], model, cfg["local_dir"])
         seen_state("record", cfg["runtime_dir"], it["_source"], iid, "needs-you")
+        if corr:
+            active_correspondents.add(corr)
         if live_tabs is not None:
             live_tabs += 1
         dispatched += 1
@@ -1091,8 +1185,8 @@ def main():
 
     print(f"dispatched {dispatched} worker tab(s), {auto_dispatched} auto-handle worker(s), "
           f"queued {queued} for digest, {correctly_junked_count} correctly-filed junk (no action), "
-          f"held {held} at target open tabs of {cfg['target_open_tabs']}. "
-          f"Poller never clears.")
+          f"held {held} (of which {held_corr} behind an open item from the same correspondent) at "
+          f"target open tabs of {cfg['target_open_tabs']}. Poller never clears.")
 
 
 if __name__ == "__main__":
