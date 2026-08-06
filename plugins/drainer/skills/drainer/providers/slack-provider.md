@@ -14,10 +14,16 @@ id prefix: `slack-`; body file: `<id>.slack.md`.
 > This is the Web-API counterpart to the IMAP `gmail-provider.md` / Graph `outlook-graph-provider.md`.
 
 ## Config (in `.claude/drainer.local.md` → `providers.slack`)
-No config — auth is by environment variables. Credentials: `SLACK_BOT_TOKEN` (the Slack API token — for a
+Auth is by environment variables. Credentials: `SLACK_BOT_TOKEN` (the Slack API token — for a
 personal user token, the `xoxc-` value), `SLACK_COOKIE_D` (the `d` session cookie — required for a browser
 `xoxc` token, which is `invalid_auth` without it, and for the `client.*` endpoints), and `SLACK_TEAM_ID`
 (the workspace's team id) in the environment.
+
+One optional knob:
+- `auto_clear_patterns` — a bracketed list of case-insensitive substrings. Any unread item whose text
+  (its preview plus every message in the unread span) contains one is **silently marked read** and never
+  surfaced — see AUTO-CLEAR below. Comma-separates the list, so pick substrings that contain no comma.
+  Omit it (the default) to leave the feature off.
 
 The `slack` `slack.js` lives at `<slack-skill>/scripts/slack.js` — run it with `node`.
 
@@ -100,6 +106,21 @@ warranted. Reactions are visible to everyone in the workspace.
 "where is everyone?" is **not** one of these: a 👍 there reads as tone-deaf, and because the reaction can't
 be undone, the cost of a wrong one is real. When no reaction clearly fits, add none and just clear (mark
 read); when the message actually warrants a written reply, that's `needs-you`, not a reaction.
+
+## AUTO-CLEAR (config-driven silent mark-read)
+A class of Slack message that is pure recurring boilerplate — a bot's new-member welcome dropped into a
+group DM, say — carries nothing to act on and nothing worth a digest line. `auto_clear_patterns` (in the
+Config block) names those by a distinctive substring of their text. The poller matches each **new** Slack
+item against the list as a plain code check (no AI triage call), and for a match it **marks the item read
+and records it seen — no worker tab, no capture, no digest entry.** It is the Slack counterpart of the
+outlook-graph-junk "already correctly filed" path: the noise is disposed of before it ever reaches Russell.
+
+Marking read is the normal non-destructive CLEAR (advance the read cursor); nothing is deleted, and seen is
+recorded even if the mark call fails, so a transient error can't loop the item — the worst case is a stale
+unread badge, never a re-dispatch. The silence is scoped to the boilerplate itself: a later human reply in
+the same conversation has a new `ts` and its text isn't the template, so it surfaces through normal triage.
+This is the lever for "just clear these, don't tell me" — distinct from AUTO-HANDLE below, which *acts* on an
+item and *does* report what it did in the digest.
 
 ## AUTO-HANDLE
 Standing rules where Russell has decided the answer in advance, so the poller triages the item
