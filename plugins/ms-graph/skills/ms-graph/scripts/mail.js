@@ -116,9 +116,18 @@ async function listInbox(client) {
     .get();
   const msgs = data.value || [];
   if (args.json) {
+    // The mailbox owner's own address, so a consumer can tell a message he sent from inbound mail. On any
+    // lookup failure myAddr stays empty → fromMe/toMe are false → nothing is treated as own-outbound.
+    let myAddr = '';
+    try {
+      const me = await client.api('/me').select('mail,userPrincipalName').get();
+      myAddr = (me.mail || me.userPrincipalName || '').toLowerCase();
+    } catch { /* leave myAddr empty */ }
     console.log(JSON.stringify(msgs.map(m => ({
       id: m.id, conversationId: m.conversationId, subject: m.subject,
       from: addr(m.from), fromAddress: m.from?.emailAddress?.address || '',
+      fromMe: !!myAddr && (m.from?.emailAddress?.address || '').toLowerCase() === myAddr,
+      toMe: !!myAddr && (m.toRecipients || []).some(r => (r.emailAddress?.address || '').toLowerCase() === myAddr),
       received: m.receivedDateTime, isRead: m.isRead, webLink: m.webLink,
       preview: (m.bodyPreview || '').replace(/\s+/g, ' ').slice(0, 300),
     })), null, 2));
@@ -145,9 +154,18 @@ async function listJunk(client) {
     .get();
   const msgs = data.value || [];
   if (args.json) {
+    // The mailbox owner's own address, so a consumer can tell a message he sent from inbound mail. On any
+    // lookup failure myAddr stays empty → fromMe/toMe are false → nothing is treated as own-outbound.
+    let myAddr = '';
+    try {
+      const me = await client.api('/me').select('mail,userPrincipalName').get();
+      myAddr = (me.mail || me.userPrincipalName || '').toLowerCase();
+    } catch { /* leave myAddr empty */ }
     console.log(JSON.stringify(msgs.map(m => ({
       id: m.id, conversationId: m.conversationId, subject: m.subject,
       from: addr(m.from), fromAddress: m.from?.emailAddress?.address || '',
+      fromMe: !!myAddr && (m.from?.emailAddress?.address || '').toLowerCase() === myAddr,
+      toMe: !!myAddr && (m.toRecipients || []).some(r => (r.emailAddress?.address || '').toLowerCase() === myAddr),
       received: m.receivedDateTime, isRead: m.isRead, webLink: m.webLink,
       preview: (m.bodyPreview || '').replace(/\s+/g, ' ').slice(0, 300),
     })), null, 2));
