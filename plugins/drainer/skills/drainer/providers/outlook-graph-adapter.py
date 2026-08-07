@@ -55,7 +55,17 @@ class Provider(ProviderBase):
         if res.returncode != 0:
             raise ProviderError(f"outlook-graph enumerate failed (auth?): {res.stderr.strip()[:300]}",
                                 kind="auth")
-        return json.loads(res.stdout or "[]")
+        msgs = json.loads(res.stdout or "[]")
+        return [m for m in msgs if not self._own_outbound_reply(m)]
+
+    @staticmethod
+    def _own_outbound_reply(m):
+        """True for a message Russell sent to other people that surfaced back in his inbox (a reply
+        threaded into the conversation, e.g. his "RE: Baggage Fee" to his dad). That is his own outbound
+        side, not inbound mail to triage — dropping it here keeps his replies out of the queue. A genuine
+        self-note (he is a recipient, so `toMe` is set) is preserved: it's a task he captured for himself.
+        `fromMe`/`toMe` come from mail.js, which resolves the mailbox owner's own address."""
+        return bool(m.get("fromMe")) and not bool(m.get("toMe"))
 
     def still_in_inbox_ids(self):
         res = run_node([self.mailjs, "--list-inbox", "--json", "--top=500"])

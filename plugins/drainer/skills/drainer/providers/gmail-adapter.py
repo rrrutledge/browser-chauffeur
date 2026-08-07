@@ -67,7 +67,18 @@ class Provider(ProviderBase):
         if res.returncode != 0:
             raise ProviderError(f"gmail enumerate failed (auth/IMAP?): {res.stderr.strip()[:300]}",
                                 kind="auth")
-        return json.loads(res.stdout or "[]")
+        msgs = json.loads(res.stdout or "[]")
+        return [m for m in msgs if not self._own_outbound_reply(m)]
+
+    @staticmethod
+    def _own_outbound_reply(m):
+        """True for a message the account owner sent to other people that the Workspace account keeps in
+        the inbox (russ@ISC files its own sent replies under INBOX, so they come back through the enumerate).
+        That is Russell's own outbound side of a conversation, not inbound mail to triage — dropping it here
+        keeps a long thread from re-queuing his every reply as its own item. A genuine self-note (he is the
+        only recipient, so `toMe` is set) is preserved: it's a task he captured for himself, not a reply to
+        someone else. `fromMe`/`toMe` come from gmail.js, which knows the account owner's own address."""
+        return bool(m.get("fromMe")) and not bool(m.get("toMe"))
 
     def triage_text(self, item):
         """Fetch the message body and return just the NEW content (quoted reply chain stripped), so the
