@@ -38,6 +38,8 @@ CASES = [
     {"id": "git_rebase_not_listed", "tool": "Bash", "command": "git rebase main", "expect": "ALLOW"},
     {"id": "git_clean_force", "tool": "Bash", "command": "git clean -fd", "expect": "PROMPT"},
     {"id": "git_clean_dry", "tool": "Bash", "command": "git clean -n", "expect": "ALLOW"},
+    {"id": "git_apply", "tool": "Bash", "command": "git apply patch.diff", "expect": "ALLOW"},
+    {"id": "git_apply_unsafe_paths", "tool": "Bash", "command": "git apply --unsafe-paths patch.diff", "expect": "PROMPT"},
 
     # --- gh -----------------------------------------------------------------
     {"id": "gh_pr_list", "tool": "Bash", "command": "gh pr list", "expect": "ALLOW"},
