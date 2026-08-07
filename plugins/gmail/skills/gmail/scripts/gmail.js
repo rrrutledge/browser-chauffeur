@@ -139,6 +139,7 @@ async function listFolder(c, mailbox) {
         subject: e.subject || '(no subject)',
         from: fromList(e.from),
         fromAddress: e.from && e.from[0] ? e.from[0].address : '',
+        toAddresses: (e.to || []).map(a => a.address).filter(Boolean),
         received: (e.date || m.internalDate || new Date()).toISOString
           ? (e.date || m.internalDate).toISOString() : String(e.date || m.internalDate),
         isRead: m.flags ? m.flags.has('\\Seen') : false,
@@ -179,6 +180,7 @@ async function search(c) {
         subject: e.subject || '(no subject)',
         from: fromList(e.from),
         fromAddress: e.from && e.from[0] ? e.from[0].address : '',
+        toAddresses: (e.to || []).map(a => a.address).filter(Boolean),
         received: (e.date || m.internalDate || new Date()).toISOString
           ? (e.date || m.internalDate).toISOString() : String(e.date || m.internalDate),
         isRead: m.flags ? m.flags.has('\\Seen') : false,
