@@ -38,11 +38,12 @@ Describe the desired behavior directly; a correction names only what to do, not 
 Reserve a negative for a real, tempting failure mode a positive instruction won't prevent on its own, and write it as a single standalone guardrail.
 **Check:** a "don't do X, do Y" couplet where "do Y" alone would carry it; a definition that says what something is for and then appends what it is not for ("A is for X; not for Y", "goes on X instead, not here"), where the positive half stands alone; a prohibition where a recipe would bind better.
 
-**Teach the test, not the list of past misses.**
-When writing instructions meant to be reasoned from - a classifier rubric, a SKILL.md, an agent prompt, a review checklist - state the general condition that decides new cases, not a growing enumeration of specific instances already seen.
-Each named example only ever covers the case that already slipped through once; the general test is what has to catch the next one.
-**Check:** an instruction block whose examples read as an enumerated list of named cases ("e.g. X, Y, Z", "such as A, B, C", "including P, Q") standing in for a test that could instead be stated as one general condition.
-Innocent: a single example used to ground an already-stated general principle, or a genuinely closed/finite set with no further members possible.
+**Make the general statement carry it; a wanted example means it's too weak.**
+When writing guidance meant to be reasoned from - a classifier rubric, a SKILL.md, an agent prompt, a review checklist, any doc - state the general condition that decides new cases, strongly enough to stand on its own.
+Reaching for an example to make the point land is the signal the general statement is too weak: sharpen the statement until it needs none, rather than illustrating it.
+The general condition is what catches the next case; a named example only ever covers the one that already came up.
+**Check:** an illustrative example offered to clarify or ground a rule - "e.g. X", "such as A, B, C", "for example …", a named sample case - standing in for a stronger general statement.
+Innocent: the Check lines' own surface-form evidence, which is a reviewer's detection cue rather than guidance being illustrated, and a genuinely closed, finite set with no further members possible.
 
 **No helper tail.**
 Stop the moment the point is made.
@@ -100,7 +101,7 @@ Each is resolved by a stated boundary rather than by judgment in the moment, so 
 | "Explain the why" vs present-tense-only | Rationale (why it behaves this way now) is in scope. Provenance (what it replaced) is not. |
 | "Be useful" vs no helper tail | Usefulness goes in the substance. A closing offer adds nothing the reader doesn't have. |
 | "Be precise about the failure" vs state guidance positively | A negative is allowed when the failure mode is real and tempting, and then only as one standalone guardrail. |
-| Concrete examples aid clarity vs teach the test, not the list | One illustrative example is fine to ground a principle already stated in general terms. The violation is a list that substitutes for the general statement, or keeps growing example-by-example as new cases surface. |
+| Concrete examples aid clarity vs make the general statement carry it | Strengthen the general statement until it needs no example; a wanted example is the signal it's still too weak. The Check lines' surface-form evidence is a reviewer's detection cue, not an example illustrating guidance. |
 
 When a rule and an active writing goal pull opposite ways, the goal usually wins by default, because the goal is what you're holding in mind while composing.
 That is the failure this rubric exists to make checkable, and the reason a reviewer reading cold catches what the author stared past.
