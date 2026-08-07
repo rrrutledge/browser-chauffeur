@@ -66,7 +66,15 @@ for a body phrase — `--list-filters` first to find the bucket's id. Create a n
 `--create-filter --query='…' --archive --mark-read` only for a genuinely new mechanism.
 
 ## DRAFT-MODE CLI commands
-Follow all voice and reply-vs-fresh rules in `email-base.md`, then use these Gmail commands:
+Follow all voice and reply-vs-fresh rules in `email-base.md`, then use these Gmail commands.
+
+**When `GMAIL_SIGNATURE_HTML` is set (see the `gmail` skill's Setup step 5), the `--body-file`
+content must end on its last substantive sentence — never add a name/sign-off line of your own
+(`Russ`, `Thanks, Russ`, a full name/title/org block).** The auto-appended signature already names
+the sender, so writing one in too duplicates it — the `gmail` skill's own docs flag this as the
+single most common mistake when staging a draft here. Check the last line of every `--body-file`
+against this before running `--reply`/`--draft-new`, even when mimicking the signature style of a
+quoted message earlier in the thread.
 
 - **Reply-all on the thread:** `node gmail.js --reply --message-id=<messageId> --body-file=<file>`
   — sets In-Reply-To/References, appends the quoted original, and CCs all original To+CC recipients.
