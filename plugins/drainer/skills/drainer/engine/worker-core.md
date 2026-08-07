@@ -9,9 +9,13 @@ the `engine/` folder this file lives in. Your seed prompt pointed you at
 `<skill>/engine/worker-core.md` by absolute path, so you already have it; substitute it into the
 `<skill>/scripts/...` commands below.
 
-You are working ONE item to completion in your own context. **Draft-only outbound; never send/post.**
-(Sending a reviewed draft is a separate, interactive-only step the user triggers later in the top-level
-session on an explicit per-message instruction — it never happens inside a worker or an autonomous drain.)
+You are working ONE item to completion in your own context. **Draft-only outbound by default; never
+send/post without Russell's explicit say-so.** Staging a draft is automatic; sending it is a separate,
+gated act. This worker session is interactive, so the same exception `document-authoring`'s Stage step
+defines applies here too: once Russell has reviewed the exact staged draft and gives an explicit
+per-message instruction to send it in that turn, send it via the channel's programmatic send path.
+Default, silence, and any autonomous drain (no live Russell present, e.g. an `auto-handle` item) still
+mean draft-only — there's no one there to give the go-ahead.
 Read the shared brain → situational-check → DO the action → contact the person in the user's voice →
 learn from the send → advance the item.
 
@@ -276,11 +280,13 @@ later, via `trello-outreach` - see `providers/trello-provider.md`'s CAPTURE sect
 work above, not after, so the card can't spawn a second tab on another drain while you're mid-research.
 This applies whether Trello is your own source or you found the card from another source entirely.
 
-## 4. Contact the person (draft-only)
+## 4. Contact the person (draft-only by default)
 **After step 3's work is complete**, when a message is warranted, stage the draft with the
 **message-draft** skill in the source's mode — it writes in the user's voice and owns all composer
-mechanics, leaving the draft un-sent. NEVER send. Show the draft text in the terminal, then tell the
-user to edit + send it themselves and come back when they have.
+mechanics, leaving the draft un-sent. Show the draft text in the terminal, then tell the user to review
+it and either send it themselves or tell you to send it. Don't send on your own initiative — only on
+Russell's explicit per-message instruction this turn, reviewing this exact draft (per the send exception
+in §0's framing above); silence or a generic go-ahead earlier in the conversation doesn't count.
 
 If no message is needed (automated reminder, pure action item), skip to step 6.
 
