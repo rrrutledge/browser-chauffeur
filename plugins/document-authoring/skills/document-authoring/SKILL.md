@@ -314,6 +314,7 @@ The specifics that most often separate a message that reads as Russell's from on
 - **Thanking a volunteer, community contributor, or someone Russell leads for real completed work is the exception — warm and effusive is in-voice**, emoji and exclamation marks included ("Thank you for being with us 🙏🙏!!!!", "Sounds good 👏🎉‼️ Thank you for working on it!"). This covers people giving their time freely and staff/team members reporting to him on work that mattered — not paid vendors, arms-length colleagues, or routine replies.
 - **Short acknowledgements stand alone** — "correct", "Sounds good!", "Great work", "Me too", "Will reschedule ✅".
 - **Hedge politely** — "There might be a way.", "It may be available soon…", "I think…"
+  When someone asks about timing and there's no confirmed date, don't leave it out of the answer - give an honest hedged guess ("I don't know the timeline, but hoping X can wrap up next week, then Y the week after").
 - **Warm exclamations used genuinely, not as hype** — "Yes! Very important!", "Great!", "Oh no! Sure.", "Awesome!"
 - **Two spaces after a period** — a real typing habit.
 
