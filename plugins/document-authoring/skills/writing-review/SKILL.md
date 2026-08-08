@@ -33,10 +33,12 @@ The reviewer must come to the text cold.
 1. Collect the text under review.
    For a diff: `git diff <base>..<head>` restricted to prose-bearing files.
    For a document: the file itself.
+   When a diff adds prose to an existing document, also collect that document's current full text, and any docs it closely links to.
+   A diff hunk alone can't show what the rest of the document already covers, and the no-second-explanation rule needs that context.
 2. Skip `.tmp/`.
    Plans, specs, handoffs, and staged commit messages live there, and they are change-explanations rather than shipped artifacts.
    Different rules apply to them, so reviewing them against this rubric produces false findings.
-3. Dispatch a subagent using `reviewer-prompt.md`, giving it the text and the rubric path.
+3. Dispatch a subagent using `reviewer-prompt.md`, giving it the text, the rubric path, and - when step 1 collected them - the full document and linked docs.
 4. Revise against the findings you accept, then dispatch a **fresh** reviewer on the revised text.
    A reviewer that has already seen an earlier draft reads its own prior findings rather than the words in front of it.
 5. Repeat from step 3 until the reviewer returns clean, a finding stands that you genuinely disagree with, or you have run three rounds.

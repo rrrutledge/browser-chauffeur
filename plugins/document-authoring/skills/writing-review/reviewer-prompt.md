@@ -40,6 +40,13 @@ Subagent (general-purpose):
     message, an error string, a counter-example the document is arguing
     against) is reported only if the document presents it as its own voice.
 
+    ## Rest of the document, for the no-second-explanation rule
+
+    [FULL_DOCUMENT_AND_LINKED_PATHS]
+
+    Not itself under review.
+    Report a finding only when the text under review is the duplicate.
+
     ## What to report
 
     Report only what a stated rule covers, and name the rule in every finding.
@@ -71,4 +78,5 @@ Subagent (general-purpose):
 - `[RUBRIC_PATH]` - REQUIRED: absolute path to `authoring-rules/SKILL.md`
 - `[DOCUMENT_AUTHORING_PATH]` - only when reviewing an outward message
 - `[TEXT_OR_DIFF_PATH]` - REQUIRED: the file or diff under review
+- `[FULL_DOCUMENT_AND_LINKED_PATHS]` - only when the diff adds prose to an existing document; omit the whole "Rest of the document" section when reviewing a standalone document or when nothing was added
 - `[MODEL]` - the reviewer model

@@ -57,6 +57,13 @@ The inline copy is what drifts when the source changes, which is the reason you 
 **Check:** a sentence naming a source as authoritative for X ("see Y for Z", "Y is the source of truth for Z") followed by an inline restatement of that same Z.
 Innocent: naming in a few words what the source covers, or quoting one specific value the reader needs right now while pointing to the source for the rest.
 
+**No concept gets a second full explanation elsewhere in the document.**
+When prose is added, check whether the rest of the document, or a closely-linked doc, already explains the same concept in full.
+Two full explanations drift the moment one is updated and the other isn't, whether or not either passage names the other as a source.
+Unify into one explanation and cross-reference the rest.
+**Check:** newly added prose that independently restates a concept - a definition, a scope, an ordering, a rule - that another section or closely-linked doc already explains in full, with neither passage pointing at the other.
+Innocent: a brief cross-reference or one-line recap that names and points to the canonical section; a concept that only shares vocabulary with another, not its substance; a closed list repeated because each entry needs its own concrete values, not a re-explanation of the concept itself.
+
 **No em dash.**
 Use a spaced hyphen ` - ` instead.
 **Check:** the character U+2014 anywhere in authored text.
