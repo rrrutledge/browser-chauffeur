@@ -125,8 +125,16 @@ def main():
         return
 
     prompt_file = write_seed(runtime_dir, repo, cfg)
+    # Name this session "Drainer EOD digest" so it reads recognizably in the tab title, the /resume
+    # picker, and the Remote Control session list on the phone - the same one-line-summary path the
+    # workers use: spawn-tab.cmd's 5th arg -> launch-session.ps1 -SummaryFile -> --name. Remote Control
+    # auto-connects from the remoteControlAtStartup setting on its own; the summary only decides the
+    # label the session carries, giving the digest a descriptive name in place of a random placeholder.
+    summary_file = os.path.join(os.path.dirname(prompt_file), "digest.summary.txt")
+    with open(summary_file, "w", encoding="utf-8") as f:
+        f.write("Drainer EOD digest")
     spawn_cmd = os.path.join(SCRIPT_DIR, "spawn-tab.cmd")
-    spawn_tab([spawn_cmd, "drain:digest", repo, prompt_file, cfg["digest_model"]], cwd=repo)
+    spawn_tab([spawn_cmd, "drain:digest", repo, prompt_file, cfg["digest_model"], summary_file], cwd=repo)
     print(f"Opened digest tab (model {cfg['digest_model']}) for {runtime_dir}.")
 
 
