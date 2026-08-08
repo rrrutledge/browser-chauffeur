@@ -34,6 +34,17 @@ Subagent (general-purpose):
 
     [TEXT_OR_DIFF_PATH]
 
+    When the text under review is a diff, open and read the whole current
+    file for each file the diff adds prose to, and skim any doc it closely
+    links to - the diff alone won't show whether the added prose duplicates a
+    concept already covered elsewhere. Check each added concept for
+    duplication against the rest of the document, applying the rubric's "One
+    concept, one canonical place" rule. Report a duplicate against the added
+    prose even though resolving it may mean unifying with the other copy -
+    surfacing that is what this pass is for. Otherwise stay on the added
+    prose: don't flag pre-existing issues in unchanged text you only read for
+    context.
+
     Prose only. Code, tests, config values, and data are out of scope. Inside a
     prose file, review the prose: a code block quoted as an example is not
     subject to the prose rules, and text quoted from someone else (a cited
