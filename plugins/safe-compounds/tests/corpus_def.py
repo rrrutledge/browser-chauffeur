@@ -131,6 +131,13 @@ CASES = [
     {"id": "cp_from_plugin_cache",
      "command": 'cp "{HOME}/.claude/plugins/cache/repo/browser-chauffeur/1.10.3/templates/x.js" ".tmp/x.js"',
      "tool": "Bash", "expect": "BLOCK"},
+    # Same rule for a plain read (ls, cat, grep, ...) against the cache --
+    # not just file ops. The checked-out repo source has identical content
+    # and isn't gated, so the hook redirects there instead of letting the
+    # command reach the unavoidable native prompt.
+    {"id": "ls_from_plugin_cache",
+     "command": 'ls "{HOME}/.claude/plugins/cache/repo/drainer/1.45.2/skills/drainer/providers"',
+     "tool": "Bash", "expect": "BLOCK"},
 
     # --- enforcement (can't statically validate -> rewrite) -----------------
     {"id": "heredoc", "tool": "Bash", "command": "cat << EOF\nhi\nEOF", "expect": "BLOCK"},

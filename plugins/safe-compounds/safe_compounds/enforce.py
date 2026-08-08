@@ -18,7 +18,6 @@ proceed to approval. Individual detectors are exposed for unit testing.
 import os
 import re
 
-from .commands import CWD_FILE_COMMAND_CONFIG
 from .log import log_debug
 from .paths import read_script_file
 from .scripts import extract_script_filename
@@ -365,21 +364,29 @@ def _subprocess_in_tmp_python(seg, word):
 
 PLUGIN_CACHE_PATTERN = re.compile(r'\.claude[/\\]plugins[/\\]cache[/\\]', re.IGNORECASE)
 
+# Commands that legitimately run a plugin's own script straight from the
+# cache -- the normal, supported way an installed plugin invokes its tooling.
+# Every other command (ls, cat, grep, find, cp, mv, ...) that merely reads or
+# operates on a cache path is a case where Claude should redirect at the
+# checked-out repo source instead of touching the cache at all.
+_PLUGIN_CACHE_INTERPRETER_EXEMPT = {'python', 'python3', 'node'}
+
 
 def detect_plugin_cache_reference(command):
-    """True if a cp/mv/ln/touch/chmod segment references a path under the
-    installed plugin cache (~/.claude/plugins/cache/...). That's the same
-    command family check_cwd_file_command() already scopes destination rules
-    to (CWD_FILE_COMMAND_CONFIG) -- a script interpreter that merely takes a
-    path argument (e.g. `python .../cache/.../script.py`, the normal way a
-    plugin invokes its own tooling) is a different case and isn't included.
-    Claude Code's own permission system always shows a "sensitive file"
-    confirmation for a file-copy operation that touches the cache -- even a
-    read-only source -- independent of whatever this hook decides, and that
-    confirmation can't be suppressed from here. So route around it instead of
-    hitting it on every such command against an installed plugin."""
+    """True if a command segment references a path under the installed
+    plugin cache (~/.claude/plugins/cache/...) other than running a plugin's
+    own script through its interpreter (python/node) -- that's the normal,
+    supported way plugins invoke their own tooling and isn't included.
+    Everything else (ls, cat, grep, find, cp, mv, ln, touch, chmod, ...)
+    against a cache path either hits Claude Code's own "sensitive file"
+    confirmation (which this hook can't suppress) or, even where it
+    wouldn't, reads stale installed content instead of the checked-out repo
+    source. So route around the cache entirely instead of hitting that
+    prompt -- or reading the wrong copy -- on every such command against an
+    installed plugin."""
     for seg in split_segments(command):
-        if first_word(seg.strip()) in CWD_FILE_COMMAND_CONFIG and PLUGIN_CACHE_PATTERN.search(seg):
+        word = first_word(seg.strip())
+        if word and word not in _PLUGIN_CACHE_INTERPRETER_EXEMPT and PLUGIN_CACHE_PATTERN.search(seg):
             return True
     return False
 

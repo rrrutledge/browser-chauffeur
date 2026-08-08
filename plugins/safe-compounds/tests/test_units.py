@@ -817,6 +817,19 @@ class TestPluginCacheBlocking:
         cmd = r'cp "C:\Users\russe\.claude\plugins\cache\repo\plugin\1.0.0\x.js" ".tmp\x.js"'
         assert detect_plugin_cache_reference(cmd) is True
 
+    def test_detects_ls_against_cache(self):
+        cmd = (r'ls "C:\Users\russe\.claude\plugins\cache\repo\drainer\1.45.2\skills\drainer\providers" '
+               r'&& echo "---LOCAL---" && ls "C:\Users\russe\Dev\personal-ai-pod\drainer-local\providers"')
+        assert detect_plugin_cache_reference(cmd) is True
+
+    def test_detects_cat_against_cache(self):
+        cmd = 'cat "~/.claude/plugins/cache/repo/plugin/1.0.0/SKILL.md"'
+        assert detect_plugin_cache_reference(cmd) is True
+
+    def test_detects_grep_against_cache(self):
+        cmd = 'grep -r "TODO" "~/.claude/plugins/cache/repo/plugin/1.0.0/"'
+        assert detect_plugin_cache_reference(cmd) is True
+
     def test_does_not_flag_installed_plugins_dir_outside_cache(self):
         cmd = 'cat "~/.claude/plugins/config.json"'
         assert detect_plugin_cache_reference(cmd) is False
