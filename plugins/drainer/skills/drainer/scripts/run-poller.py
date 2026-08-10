@@ -27,7 +27,7 @@ import shutil
 import subprocess
 import sys
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -357,6 +357,15 @@ def _triage_brain(items, repo, local_dir, providers_by_name):
     )
 
 
+class TriageUnavailable(Exception):
+    """Raised when a single item's triage call couldn't complete for infrastructure reasons — a
+    timeout or a failure to even launch the CLI — as opposed to the CLI running and producing a
+    bad answer. Callers treat this as "couldn't judge this item this cycle", not "the model said
+    act": the item is left off this cycle's verdicts and out of the fail-safe default, so it stays
+    unseen and gets a normal second attempt next cycle instead of a forced needs-you dispatch
+    while the network (or the API) is still down."""
+
+
 def _triage_one(item, brain, repo, model, providers_by_name):
     """Classify ONE item: the shared brain (byte-identical every call this cycle) as the stable
     prefix, this item's payload as the sole variable suffix — so the model's full attention lands
@@ -371,14 +380,19 @@ def _triage_one(item, brain, repo, model, providers_by_name):
                 "subject": item.get("subject"), "received": item.get("received"),
                 "isRead": item.get("isRead"), "preview": preview}]
     prompt = f"{brain}## New item to triage (JSON)\n{json.dumps(payload, indent=2)}\n"
-    res = subprocess.run(
-        # Triage is pure text-in / JSON-out (rubric + context are embedded above), so it needs no
-        # tools and no elevated permissions; --setting-sources "" keeps the call lightweight.
-        [claude, "-p", "--model", model, "--output-format", "json", "--setting-sources", ""],
-        input=prompt,  # prompt goes on stdin (too long for an argv on Windows)
-        capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=repo, timeout=420,
-        creationflags=NO_WINDOW,  # no console flash under pythonw
-    )
+    try:
+        res = subprocess.run(
+            # Triage is pure text-in / JSON-out (rubric + context are embedded above), so it needs no
+            # tools and no elevated permissions; --setting-sources "" keeps the call lightweight.
+            [claude, "-p", "--model", model, "--output-format", "json", "--setting-sources", ""],
+            input=prompt,  # prompt goes on stdin (too long for an argv on Windows)
+            capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=repo, timeout=420,
+            creationflags=NO_WINDOW,  # no console flash under pythonw
+        )
+    except subprocess.TimeoutExpired:
+        raise TriageUnavailable(f"{item['_id']}: triage call timed out after 420s (likely a network drop)")
+    except OSError as e:
+        raise TriageUnavailable(f"{item['_id']}: couldn't launch the triage call: {e}")
     if res.returncode != 0:
         raise SystemExit(f"triage call failed for {item['_id']}: {res.stderr.strip()[:400]}")
     result = res.stdout
@@ -402,23 +416,44 @@ def triage(items, repo, local_dir, model, providers_by_name):
     The first item runs alone so its response finishes writing the shared brain into the API's
     prompt cache; the rest run concurrently (bounded by TRIAGE_PARALLEL_CALLS) so they can read that
     cache instead of racing to write it themselves (see the claude-api skill's prompt-caching guide,
-    "Concurrent-request timing")."""
+    "Concurrent-request timing").
+
+    Returns (verdicts, unavailable_ids). A TriageUnavailable on one item (network drop, CLI wouldn't
+    launch) is caught right here rather than aborting the whole batch: it prints one clear line and
+    that item's id lands in `unavailable_ids` instead of `verdicts`, so every other item's real
+    verdict still ships this cycle. The caller (main) must NOT apply its usual "unjudged -> act"
+    fail-safe to an id in `unavailable_ids` — that fail-safe is for the model quietly skipping an
+    item inside an otherwise-working call, not for the triage subsystem being down; forcing a
+    needs-you dispatch here would act on a guess during an outage instead of just retrying next
+    cycle once the network's back."""
     if not items:
-        return {}
+        return {}, set()
     brain = _triage_brain(items, repo, local_dir, providers_by_name)
-    verdicts = {}
+    verdicts, unavailable = {}, set()
 
     first, rest = items[0], items[1:]
-    v = _triage_one(first, brain, repo, model, providers_by_name)
-    if v.get("id"):
-        verdicts[v["id"]] = v
+    try:
+        v = _triage_one(first, brain, repo, model, providers_by_name)
+        if v.get("id"):
+            verdicts[v["id"]] = v
+    except TriageUnavailable as e:
+        print(f"triage: {e} — skipping this item this cycle, will retry.")
+        unavailable.add(first["_id"])
 
     if rest:
         with ThreadPoolExecutor(max_workers=min(TRIAGE_PARALLEL_CALLS, len(rest))) as pool:
-            for v in pool.map(lambda it: _triage_one(it, brain, repo, model, providers_by_name), rest):
+            futures = {pool.submit(_triage_one, it, brain, repo, model, providers_by_name): it for it in rest}
+            for fut in as_completed(futures):
+                it = futures[fut]
+                try:
+                    v = fut.result()
+                except TriageUnavailable as e:
+                    print(f"triage: {e} — skipping this item this cycle, will retry.")
+                    unavailable.add(it["_id"])
+                    continue
                 if v.get("id"):
                     verdicts[v["id"]] = v
-    return verdicts
+    return verdicts, unavailable
 
 
 # ---------------------------------------------------------------------------- dispatch
@@ -1005,13 +1040,18 @@ def main():
     # --- one combined triage call over all sources (remaining items) ---
     prov = {p.name: p for p in providers}  # name -> adapter (also used below for cross-source dispatch)
     if ai_triage:
-        verdicts = triage(ai_triage, repo, cfg["local_dir"], cfg["triage_model"], prov)
+        verdicts, triage_unavailable_ids = triage(ai_triage, repo, cfg["local_dir"], cfg["triage_model"], prov)
     else:
-        verdicts = {}
+        verdicts, triage_unavailable_ids = {}, set()
     for it in ai_triage:
+        if it["_id"] in triage_unavailable_ids:
+            continue  # infra failure, not a verdict -> excluded from all_new below, retried next cycle
         v = verdicts.get(it["_id"], {"bucket": "needs-you", "kind": "reply"})  # unjudged -> act (fail-safe)
         it["_bucket"], it["_kind"] = v.get("bucket", "needs-you"), v.get("kind")
         it["_complexity"] = v.get("complexity", "simple")
+    if triage_unavailable_ids:
+        all_new = [it for it in all_new if it["_id"] not in triage_unavailable_ids]
+        print(f"  {len(triage_unavailable_ids)} item(s) skipped this cycle (triage unavailable); will retry next cycle.")
     if pre_triaged:
         print(f"  {len(pre_triaged)} trello card(s) -> needs-you (deterministic, skipped AI)")
 
