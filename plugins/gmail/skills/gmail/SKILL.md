@@ -71,7 +71,7 @@ Under `scripts/` (run with `node`):
   - Show one: `node gmail.js --show=<message-id>` (`<message-id>` is the Message-ID header, with the
     angle brackets, e.g. `<abc@mail.gmail.com>`)
   - List drafts: `node gmail.js --list-drafts [--top=30]`
-  - Draft reply (never sends): `node gmail.js --reply --message-id=<id> --body-file=reply.md`
+  - Draft reply (never sends): `node gmail.js --reply --message-id=<id> --body-file=reply.md [--attach=a.pdf,b.png]`
     (appends a threaded draft to `[Gmail]/Drafts` with In-Reply-To/References set + the quoted original).
     `<id>` is looked up in both the **inbox and All Mail**, so pass the **most recent** message in the
     thread to thread off — even one the user sent. When that message is the user's own, the reply keeps its recipients (To/CC)
@@ -85,7 +85,13 @@ Under `scripts/` (run with `node`):
     lists) and the script converts it to HTML via `marked`. HTML tags in the source pass through
     unchanged. **If `GMAIL_SIGNATURE_HTML` is set (see Setup step 5), stop at the last content
     sentence — no sign-off line.**
-  - Draft new (never sends): `node gmail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.md [--cc=c@z]`
+  - **Attach files with `--attach`** — add `--attach=<path>` to `--reply` or `--draft-new` to ride one
+    or more files along on the staged draft (a signed PDF, a rendered invoice, a screenshot), so Russ
+    sends it from Gmail with the attachment already in place.
+    Pass one path, or several as a comma-separated list (`--attach=a.pdf,b.png`).
+    On Windows, give a drive path with forward slashes (`C:/Users/.../file.pdf`) so Node resolves it;
+    an MSYS-style `/c/Users/...` path does not resolve.
+  - Draft new (never sends): `node gmail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.md [--cc=c@z] [--attach=a.pdf,b.png]`
     (`--reply` and `--draft-new` each print a `draft-id:` line — the staged draft's Message-ID. That id
     is what `--send-draft` takes. `--reply` also replaces any prior draft on the same thread, so a thread
     never carries more than one draft.)
