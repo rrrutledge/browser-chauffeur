@@ -76,9 +76,13 @@ Russell decided in advance — do the action without presenting or waiting, then
 Everything below (steps 0–7) is the **needs-you** flow — follow it for every item that is NOT auto-handle.
 
 ## 0. Read first (shared brain)
-- your machine's local **`context.md`** — the user's world, the systems they act in, where things
+- your machine's **`context.md`** — the user's world, the systems they act in, where things
   live, and standing behavioral rules (draft immediately; delete/archive freely — reversible, no need
-  to ask; etc.). This file is machine-local config, not part of the engine (see `templates/context.example.md`).
+  to ask; etc.). This is machine config, not part of the engine (see `templates/context.example.md`).
+  Read it (and every repo-tracked drainer config: `trello-boards.yaml`, `initiatives/<slug>.md`) from
+  the merged-main config repo named in your seed prompt, not the working directory — the config repo is
+  a worktree the poller keeps pinned to origin/main, so you always act on merged config even when the
+  working tree is on a feature branch.
 - the **Voice learning loop** lives in the **document-authoring skill** — append lessons there after each send (step 5).
 - your item's data (source-specific — the captured email/message, or the card data + comments).
 
@@ -161,8 +165,8 @@ the same as confirming nothing happened.
 
 **Also check Trello when the item could be outreach** — an introduction, or a reply from a company or
 individual who might already be a tracked contact — regardless of which source it arrived on. Read
-`<repo>/trello-boards.yaml` (the registry the `trello` source and `trello-outreach` skill use) for an
-existing card naming that company or contact. A match means the item is already tracked: reference the
+`trello-boards.yaml` (the registry the `trello` source and `trello-outreach` skill use — from the
+merged-main config repo named in your seed, per step 0) for an existing card naming that company or contact. A match means the item is already tracked: reference the
 card in what you present (and consider updating it — bump the due date, add a comment) instead of acting
 as if this were unstarted outreach. No match → treat it as genuinely new. This isn't source-specific, so
 it applies the same way no matter which provider captured the item.

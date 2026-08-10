@@ -22,7 +22,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 SKILL_DIR = os.path.dirname(SCRIPT_DIR)
 PROVIDERS_DIR = os.path.join(SKILL_DIR, "providers")
 sys.path.insert(0, SCRIPT_DIR)
-from drainer_config import read_config  # noqa: E402  (shared .claude/drainer.local.md reader)
+from drainer_config import read_config, ensure_main_worktree  # noqa: E402  (shared reader + main-pinned config worktree)
 from provider_base import run_node, spawn_tab  # noqa: E402  (shared subprocess + tab-spawn helpers)
 
 SEEN_STATE = os.path.join(SCRIPT_DIR, "seen-state.js")
@@ -116,8 +116,13 @@ def main():
     ap.add_argument("--repo", required=True)
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
-    repo = os.path.abspath(args.repo)
-    cfg = read_config(repo)
+    # Config is read from the drainer-owned worktree pinned to origin/main (so a feature branch left
+    # checked out at the real repo root can't stale the digest's view); the digest tab itself runs with
+    # cwd = the real repo, keeping its machine-local settings. Runtime state stays at the real repo too.
+    source_repo = os.path.abspath(args.repo)
+    config_repo = ensure_main_worktree(source_repo)
+    repo = source_repo
+    cfg = read_config(config_repo, runtime_root=source_repo)
     runtime_dir = cfg["runtime_dir"]
 
     if args.dry_run:

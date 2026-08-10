@@ -2,11 +2,61 @@
 
 Both entry points use it: the fast-loop poller (`run-poller.py`) and the once-a-day digest
 launcher (`run-digest.py`). Keeping the parse in one place means the two never drift on knob
-names or defaults. Everything here is deterministic string/int parsing of the YAML frontmatter;
-no source mechanics live here.
+names or defaults. Everything here is deterministic string/int parsing of the YAML frontmatter.
+
+It also resolves the CONFIG ROOT the poller/digest read from (`ensure_main_worktree`): a drainer-owned
+git worktree pinned to origin/main, so config always reflects merged main regardless of which branch a
+human session left checked out at the real repo root.
 """
 import os
 import re
+import subprocess
+
+# The drainer-owned config worktree, pinned to origin/main. A stable, machine-local path next to the
+# scheduled-task launcher (`~/.claude/drainer/`), independent of where the repo itself lives.
+DEFAULT_MAIN_WORKTREE = os.path.join(
+    os.path.expanduser("~"), ".claude", "drainer", "main-worktree")
+
+
+def _git(args, timeout=60):
+    """Run one git command, raising on a nonzero exit (so the caller's try/except can fall back).
+    creationflags keeps it window-less under the pythonw poller."""
+    return subprocess.run(
+        ["git", *args], capture_output=True, text=True, timeout=timeout, check=True,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+    )
+
+
+def ensure_main_worktree(source_repo, worktree=DEFAULT_MAIN_WORKTREE):
+    """Return the path the poller/digest should read CONFIG from: a drainer-owned git worktree pinned
+    to origin/main, refreshed to the latest merged main on every call.
+
+    Why this exists: the poller/digest read their config (drainer.local.md knobs, context.md, provider
+    overlays, trello-boards.yaml, initiatives/) from a working tree. Pointed at the real repo root, that
+    tree sits on whatever branch a human session last checked out, so a merged config change stays
+    dormant until someone restores main by hand. A worktree that ONLY the drainer owns, and that only
+    ever holds origin/main, removes the coupling: config always reflects merged main.
+
+    Resetting it every cycle is safe because nothing writes to it in place — worker tabs run with
+    cwd = the real repo, and (per the git-workflow skill) any branch work creates its own worktree
+    rather than checking out here, so this one stays a clean detached origin/main.
+
+    Fail-safe: on any git error (offline, no origin, or a refresh race between the poller and the daily
+    digest) this returns `source_repo`, so the drainer still runs against the real repo — the prior
+    behavior — rather than not running at all.
+    """
+    try:
+        _git(["-C", source_repo, "fetch", "--quiet", "origin", "main"], timeout=90)
+        # A registered worktree carries a `.git` FILE (a gitdir pointer), not a directory.
+        if os.path.isfile(os.path.join(worktree, ".git")):
+            _git(["-C", worktree, "checkout", "--detach", "--force", "origin/main"])
+        else:
+            os.makedirs(os.path.dirname(worktree), exist_ok=True)  # parent only; git creates the leaf
+            # --detach so no local branch can diverge; --force tolerates a stale registration at the path.
+            _git(["-C", source_repo, "worktree", "add", "--detach", "--force", worktree, "origin/main"])
+        return worktree
+    except (OSError, subprocess.SubprocessError):
+        return source_repo
 
 
 def _read_local(repo):
@@ -37,9 +87,21 @@ def parse_provider_names(text):
     return names
 
 
-def read_config(repo):
-    """Pull the scalar knobs + enabled provider names out of .claude/drainer.local.md frontmatter."""
+def read_config(repo, runtime_root=None):
+    """Pull the scalar knobs + enabled provider names out of .claude/drainer.local.md frontmatter.
+
+    `repo` is the CONFIG root — under the main-worktree setup this is the drainer-owned worktree pinned
+    to origin/main (see `ensure_main_worktree`), so a feature branch left checked out at the real repo
+    root can't make the poller read stale config. Everything config-shaped resolves against it:
+    drainer.local.md itself, a relative `local_dir` (context.md, provider overlays), and `cfg["repo"]`
+    (which the trello adapter re-reads for trello-boards.yaml).
+
+    `runtime_root` is where RUNTIME state lives (seen.json, provider-health.json, digest-queue.json,
+    seeds/, items/) — the REAL repo, passed separately so a relative `runtime_dir` stays anchored there
+    and never migrates into the throwaway worktree. Defaults to `repo` when omitted (single-root callers
+    and tests), preserving the original behavior."""
     text = _read_local(repo)
+    runtime_root = runtime_root or repo
 
     def scalar(key, default):
         m = re.search(rf"^\s*{re.escape(key)}\s*:\s*(.+?)\s*$", text, re.MULTILINE)
@@ -47,12 +109,18 @@ def read_config(repo):
 
     runtime_dir = scalar("runtime_dir", ".tmp/drainer")
     if not os.path.isabs(runtime_dir):
-        runtime_dir = os.path.join(repo, runtime_dir)
+        runtime_dir = os.path.join(runtime_root, runtime_dir)
+    # A relative local_dir resolves against the config root (the main-worktree), so context.md and the
+    # provider overlays come from merged main; an absolute local_dir is honored verbatim (the pre-setup
+    # form, and the safe no-op during rollout before drainer.local.md is switched to the relative value).
+    local_dir = scalar("local_dir", "drainer-local")
+    if not os.path.isabs(local_dir):
+        local_dir = os.path.join(repo, local_dir)
     return {
         "providers": parse_provider_names(text),
         "repo": repo,  # so adapters that drain configured targets (e.g. trello boards) can re-read this file
         "runtime_dir": runtime_dir,
-        "local_dir": scalar("local_dir", os.path.join(repo, "drainer-local")),
+        "local_dir": local_dir,
         # Target total open Claude Code tabs system-wide — drainer worker tabs, the drainer itself,
         # and any tab Russell opened by hand. The poller drains as fast as possible (no artificial
         # per-cycle throttle) until the live tab count reaches this, then holds new dispatches until

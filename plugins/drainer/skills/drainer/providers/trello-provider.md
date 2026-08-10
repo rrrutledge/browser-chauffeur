@@ -160,7 +160,9 @@ drafting:
 1. **Take the resolved slug.** The item's `initiative` field (set by the adapter from the
    initiative-colored label, else the board default). Empty → no initiative; proceed as a plain card
    (draft from the card/thread alone, ask the user if blank).
-2. **Open `initiatives/<slug>.md`** from the repo and read its content. If it carries a `source:`
+2. **Open `initiatives/<slug>.md`** from the merged-main config repo named in your seed prompt (not the
+   working directory — the config repo is a worktree pinned to origin/main, so a merged initiative doc is
+   read even when the working tree is on a feature branch) and read its content. If it carries a `source:`
    frontmatter pointer, the content lives there instead — fetch it by shape:
    - an **http(s) URL** → a Confluence page (`*.atlassian.net/wiki`) via Atlassian MCP or the
      `confluence-investigator` skill (extract the numeric page id from the URL when one is needed); any
