@@ -33,8 +33,8 @@ The reviewer must come to the text cold.
 1. Collect the text under review.
    For a diff: `git diff <base>..<head>` restricted to prose-bearing files.
    For a document: the file itself.
-   When a diff adds prose to an existing document, also collect that document's current full text, and any docs it closely links to.
-   A diff hunk alone can't show what the rest of the document already covers, and the no-second-explanation rule needs that context.
+   Whenever any part of a diff is a wholly new passage in an existing document - even alongside other kinds of changes in the same diff - also collect that document's current full text, and any docs it closely links to.
+   A diff hunk alone can't show what the rest of the document already covers, and the no-second-explanation rule needs that context for the new passage.
 2. Skip `.tmp/`.
    Plans, specs, handoffs, and staged commit messages live there, and they are change-explanations rather than shipped artifacts.
    Different rules apply to them, so reviewing them against this rubric produces false findings.

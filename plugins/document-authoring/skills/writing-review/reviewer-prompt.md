@@ -45,7 +45,7 @@ Subagent (general-purpose):
     [FULL_DOCUMENT_AND_LINKED_PATHS]
 
     Not itself under review.
-    Report a finding only when the text under review is the duplicate.
+    Report a finding only when a wholly new passage in the text above is the duplicate.
 
     ## What to report
 
@@ -78,5 +78,5 @@ Subagent (general-purpose):
 - `[RUBRIC_PATH]` - REQUIRED: absolute path to `authoring-rules/SKILL.md`
 - `[DOCUMENT_AUTHORING_PATH]` - only when reviewing an outward message
 - `[TEXT_OR_DIFF_PATH]` - REQUIRED: the file or diff under review
-- `[FULL_DOCUMENT_AND_LINKED_PATHS]` - only when the diff adds prose to an existing document; omit the whole "Rest of the document" section when reviewing a standalone document or when nothing was added
+- `[FULL_DOCUMENT_AND_LINKED_PATHS]` - only when step 1 of `writing-review/SKILL.md` collected them; omit the whole "Rest of the document" section when it didn't
 - `[MODEL]` - the reviewer model
