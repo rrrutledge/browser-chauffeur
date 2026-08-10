@@ -1,10 +1,16 @@
 ---
-description: Explain why a command needed manual approval, whether it's safe, and whether safe-compounds can be taught to auto-approve it
+description: Explain why a command fell through to a manual approval prompt, whether it's safe, and whether safe-compounds can be taught to auto-approve it
 ---
 
-Russell just had to manually approve a tool call that safe-compounds didn't auto-approve, and
-wants to know why, whether it was actually safe, and whether the hook can be taught to allow it
-next time.
+Russell just had to manually approve a tool call — safe-compounds gave it no verdict at all and
+let the normal permission dialog ask him. He wants to know why, whether it was actually safe,
+and whether the hook can be taught to allow it next time.
+
+This command is only for that silent-PROMPT case. It is **not** for a command safe-compounds
+BLOCKed — a block already ships its own corrective message explaining exactly why and how to
+rewrite it, so there's nothing left to diagnose there. If what Russell pastes turns out to be a
+block (deny with a reason), say so and point him at that message instead of running the steps
+below.
 
 The command or tool call he's asking about: $ARGUMENTS
 
@@ -35,12 +41,10 @@ alone, since behavior can drift from the comments:
 - **EnterWorktree/ExitWorktree** — `worktree_tool.py` (`classify_enter_worktree`,
   `classify_exit_worktree`).
 
-Pin down the *exact* function and condition that produced the outcome:
-- **BLOCK** (a deny with a corrective message) — quote the message and the code path that
-  produced it.
-- **PROMPT** (fell through to a manual prompt with no output) — identify which check failed to
-  match, i.e. which allowlist the command *isn't* in, or which condition made a normally-trusted
-  form untrusted (e.g. a destructive flag, an unregistered path, a race between two tool calls).
+Pin down the *exact* check that failed to match — i.e. which allowlist the command *isn't* in,
+or which condition made a normally-trusted form untrusted (e.g. a destructive flag, an
+unregistered path, a race between two tool calls). If tracing instead turns up a BLOCK, stop and
+redirect Russell to that message per the scope note above — don't run the rest of these steps.
 
 If it's plausible the failure was a one-off ordering/timing artifact rather than a missing
 allowlist entry (e.g. a path-existence check running before a preceding command finished, as can
