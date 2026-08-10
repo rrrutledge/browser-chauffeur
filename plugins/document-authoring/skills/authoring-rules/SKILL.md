@@ -51,11 +51,13 @@ Treat any sentence after the main point as guilty until proven necessary: cut re
 **Check:** does this sentence hand the reader something they don't already have? Watch for a close starting "happy to", "let me know if you'd like", "if you'd rather", "hope this helps", "feel free to"; a final paragraph restating what was already said; unrequested reassurance.
 Innocent: a genuinely open decision, asked as one direct question and stopped there.
 
-**Point to a source of truth; don't restate what it holds.**
-When you name a canonical source for something - a registry, a config file, another doc - let the pointer carry it; don't also summarize the content you just delegated there.
-The inline copy is what drifts when the source changes, which is the reason you pointed at the source in the first place.
-**Check:** a sentence naming a source as authoritative for X ("see Y for Z", "Y is the source of truth for Z") followed by an inline restatement of that same Z.
-Innocent: naming in a few words what the source covers, or quoting one specific value the reader needs right now while pointing to the source for the rest.
+**One concept, one canonical place; everywhere else points to it.**
+A concept gets a single home that states it in full; other sections of the same document, and closely-linked docs, reference that home rather than restating it.
+When you name a canonical source - a registry, a config file, another doc - let the pointer carry it; don't also summarize the content you delegated there.
+When a concept the document already covers is asserted again somewhere else - a second full explanation, or a partial re-listing that states the same facts in its own words - unify the two and have one cross-reference the other, so a later change touches one place instead of leaving copies that drift apart.
+The test is whether the second mention can drift from the first: a pointer or a recap that defers to the canonical spot can't, an independent restatement can.
+**Check:** the same concept asserted independently in two sections, or across two closely-linked docs, with neither deferring to the other - including two lists or definitions of the same thing whose wording already differs; or a sentence naming a source as authoritative for X ("see Y for Z", "Y is the source of truth for Z") followed by an inline restatement of that same X.
+Innocent: a brief cross-reference or a one-line recap that points to the canonical explanation rather than re-deriving it; naming in a few words what a source covers; quoting one specific value the reader needs right now while pointing to the source for the rest.
 
 **No em dash.**
 Use a spaced hyphen ` - ` instead.
