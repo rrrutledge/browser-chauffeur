@@ -26,20 +26,18 @@ the guaranteed-visible channel that closes that gap. Before anything else:
   failure is just a blip; a sustained streak means it's stuck). For each, give Russell a one-step fix:
   - Name the provider, when it last drained (`last_ok_ts`) and how many cycles it's been failing.
   - Quote `last_error` and read it as the action to take, keyed off `last_error_kind`:
-    - **`auth`** - try to self-heal before asking Russell for anything.
-      Read `<providers_dir>/<source>-provider.md` → RECOVER (and the machine's drainer `context.md`, which
-      names the exact command): if the provider documents a **non-interactive** refresh - one that uses a
-      stored refresh-token plus an app secret and needs no human consent - run it now, then report the
-      outcome. On success just say so ("auto-refreshed - the next poller cycle recovers") and ask Russell
-      for nothing. Only when there is no non-interactive refresh, or the fix is a value only Russell can
-      mint, name the likely credential and how he refreshes it: gmail → `GMAIL_APP_PASSWORD`; slack →
-      `SLACK_BOT_TOKEN` / `SLACK_COOKIE_D`; outlook-graph → re-auth the ms-graph token cache; trello →
-      `TRELLO_API_KEY` / `TRELLO_TOKEN` (all User-scope env vars), and let the next poller cycle recover
-      once he has set it. A refresh that returns `invalid_grant` is the refresh token itself expiring -
-      treat that as interactive (a browser re-auth for Russell), not something to retry silently.
+    - **`auth`** (transient — self-heals once creds are refreshed): name the likely credential and how
+      to refresh it. gmail → `GMAIL_APP_PASSWORD`; slack → `SLACK_BOT_TOKEN` / `SLACK_COOKIE_D`;
+      outlook-graph → re-auth the ms-graph token cache; trello → `TRELLO_API_KEY` / `TRELLO_TOKEN`.
+      All are User-scope env vars — refresh, and the next poller cycle recovers on its own.
     - **`config`** (a helper script/util couldn't be located — won't self-heal): flag it distinctly as a
       deploy problem, not an expired credential — the adapter can't find its `*.js`/util, likely a
       missing or mis-pointed plugin install.
+    - **`unknown`** (an SSL/TLS/connection error - e.g. `SSL EOF`, `fetch failed`) - a transient network
+      blip, not a credential. Adapters already refresh their own tokens each cycle, so an error that
+      survives repeated cycles is the transport, not the token. Note it and watch the next cycle; do not
+      present it as a token to refresh. It's worth a closer look only if it persists across cycles the
+      machine was actually awake and online for.
   - Example: *"⚠️ **gmail** hasn't drained since 2026-06-19 14:05 — 38 cycles failing: `gmail enumerate
     failed (auth/IMAP?): …`. Likely an expired GMAIL_APP_PASSWORD (User-scope env var) — refresh it and
     the next cycle recovers."*
@@ -49,9 +47,8 @@ the guaranteed-visible channel that closes that gap. Before anything else:
   hung (check `schtasks /query /tn DrainerKeeper /v` and running `pythonw`). A fresh `last_run_ts` with an
   old `last_drained_ts` is just an idle/away machine — benign, say nothing.
 
-Health clears nothing from the queue - the one action it may take on its own is running a provider's
-non-interactive refresh (above); everything else is surfaced for Russell. It just makes a silently-dead
-provider impossible to miss. Then continue to the queue below.
+This is informational — there's nothing to clear. It just makes a silently-dead provider impossible to
+miss. Then continue to the queue below.
 
 ## 1. Gather (deterministic — just read state)
 
