@@ -108,19 +108,16 @@ slug, else the board default).
 The card itself is the item, and **we own it** — unlike inbound mail/Teams, the same card recurs every
 follow-up, so the card is a durable cache for everything needed to act.
 
-**Claim it before anything else.**
-Bump every date field that is currently now-or-earlier - before reading further or starting any
-research - via the `trello` skill, so the card cannot re-surface on another drain while this work is in
-flight.
-ENUMERATE's startable rule is an **OR** over both fields (Start now-or-earlier, OR Due now-or-earlier),
-so a claim that pushes only one still-past field out leaves the card startable through the other.
-Most claims are just `due` - a pure outreach card carries no `start` at all (see STARTABLE-TASK MODEL,
-"Outreach cards set no `Start`").
-But a task card can also carry a `start` left in the past - e.g. an old ⏳ Waiting ping-back date that
-was never cleared once active work began - and bumping only `due` on that card does nothing: ENUMERATE
-still re-queues it off the stale `start`, spinning up a duplicate worker on top of whatever's already
-mid-flight.
-Check both fields and bump whichever (or both) sit now-or-earlier.
+**The card is already protected against a duplicate worker — start research directly, nothing needs
+claiming first.** The poller records this card's id in seen-state the moment it dispatches this session,
+and every later cycle drops the card as already-seen for as long as its go-live date holds. Only a CLEAR
+mints a fresh id — the go-live date is part of the id (see ENUMERATE), and CLEAR is what bumps it out — so
+the card resurfaces on its new date, never while this work is in flight.
+
+**Leave Start/Due untouched until CLEAR.** Bumping a date to "claim" the card forges the very id CLEAR is
+meant to mint later — one seen-state never recorded — so the next cycle reads a brand-new item and spawns
+a second worker on top of this one. The go-live date moves only when the work advances (CLEAR), never to
+mark a card in-flight.
 
 Read its description + structured comments FIRST; then run INITIATIVE-LOOKUP for program context; act on
 that before re-discovering anything. Write `items/<id>.json`:
