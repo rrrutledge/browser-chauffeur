@@ -37,7 +37,7 @@ sys.path.insert(0, SCRIPT_DIR)
 import presence  # noqa: E402  (sibling module)
 from provider_base import run_node, NO_WINDOW, ProviderError, spawn_tab, spawn_silent, NEUTRAL_PRIORITY_BAND  # noqa: E402  (subprocess helper + typed provider failure)
 _LIVE_UNSET = object()  # reconcile_unhandled sentinel: scan for live sessions itself unless one is passed in
-from drainer_config import read_config, find_provider_file  # noqa: E402  (shared .claude/drainer.local.md reader + provider resolution)
+from drainer_config import read_config, find_provider_file, ensure_main_worktree  # noqa: E402  (shared reader + provider resolution + main-pinned config worktree)
 
 SEEN_STATE = os.path.join(SCRIPT_DIR, "seen-state.js")
 HEALTH_FILE = "provider-health.json"
@@ -659,7 +659,7 @@ def _spawn_scan_diagnostic(repo, runtime_dir, worker_model):
     )
 
 
-def spawn_worker(iid, json_file, repo, runtime_dir, worker_model, local_dir):
+def spawn_worker(iid, json_file, repo, runtime_dir, worker_model, local_dir, config_repo):
     seeds = os.path.join(runtime_dir, "seeds")
     os.makedirs(seeds, exist_ok=True)
     prompt_file = os.path.join(seeds, f"{iid}.prompt.txt")
@@ -674,6 +674,12 @@ def spawn_worker(iid, json_file, repo, runtime_dir, worker_model, local_dir):
             "The item's `source` field names the provider — read its `<source>-provider.md` (in "
             f"`{PROVIDERS_DIR}`, or `{local_providers}` for a machine-local provider) for its "
             "CLEAR and DRAFT-MODE and use them. Draft-only: never send or post.\n"
+            # Repo-tracked config the item's handling depends on — above all `initiatives/<slug>.md`
+            # for a Trello card's program context (per the provider doc's INITIATIVE-LOOKUP) — is read
+            # from the merged-main config repo, not the working directory, so a merged config change is
+            # never missed when the real repo is on a feature branch.
+            f"Read repo-tracked drainer config (e.g. `initiatives/<slug>.md`) from the merged-main "
+            f"config repo `{config_repo}`.\n"
         )
     # A one-line summary leads the seed so the worker's Claude session self-titles the tab descriptively
     # while keeping its attention star (the launcher prepends this; see launch-session.ps1 -SummaryFile).
@@ -948,8 +954,14 @@ def main():
     ap.add_argument("--repo", required=True)
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
-    repo = os.path.abspath(args.repo)
-    cfg = read_config(repo)
+    # source_repo is the real repo: runtime state, worker/triage cwd, and the git origin main is
+    # fetched from live there. config_repo is the drainer-owned worktree pinned to origin/main that all
+    # CONFIG is read from, so a feature branch left checked out at the real repo root can't make the
+    # poller act on stale config. On any git failure ensure_main_worktree returns source_repo (fail-safe).
+    source_repo = os.path.abspath(args.repo)
+    config_repo = ensure_main_worktree(source_repo)
+    repo = source_repo  # worker/triage/resume cwd stays the real repo (keeps machine-local settings)
+    cfg = read_config(config_repo, runtime_root=source_repo)
 
     health = load_health(cfg["runtime_dir"])
     idle = locked = None
@@ -1171,7 +1183,7 @@ def main():
         model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
         it["_correspondent"] = provider.correspondent(it)
         json_file = provider.capture(it, iid, cfg["runtime_dir"])
-        spawn_worker(iid, json_file, repo, cfg["runtime_dir"], model, cfg["local_dir"])
+        spawn_worker(iid, json_file, repo, cfg["runtime_dir"], model, cfg["local_dir"], config_repo)
         seen_state("record", cfg["runtime_dir"], it["_source"], iid, "auto-handle")
         if it["_correspondent"]:
             active_correspondents.add(it["_correspondent"])
@@ -1196,7 +1208,7 @@ def main():
             spawn_resume_tab(it["session_id"], it["cwd"], repo)
         else:
             model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
-            spawn_worker(iid, json_file, repo, cfg["runtime_dir"], model, cfg["local_dir"])
+            spawn_worker(iid, json_file, repo, cfg["runtime_dir"], model, cfg["local_dir"], config_repo)
         seen_state("record", cfg["runtime_dir"], it["_source"], iid, "needs-you")
         if corr:
             active_correspondents.add(corr)
