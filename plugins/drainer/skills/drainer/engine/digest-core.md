@@ -33,6 +33,11 @@ the guaranteed-visible channel that closes that gap. Before anything else:
     - **`config`** (a helper script/util couldn't be located — won't self-heal): flag it distinctly as a
       deploy problem, not an expired credential — the adapter can't find its `*.js`/util, likely a
       missing or mis-pointed plugin install.
+    - **`unknown`** (an SSL/TLS/connection error - e.g. `SSL EOF`, `fetch failed`) - a transient network
+      blip, not a credential. Adapters already refresh their own tokens each cycle, so an error that
+      survives repeated cycles is the transport, not the token. Note it and watch the next cycle; do not
+      present it as a token to refresh. It's worth a closer look only if it persists across cycles the
+      machine was actually awake and online for.
   - Example: *"⚠️ **gmail** hasn't drained since 2026-06-19 14:05 — 38 cycles failing: `gmail enumerate
     failed (auth/IMAP?): …`. Likely an expired GMAIL_APP_PASSWORD (User-scope env var) — refresh it and
     the next cycle recovers."*
