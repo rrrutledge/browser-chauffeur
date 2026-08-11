@@ -274,11 +274,13 @@ complete.
 Anything irreversible / outbound-to-others waits for the user's explicit OK; safe, reversible work
 proceeds immediately.
 
-**Adopting a card from §2's check claims it the same way Trello's own CAPTURE does.**
-When §2's lookup finds an existing Trello card for this item, push its `due` date out (tomorrow or
-later, via `trello-outreach` - see `providers/trello-provider.md`'s CAPTURE section) before starting the
-work above, not after, so the card can't spawn a second tab on another drain while you're mid-research.
-This applies whether Trello is your own source or you found the card from another source entirely.
+**A Trello card you adopt from §2's check needs no claiming — leave its dates alone.**
+When §2's lookup finds an existing Trello card for this item, do the work above without touching the
+card's Start/Due. Bumping a date to "claim" it only forges a fresh id that escapes seen-state and spawns
+the very second tab you were trying to avoid (see `providers/trello-provider.md`'s CAPTURE section); a
+card the poller happens to dispatch in parallel is harmless anyway, since each worker's situational check
+resolves a duplicate quietly. Advance the card (CLEAR) at the end — the one place its dates move. This
+applies whether Trello is your own source or you found the card from another source entirely.
 
 ## 4. Contact the person (draft-only by default)
 **After step 3's work is complete**, when a message is warranted, stage the draft with the
@@ -352,6 +354,17 @@ write, a decision only he can make - filing a card for it and moving on leaves i
 ask him for the missing content live, start the piece you can start without him. Don't create a card for
 this kind of work unless he's told you, in this session, that he wants to pick it up later rather than
 now - and even then, per the next section, that doesn't clear you to close the tab.
+
+**A Trello card you create mid-session gets a future next-action date — never today.** The poller holds
+no seen-state entry for a card it never dispatched, so a freshly-created card that's startable now
+(Start/Due now-or-earlier) is eligible for its own worker tab on the very next cycle — a second tab
+launched onto work this session is already doing. Set the card's next-action date out to when the work
+should genuinely next surface (the real follow-up date if you know it, otherwise tomorrow or later); it
+then stays out of the queue until this session has set that date for real or closed, and the poller picks
+it up on its own terms once the date arrives. This is the created card's correct starting date, not a
+claim bump on a card the poller already owns — a distinction that matters, since bumping a
+poller-dispatched card's date instead forges an id that escapes seen-state (see the trello provider's
+CAPTURE).
 
 **Before presenting, check whether there's anything left TO present** — see §6a. If there genuinely
 isn't, self-close there instead of continuing below.
