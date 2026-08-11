@@ -358,12 +358,13 @@ def _triage_brain(items, repo, local_dir, providers_by_name):
 
 
 class TriageUnavailable(Exception):
-    """Raised when a single item's triage call couldn't complete for infrastructure reasons — a
-    timeout or a failure to even launch the CLI — as opposed to the CLI running and producing a
-    bad answer. Callers treat this as "couldn't judge this item this cycle", not "the model said
-    act": the item is left off this cycle's verdicts and out of the fail-safe default, so it stays
-    unseen and gets a normal second attempt next cycle instead of a forced needs-you dispatch
-    while the network (or the API) is still down."""
+    """Raised when a single item's triage call couldn't produce a usable verdict — a timeout, a
+    failure to even launch the CLI, a nonzero CLI exit, or the CLI running but replying with
+    something that doesn't parse into the expected verdict shape. Callers treat this as "couldn't
+    judge this item this cycle", not "the model said act": the item is left off this cycle's
+    verdicts and out of the fail-safe default, so it stays unseen and gets a normal second attempt
+    next cycle instead of a forced needs-you dispatch — and, critically, without taking the rest
+    of the cycle's dispatch down with it."""
 
 
 def _triage_one(item, brain, repo, model, providers_by_name):
@@ -394,17 +395,29 @@ def _triage_one(item, brain, repo, model, providers_by_name):
     except OSError as e:
         raise TriageUnavailable(f"{item['_id']}: couldn't launch the triage call: {e}")
     if res.returncode != 0:
-        raise SystemExit(f"triage call failed for {item['_id']}: {res.stderr.strip()[:400]}")
+        raise TriageUnavailable(f"{item['_id']}: triage call failed: {res.stderr.strip()[:400]}")
     result = res.stdout
     try:  # claude --output-format json wraps the text in {"result": "..."}
         result = json.loads(res.stdout).get("result", res.stdout)
     except ValueError:
         pass
+    # The model is asked for a `[...]`-wrapped verdict (since `_triage_one` only ever sends one item,
+    # that's a single-element array) but occasionally replies with a bare `{...}` object instead — a
+    # normal, occasional formatting variance, not an infra failure, so both shapes are accepted here.
     m = re.search(r"\[.*\]", result, re.DOTALL)
-    if not m:
-        raise SystemExit(f"triage returned no JSON array for {item['_id']}:\n{result[:400]}")
-    parsed = json.loads(m.group(0))
-    return parsed[0] if parsed else {}
+    if m:
+        try:
+            parsed = json.loads(m.group(0))
+        except ValueError as e:
+            raise TriageUnavailable(f"{item['_id']}: triage returned unparseable JSON array: {e}")
+        return parsed[0] if parsed else {}
+    m = re.search(r"\{.*\}", result, re.DOTALL)
+    if m:
+        try:
+            return json.loads(m.group(0))
+        except ValueError as e:
+            raise TriageUnavailable(f"{item['_id']}: triage returned unparseable JSON object: {e}")
+    raise TriageUnavailable(f"{item['_id']}: triage returned no JSON for this item:\n{result[:400]}")
 
 
 def triage(items, repo, local_dir, model, providers_by_name):
