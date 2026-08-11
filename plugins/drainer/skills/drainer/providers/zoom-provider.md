@@ -75,6 +75,15 @@ Never surface a raw "token expired" error to the user — refresh (or re-auth) a
 **Zoom OAuth app scopes** the adapter needs: `meeting:read:summary`, `meeting:read:list_meetings`,
 `meeting:read:list_past_instances`, and `user:read` (for the `/users/me` owner-name fallback).
 
+## RECOVER
+The adapter **auto-refreshes the access token every cycle** (AUTH-GLANCE), so a *sustained* zoom failure is
+usually a network/TLS blip (`unknown` kind, e.g. an `SSL EOF`), not an expired token - a plain retry, which
+the next poller cycle already does on its own, is the fix. When the failure is a genuine token expiry, the
+non-interactive recovery is to re-run the OAuth refresh (stored refresh-token + `ZOOM_CLIENT_SECRET`); the
+machine's standalone command for that is named in its drainer `context.md`. The one case that needs Russell
+is a refresh returning `invalid_grant` - the refresh token itself expired (~90 days) - which needs a browser
+re-authorization of the Zoom OAuth app to mint a fresh refresh token, so surface it rather than retrying.
+
 ## CAPTURE (the item shape the worker reads)
 The adapter writes two files per dispatched item (`zoom-adapter.py` → `capture`):
 - `items/<id>.zoom.md` — header (Meeting, When, Summary doc, Task link, MeetingId, StepId) + (for an action
