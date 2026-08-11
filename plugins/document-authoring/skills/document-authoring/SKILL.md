@@ -207,7 +207,7 @@ The specifics that most often separate a message that reads as Russell's from on
   In outreach re-engagement, lead with one open question and stop; the invitation to participate carries the ask on its own.
   Say the thing plainly rather than reaching for a punchy interjection, a colorful idiom, or a dry aside — "she had a tough first week", not "she got a rude awakening" followed by "so that was interesting."
 - **Speak as the org when you represent it, and add a brief warm aside.**
-  Writing on behalf of an organization Russell leads, use "we/us" for its appreciation, questions, and position; open with a short human acknowledgment before getting to the point.
+  Writing on behalf of an organization Russell leads, use "we/us" for its appreciation, questions, position, and ongoing activity ("we're putting together the August newsletter", not "putting together..."); open with a short human acknowledgment before getting to the point.
 - **Never reference coffee, alcohol, or drinks** — for Russell or as a suggestion to others.
   Pick a neutral alternative or omit.
 - **Confirming a factual yes/no is where the helper tail bites hardest** (the rule itself is in `authoring-rules`).
