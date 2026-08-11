@@ -398,6 +398,7 @@ A second exception is personal-friend banter (per **Register** above) — joking
 - Open with "Hey folks / everyone / guys", run into the first sentence with ` - `.
 - **When sharing news or status, open with the candid first-person account** — what happened and how you found it — not a packaged framing line ("wanted to give you a heads-up", "I'd rather you hear it from me").
 - State what you did or want, then a tight bulleted list of specifics if needed, then a low-pressure call for feedback.
+- **Preliminary, not-yet-final news is shared tentatively and lean** — hedge that it isn't official yet ("still going through the paperwork to make it official, but a positive direction!") and leave out the hard specifics (a sponsorship's dollar amount) and the individual name-credits that a finalized or public announcement would carry.
 - End with what happens next + "let me know".
 - *Sample:* "Hey folks, I'm working with Adam on a training curriculum for our engineers on having a quality mindset… I prepared [Quality Mindset Training — Session Agenda](URL) with a draft. Is anyone here interested in reviewing and sharing feedback?"
 
