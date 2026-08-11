@@ -24,8 +24,15 @@ providers:
 # Credentials never go here — keep them in your OS credential store / environment
 # (e.g. TRELLO_KEY / TRELLO_TOKEN for the trello provider).
 
-# A folder you control, holding context.md (your world + standing rules). Commit it wherever, or not.
-local_dir: C:\path\to\your\drainer-local
+# A folder holding context.md (your world + standing rules). Keep it a RELATIVE path (resolved against
+# the config root) and commit it in your project, so the poller reads it from the drainer's config root
+# — a git worktree the poller keeps pinned to origin/main — rather than whatever branch a session left
+# checked out. A relative local_dir is what makes a merged context.md/provider-overlay change take
+# effect immediately. (An absolute path is still honored verbatim, for a machine-local, uncommitted
+# context folder.)
+local_dir: drainer-local
+# Runtime state (seen/health/queue/seeds/items). Resolved against the REAL repo, not the config
+# worktree, so it stays put and never re-enumerates when the config root moves to the worktree.
 runtime_dir: .tmp/drainer
 
 # Actual poll cadence is the DrainerKeeper scheduled task's own repeat interval, not a config

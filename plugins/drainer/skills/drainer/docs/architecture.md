@@ -58,6 +58,32 @@ worker: an item still unhandled in its source with no live worker session on it 
 tab, while an open, live tab is left alone however long it's up, because it's either being worked or
 parked for the user.
 
+## Config comes from merged main, not the checked-out branch
+
+The poller and digest read their config — `drainer.local.md` knobs, `context.md` and provider overlays
+(`local_dir`), `trello-boards.yaml`, and `initiatives/` — from a **drainer-owned git worktree pinned to
+`origin/main`**, not from the real repo's working tree. `ensure_main_worktree` (in
+`scripts/drainer_config.py`) fetches and hard-resets that worktree to `origin/main` at the start of every
+run, and both entry points read config from it (`read_config(config_repo, runtime_root=source_repo)`).
+Without this, config was read from whatever branch a human session left checked out at the repo root, so a
+merged triage rule or board change stayed dormant until someone restored main by hand.
+
+Two things stay anchored to the **real** repo, on purpose:
+
+- **Runtime state** (`seen.json`, `provider-health.json`, `digest-queue.json`, `seeds/`, `items/`) —
+  `runtime_dir` resolves against `runtime_root` (the real repo), so switching config to the worktree never
+  migrates state or triggers a re-enumeration burst.
+- **Worker/digest cwd** — worker tabs run in the real repo, keeping its machine-local, gitignored
+  `.claude/settings.local.json` (permission auto-approvals, MCP enablement). A worker that must commit
+  branches into its own worktree (per the `git-workflow` skill), so it never disturbs the config worktree.
+  Repo-tracked config a worker needs (above all `initiatives/<slug>.md`) is read from the config repo,
+  whose path the worker seed carries.
+
+Resetting the config worktree every cycle is safe because nothing writes to it in place. It is
+**fail-safe**: on any git error — offline, no `origin`, or a refresh race between the ~5-min poller and the
+daily digest — `ensure_main_worktree` returns the real repo, so the drainer still runs (against possibly
+stale config) rather than not at all.
+
 ## Two layers: the plugin vs. what each machine injects
 
 | In the plugin (generic) | Injected per machine |
