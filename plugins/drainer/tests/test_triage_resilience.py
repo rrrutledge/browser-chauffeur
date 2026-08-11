@@ -1,10 +1,13 @@
-"""Tests for run-poller.py's triage() resilience to a single item's TriageUnavailable (a
-subprocess timeout or launch failure) during an otherwise-working batch.
+"""Tests for run-poller.py's triage resilience: triage() must not lose the rest of a batch's
+verdicts to a single item's TriageUnavailable (a subprocess timeout or launch failure), and
+_triage_one() must turn a malformed or missing model reply into a TriageUnavailable rather than
+a SystemExit that would kill the whole poller process.
 
 Run directly:
     python plugins/drainer/tests/test_triage_resilience.py
 """
 import importlib.util
+import json
 import os
 import sys
 
@@ -88,6 +91,65 @@ poller._triage_one = real_triage_one
 # --- empty batch is unaffected ---------------------------------------------------------------
 print("\nempty batch")
 check("empty items returns empty verdicts and empty unavailable set", poller.triage([], "R", "L", "M", {}), ({}, set()))
+
+
+# --- _triage_one's own response parsing: a malformed reply must raise TriageUnavailable, never
+# SystemExit — a SystemExit here is what used to kill the whole poller process on a bad reply ----
+print("\n_triage_one response parsing")
+
+
+class FakeCompleted:
+    def __init__(self, returncode=0, stdout="", stderr=""):
+        self.returncode = returncode
+        self.stdout = stdout
+        self.stderr = stderr
+
+
+def run_triage_one_with_stdout(model_reply_text, returncode=0, stderr=""):
+    # Mirrors `claude --output-format json`, which wraps the model's raw reply in {"result": "..."}.
+    envelope = json.dumps({"result": model_reply_text})
+    poller.subprocess.run = lambda *a, **k: FakeCompleted(returncode, envelope, stderr)
+    return poller._triage_one({"_id": "x", "_source": "demo", "from": "", "subject": "", "preview": ""},
+                               "BRAIN", "R", "M", {})
+
+
+real_subprocess_run = poller.subprocess.run
+
+try:
+    got = run_triage_one_with_stdout('[{"id": "x", "bucket": "junk", "kind": "read"}]')
+    check("a well-formed array reply still parses to its one verdict", got, {"id": "x", "bucket": "junk", "kind": "read"})
+finally:
+    poller.subprocess.run = real_subprocess_run
+
+try:
+    got = run_triage_one_with_stdout('{"id": "x", "bucket": "junk", "kind": "read"}')
+    check("a bare object reply (no [ ] wrapper) is accepted, not fatal", got, {"id": "x", "bucket": "junk", "kind": "read"})
+finally:
+    poller.subprocess.run = real_subprocess_run
+
+try:
+    run_triage_one_with_stdout("the model rambled and returned no JSON at all")
+    check("no-JSON reply should have raised TriageUnavailable", False, True)
+except poller.TriageUnavailable:
+    check("no-JSON reply raises TriageUnavailable, not SystemExit", True, True)
+finally:
+    poller.subprocess.run = real_subprocess_run
+
+try:
+    run_triage_one_with_stdout('[{"id": "x", "bucket": "junk" "kind": "read"}]')  # missing comma
+    check("malformed-JSON array reply should have raised TriageUnavailable", False, True)
+except poller.TriageUnavailable:
+    check("malformed-JSON array reply raises TriageUnavailable, not SystemExit", True, True)
+finally:
+    poller.subprocess.run = real_subprocess_run
+
+try:
+    run_triage_one_with_stdout("", returncode=1, stderr="rate limited")
+    check("nonzero CLI exit should have raised TriageUnavailable", False, True)
+except poller.TriageUnavailable:
+    check("nonzero CLI exit raises TriageUnavailable, not SystemExit", True, True)
+finally:
+    poller.subprocess.run = real_subprocess_run
 
 print(f"\n{'FAILED: ' + ', '.join(failures) if failures else 'all checks passed'}")
 sys.exit(1 if failures else 0)
