@@ -33,8 +33,9 @@ best per-message cost is zero.
 The whole strategy turns on one skill: **never build a filter for a single sender's single message.**
 If one company sent this type of mail, others will too, now and in the future. So the filter should
 catch the **type**, across every sender — and the way it does that is by matching a **phrase**, chosen
-with judgment. It follows that **the phrase never contains a company, bank, product, or brand name** - a
-name identifies one sender, so a rule built on it is exactly the single-sender filter this rule forbids.
+with judgment. It follows that **the phrase never contains a company, bank, product, brand, or person
+name** - a name identifies one sender, so a rule built on it is exactly the single-sender filter this
+rule forbids.
 When the only distinctive text a piece of junk offers is its brand name, the type isn't filterable: stop
 it at the source (unsubscribe, or turn the notification off at the sender), never a brand-named rule.
 
@@ -206,6 +207,42 @@ Outlook rules can hold many conditions and run top-to-bottom, which enables a ri
 - **Homoglyph catch.** Spam that disguises words with lookalike Unicode letters gets a dedicated
   subject rule matching those confusable characters.
 
+## The reviewer: a deterministic pass on every proposed phrase
+
+The two-sided test above is a judgment call, but three of the rules it rests on are decidable from the
+proposed phrase and its rule text alone. Those three are factored out here as the reviewer's rubric, so
+they're enforced the same way every time - the writer checks the proposal against them while composing,
+and a cold reviewer checks it again before Russell sees it. This mirrors how `document-authoring` pairs
+its `authoring-rules` rubric with the `writing-review` reviewer.
+
+### The deterministic checks (the reviewer's rubric)
+
+- **No single-sender token.** The phrase contains no company, bank, brand, product, or person name (see
+  "The craft"). This is the highest-value check, the one the writer's blindness most often lets slip.
+  **Check:** a capitalized proper noun mid-phrase, an all-caps or mixed-case brand or acronym (KBB, IMDb,
+  TPWD), or a known company / product / person name. Innocent: a generic type-word that happens to be
+  capitalized - a subject-prefix convention (`Accepted:`, `Automatic reply:`) or a template word
+  (`Passcode`, `Receipt`) that names the *kind* of notification rather than the sender, and
+  sentence-initial capitalization.
+- **Phrase scoped to the field it lives in.** The phrase matches where it actually occurs (see "The
+  two-sided test" and "Platform mechanics").
+  **Check:** a template sentence lifted from the body but proposed as a subject phrase, or a single common
+  word proposed as an unscoped body match.
+- **Master fence on every broad bucket.** The rule text carries the personal-domain exclusion (see "The
+  master fence").
+  **Check:** a broad subject-or-body archive bucket whose rule text has no `-from:(…)` negation (Gmail) or
+  "except when the sender's address contains…" exclusion (Outlook).
+
+### Running the review
+
+Check the phrase against these yourself first, then dispatch the cold pass: load the
+**`mail-filter-review`** skill (call the Skill tool) and run it on the proposed phrase(s), the field each
+is matched in, the action, and the rule text they land in. Revise against what it finds - generalize a
+flagged token to a type-level phrase, move a phrase to its real field, add the fence - and re-review until
+it's clean, per that skill's loop. A flagged single-sender token you cannot generalize away means this
+junk type isn't filterable: stop it at the source instead (per the JUNK-LEARNING order the drainer
+follows), never a brand-named rule. Only a reviewed phrase reaches the show-literal-rule gate below.
+
 ## Creating and deleting a filter
 
 Both platforms are managed programmatically, each through its own skill's REST wrapper — Gmail through
@@ -250,6 +287,8 @@ re-deriving it each time. When the drainer reaches the filter step for a piece o
 1. **Generalize on sight.** Run the phrase-selection method above on the single sample — name the type,
    find the intrinsic boilerplate, apply the two-sided test, tighten until safe. Propose the *type*
    phrase, not a filter for this one sender.
+   Then run it through the reviewer (**The reviewer** above) before going further - that cold pass is what
+   catches a company or brand token that slipped into the phrase.
 2. **Append by mechanism.** Decide the field (subject or body) and action (archive or delete), then
    append the phrase to the one existing rule for that mechanism — the subjects-to-archive filter, the
    bodies-to-archive rule — rather than spawning a new single-phrase filter. Create a new rule only for
