@@ -128,8 +128,8 @@ concrete (the actual link, setting, or rule the provider's JUNK-LEARNING points 
 in one step.
 
 **When the stop is a mail rule, load the `mail-filters` skill first** (call the Skill tool) and derive
-the proposal from it — don't hand-write a rule from memory. A company-specific `from:<sender>` filter, or
-a brand token left in the phrase, is the tell that the skill's checks were skipped.
+the proposal from it — don't hand-write a rule from memory. A company-specific `from:<sender>` filter is
+the tell that the skill was skipped.
 
 This step's proposal, and his go-ahead on it in step 4, approve **building a rule for this type of
 junk** — they are not approval of a rule's literal text. When the chosen stop is a mail rule, creating
