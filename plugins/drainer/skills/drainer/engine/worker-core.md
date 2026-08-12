@@ -176,9 +176,16 @@ This is the shared **open-the-pointer mechanic** every stage uses — `triage.md
 and its kinds; a worker resolves needs-you ones here, the digest resolves fyi ones the same way. A pointer
 is NOT the content, only a stub. **Open and read the underlying content yourself before doing anything
 else**, with the right tool for that surface: a plain fetch when the page is static, and
-**browser-chauffeur when the page renders client-side** (a client-rendered page returns only a wrapper
-shell to a plain fetch). Summarize the real content as if it had arrived inline. Reading it is YOUR job;
-never hand the lookup back to the user ("go read the message yourself").
+**browser-chauffeur when the page renders client-side**. A client-rendered page - a Smore, Finalsite, or
+Mailchimp newsletter, and most hosted "view in browser" bulletins - returns only a wrapper/marketing
+shell to a plain fetch, and that empty shell is the signal to render it: fall back to browser-chauffeur,
+load the real URL, and read the rendered body. The content is there behind the render, so an empty plain
+fetch is never grounds to restate the pointer and move on.
+
+**Process the resolved content like meeting notes** - pull out who and what it is about, every date it
+names, and any action items, then summarize that as if the newsletter (or DM, or notes) body had arrived
+inline as the message itself. Reading it is YOUR job; never hand the lookup back to the user ("go read the
+message yourself").
 
 **The rule is dynamic — *try* to read it; don't pre-judge the bucket by whether there's a sign-in.**
 The test is whether Claude can get the content, not whether a login exists: browser-chauffeur already
