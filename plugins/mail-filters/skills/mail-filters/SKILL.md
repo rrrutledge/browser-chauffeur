@@ -207,15 +207,13 @@ Outlook rules can hold many conditions and run top-to-bottom, which enables a ri
 - **Homoglyph catch.** Spam that disguises words with lookalike Unicode letters gets a dedicated
   subject rule matching those confusable characters.
 
-## The reviewer: a deterministic pass on every proposed phrase
+## The deterministic checks
 
-The two-sided test above is a judgment call, but three of the rules it rests on are decidable from the
-proposed phrase and its rule text alone. Those three are factored out here as the reviewer's rubric, so
-they're enforced the same way every time - the writer checks the proposal against them while composing,
-and a cold reviewer checks it again before Russell sees it. This mirrors how `document-authoring` pairs
-its `authoring-rules` rubric with the `writing-review` reviewer.
-
-### The deterministic checks (the reviewer's rubric)
+The two-sided test is a judgment call, but three of the rules the craft rests on are decidable from the
+phrase and its rule text alone. **Apply them as you choose the phrase - they are guidance for writing the
+rule, the same as everything above** - tightening the phrase whenever one is broken. The reviewer applies
+the same three cold before the rule is shown to Russell, the way `document-authoring` pairs its
+`authoring-rules` rubric with the `writing-review` reviewer.
 
 - **No single-sender token.** The phrase contains no company, bank, brand, product, or person name (see
   "The craft"). This is the highest-value check, the one the writer's blindness most often lets slip.
@@ -233,15 +231,10 @@ its `authoring-rules` rubric with the `writing-review` reviewer.
   **Check:** a broad subject-or-body archive bucket whose rule text has no `-from:(…)` negation (Gmail) or
   "except when the sender's address contains…" exclusion (Outlook).
 
-### Running the review
-
-Check the phrase against these yourself first, then dispatch the cold pass: load the
-**`mail-filter-review`** skill (call the Skill tool) and run it on the proposed phrase(s), the field each
-is matched in, the action, and the rule text they land in. Revise against what it finds - generalize a
-flagged token to a type-level phrase, move a phrase to its real field, add the fence - and re-review until
-it's clean, per that skill's loop. A flagged single-sender token you cannot generalize away means this
-junk type isn't filterable: stop it at the source instead (per the JUNK-LEARNING order the drainer
-follows), never a brand-named rule. Only a reviewed phrase reaches the show-literal-rule gate below.
+The cold reviewer that applies these is the **`mail-filter-review`** skill. It runs once, at the
+show-literal-rule gate (see "Wiring the drainer" below) - the single checkpoint every rule passes through,
+whether the phrase started here, in the drainer's junk-learning, or in the digest. Nothing else has to
+invoke it: reaching the gate is what runs it.
 
 ## Creating and deleting a filter
 
@@ -287,14 +280,16 @@ re-deriving it each time. When the drainer reaches the filter step for a piece o
 1. **Generalize on sight.** Run the phrase-selection method above on the single sample — name the type,
    find the intrinsic boilerplate, apply the two-sided test, tighten until safe. Propose the *type*
    phrase, not a filter for this one sender.
-   Then run it through the reviewer (**The reviewer** above) before going further - that cold pass is what
-   catches a company or brand token that slipped into the phrase.
 2. **Append by mechanism.** Decide the field (subject or body) and action (archive or delete), then
    append the phrase to the one existing rule for that mechanism — the subjects-to-archive filter, the
    bodies-to-archive rule — rather than spawning a new single-phrase filter. Create a new rule only for
    a genuinely new mechanism, or a numbered spillover when the current one is full.
-3. **Show the exact rule, then create only on his explicit OK.** Never treat a general "yeah, do it" as
-   approval to build the rule. First show Russell the **literal rule** he is approving: the exact
+3. **Review, then show the exact rule, and create only on his explicit OK.** First run the cold review:
+   load the **`mail-filter-review`** skill (call the Skill tool) on the proposed phrase(s), the field
+   each is matched in, the action, and the rule text they land in, and revise until it comes back clean
+   (generalize a flagged company/brand token to a type-level phrase, move a phrase to its real field, add
+   the fence; a token you cannot generalize away means the type isn't filterable - stop it at the source
+   instead of a brand-named rule). Then show Russell the **literal rule** he is approving: the exact
    phrase(s) it will match, which existing bucket/rule it lands in (or that it's a new one), and the
    action it takes (archive / mark read). Wait for his OK **on that shown text** — seeing it is what
    lets him strip a company name down to a type-level phrase, or catch that the item shouldn't be a rule

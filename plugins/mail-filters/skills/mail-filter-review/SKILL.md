@@ -28,8 +28,9 @@ Read that section; this skill does not restate the checks.
 
 ## When to run it
 
-- Before showing Russell any filter phrase to approve - the writer's own proposal always gets a cold pass first.
-- Whenever the drainer proposes a phrase: the per-provider `JUNK-LEARNING` step and the daily digest's junk step both route their proposal through this review before the `mail-filters` show-literal-rule gate.
+The `mail-filters` skill invokes this at one point: the show-literal-rule gate, the checkpoint every proposed phrase passes through before a rule is created.
+So it runs whenever a phrase is proposed - a manual filter, the drainer's per-provider `JUNK-LEARNING` step, or the daily digest's junk step - because they all reach that gate by following the `mail-filters` skill.
+Nothing separate is wired at each call site.
 
 ## How to run it
 
