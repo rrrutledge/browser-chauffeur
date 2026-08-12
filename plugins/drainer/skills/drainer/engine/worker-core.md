@@ -340,9 +340,16 @@ staged, or tracked on a follow-up card. If any remains open, do not clear: handl
 leave the item un-cleared so it comes back around. Clearing is the last act after the whole span is
 handled, never a per-message step.
 
-If the situational check finds nothing to do right now (an outreach card that's not yet time to follow
-up, or a thread where they replied and the user already answered), resolve it quietly — bump the due
-date / clear without surfacing a tab or beep.
+If the situational check finds nothing to do right now - a thread where they replied and the user
+already answered, or an outreach card still inside its nudge cadence (the follow-up interval hasn't
+elapsed since the last outbound) - resolve it quietly: bump the due date / clear without surfacing a
+tab or beep.
+For an outreach card, "not yet time to follow up" means exactly that cadence window, and the interval
+is defined in the trello provider's CLEAR → Nudge cadence - read it there rather than guessing.
+A card that is due, still unanswered, and past its cadence has crossed into "time to follow up": that
+is a nudge to draft, so keep it needs-you and present it normally, never a silent bump.
+Bumping such a card's date again instead of drafting the nudge is what turns it into one that gets
+pushed forever without a follow-up ever going out.
 
 **Waiting on someone else → tracker card.** The delegation case from the framing above. Decide by who's
 holding the conversation:
