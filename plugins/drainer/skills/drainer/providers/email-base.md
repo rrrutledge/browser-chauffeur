@@ -94,10 +94,9 @@ So the order is rule → source-app → unsubscribe:
    Match the shape to the mailbox — **both Outlook and Gmail can match on the body as well as the
    subject**; the difference is the fencing convention, not the capability (see your provider file).
    Before creating or appending anything, run `mail-filters`' show-literal-rule gate ("Wiring the
-   drainer" step 3, which runs the `mail-filter-review` cold check before it shows you the rule): show
-   Russell the exact phrase(s), which bucket they land in, and the action, and create only on his
-   explicit OK of that shown text — a digest-level go-ahead approves building a rule for the type, not
-   the rule's literal text.
+   drainer" step 3): show Russell the exact phrase(s), which bucket they land in, and the action, and
+   create only on his explicit OK of that shown text — a digest-level go-ahead approves building a rule
+   for the type, not the rule's literal text.
 2. **Turn it off at the source app.**
    When the sender is an app whose notification settings the user controls (GitHub notification settings, LinkedIn email preferences, …), tuning it off there stops the mail at its source.
 3. **Unsubscribe — the fallback.**
