@@ -40,6 +40,17 @@ decide it here.
   and an automated sender doesn't make it junk. A message to a hundred people that names something Russell
   would do (sign the card, submit the goals, RSVP for the offsite) is his action exactly as much as if he
   were the only recipient; ask only whether he'd do the thing.
+- an **automated system relays a specific person's request aimed at Russell** - the envelope sender is a
+  no-reply robot (a Google Drive share-request from `drive-shares-dm-noreply@google.com`, a document-share
+  notice, an access request), and the real correspondent is the named person it carries, not the address
+  it came from. A requester Russell knows - someone in his sent mail, his Slack, or the known-contacts list
+  his `context.md` names - asking for something he'd act on (grant access to a sheet he owns, approve their
+  request, answer what they asked) is his action exactly as a direct email would be, so it's **needs-you**,
+  and the worker confirms the requester against those sources and grants or declines. Prefer needs-you
+  whenever the message carries a real person with a real ask, and a repeated identical request (Jeff Bailey
+  asking three times for the same sheet) stays needs-you rather than collapsing to duplicate churn; only a
+  share-request from a plainly unknown sender with no relationship, or a phishing-shaped "someone wants
+  access" with no identifiable requester, is junk.
 - **someone reaches out on a human level** — a personal, individually-written note, not a
   corporate/automated/mass announcement. Replying *is* the thing to do even when it asks nothing
   explicitly: acknowledging that he got it and appreciates it counts. The personal tone is the signal;
