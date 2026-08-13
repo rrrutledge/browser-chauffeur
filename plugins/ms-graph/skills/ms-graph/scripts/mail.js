@@ -34,6 +34,10 @@
 //                (un-junks a message: moves it to Inbox and reports it "not junk" to Microsoft's
 //                 filter so future mail from that sender is less likely to be misfiled. Uses the
 //                 beta reportMessage action; falls back to a plain move-to-Inbox if that ever fails.)
+// Report phish:  node mail.js --report-phish=<messageId>
+//                (reports a message to Microsoft as phishing — retrains the filter — and moves it to
+//                 Junk Email. Reversible: recoverable from Junk. Beta reportMessage action; falls back
+//                 to a plain move-to-Junk if that ever fails.)
 // Get attachments: node mail.js --get-attachments=<messageId> [--out-dir=.tmp]
 //                (downloads every file attachment on a message to --out-dir, default the
 //                 current directory; prints each saved path. Skips non-file attachments, e.g.
@@ -201,6 +205,29 @@ async function notJunk(client) {
     await client.api(`/me/messages/${id}/move`).post({ destinationId: 'inbox' });
     console.log(`reportMessage (beta) failed [${e.message}] — fell back to a plain move to Inbox `
       + `(id ${String(id).slice(0, 20)}...). Filter was not retrained.`);
+  }
+}
+
+async function reportPhish(client) {
+  const id = args['report-phish'];
+  // The beta reportMessage action notJunk uses, in the other direction: report the message to Microsoft
+  // (retraining the filter) and, with IsMessageMoveRequested, move it out of the inbox to Junk Email.
+  // Reversible — the message stays recoverable from Junk. Personal Outlook.com accepts ReportAction
+  // 'junk' but not 'phishing', so try 'phishing' first (work/enterprise), fall back to 'junk', and only
+  // then to a plain move that at least gets it out of the inbox.
+  for (const action of ['phishing', 'junk']) {
+    try {
+      await client.api(`/me/messages/${id}/reportMessage`).version('beta')
+        .post({ IsMessageMoveRequested: true, ReportAction: action });
+      console.log(`Reported ${action} and moved to Junk Email (id ${String(id).slice(0, 20)}...).`);
+      return;
+    } catch (e) {
+      if (action === 'junk') {
+        await client.api(`/me/messages/${id}/move`).post({ destinationId: 'junkemail' });
+        console.log(`reportMessage (beta) failed [${e.message}] — fell back to a plain move to Junk `
+          + `Email (id ${String(id).slice(0, 20)}...). Filter was not retrained.`);
+      }
+    }
   }
 }
 
@@ -465,11 +492,12 @@ if (require.main === module) {
     if (args['send-draft']) return sendDraft(client);
     if (args.delete) return del(client);
     if (args['not-junk']) return notJunk(client);
+    if (args['report-phish']) return reportPhish(client);
     if (args['get-attachments']) return getAttachments(client);
     if (args['list-rules']) return listRules(client);
     if (args['create-rule']) return createRule(client);
     if (args['append-rule']) return appendRule(client);
     if (args['delete-rule']) return deleteRule(client);
-    throw new Error('Specify --list-unread, --list-inbox, --list-junk, --list-drafts, --search, --show, --reply, --draft-new, --send-self, --send-draft, --delete, --not-junk, --get-attachments, --list-rules, --create-rule, --append-rule, or --delete-rule');
+    throw new Error('Specify --list-unread, --list-inbox, --list-junk, --list-drafts, --search, --show, --reply, --draft-new, --send-self, --send-draft, --delete, --not-junk, --report-phish, --get-attachments, --list-rules, --create-rule, --append-rule, or --delete-rule');
   })().catch(e => { console.error('Error:', e.message); process.exit(1); });
 }
