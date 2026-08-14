@@ -35,7 +35,13 @@ decide it here.
   decide to act on: a reply to write, a form to return, a survey to fill, an RSVP, a decision to make,
   work to kick off (code, a doc, a ticket, a lookup, a system update…), or delegating it to the team. A
   training deadline he'd complete is an action; a security alert for a failed login he already knows
-  about is not — reading it changes nothing he'd do.
+  about is not — reading it changes nothing he'd do. An **automated notification that something he owns is
+  broken or failing** — a failed build or CI run on a repo he maintains, a monitor/health alert on a
+  service he runs, a job-failure or broken-link report — is work to do (go fix it), the same as any other
+  work he'd kick off; a passing, routine, or already-known-good status is not. A **job-application step
+  he'd take** — a pending interview or assessment invite/reminder from a hiring platform, an
+  application-status action — is his action (do the interview, take the next step), the automated send
+  notwithstanding.
 - it names that action **no matter how broadly it was sent** — audience breadth doesn't change anything,
   and an automated sender doesn't make it junk. A message to a hundred people that names something Russell
   would do (sign the card, submit the goals, RSVP for the offsite) is his action exactly as much as if he
@@ -92,8 +98,10 @@ decide it here.
     that it's a bulk send. (A link-hosted one is a pointer the digest opens — see "recognize pointers"
     above.)
 - **junk** — not even worth surfacing: automated noise, pure marketing, cold newsletters (a sender
-  Russell has no relationship with), CI/build notifications, duplicate status churn, chatter not aimed at
-  the user. Junk is also a signal to stop it arriving again; *how* to stop it is provider mechanics — each
+  Russell has no relationship with), passing or duplicate automated status churn (an automated
+  *something-you-own-is-broken/failing* alert is needs-you — see the action bullet above), chatter not
+  aimed at the user.
+  Junk is also a signal to stop it arriving again; *how* to stop it is provider mechanics — each
   provider's **JUNK-LEARNING** section owns the remediation (unsubscribe → source-app notification
   settings → inbox rule, in that order).
 
