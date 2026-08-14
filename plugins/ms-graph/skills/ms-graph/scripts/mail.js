@@ -34,6 +34,15 @@
 //                (un-junks a message: moves it to Inbox and reports it "not junk" to Microsoft's
 //                 filter so future mail from that sender is less likely to be misfiled. Uses the
 //                 beta reportMessage action; falls back to a plain move-to-Inbox if that ever fails.)
+// Report phish:  node mail.js --report-phish=<messageId>
+//                (reports a message to Microsoft as phishing — retrains the filter — and moves it to
+//                 Junk Email. Reversible: recoverable from Junk. Beta reportMessage action; falls back
+//                 to a plain move-to-Junk if that ever fails.)
+// Unsubscribe:   node mail.js --unsubscribe=<messageId>
+//                (unsubscribes from a marketing sender via its List-Unsubscribe header — an https
+//                 one-click POST when offered, else a GET that may need a confirmation click. A
+//                 mailto-only sender is surfaced to send by hand. For mail addressed to the user
+//                 alone, never a shared list/group he doesn't own — archive-rule those instead.)
 // Get attachments: node mail.js --get-attachments=<messageId> [--out-dir=.tmp]
 //                (downloads every file attachment on a message to --out-dir, default the
 //                 current directory; prints each saved path. Skips non-file attachments, e.g.
@@ -201,6 +210,60 @@ async function notJunk(client) {
     await client.api(`/me/messages/${id}/move`).post({ destinationId: 'inbox' });
     console.log(`reportMessage (beta) failed [${e.message}] — fell back to a plain move to Inbox `
       + `(id ${String(id).slice(0, 20)}...). Filter was not retrained.`);
+  }
+}
+
+async function reportPhish(client) {
+  const id = args['report-phish'];
+  // The beta reportMessage action notJunk uses, in the other direction: report the message to Microsoft
+  // (retraining the filter) and, with IsMessageMoveRequested, move it out of the inbox to Junk Email.
+  // Reversible — the message stays recoverable from Junk. Personal Outlook.com accepts ReportAction
+  // 'junk' but not 'phishing', so try 'phishing' first (work/enterprise), fall back to 'junk', and only
+  // then to a plain move that at least gets it out of the inbox.
+  for (const action of ['phishing', 'junk']) {
+    try {
+      await client.api(`/me/messages/${id}/reportMessage`).version('beta')
+        .post({ IsMessageMoveRequested: true, ReportAction: action });
+      console.log(`Reported ${action} and moved to Junk Email (id ${String(id).slice(0, 20)}...).`);
+      return;
+    } catch (e) {
+      if (action === 'junk') {
+        await client.api(`/me/messages/${id}/move`).post({ destinationId: 'junkemail' });
+        console.log(`reportMessage (beta) failed [${e.message}] — fell back to a plain move to Junk `
+          + `Email (id ${String(id).slice(0, 20)}...). Filter was not retrained.`);
+      }
+    }
+  }
+}
+
+async function unsubscribe(client) {
+  // Unsubscribe from a marketing sender using its RFC 2369 List-Unsubscribe header (and RFC 8058
+  // one-click where offered). Reserve this for mail addressed to the user alone — a shared list or
+  // group he doesn't own should get a his-side archive rule instead, never an unsubscribe that drops
+  // other people. Prefer an https one-click POST; fall back to a GET (which may need a confirmation
+  // click on the landing page); a mailto-only sender is surfaced for the user to send himself, since
+  // this tool never sends mail.
+  const id = args['unsubscribe'];
+  const msg = await client.api(`/me/messages/${id}`)
+    .select('subject,internetMessageHeaders').get();
+  const headers = msg.internetMessageHeaders || [];
+  const get = name => (headers.find(h => h.name.toLowerCase() === name) || {}).value || '';
+  const lu = get('list-unsubscribe');
+  const lup = get('list-unsubscribe-post');
+  console.log(`Subject: ${msg.subject}`);
+  if (!lu) { console.log('No List-Unsubscribe header — use the sender footer link by hand.'); return; }
+  const urls = [...lu.matchAll(/<([^>]+)>/g)].map(m => m[1]);
+  const https = urls.find(u => /^https?:/i.test(u));
+  const mailto = urls.find(u => /^mailto:/i.test(u));
+  if (https && /one-click/i.test(lup)) {
+    const r = await fetch(https, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'List-Unsubscribe=One-Click' });
+    console.log(`One-click POST -> ${https}\n  HTTP ${r.status} ${r.statusText}`);
+  } else if (https) {
+    const r = await fetch(https, { method: 'GET', headers: { 'User-Agent': 'Mozilla/5.0' } });
+    console.log(`GET -> ${https}\n  HTTP ${r.status} ${r.statusText} (may need a confirmation click)`);
+  } else if (mailto) {
+    console.log(`Only a mailto unsubscribe is offered — send it yourself: ${mailto}`);
   }
 }
 
@@ -465,11 +528,13 @@ if (require.main === module) {
     if (args['send-draft']) return sendDraft(client);
     if (args.delete) return del(client);
     if (args['not-junk']) return notJunk(client);
+    if (args['report-phish']) return reportPhish(client);
+    if (args.unsubscribe) return unsubscribe(client);
     if (args['get-attachments']) return getAttachments(client);
     if (args['list-rules']) return listRules(client);
     if (args['create-rule']) return createRule(client);
     if (args['append-rule']) return appendRule(client);
     if (args['delete-rule']) return deleteRule(client);
-    throw new Error('Specify --list-unread, --list-inbox, --list-junk, --list-drafts, --search, --show, --reply, --draft-new, --send-self, --send-draft, --delete, --not-junk, --get-attachments, --list-rules, --create-rule, --append-rule, or --delete-rule');
+    throw new Error('Specify --list-unread, --list-inbox, --list-junk, --list-drafts, --search, --show, --reply, --draft-new, --send-self, --send-draft, --delete, --not-junk, --report-phish, --unsubscribe, --get-attachments, --list-rules, --create-rule, --append-rule, or --delete-rule');
   })().catch(e => { console.error('Error:', e.message); process.exit(1); });
 }
