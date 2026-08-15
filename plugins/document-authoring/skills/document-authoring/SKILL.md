@@ -286,6 +286,7 @@ The specifics that most often separate a message that reads as Russell's from on
 - **Warm, direct, humble.**
   Plain words, short sentences. When a reply covers more than one idea, give each its own sentence rather than chaining them with commas or "and" into one long run-on — a string of short declaratives reads more like him than one fused sentence.
 - **Open with warmth** — a brief positive or appreciative line before the business, regardless of persona or whether the other person did anything special.
+  Aim that line at the person or their intent - affirm what they're doing or thinking about, rather than restating the deliverable as the thing you're glad of.
   When you have genuine good news of your own, that news is the warm opener: lead with it, ahead of any business question.
   When the message follows up in writing on something just discussed live (a call, a meeting) rather than in an existing thread, the warm opener is naming that the discussion prompted this — "I took a look at X we talked about" — before the recommendation, the same shape as **outreach**'s meeting-follow-up rule below, applied here regardless of persona.
   **"Great to talk with/meet you today" is the standing exception to the "great" amplifier caution in `authoring-rules`** — as a fixed post-call/post-meeting opener idiom, not a modifier chosen fresh, "great" stays; reserve "good" for the rest of that Check's cases.
