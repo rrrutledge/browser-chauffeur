@@ -25,13 +25,16 @@
 //                (downloads every attachment on a message to <dir> (default: cwd); looked up in the
 //                 inbox and All Mail like --show. Prints each saved filename + size. Attachments with
 //                 no filename are named "attachment-N".)
-// Draft a reply: node gmail.js --reply --message-id=<id> --body-file=reply.md [--attach=a.pdf,b.png]
+// Draft a reply: node gmail.js --reply --message-id=<id> --body-file=reply.md [--attach=a.pdf,b.png] [--no-quote]
 //                (appends a DRAFT reply in the thread to [Gmail]/Drafts; never sends; replaces any
 //                 prior draft on the same thread; prints a draft-id for --send-draft. <id> is looked up
 //                 in the inbox and All Mail — pass the most recent message in the thread, even one the
 //                 user sent; a reply to the user's own message keeps its recipients instead of self.
 //                 --body-file is Markdown — bold, links, lists all work; HTML tags pass through.
-//                 Appends GMAIL_SIGNATURE_HTML, if set, after the body and before the quoted original.)
+//                 Appends GMAIL_SIGNATURE_HTML, if set, after the body and before the quoted original.
+//                 --no-quote suppresses the auto-appended quoted original (threading headers still set),
+//                 for an interleaved reply where --body-file supplies its own quote with responses
+//                 spliced between the sender's lines.)
 // Draft new:     node gmail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.md [--cc=c@z] [--attach=a.pdf,b.png]
 //                (appends a fresh DRAFT to [Gmail]/Drafts; never sends; prints a draft-id.
 //                 --body-file is Markdown — bold, links, lists all work; HTML tags pass through.
@@ -347,7 +350,7 @@ async function reply(c) {
     ? [...new Set([args.cc, ...allRecips])].join(', ')
     : allRecips.join(', ');
   const { raw, messageId } = await buildMime({
-    to, cc: ccList || undefined, subject, html: withSignature(html) + quoted,
+    to, cc: ccList || undefined, subject, html: withSignature(html) + (args['no-quote'] ? '' : quoted),
     inReplyTo: orig.messageId, references: refs,
   });
   await c.append(DRAFTS, raw, ['\\Draft']);

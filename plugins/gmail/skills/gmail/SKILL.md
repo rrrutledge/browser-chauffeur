@@ -85,6 +85,11 @@ Under `scripts/` (run with `node`):
     lists) and the script converts it to HTML via `marked`. HTML tags in the source pass through
     unchanged. **If `GMAIL_SIGNATURE_HTML` is set (see Setup step 5), stop at the last content
     sentence — no sign-off line.**
+  - **`--no-quote` (with `--reply`)** — suppress the auto-appended quoted original while keeping the
+    thread's In-Reply-To/References headers. Use it for an **interleaved reply**: the `--body-file`
+    supplies its own quote (the sender's text in styled `<blockquote>`s) with responses spliced between
+    their points, instead of a single clean quote at the bottom. Without it, `--reply` always appends
+    the full quoted original.
   - Draft new (never sends): `node gmail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.md [--cc=c@z]`
     (`--reply` and `--draft-new` each print a `draft-id:` line — the staged draft's Message-ID. That id
     is what `--send-draft` takes. `--reply` also replaces any prior draft on the same thread, so a thread
