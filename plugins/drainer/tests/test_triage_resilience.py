@@ -42,7 +42,7 @@ print("one item unavailable, others still verdict")
 ITEMS = [item("a"), item("b"), item("c"), item("d")]
 
 
-def fake_triage_one(it, brain, repo, model, providers_by_name):
+def fake_triage_one(it, brain, repo, model, providers_by_name, bg_config_dir=None):
     if it["_id"] == "c":
         raise poller.TriageUnavailable(f"{it['_id']}: triage call timed out after 420s (likely a network drop)")
     return {"id": it["_id"], "bucket": "fyi", "kind": "read"}
@@ -62,7 +62,7 @@ check("the unreachable item lands in unavailable, not verdicts", unavailable, {"
 print("\nfirst item unavailable")
 
 
-def fake_first_fails(it, brain, repo, model, providers_by_name):
+def fake_first_fails(it, brain, repo, model, providers_by_name, bg_config_dir=None):
     if it["_id"] == "a":
         raise poller.TriageUnavailable("a: couldn't launch the triage call")
     return {"id": it["_id"], "bucket": "junk", "kind": "read"}
@@ -77,7 +77,7 @@ check("the rest still got triaged despite the first item failing", sorted(verdic
 print("\nall items unavailable")
 
 
-def fake_all_fail(it, brain, repo, model, providers_by_name):
+def fake_all_fail(it, brain, repo, model, providers_by_name, bg_config_dir=None):
     raise poller.TriageUnavailable(f"{it['_id']}: triage call timed out after 420s (likely a network drop)")
 
 
@@ -148,6 +148,37 @@ try:
     check("nonzero CLI exit should have raised TriageUnavailable", False, True)
 except poller.TriageUnavailable:
     check("nonzero CLI exit raises TriageUnavailable, not SystemExit", True, True)
+finally:
+    poller.subprocess.run = real_subprocess_run
+
+# --- bg_config_dir routes ONLY the triage subprocess to the background account -------------------
+# Triage is the one Claude launch that moves accounts; passing a background CLAUDE_CONFIG_DIR must set
+# it on this subprocess's env and nowhere else. Absent it, env stays None so the call inherits ambient.
+print("\nbackground-account routing")
+
+captured = {}
+def capture_run(*a, **k):
+    captured["env"] = k.get("env")
+    return FakeCompleted(0, json.dumps({"result": '[{"id": "x", "bucket": "junk", "kind": "read"}]'}), "")
+
+demo_item = {"_id": "x", "_source": "demo", "from": "", "subject": "", "preview": ""}
+
+poller.subprocess.run = capture_run
+try:
+    poller._triage_one(demo_item, "BRAIN", "R", "M", {}, r"C:\Users\russe\.claude-background")
+    env = captured["env"] or {}
+    check("bg_config_dir sets CLAUDE_CONFIG_DIR on the triage subprocess env",
+          env.get("CLAUDE_CONFIG_DIR"), r"C:\Users\russe\.claude-background")
+    check("the triage env still inherits the parent environment (not just the one override)",
+          len(env) > 1, True)
+finally:
+    poller.subprocess.run = real_subprocess_run
+
+poller.subprocess.run = capture_run
+try:
+    poller._triage_one(demo_item, "BRAIN", "R", "M", {})
+    check("no bg_config_dir leaves the triage env unset, so the call inherits the ambient account",
+          captured["env"], None)
 finally:
     poller.subprocess.run = real_subprocess_run
 
