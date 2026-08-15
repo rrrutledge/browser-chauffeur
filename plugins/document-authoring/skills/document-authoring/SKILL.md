@@ -17,6 +17,7 @@ The **Formal writing** and **Conversational writing** sections describe **regist
 
 ## The drafting loop: Read → Write → Verify → Stage → Learn (mandatory)
 
+This is the message-shaped detail of the three-step spine in `writing-flow` (Draft → Review → Stage): load that first for the overall map, then follow the message-specific steps here.
 Every message in Russell's name — a Jira comment, an email, a Teams post, a PR — runs through these steps, in order.
 Skipping a step is what leaks the patterns this skill bans: reading once then composing "in the voice" is not enough.
 
@@ -29,6 +30,7 @@ Skipping a step is what leaks the patterns this skill bans: reading once then co
 3. **Verify** — dispatch the `writing-review` skill on your actual draft text, marked as an outward message so the reviewer checks it against both `authoring-rules` and this skill's message-specific rules (persona bullets, **Holding the voice**, **Links**, the load-bearing checks above).
    This step is a cold, independent check, not a self-walk — reviewing your own draft in the same session that wrote it reproduces the exact blindness the check exists to catch, which is why `writing-review` exists as a separate dispatched skill rather than a re-read of the bullets.
    Revise against what it finds, then dispatch a **fresh** reviewer on the revised text; repeat until it returns clean, a finding stands that you genuinely disagree with, or you've run three rounds — see `writing-review` for the disagreement and convergence rules.
+   When the loop converges, mint the review receipt on the exact body file you'll stage (see `writing-review`'s **The stage gate**): the mail-staging commands are gated and refuse a draft that has no fresh receipt for its content, which is what makes this step contractual rather than a documented "should."
    **This step applies every time this skill is used to draft or edit a message, in every caller** — a provider doc or another skill that says "invoke document-authoring" gets Verify as part of that, with no separate reminder needed at the call site.
 4. **Stage, never send** — a draft that survives verify is staged for Russell's approval; by default he sends it himself.
    Put the text into the real UI where it'll be sent — the ticket comment box, the Teams compose box, the email reply — via `browser-chauffeur`, so he sees it in context, edits inline, and clicks the app's own Send.

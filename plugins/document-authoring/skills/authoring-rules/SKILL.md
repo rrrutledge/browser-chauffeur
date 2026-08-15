@@ -8,6 +8,7 @@ description: Russell's medium-independent rules for any text that ships - code c
 Every rule here is an **artifact rule**: you can tell whether it was followed by reading the finished text alone.
 That is what makes this set shared.
 The writer loads it to compose against; a reviewer loads the same file to check against, so the two can never drift.
+These rules are the Draft-step rubric of the three-step flow in `writing-flow` (draft, review, then stage or ship).
 
 Each rule states the behavior, then a **Check** giving the surface forms that usually indicate it was broken, and where those forms are innocent.
 The forms are evidence, not the rule: one appearing is not automatically a violation, and a violation that uses none of them is still a violation.

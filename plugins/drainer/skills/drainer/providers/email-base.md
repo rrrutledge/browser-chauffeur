@@ -53,6 +53,9 @@ Invoke the `document-authoring` skill (call the Skill tool to load it) and follo
 Verify in that loop dispatches an independent review before the draft is staged, so nothing extra is
 needed here to get that check; skipping straight to composing from the Read section alone, without
 carrying the draft through Verify, is what lets a rule slip through uncaught.
+The stage command enforces this: your provider's `--reply` / `--draft-new` / `create-reply` refuses to
+stage the body file until Verify has minted its review receipt (see `writing-review`'s **The stage
+gate**), so a skipped review surfaces as a block naming the fix, not a silent leak to Russell.
 
 ### After composing
 
