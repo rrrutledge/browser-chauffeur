@@ -139,6 +139,15 @@ def read_config(repo, runtime_root=None):
         # The once-a-day digest session. It summarizes fyi and groups junk with source-stop
         # proposals - judgment-heavy, so a stronger standard-context model.
         "digest_model": scalar("digest_model", "claude-opus-4-8"),
+        # A CLAUDE_CONFIG_DIR to run every unattended Claude launch under — triage calls, worker tabs,
+        # and the digest — so they draw from a dedicated background Claude subscription instead of the
+        # account Russell types into interactively. Empty (the default) leaves CLAUDE_CONFIG_DIR unset,
+        # so those launches use the same account as everything else — the prior behavior. Set it in the
+        # machine-local drainer.local.md once that background account's CLI is authenticated under the
+        # given directory. The interactive-worker path (spawn-tab.cmd) and the triage subprocess both
+        # read this; the orphan-session resume path deliberately does not (it reopens Russell's own
+        # sessions, which only his account can see).
+        "background_config_dir": scalar("background_config_dir", ""),
         # Reconcile grace: a dispatched item with no live worker session is treated as unfinished and
         # re-queued, but only once it's been launched at least this many minutes - so a just-dispatched
         # tab whose session file isn't written yet isn't misread as dead.
