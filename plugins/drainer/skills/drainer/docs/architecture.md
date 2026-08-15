@@ -26,7 +26,9 @@ minutes (a ~5-min cron) and holds each source at **zero un-started actionable it
 - **needs-you →** the poller immediately spawns a **worker tab** so the user starts acting right away,
   dispatching as fast as possible until the count of live Claude Code tabs system-wide reaches
   `target_open_tabs` (the `DRAINER_TARGET_OPEN_TABS` env var, default 12); beyond that, items wait
-  for a later cycle.
+  for a later cycle. A held item that keeps losing to fresher arrivals is capped at `starvation_minutes`
+  of waiting (default 120) before it's promoted ahead of everything fresher, so it's guaranteed a
+  dispatch slot instead of being re-outranked forever.
 - **auto-handle →** a standing-rule item; the poller spawns a worker that acts autonomously, clears the
   source, queues a digest entry, and finishes without interrupting the user.
 - **fyi / junk →** captured to a **digest queue** for a once-a-day readout; nothing is disposed of

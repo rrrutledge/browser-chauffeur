@@ -42,6 +42,7 @@ from drainer_config import read_config, find_provider_file, ensure_main_worktree
 SEEN_STATE = os.path.join(SCRIPT_DIR, "seen-state.js")
 HEALTH_FILE = "provider-health.json"
 HANDLED_FILE = "reconciled.json"
+WAIT_FILE = "dispatch-wait.json"
 # A page-size ceiling for each provider's own API list call — not a per-cycle work throttle. There is
 # no such throttle: every cycle enumerates everything currently eligible from every source, and
 # target_open_tabs is the only thing that gates how much of it actually gets dispatched (held items
@@ -875,6 +876,56 @@ def save_handled(runtime_dir, handled):
                       {k: sorted(v) for k, v in handled.items()})
 
 
+# ---------------------------------------------------------------------------- starvation avoidance
+#
+# needs-you dispatch is ordered (priority band, received) descending, and a held item is left
+# unrecorded so it's re-derived and re-ranked next cycle exactly like a brand-new item — it carries no
+# memory of having waited. A candidate whose `received` never advances (every action item fanned out of
+# one finalized meeting shares the meeting's start time; so does an old unread message) is therefore
+# outranked by anything with a more recent timestamp, cycle after cycle, for as long as fresher
+# needs-you items keep arriving at or above the dispatch rate — indefinite starvation, not just delay.
+# This file remembers, per item id, the first cycle it was seen waiting; once that wait crosses
+# `starvation_minutes`, the item is promoted ahead of every fresh (non-stale) item regardless of its
+# `received` date, guaranteeing it wins a dispatch slot as soon as the correspondent-hold and
+# target_open_tabs cap allow one, instead of being perpetually re-outranked.
+
+def load_wait(runtime_dir):
+    try:
+        with open(os.path.join(runtime_dir, WAIT_FILE), encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError, TypeError):
+        return {}
+
+
+def save_wait(runtime_dir, wait_since):
+    write_json_atomic(os.path.join(runtime_dir, WAIT_FILE), wait_since)
+
+
+def order_needs_you(items, wait_since, now_iso, starvation_minutes):
+    """Order non-orphan needs-you items for dispatch: items that have been waiting (per `wait_since`,
+    the persisted {id: first-seen-iso} map) at least `starvation_minutes` go first, oldest-waiting
+    first, ahead of everything else; the rest keep the prior (priority_band, received) descending order.
+    A caller must have already stamped every item's first-seen time into `wait_since` (`setdefault`, so
+    a repeat sighting never resets the clock) before calling this."""
+    def waited_minutes(it):
+        since = wait_since.get(it["_id"])
+        if not since:
+            return 0
+        try:
+            since_dt = datetime.fromisoformat(since)
+        except ValueError:
+            return 0
+        return (datetime.fromisoformat(now_iso) - since_dt).total_seconds() / 60
+
+    stale = [it for it in items if waited_minutes(it) >= starvation_minutes]
+    fresh = [it for it in items if waited_minutes(it) < starvation_minutes]
+    stale.sort(key=lambda it: wait_since.get(it["_id"], now_iso))  # oldest-waiting first
+    fresh.sort(key=lambda it: (it.get("_priority_band", NEUTRAL_PRIORITY_BAND), it.get("received") or ""),
+               reverse=True)
+    return stale + fresh
+
+
 def reconcile_unhandled(runtime_dir, cfg, providers, dry_run=False, live=_LIVE_UNSET):
     """Re-queue every item whose source object is still unhandled with no live worker session on it.
 
@@ -1124,11 +1175,16 @@ def main():
         key=lambda it: it.get("received") or "",
         reverse=True,
     )
-    other_needs = sorted(
-        (it for it in needs_you_items if it["_source"] != "orphan-sessions"),
-        key=lambda it: (it.get("_priority_band", NEUTRAL_PRIORITY_BAND), it.get("received") or ""),
-        reverse=True,
-    )
+    # Starvation avoidance: stamp each non-orphan needs-you item's first-seen time (a repeat sighting
+    # never resets it), then let anything that's aged past starvation_minutes jump ahead of fresher
+    # items rather than being re-outranked by them forever — see order_needs_you's docstring.
+    now_iso = datetime.now(timezone.utc).isoformat()
+    wait_since = load_wait(cfg["runtime_dir"])
+    other_items = [it for it in needs_you_items if it["_source"] != "orphan-sessions"]
+    other_ids = {it["_id"] for it in other_items}
+    for it in other_items:
+        wait_since.setdefault(it["_id"], now_iso)
+    other_needs = order_needs_you(other_items, wait_since, now_iso, cfg["starvation_minutes"])
     needs = orphan_needs + other_needs
     # auto-handle items get a worker tab too (they need a browser to act), but the worker acts and CLEARs
     # the source without ever waiting on Russell - so they resolve fast and are dispatched unconditionally,
@@ -1163,7 +1219,7 @@ def main():
                 model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
                 print(f"    [{it['_source']:20}] {it['_id']}  ->  spawn auto-worker [{it['_complexity']} -> {model}]\n"
                       f"        {it.get('received')} | {it.get('from')} | {it.get('subject')}")
-        print("  needs-you (orphan-sessions first, then priority band, then newest-first):")
+        print("  needs-you (orphan-sessions first, then starvation-aged, then priority band, then newest-first):")
         tabs = live_tabs
         for it in needs:
             corr = prov[it["_source"]].correspondent(it)
@@ -1238,6 +1294,7 @@ def main():
         if live_tabs is not None:
             live_tabs += 1
         dispatched += 1
+        wait_since.pop(iid, None)  # dispatched -> its wait is over, drop the tracking entry
     for it in others:
         provider = prov[it["_source"]]
         iid = it["_id"]
@@ -1257,6 +1314,12 @@ def main():
     teams_others = [it for it in others if it["_source"] == "teams"]
     if teams_others and prov.get("teams"):
         _spawn_teams_mark_read(teams_others, prov["teams"], repo, cfg["runtime_dir"], cfg["worker_model"])
+
+    # Persist the wait-since map: drop anything dispatched this cycle (already popped above) and
+    # anything no longer among this cycle's non-orphan needs-you items (resolved another way — e.g. its
+    # source object vanished — so its clock resets if it ever reappears), so the file stays bounded to
+    # exactly what's currently waiting.
+    save_wait(cfg["runtime_dir"], {iid: ts for iid, ts in wait_since.items() if iid in other_ids})
 
     print(f"dispatched {dispatched} worker tab(s), {auto_dispatched} auto-handle worker(s), "
           f"queued {queued} for digest, {correctly_junked_count} correctly-filed junk (no action), "

@@ -44,6 +44,10 @@ presence:
 # eligible from every source. The target open-tab count — tuned via the DRAINER_TARGET_OPEN_TABS
 # environment variable (default 12), not here — is the only thing that throttles how much of it
 # actually gets dispatched at once; anything held simply retries next cycle.
+starvation_minutes: 120   # a needs-you item held this long (correspondent-held or at the tab cap) jumps
+                          # ahead of every fresher item next cycle, so a candidate whose `received` never
+                          # advances (e.g. every action item fanned out of one meeting) can't be
+                          # perpetually outranked by newer arrivals and starved forever.
 
 # Worker model per item — the poller picks by triage complexity (simple -> worker_model,
 # complex -> worker_model_complex). Set an EXPLICIT model so workers don't inherit a 1M-context

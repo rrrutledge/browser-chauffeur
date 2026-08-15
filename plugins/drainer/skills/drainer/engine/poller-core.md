@@ -60,7 +60,12 @@ spawn, record — is code. No AI re-implements the loop.
      account can't use), then record seen **after** the spawn succeeds. At the target: leave it
      **unrecorded** so a later cycle picks it up (throttle + fail-safe). If the live-tab scan itself fails,
      the throttle is skipped entirely for that cycle (fail-safe: never block dispatch just because tabs
-     couldn't be counted).
+     couldn't be counted). Non-orphan needs-you items are ordered (priority band, `received`) descending,
+     except any item that has been waiting `starvation_minutes` or more (tracked in `dispatch-wait.json`,
+     keyed by stable id) - those dispatch first, oldest-waiting first, ahead of every fresher item, so a
+     candidate whose `received` never advances (every action item fanned out of one finalized meeting
+     shares the meeting's start time) can't be perpetually re-outranked by newer arrivals. See
+     `order_needs_you` in `run-poller.py`.
    - **auto-handle** → capture + spawn a worker tab too (it needs a browser to act), but the worker runs
      the standing rule autonomously and clears the source right away, so it resolves fast and is
      dispatched unconditionally, never throttled by `target_open_tabs`. It's recorded with its own

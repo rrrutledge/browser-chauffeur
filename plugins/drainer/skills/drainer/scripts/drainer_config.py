@@ -152,6 +152,13 @@ def read_config(repo, runtime_root=None):
         # re-queued, but only once it's been launched at least this many minutes - so a just-dispatched
         # tab whose session file isn't written yet isn't misread as dead.
         "orphan_grace_minutes": int(scalar("orphan_grace_minutes", "15")),
+        # How long a needs-you item can sit unrecorded (correspondent-held or at the target_open_tabs
+        # cap) before it's promoted ahead of every fresher item on dispatch ordering, regardless of its
+        # own `received` date. Without this, an item whose `received` never advances (every action item
+        # fanned out of one finalized meeting shares the meeting's start time; so does an old unread
+        # message) is outranked by anything more recent for as long as fresher items keep arriving -
+        # indefinite starvation, not just delay. See run-poller.py's order_needs_you.
+        "starvation_minutes": int(scalar("starvation_minutes", "120")),
         # Wall-clock time (HH:MM, 24h) the daily digest task fires; consumed by the installer.
         "digest_time": scalar("digest_time", "17:00"),
     }
