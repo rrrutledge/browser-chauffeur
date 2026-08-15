@@ -1109,10 +1109,11 @@ def main():
         save_health(cfg["runtime_dir"], health)
 
     # --- split: needs-you (globally ordered), auto-handle (own worker, no cap), others (digest) ---
-    # Ordered across ALL sources by (priority band, date) descending. Only job-search cards carry a
-    # non-neutral band (the trello adapter stamps `_priority_band` — see its _PRIORITY_BAND for the
-    # policy); every other item defaults to neutral and so orders purely by `received` date as before
-    # (an inbox message's arrival time, a dated card's due date, or an undated card's creation date).
+    # Ordered across ALL sources by (priority band, level band, date) descending. Only job-search cards
+    # carry a non-neutral band or level (the trello adapter stamps `_priority_band` and `_level_band` —
+    # see its _PRIORITY_BAND and _level_band for the policy); every other item defaults to neutral band
+    # and level-0, so it orders purely by `received` date as before (an inbox message's arrival time, a
+    # dated card's due date, or an undated card's creation date).
     needs_you_items = [it for it in needs_and_others if it["_bucket"] == "needs-you"]
     # orphan-sessions dispatches FIRST, ahead of every other source, explicitly — not via
     # priority-band/received-timestamp tie-breaking (a coincidentally-recent or high-priority
@@ -1126,7 +1127,8 @@ def main():
     )
     other_needs = sorted(
         (it for it in needs_you_items if it["_source"] != "orphan-sessions"),
-        key=lambda it: (it.get("_priority_band", NEUTRAL_PRIORITY_BAND), it.get("received") or ""),
+        key=lambda it: (it.get("_priority_band", NEUTRAL_PRIORITY_BAND), it.get("_level_band", 0),
+                         it.get("received") or ""),
         reverse=True,
     )
     needs = orphan_needs + other_needs
@@ -1163,7 +1165,7 @@ def main():
                 model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
                 print(f"    [{it['_source']:20}] {it['_id']}  ->  spawn auto-worker [{it['_complexity']} -> {model}]\n"
                       f"        {it.get('received')} | {it.get('from')} | {it.get('subject')}")
-        print("  needs-you (orphan-sessions first, then priority band, then newest-first):")
+        print("  needs-you (orphan-sessions first, then priority band, then level band, then newest-first):")
         tabs = live_tabs
         for it in needs:
             corr = prov[it["_source"]].correspondent(it)
