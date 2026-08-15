@@ -27,13 +27,6 @@ CACHE_DIR = os.path.join(
     HOME, ".claude", "plugins", "cache",
     "rrrutledge-claude-code-plugins", "drainer",
 )
-# Background/automated Claude Code work (this launcher's own triage + worker-tab
-# dispatches) authenticates as a separate subscription so it draws from its own
-# usage window instead of eating into the interactive 5-hour/weekly limits. Only
-# the final run-digest.py/run-poller.py subprocess is pointed at it -- not the
-# _auto_update() plugin-update call below, which must keep reading/writing the
-# primary identity's plugin registry under HOME/.claude/plugins.
-DRAINER_CLAUDE_CONFIG_DIR = os.path.join(HOME, ".claude-drainer-identity")
 
 
 def _from_registry():
@@ -124,9 +117,14 @@ def main():
 
     # Reuse the interpreter the task launched us with (python vs pythonw), so the
     # poller stays console-less and the digest keeps its visible behavior.
+    # The poller and everything it spawns — worker tabs and the digest — run under
+    # Russell's main account, so a worker tab he opens (and drives from his phone's
+    # Remote Control) is on the same account his phone is signed into. Only the
+    # headless triage call moves to a background account, and it does that itself
+    # via the drainer.local.md `background_config_dir` knob (run-poller.py scopes
+    # CLAUDE_CONFIG_DIR to just that one call), so nothing is set process-wide here.
     cmd = [sys.executable, target, "--repo", args.repo, *passthrough]
-    env = {**os.environ, "CLAUDE_CONFIG_DIR": DRAINER_CLAUDE_CONFIG_DIR}
-    return subprocess.run(cmd, env=env).returncode
+    return subprocess.run(cmd).returncode
 
 
 if __name__ == "__main__":
