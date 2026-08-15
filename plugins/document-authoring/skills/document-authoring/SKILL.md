@@ -438,9 +438,9 @@ This runs after **any** drafted message — formal or conversational, any channe
    To make a change stick:
    - Locate the working clone (`~/Dev/rrrutledge/rrrutledge-claude-code-plugins`; clone it from the origin if it's not there) — do **not** edit under `~/.claude/plugins/`.
    - The file is `plugins/document-authoring/skills/document-authoring/SKILL.md`.
-   - Create a branch, make the edit there, commit, push, and open a PR.
-     Don't push straight to `main`.
-   - **In the PR description, state the overlap search's outcome** — either "folded into `<bullet>` in `<section>`" or "searched Core voice / Asks / Holding the voice / every Conversational persona — no overlap, new bullet." This is what makes the check auditable at review time instead of invisible inside the diff.
+   - Create a branch, make the edit there, commit, and push — don't push straight to `main`.
+   - **Before opening the PR, dispatch an independent reviewer on the change** — a fresh agent that reads the *whole* file, not a re-read of your own edit — to confirm the new text isn't already covered elsewhere and that it obeys the rules in step 3 (one crisp imperative, no before/after quote, no "don't X, do Y" couplet, no em dash). This is the same cold check the drafting loop's **Verify** step runs, and for the same reason: the author who just distilled the rule is blind to the sibling that already says it, so a self-run overlap grep is exactly what lets a duplicate through. Revise against what it finds, then open the PR.
+   - **In the PR description, state the overlap search's outcome and the reviewer's verdict** — either "folded into `<bullet>` in `<section>`" or "searched Core voice / Asks / Holding the voice / every Conversational persona — no overlap, new bullet." This is what makes the check auditable at review time instead of invisible inside the diff.
 5. Tell Russell in one line what you learned and changed, with the PR link — or, if every edit was an information fix, say there were no voice changes (no PR needed).
 
 The goal is convergence: over time his edits should become information-only.
