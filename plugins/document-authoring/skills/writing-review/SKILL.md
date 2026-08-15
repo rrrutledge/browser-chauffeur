@@ -42,10 +42,11 @@ This is the **Review** step of `writing-flow`, the cold pass every piece of writ
 4. Revise against the findings you accept, then dispatch a **fresh** reviewer on the revised text.
    A reviewer that has already seen an earlier draft reads its own prior findings rather than the words in front of it.
 5. Repeat from step 3 until the reviewer returns clean, a finding stands that you genuinely disagree with, or you have run three rounds.
-6. Mint the review receipt on the exact file you will stage, so the stage gate lets the draft through:
-   `python ~/.claude/plugins/cache/*/document-authoring/*/hooks/verify_gate.py mint <body-file>` (run the newest if several are cached).
-   Mint the same file the stage command passes as `--body-file` / `--json`, after the loop above has converged on the text you're keeping.
-   Any later edit to that file needs a fresh review and a fresh mint, since the receipt binds to the file's content.
+6. Mint the review receipt on the exact file the gate will check, so it lets the work through:
+   `python ~/.claude/plugins/cache/*/document-authoring/*/hooks/verify_gate.py mint <file>` (run the newest if several are cached).
+   For an outward message, mint the body file the stage command passes as `--body-file` / `--json`.
+   For shipped prose, mint each changed markdown file the PR will carry, so `gh pr create` passes.
+   Mint after the loop above has converged on the text you're keeping; any later edit to that file needs a fresh review and a fresh mint, since the receipt binds to the file's content.
 
 **The loop finishes before Russell sees anything.**
 He gets the work, not the findings, and not the rounds it took.
@@ -57,13 +58,23 @@ What reaches him depends on how the loop ended:
 
 ## The stage gate
 
-For an outward message, the Verify step is contractual, not advisory: a PreToolUse hook (`hooks/verify_gate.py` in this plugin) blocks the mail-staging commands until a fresh receipt exists for the body file's content.
-It covers personal Gmail and personal Outlook (`--reply` / `--draft-new` / `--send-self`, keyed on `--body-file`), work Outlook (`create-draft` / `create-reply`, keyed on `--json`), and the Teams and Slack browser composers (a browser-chauffeur `--cdp-port` run that declares its body via `--body-file`), and it denies the native Gmail connector's compose and send verbs with a redirect to the `gmail` skill's `gmail.js`.
-The receipt attests that a review ran against this exact text; it never judges the verdict, so the standing-to-disagree rules below still hold - a draft you reviewed and chose to keep over a finding mints and stages the same way a clean one does.
+The Verify step is contractual, not advisory: a PreToolUse hook (`hooks/verify_gate.py` in this plugin) blocks the moment a piece of writing would reach Russell until a fresh receipt exists for that exact content.
+It guards the two surfaces that reach him - an outward message when a stage command puts it where he sends it, and shipped prose when a PR opens for him to read on the Files Changed tab.
+The receipt attests that a review ran against this exact text; it never judges the verdict, so the standing-to-disagree rules below still hold - text you reviewed and chose to keep over a finding mints the same way a clean one does.
 
+**Outward messages.**
+The gate blocks the mail-staging commands until a receipt exists for the body file's content.
+It covers personal Gmail and personal Outlook (`--reply` / `--draft-new` / `--send-self`, keyed on `--body-file`), work Outlook (`create-draft` / `create-reply`, keyed on `--json`), and the Teams and Slack browser composers (a browser-chauffeur `--cdp-port` run that declares its body via `--body-file`), and it denies the native Gmail connector's compose and send verbs with a redirect to the `gmail` skill's `gmail.js`.
 A body with no letters (a bare emoji reaction) carries no prose and is exempt.
 The Teams and Slack composers type into a web page rather than a command argument, so `message-draft` routes their body through a reviewed `.tmp` file and drives the composer with `--body-file` on the browser-chauffeur run, which is how the gate reaches them; a composer run that declares no body file is a screenshot or a scrape, not a stage, and passes straight through.
-When a stage is blocked, the block message names the exact body file and the mint command to run, so the path through the gate is always one command away.
+
+**Shipped prose.**
+A skill, a README, or a repo doc reaches Russell when a PR opens, so the gate fires on `gh pr create` and `gh pr ready`.
+The hook computes the PR diff itself and blocks unless every changed markdown file that ships has a fresh receipt for its current content.
+Markdown under `.tmp/` and a top-level `handoffs/` is exempt - those are change-explanations, not shipped artifacts - and a code-only PR passes straight through.
+Mint each changed prose file after its review, so `gh pr create` lets the PR through; the voice-learning loop's independent-reviewer step already runs the review, and mints there so it composes with this gate rather than fighting it.
+
+When a stage or PR is blocked, the block message names the exact file(s) and the mint command to run, so the path through the gate is always one command away.
 
 ## Standing to disagree
 

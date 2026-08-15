@@ -446,7 +446,8 @@ This runs after **any** drafted message — formal or conversational, any channe
    - Create a branch, make the edit there, commit, and push - don't push straight to `main`.
    - **Before opening the PR, dispatch an independent reviewer on the change** - a fresh agent that reads the *whole* file, not a re-read of your own edit - to confirm the new text isn't already covered elsewhere and that it obeys the rules in step 3 (one crisp imperative, no before/after quote, no "don't X, do Y" couplet, no em dash).
      This is the same cold check the drafting loop's **Verify** step runs, and for the same reason it names.
-     Revise against what it finds, then open the PR.
+     Revise against what it finds, then mint the review receipt on the edited file so the PR gate lets it through: `python ~/.claude/plugins/cache/*/document-authoring/*/hooks/verify_gate.py mint <path-to-SKILL.md>` (run the newest if several are cached).
+     The `gh pr create` this loop ends in is gated on that receipt (see `writing-review`'s **The stage gate**), so minting here is what lets this loop's own PR open.
    - **In the PR description, state the overlap search's outcome and the reviewer's verdict** - either "folded into `<bullet>` in `<section>`" or "searched Core voice / Asks / Holding the voice / every Conversational persona - no overlap, new bullet." This is what makes the check auditable at review time instead of invisible inside the diff.
 5. Tell Russell in one line what you learned and changed, with the PR link — or, if every edit was an information fix, say there were no voice changes (no PR needed).
 

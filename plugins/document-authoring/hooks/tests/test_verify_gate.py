@@ -244,3 +244,191 @@ def test_body_file_without_cdp_or_known_script_not_gated(tmp_path):
 def test_malformed_stdin_defers(tmp_path):
     r = run([], stdin="not json")
     assert decision(r.stdout) == "DEFER"
+
+
+# --- PR prose gate ---
+#
+# These build a throwaway git repo with a `main` base and a feature branch, so the hook's
+# own `git diff` runs against real history exactly as it would at PR time.
+
+def git(repo, *args):
+    subprocess.run(["git", "-C", repo, *args], check=True, capture_output=True, text=True)
+
+
+def make_repo(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    r = str(repo)
+    git(r, "init", "-q", "-b", "main")
+    git(r, "config", "user.email", "t@t.t")
+    git(r, "config", "user.name", "T")
+    (repo / "seed.txt").write_text("seed\n", encoding="utf-8")
+    git(r, "add", "-A")
+    git(r, "commit", "-qm", "seed")
+    git(r, "checkout", "-q", "-b", "feature")
+    return repo
+
+
+def commit_file(repo, relpath, text):
+    p = repo / relpath
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(text, encoding="utf-8")
+    git(str(repo), "add", "-A")
+    git(str(repo), "commit", "-qm", f"add {relpath}")
+    return p
+
+
+def test_pr_create_with_unreviewed_skill_blocked(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    repo = make_repo(tmp_path)
+    commit_file(repo, "plugins/x/skills/y/SKILL.md", "# Y\n\nReal shipped prose here.\n")
+    r = run([], stdin=bash_payload("gh pr create --base main --title T --body B"),
+            cwd=str(repo), receipt_dir=receipts)
+    assert decision(r.stdout) == "DENY"
+    assert "SKILL.md" in r.stdout
+
+
+def test_pr_create_after_mint_passes(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    repo = make_repo(tmp_path)
+    body = commit_file(repo, "plugins/x/skills/y/SKILL.md", "# Y\n\nReal shipped prose here.\n")
+    run(["mint", str(body)], receipt_dir=receipts)
+    r = run([], stdin=bash_payload("gh pr create --base main --title T --body B"),
+            cwd=str(repo), receipt_dir=receipts)
+    assert decision(r.stdout) == "DEFER"
+
+
+def test_pr_create_reblocks_after_edit(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    repo = make_repo(tmp_path)
+    body = commit_file(repo, "docs/guide.md", "# Guide\n\nOriginal reviewed prose.\n")
+    run(["mint", str(body)], receipt_dir=receipts)
+    commit_file(repo, "docs/guide.md", "# Guide\n\nEdited prose after the review.\n")
+    r = run([], stdin=bash_payload("gh pr create --base main"),
+            cwd=str(repo), receipt_dir=receipts)
+    assert decision(r.stdout) == "DENY"
+
+
+def test_pr_ready_gated(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    repo = make_repo(tmp_path)
+    commit_file(repo, "README.md", "# Readme\n\nUnreviewed shipped prose.\n")
+    r = run([], stdin=bash_payload("gh pr ready"), cwd=str(repo), receipt_dir=receipts)
+    assert decision(r.stdout) == "DENY"
+
+
+def test_pr_create_code_only_defers(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    repo = make_repo(tmp_path)
+    commit_file(repo, "src/app.py", "print('hi')\n")
+    r = run([], stdin=bash_payload("gh pr create --base main"),
+            cwd=str(repo), receipt_dir=receipts)
+    assert decision(r.stdout) == "DEFER"
+
+
+def test_pr_create_tmp_markdown_not_gated(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    repo = make_repo(tmp_path)
+    commit_file(repo, ".tmp/handoff-seed.md", "# Handoff\n\nA change-explanation, not shipped.\n")
+    r = run([], stdin=bash_payload("gh pr create --base main"),
+            cwd=str(repo), receipt_dir=receipts)
+    assert decision(r.stdout) == "DEFER"
+
+
+def test_pr_create_handoffs_dir_not_gated(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    repo = make_repo(tmp_path)
+    commit_file(repo, "handoffs/next.md", "# Next session\n\nSeed prose for a handoff.\n")
+    r = run([], stdin=bash_payload("gh pr create --base main"),
+            cwd=str(repo), receipt_dir=receipts)
+    assert decision(r.stdout) == "DEFER"
+
+
+def test_pr_create_default_base_resolves(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    repo = make_repo(tmp_path)
+    commit_file(repo, "docs/g.md", "# G\n\nUnreviewed prose with no --base flag.\n")
+    r = run([], stdin=bash_payload("gh pr create --title T"),
+            cwd=str(repo), receipt_dir=receipts)
+    assert decision(r.stdout) == "DENY"
+
+
+def test_pr_create_multi_file_lists_only_unreviewed(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    repo = make_repo(tmp_path)
+    reviewed = commit_file(repo, "docs/a.md", "# A\n\nReviewed prose.\n")
+    commit_file(repo, "docs/b.md", "# B\n\nUnreviewed prose.\n")
+    run(["mint", str(reviewed)], receipt_dir=receipts)
+    r = run([], stdin=bash_payload("gh pr create --base main"),
+            cwd=str(repo), receipt_dir=receipts)
+    assert decision(r.stdout) == "DENY"
+    assert "docs/b.md" in r.stdout
+    assert "docs/a.md" not in r.stdout
+
+
+def test_pr_create_pure_reaction_markdown_defers(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    repo = make_repo(tmp_path)
+    commit_file(repo, "docs/emoji.md", "👍\n")
+    r = run([], stdin=bash_payload("gh pr create --base main"),
+            cwd=str(repo), receipt_dir=receipts)
+    assert decision(r.stdout) == "DEFER"
+
+
+def test_grep_mentioning_gh_pr_create_not_gated(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    repo = make_repo(tmp_path)
+    commit_file(repo, "docs/g.md", "# G\n\nUnreviewed prose.\n")
+    r = run([], stdin=bash_payload('grep -r "gh pr create" docs/g.md'),
+            cwd=str(repo), receipt_dir=receipts)
+    assert decision(r.stdout) == "DEFER"
+
+
+def test_gh_pr_list_not_gated(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    repo = make_repo(tmp_path)
+    commit_file(repo, "docs/g.md", "# G\n\nUnreviewed prose.\n")
+    r = run([], stdin=bash_payload("gh pr list"), cwd=str(repo), receipt_dir=receipts)
+    assert decision(r.stdout) == "DEFER"
+
+
+def test_pr_create_outside_git_repo_fails_open(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    plain = tmp_path / "plain"
+    plain.mkdir()
+    r = run([], stdin=bash_payload("gh pr create --base main"),
+            cwd=str(plain), receipt_dir=receipts)
+    assert decision(r.stdout) == "DEFER"
+
+
+def test_pr_create_base_uses_remote_not_stale_local(tmp_path):
+    # gh diffs --base main against the REMOTE main. A local `main` that lags origin/main
+    # must not drag unrelated files (changed on origin since) into this PR's diff.
+    receipts = str(tmp_path / "receipts")
+    origin = tmp_path / "origin.git"
+    subprocess.run(["git", "init", "-q", "--bare", str(origin)], check=True)
+
+    repo = make_repo(tmp_path)  # on `feature`, at the seed commit
+    r = str(repo)
+    git(r, "checkout", "-q", "main")
+    git(r, "remote", "add", "origin", str(origin))
+    # An unrelated prose file lands on the real (remote) main after our branch diverged.
+    commit_file(repo, "docs/other.md", "# Other\n\nSomeone else's unreviewed prose.\n")
+    git(r, "push", "-q", "origin", "main")  # origin/main = seed -> other
+    git(r, "checkout", "-q", "feature")  # clean switch: other.md is committed, removed here
+    git(r, "branch", "-f", "main", "feature")  # local main lags at seed, off HEAD so no dirt
+    # Our branch changes only our own file, which we review + mint.
+    body = commit_file(repo, "docs/mine.md", "# Mine\n\nMy reviewed prose.\n")
+    run(["mint", str(body)], receipt_dir=receipts)
+    r2 = run([], stdin=bash_payload("gh pr create --base main"),
+             cwd=r, receipt_dir=receipts)
+    assert decision(r2.stdout) == "DEFER"
+
+
+def test_pr_create_after_compound_command_gated(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    repo = make_repo(tmp_path)
+    commit_file(repo, "docs/g.md", "# G\n\nUnreviewed prose.\n")
+    r = run([], stdin=bash_payload("git push -u origin feature && gh pr create --base main"),
+            cwd=str(repo), receipt_dir=receipts)
+    assert decision(r.stdout) == "DENY"

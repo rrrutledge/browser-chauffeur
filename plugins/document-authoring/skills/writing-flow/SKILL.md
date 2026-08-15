@@ -34,6 +34,7 @@ The middle step is the one that gets dropped under pressure, so carry all three 
 
 ## What enforces the Review step
 
-For an outward message - mail, and the Slack and Teams composers - a stage gate blocks staging until the review has run against the exact draft content (see `writing-review`'s **The stage gate**).
-Shipped prose the gate can't reach - a skill, a README, a repo doc, a code comment - still runs the Review step every time, and this flow is what makes it run there.
+A stage gate blocks the moment the writing would reach Russell until the review has run against that exact content (see `writing-review`'s **The stage gate**).
+For an outward message that moment is the stage command; for shipped markdown - a skill, a README, a repo doc - it is the PR-opening command.
+Prose the gate can't reach - a code comment, config prose, markdown it exempts - still runs the Review step every time, and this flow is what makes it run there.
 A draft that skips it reads as generic in the places Russell's voice should carry, which is the whole failure the flow exists to prevent.
