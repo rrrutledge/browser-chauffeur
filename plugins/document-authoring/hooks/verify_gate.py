@@ -213,24 +213,36 @@ def git_output(args):
     return result.stdout
 
 
+def _ref_exists(ref):
+    try:
+        git_output(["rev-parse", "--verify", "--quiet", ref])
+        return True
+    except Exception:
+        return False
+
+
 def resolve_pr_base(args):
-    """The base branch the PR diffs against: an explicit --base/-B if given, else the
-    remote's default branch, else main. Returns None when none resolves (fail-open)."""
-    base = extract_flag_value(args, "--base") or extract_flag_value(args, "-B")
-    if base:
-        return base
+    """The ref the PR diffs against, matching what GitHub shows. `gh pr create --base <b>`
+    diffs against the branch <b> on the remote, so a named base resolves to its
+    remote-tracking ref (`origin/<b>`) when that exists, falling back to a local branch of
+    that name only when there is no remote - this is what keeps the gate honest when the
+    local `main` lags `origin/main`. With no --base, use the remote's default branch. Returns
+    None when nothing resolves (fail-open)."""
+    name = extract_flag_value(args, "--base") or extract_flag_value(args, "-B")
+    if name:
+        for candidate in (f"origin/{name}", name):
+            if _ref_exists(candidate):
+                return candidate
+        return None
     try:
         ref = git_output(["rev-parse", "--abbrev-ref", "origin/HEAD"]).strip()
-        if ref:
+        if ref and _ref_exists(ref):
             return ref
     except Exception:
         pass
     for candidate in ("origin/main", "main"):
-        try:
-            git_output(["rev-parse", "--verify", "--quiet", candidate])
+        if _ref_exists(candidate):
             return candidate
-        except Exception:
-            continue
     return None
 
 

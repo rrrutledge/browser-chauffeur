@@ -401,6 +401,30 @@ def test_pr_create_outside_git_repo_fails_open(tmp_path):
     assert decision(r.stdout) == "DEFER"
 
 
+def test_pr_create_base_uses_remote_not_stale_local(tmp_path):
+    # gh diffs --base main against the REMOTE main. A local `main` that lags origin/main
+    # must not drag unrelated files (changed on origin since) into this PR's diff.
+    receipts = str(tmp_path / "receipts")
+    origin = tmp_path / "origin.git"
+    subprocess.run(["git", "init", "-q", "--bare", str(origin)], check=True)
+
+    repo = make_repo(tmp_path)  # on `feature`, at the seed commit
+    r = str(repo)
+    git(r, "checkout", "-q", "main")
+    git(r, "remote", "add", "origin", str(origin))
+    # An unrelated prose file lands on the real (remote) main after our branch diverged.
+    commit_file(repo, "docs/other.md", "# Other\n\nSomeone else's unreviewed prose.\n")
+    git(r, "push", "-q", "origin", "main")  # origin/main = seed -> other
+    git(r, "checkout", "-q", "feature")  # clean switch: other.md is committed, removed here
+    git(r, "branch", "-f", "main", "feature")  # local main lags at seed, off HEAD so no dirt
+    # Our branch changes only our own file, which we review + mint.
+    body = commit_file(repo, "docs/mine.md", "# Mine\n\nMy reviewed prose.\n")
+    run(["mint", str(body)], receipt_dir=receipts)
+    r2 = run([], stdin=bash_payload("gh pr create --base main"),
+             cwd=r, receipt_dir=receipts)
+    assert decision(r2.stdout) == "DEFER"
+
+
 def test_pr_create_after_compound_command_gated(tmp_path):
     receipts = str(tmp_path / "receipts")
     repo = make_repo(tmp_path)
