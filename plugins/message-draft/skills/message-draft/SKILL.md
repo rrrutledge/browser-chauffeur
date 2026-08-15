@@ -29,13 +29,14 @@ Conversational writing rules as a review pass. If anything was trimmed, re-stage
 (Teams/Slack: re-type it; Outlook: re-create the draft from the gated body). Report `voice-gate=passed` in
 the done-criteria once it has run.
 
-**Review gate (mint a receipt for the reviewed body):** the `document-authoring` Verify step is
-harness-enforced through `writing-review`'s stage gate. Compose the final body into a file, run the
-Verify loop against that file, then mint its receipt (see `writing-review`'s **The stage gate** for the
-`verify_gate.py mint` command). For **Outlook**, that file is the `--json` payload the create-draft /
-create-reply command already uses, so minting it is all the gate needs. For **Teams** and **Slack**, mint
-on a `.tmp` body file and run `verify_gate.py check <body-file>` before the first keystroke (see the same
-section for why those two fall outside the hook), and report the receipt hash in the done-criteria.
+**Review gate (mint a receipt for the reviewed body):** every mode is harness-enforced through
+`writing-review`'s stage gate. Compose the final body into a file, run the Verify loop against that file,
+then mint its receipt (see `writing-review`'s **The stage gate** for the `verify_gate.py mint` command).
+For **Outlook**, that file is the `--json` payload the create-draft / create-reply command already uses.
+For **Teams** and **Slack**, write the body to a `.tmp` file and drive the composer from it: have
+browser-chauffeur read the body out of that file and invoke its run with `--body-file=<that file>`
+alongside the usual `--cdp-port`, so the gate sees the body on the command line and blocks a composer run
+whose body has no receipt. Report the receipt hash in the done-criteria.
 
 ## Behavioral preferences
 
@@ -102,7 +103,8 @@ Inputs: the address, message body, optional hyperlinks (display text + URL), opt
    name + first-name prefix; group/meeting: a case-insensitive substring of the chat name.
 3. **Compose.** The composer is `div[data-tid="ckeditor"]` (target the `:visible` one). Check it for
    an existing draft per invariant 5 (Teams auto-restores a left draft here), clear it, then type the
-   body; line breaks are Shift+Enter, never a bare Enter.
+   body; line breaks are Shift+Enter, never a bare Enter. Source the body from the reviewed `--body-file`
+   and pass that flag on the browser-chauffeur run, per **Review gate** above, so the run is gated.
 4. **Hyperlinks.** Ctrl+K opens an Insert-link dialog; fill `[data-tid="insertHyperlink-displayText"]`
    and `[data-tid="insertHyperlink-linkAddress"]` (⚠️ `data-tid`, not `id`), then click
    `[data-tid="insertHyperlink-insertButton"]` (⚠️ NOT `role=button` with text "Insert" — that
@@ -138,7 +140,9 @@ drainer item — its `channel` + `ts` + optional `threadTs` + permalink), the me
    `.ql-editor[contenteditable="true"]`, `div[role="textbox"][contenteditable="true"]` — target the
    `:visible` one), check it for an existing draft per invariant 5, clear it (Ctrl+A, Backspace), then
    type the body. Line breaks are **Shift+Enter**; a bare **Enter sends**, so never press it. (Use
-   browser-chauffeur's bare-Enter-refusing composer primitives.)
+   browser-chauffeur's bare-Enter-refusing composer primitives.) Source the body from the reviewed
+   `--body-file` and pass that flag on the browser-chauffeur run, per **Review gate** above, so the run
+   is gated.
 4. **Links.** Slack renders a pasted URL as a link automatically; for anchor-text links, type the phrase
    and apply a link via the composer's link affordance (Ctrl+K inside the Slack composer opens its
    link dialog — distinct from the quick switcher, which is Ctrl+K when no composer is focused).

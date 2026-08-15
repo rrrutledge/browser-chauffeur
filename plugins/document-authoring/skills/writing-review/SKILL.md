@@ -58,11 +58,11 @@ What reaches him depends on how the loop ended:
 ## The stage gate
 
 For an outward message, the Verify step is contractual, not advisory: a PreToolUse hook (`hooks/verify_gate.py` in this plugin) blocks the mail-staging commands until a fresh receipt exists for the body file's content.
-It covers personal Gmail and personal Outlook (`--reply` / `--draft-new` / `--send-self`, keyed on `--body-file`) and work Outlook (`create-draft` / `create-reply`, keyed on `--json`), and it denies the native Gmail connector's compose and send verbs with a redirect to the `gmail` skill's `gmail.js`.
+It covers personal Gmail and personal Outlook (`--reply` / `--draft-new` / `--send-self`, keyed on `--body-file`), work Outlook (`create-draft` / `create-reply`, keyed on `--json`), and the Teams and Slack browser composers (a browser-chauffeur `--cdp-port` run that declares its body via `--body-file`), and it denies the native Gmail connector's compose and send verbs with a redirect to the `gmail` skill's `gmail.js`.
 The receipt attests that a review ran against this exact text; it never judges the verdict, so the standing-to-disagree rules below still hold - a draft you reviewed and chose to keep over a finding mints and stages the same way a clean one does.
 
 A body with no letters (a bare emoji reaction) carries no prose and is exempt.
-Teams and Slack composer drafts type their text straight into the browser, where no command carries it for the hook to read; those two are outside the hook's reach, so mint the receipt on a file holding the body and run `verify_gate.py check <body-file>` to assert it before driving the composer.
+The Teams and Slack composers type into a web page rather than a command argument, so `message-draft` routes their body through a reviewed `.tmp` file and drives the composer with `--body-file` on the browser-chauffeur run, which is how the gate reaches them; a composer run that declares no body file is a screenshot or a scrape, not a stage, and passes straight through.
 When a stage is blocked, the block message names the exact body file and the mint command to run, so the path through the gate is always one command away.
 
 ## Standing to disagree

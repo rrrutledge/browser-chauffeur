@@ -209,6 +209,38 @@ def test_grep_mentioning_script_not_gated(tmp_path):
     assert decision(r.stdout) == "DEFER"
 
 
+def test_browser_composer_with_body_file_gated(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    write_body(tmp_path, "slack-body.md", "Hey folks - here is the update.")
+    r = run([], stdin=bash_payload("node .tmp/compose-slack.js --cdp-port=9222 --body-file=slack-body.md"),
+            cwd=str(tmp_path), receipt_dir=receipts)
+    assert decision(r.stdout) == "DENY"
+
+
+def test_browser_composer_mint_then_pass(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    body = write_body(tmp_path, "teams-body.md", "Hey folks - here is the update.")
+    run(["mint", str(body)], receipt_dir=receipts)
+    r = run([], stdin=bash_payload("node .tmp/compose-teams.js --cdp-port=9222 --body-file=teams-body.md"),
+            cwd=str(tmp_path), receipt_dir=receipts)
+    assert decision(r.stdout) == "DEFER"
+
+
+def test_browser_screenshot_run_not_gated(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    r = run([], stdin=bash_payload("node .tmp/screenshot.js --cdp-port=9222"),
+            cwd=str(tmp_path), receipt_dir=receipts)
+    assert decision(r.stdout) == "DEFER"
+
+
+def test_body_file_without_cdp_or_known_script_not_gated(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    write_body(tmp_path, "x.md", "Some prose in a file.")
+    r = run([], stdin=bash_payload("node .tmp/other.js --body-file=x.md"),
+            cwd=str(tmp_path), receipt_dir=receipts)
+    assert decision(r.stdout) == "DEFER"
+
+
 def test_malformed_stdin_defers(tmp_path):
     r = run([], stdin="not json")
     assert decision(r.stdout) == "DEFER"

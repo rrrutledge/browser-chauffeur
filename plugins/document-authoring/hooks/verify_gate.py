@@ -104,7 +104,16 @@ def has_fresh_receipt(h):
 # --- command parsing ---
 
 def find_body_file(command):
-    """Return the body-file path if `command` is a recognized stage command, else None."""
+    """Return the body-file path if `command` is a recognized stage command, else None.
+
+    Two shapes count as a stage command. A named mail script (gmail.js / mail.js /
+    outlook-mail.js) carrying its compose verb and body flag is one. A browser-chauffeur
+    composer run is the other: a `--cdp-port` browser session that declares the message it
+    will type via `--body-file`. The Slack and Teams composers type into a web page rather
+    than into a script argument, so message-draft routes their body through a declared file,
+    which is what lets this gate reach them the same way it reaches mail. A browser-chauffeur
+    run that carries no `--body-file` (a screenshot, a scrape) is not a stage command and
+    passes straight through."""
     try:
         tokens = shlex.split(command, posix=True)
     except ValueError:
@@ -118,6 +127,10 @@ def find_body_file(command):
         if not any(v in rest for v in spec["verbs"]):
             continue
         path = extract_flag_value(rest, spec["body_flag"])
+        if path:
+            return path
+    if any(t == "--cdp-port" or t.startswith("--cdp-port=") for t in tokens):
+        path = extract_flag_value(tokens, "--body-file")
         if path:
             return path
     return None
