@@ -50,8 +50,9 @@ instructions: |-
     from its history.
 
   **A freshly-created card with no Start/Due is eligible for drainer pickup on the very next cycle** -
-  see the `trello` skill's "Guarding a new card against the drainer" for how to give it a date up front
-  or, for the rare card that must stay undated while you keep working it, pre-register it as seen.
+  see the `trello` skill's "Guarding a new card against the drainer" for setting a real date at
+  creation (padded out when the true follow-up date isn't known yet) so a session still working the
+  card isn't raced by a worker.
 
   ---
 

@@ -82,36 +82,23 @@ instructions: |-
   eligible for pickup on the very next drain cycle, which can race a session that's still actively
   working the same task it just created the card for.
 
-  **Primary defense: give the card a real Start or Due date up front**, whenever you already know when it
-  should next surface (Start for task cards, Due for outreach cards - see the drainer's trello provider
-  for which field a given board's cards use). A dated card was never startable now in the first place, so
-  this alone is the fix for most cards - nothing else is needed.
+  **Give the card a real Start or Due date at creation, every time** (Start for task cards, Due for
+  outreach cards - see the drainer's trello provider for which field a given board's cards use):
 
-  **Fallback: pre-register the card as seen**, for the rare card that must stay undated while the creating
-  session keeps working it in the same sitting. Immediately after creating the card, compute its drainer
-  id and record it so the next drain cycle treats it as already-dispatched:
+  - **If the true next-touch date is already known** (a stated deadline, a fixed cadence), use it
+    directly.
+  - **Otherwise - the common case, since a card is usually created before its first outbound message
+    even goes out - pad the date out beyond any plausible single working session.** A week is a safe
+    margin: a near-term date (e.g. "due tomorrow") can still get raced if the creating session runs
+    long - left open over a weekend, two-plus days can pass with the session still mid-task and the
+    card already past its guard date. The padded date isn't a business date; it exists purely to keep
+    the drainer off the card while it's still being worked.
 
-  ```bash
-  node <path-to-drainer-skill>/scripts/seen-state.js record <runtimeDir> trello <id> <triage>
-  ```
-
-  `runtimeDir` is the project's configured runtime dir (`runtime_dir:` in that project's
-  `.claude/drainer.local.md`). The id must match exactly what the drainer's Trello adapter computes, or
-  the record is a silent no-op against the wrong key:
-
-  ```python
-  # slug() truncates/normalizes the card name; stamp is the go-live date (Start else Due), YYYYMMDD,
-  # or the literal "nodue" when the card carries neither.
-  stamp_src = card.get("start") or card.get("due") or ""
-  stamp = "".join(c for c in stamp_src if c.isdigit())[:8] or "nodue"
-  id = f"trello-{slug(card_name, 40)}-{card_id[-6:]}-{stamp}".strip("-")[:72]
-  ```
-
-  **This guard expires the moment the card is later given a Start/Due**: the id's stamp changes from
-  `nodue` to the new date, which mints a fresh, not-yet-seen id - the old `nodue` entry becomes an inert
-  orphan and no longer protects the card. Give the card its real date only once the guard is no longer
-  needed (the session has stopped actively working it), or set the date at creation per the primary
-  defense above instead of relying on this fallback across that transition.
+  **Correct the date the moment the sitting actually ends** - the message sends, the task is handed
+  off, whatever "done for now" means for this card - to the real next-touch date per the nudge cadence,
+  exactly as CLEAR already does. A padded date left uncorrected is a safe failure (the card just
+  surfaces a week later than it ideally would), not a silent drop, but don't rely on that - correct it
+  as soon as the guard is no longer needed.
 
   ---
 
