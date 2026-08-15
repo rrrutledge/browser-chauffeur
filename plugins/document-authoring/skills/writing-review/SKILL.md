@@ -105,9 +105,7 @@ The goal is convergence, and the success signal is the same shape: over time, th
 ## Scope
 
 `authoring-rules` is the rubric for anything that ships.
-When the prose is an outward message, the reviewer loads `document-authoring` for its message-specific rules as well.
-When the file is a `SKILL.md`, the reviewer loads `skill-authoring` for its skill-design rules as well.
-`reviewer-prompt.md` tells it how to load each extra rubric.
+When the prose is an outward message, the reviewer loads `document-authoring` for its message-specific rules as well, and `reviewer-prompt.md` tells it how.
 
 Rules belong in those two files, never in the prompt and never here.
 A rule stated in more than one place drifts, and the copy the reviewer reads is the one that goes stale.

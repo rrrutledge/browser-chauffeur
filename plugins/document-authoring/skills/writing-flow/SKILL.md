@@ -31,7 +31,6 @@ The middle step is the one that gets dropped under pressure, so carry all three 
 
 - **Shipped prose** - a skill, a README, a repo doc, a code comment, config prose - ends in **Ship**: commit it and open a PR.
   There is no send and no Learn diff here, so a review finding you accept or reject is the only correction signal the text ever gets; `writing-review` covers how to weigh one.
-  A `SKILL.md` also takes the skill-design rules in `skill-authoring` - whether its description triggers, whether it stays lean - on top of the prose rubric.
 
 ## What enforces the Review step
 

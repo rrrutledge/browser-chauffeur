@@ -299,8 +299,7 @@ def pr_block_reason(files):
     lines.append("For each, do this, then re-run the gh command unchanged:")
     lines.append(
         "  1. Dispatch the writing-review skill on the file as a fresh subagent that did "
-        "not write it, per writing-flow's Review step. Load the skill-authoring rubric too "
-        "when the file is a SKILL.md."
+        "not write it, per writing-flow's Review step."
     )
     lines.append("  2. When the review converges, mint its receipt:")
     for f in files:

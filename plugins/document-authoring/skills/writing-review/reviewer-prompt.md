@@ -30,11 +30,6 @@ Subagent (general-purpose):
     ambiguous, say so and report the finding as conditional rather than
     picking one silently.
 
-    If the text under review is a SKILL.md file, also read [SKILL_AUTHORING_PATH]
-    and review against its skill-design rules - whether the description triggers,
-    whether the file stays lean, whether it is organized by what the reader does.
-    Those check the file's structure, on top of the prose rules above.
-
     ## Text under review
 
     [TEXT_OR_DIFF_PATH]
@@ -86,6 +81,5 @@ Subagent (general-purpose):
 **Placeholders:**
 - `[RUBRIC_PATH]` - REQUIRED: absolute path to `authoring-rules/SKILL.md`
 - `[DOCUMENT_AUTHORING_PATH]` - only when reviewing an outward message
-- `[SKILL_AUTHORING_PATH]` - only when reviewing a SKILL.md: absolute path to `skill-authoring/SKILL.md`
 - `[TEXT_OR_DIFF_PATH]` - REQUIRED: the file or diff under review
 - `[MODEL]` - the reviewer model
