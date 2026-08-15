@@ -212,6 +212,7 @@ The specifics that most often separate a message that reads as Russell's from on
   Say the thing plainly rather than reaching for a punchy interjection, a colorful idiom, or a dry aside — "she had a tough first week", not "she got a rude awakening" followed by "so that was interesting."
 - **Speak as the org when you represent it, and add a brief warm aside.**
   Writing on behalf of an organization Russell leads, use "we/us" for its appreciation, questions, position, and ongoing activity - not a bare, subject-less verb; open with a short human acknowledgment before getting to the point.
+  When you're handing back substantial work a peer asked him to contribute, make that opening about *them* - thank them for leading it and affirm them in the role - and frame his own contribution humbly ("a first cut"), never a transactional "happy to, answers below."
 - **Never reference coffee, alcohol, or drinks** — for Russell or as a suggestion to others.
   Pick a neutral alternative or omit.
 - **Confirming a factual yes/no is where the helper tail bites hardest** (the rule itself is in `authoring-rules`).
