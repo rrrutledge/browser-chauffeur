@@ -44,18 +44,17 @@ _PRIORITY_RE = re.compile(r"^\s*(?:🎯\s*)?P([1-3])\s*$")
 # THE priority policy — the one place it is defined; every other site that mentions a band points here.
 # A card's priority label maps to a queue band, ranked (band, date) descending against every other
 # drained item. Bands are relative to NEUTRAL_PRIORITY_BAND (email/Slack and every unlabeled card):
-#   P1 → one below neutral    surfaces only once the neutral band (email/Slack) is worked down
-#   P2 → two below neutral    the first job-search tier dropped when a cycle overflows
-#   P3 → three below neutral  last to surface
-# This is inert for every other board — only the poller-labeled job-search cards leave neutral. Job
-# Search Outreach runs its own weekly nudge cadence, so Russell wants it to fill tab slots only after
-# email/Slack are drained, not intermixed with them. To let a P1 jump AHEAD of email instead (worth
-# revisiting if the job-search backlog ever needs to compete for attention again), raise it back to or
-# above neutral, e.g. {1: NEUTRAL_PRIORITY_BAND + 1, 2: NEUTRAL_PRIORITY_BAND, 3: NEUTRAL_PRIORITY_BAND - 1}.
+#   P1 → neutral      a P1 found on a day interleaves with that day's email/Slack by date, not behind it
+#   P2 → one below    surfaces only once the neutral band (email/Slack and P1 job-search cards) is worked down
+#   P3 → two below    the first job-search tier dropped when a cycle overflows
+# This is inert for every other board — only the poller-labeled job-search cards leave neutral. To push
+# every job-search tier fully behind email/Slack instead (worth revisiting once the job-search backlog
+# is caught up), drop all three bands below neutral, e.g.
+# {1: NEUTRAL_PRIORITY_BAND - 1, 2: NEUTRAL_PRIORITY_BAND - 2, 3: NEUTRAL_PRIORITY_BAND - 3}.
 _PRIORITY_BAND = {
-    1: NEUTRAL_PRIORITY_BAND - 1,
-    2: NEUTRAL_PRIORITY_BAND - 2,
-    3: NEUTRAL_PRIORITY_BAND - 3,
+    1: NEUTRAL_PRIORITY_BAND,
+    2: NEUTRAL_PRIORITY_BAND - 1,
+    3: NEUTRAL_PRIORITY_BAND - 2,
 }
 
 
