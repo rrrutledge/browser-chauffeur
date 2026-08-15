@@ -87,13 +87,18 @@ now-or-earlier, OR Due now-or-earlier (overdue counts), OR carrying neither date
 their **go-live date** (the earliest of Start/Due, most recent first) and undated cards by their
 **creation date** (decoded from the card's ObjectId).
 
-Rank is `(priority band, date)`, both descending — date is the tiebreaker within a band. A card's band
-comes from a **priority label** named exactly `P1`, `P2`, or `P3` (optionally with a 🎯 prefix), written
-by the job-board poller (personal-ai-pod `job-board-poll.js`) on Job Search Outreach cards. Only those
-labeled cards leave the neutral band, so every other board is unaffected and orders purely by date as
-before. The band each tier maps to — and how to change it — is defined in one place, the adapter's
-`_PRIORITY_BAND`; a priority label is held out of the contact parse (it names a fit rank, not a person),
-the same way ⛔/⏳ status labels are.
+Rank is `(priority band, level band, date)`, all descending — level breaks ties within a band, date
+breaks ties within a band+level. A card's band comes from a **priority label** named exactly `P1`, `P2`,
+or `P3` (optionally with a 🎯 prefix), written by the job-board poller (personal-ai-pod
+`job-board-poll.js`) on Job Search Outreach cards. Only those labeled cards leave the neutral band, so
+every other board is unaffected and orders purely by date as before. The band each tier maps to — and how
+to change it — is defined in one place, the adapter's `_PRIORITY_BAND`; a priority label is held out of
+the contact parse (it names a fit rank, not a person), the same way ⛔/⏳ status labels are.
+
+A card's level band comes from its `desc`: `job-board-poll.js` writes a
+`Priority: P<n> · <category> · Director/VP-level` or `· IC-level` line into every Job Search Outreach
+card it scores. A card whose desc contains `Director/VP-level` ranks ahead of an `IC-level` (or unscored)
+card within the same priority band — see the adapter's `_level_band`.
 
 Build a stable id:
 `trello-<card-name-slug>-<last6 of cardId>-<goLiveYYYYMMDD|nodue>` where the go-live date is Start when

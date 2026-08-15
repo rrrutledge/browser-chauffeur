@@ -287,6 +287,18 @@ class Provider(ProviderBase):
                 return _PRIORITY_BAND[int(m.group(1))]
         return NEUTRAL_PRIORITY_BAND
 
+    @staticmethod
+    def _level_band(card):
+        """Return a card's level rank from its 'Priority: ... · <level>' desc line — 1 for
+        Director/VP-level, 0 for IC-level or when the card carries no such line (every non-job-search
+        board, or a job-search card job-board-poll hasn't scored yet). Mirrors job-board-poll's
+        tiers.js PREVIEW_LEVEL_RANK so the drainer's real dispatch order matches the terminal preview
+        it was always documented to match."""
+        desc = card.get("desc") or ""
+        if "Director/VP-level" in desc:
+            return 1
+        return 0
+
     def _has_skip_label(self, card):
         """True if the card wears a suppress label (default: ⛔ Blocked) — hidden until it's cleared."""
         for l in card.get("labels", []):
@@ -384,6 +396,7 @@ class Provider(ProviderBase):
                 # undated card ranks by its creation date (always in the past).
                 sort_dt = min(gate_dts) if gate_dts else self._created_dt(card["id"])
                 priority_band = self._priority_band(card)  # see _PRIORITY_BAND; leads the sort key below
+                level_band = self._level_band(card)  # see _level_band; breaks ties within a priority band
                 channel, feats, contacts, initiative_label = self._classify_labels(card)
                 # A per-card initiative label wins over the board's default initiative. The slug is the
                 # initiative label's name slugified (→ initiatives/<slug>.md); board defaults are already
@@ -413,14 +426,18 @@ class Provider(ProviderBase):
                     "preview": f"[{bname} / {list_name}] {(card.get('desc') or '').strip()[:200]}",
                     "_due_sort": sort_dt,
                     "_priority_band": priority_band,
+                    "_level_band": level_band,
                 })
-        # Ranked (band, date) descending — band leads (see _PRIORITY_BAND), date breaks ties within a band
-        # (most-recent-first; an undated card by its creation date, set above, or `now` if even that
-        # couldn't be derived).
-        items.sort(key=lambda it: (it["_priority_band"], it["_due_sort"] or now), reverse=True)
+        # Ranked (band, level, date) descending — band leads (see _PRIORITY_BAND), level breaks ties
+        # within a band (Director/VP-level ahead of IC-level, see _level_band), date breaks ties within a
+        # band+level (most-recent-first; an undated card by its creation date, set above, or `now` if even
+        # that couldn't be derived).
+        items.sort(key=lambda it: (it["_priority_band"], it["_level_band"], it["_due_sort"] or now),
+                   reverse=True)
         # Return every eligible card, untruncated: get_board_cards() already fetched all of them
-        # regardless, and the poller's cross-source (priority band, date) sort against target_open_tabs
-        # (run-poller.py's `needs` list) is what decides how much actually gets dispatched. Truncating
+        # regardless, and the poller's cross-source (priority band, level band, date) sort against
+        # target_open_tabs (run-poller.py's `needs` list) is what decides how much actually gets
+        # dispatched. Truncating
         # here instead would share one board-local budget across only Trello's own boards: once the OTHER
         # boards' neutral-band cards alone outnumbered it, every job-search card (always ranked below
         # neutral — see _PRIORITY_BAND) would be cut before the poller's real throttle ever saw it,
