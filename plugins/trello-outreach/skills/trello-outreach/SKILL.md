@@ -49,6 +49,10 @@ instructions: |-
     reminder on a catch-all board. Put the card where that entity's funnel lives so it isn't orphaned
     from its history.
 
+  **A freshly-created card with no Start/Due is eligible for drainer pickup on the very next cycle** -
+  see the `trello` skill's "Guarding a new card against the drainer" for how to give it a date up front
+  or, for the rare card that must stay undated while you keep working it, pre-register it as seen.
+
   ---
 
   ## Mechanics live in the `trello` skill
