@@ -49,6 +49,11 @@ instructions: |-
     reminder on a catch-all board. Put the card where that entity's funnel lives so it isn't orphaned
     from its history.
 
+  **A freshly-created card with no Start/Due is eligible for drainer pickup on the very next cycle** -
+  see the `trello` skill's "Guarding a new card against the drainer" for setting a real date at
+  creation (padded out when the true follow-up date isn't known yet) so a session still working the
+  card isn't raced by a worker.
+
   ---
 
   ## Mechanics live in the `trello` skill

@@ -75,6 +75,33 @@ instructions: |-
 
   ---
 
+  ## Guarding a new card against the drainer
+
+  The drainer's Trello provider treats any card with no Start and no Due date as immediately
+  **startable now** - by design, the drainer is "hungry to start." A card created undated is therefore
+  eligible for pickup on the very next drain cycle, which can race a session that's still actively
+  working the same task it just created the card for.
+
+  **Give the card a real Start or Due date at creation, every time** (Start for task cards, Due for
+  outreach cards - see the drainer's trello provider for which field a given board's cards use):
+
+  - **If the true next-touch date is already known** (a stated deadline, a fixed cadence), use it
+    directly.
+  - **Otherwise - the common case, since a card is usually created before its first outbound message
+    even goes out - pad the date out beyond any plausible single working session.** A week is a safe
+    margin: a near-term date (e.g. "due tomorrow") can still get raced if the creating session runs
+    long - left open over a weekend, two-plus days can pass with the session still mid-task and the
+    card already past its guard date. The padded date isn't a business date; it exists purely to keep
+    the drainer off the card while it's still being worked.
+
+  **Correct the date the moment the sitting actually ends** - the message sends, the task is handed
+  off, whatever "done for now" means for this card - to the real next-touch date per the nudge cadence,
+  exactly as CLEAR already does. A padded date left uncorrected is a safe failure (the card just
+  surfaces a week later than it ideally would), not a silent drop, but don't rely on that - correct it
+  as soon as the guard is no longer needed.
+
+  ---
+
   ## Checklists
 
   Checklists have no typed wrapper - use `trello_request` directly:
