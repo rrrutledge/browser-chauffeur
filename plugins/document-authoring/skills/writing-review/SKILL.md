@@ -40,6 +40,10 @@ The reviewer must come to the text cold.
 4. Revise against the findings you accept, then dispatch a **fresh** reviewer on the revised text.
    A reviewer that has already seen an earlier draft reads its own prior findings rather than the words in front of it.
 5. Repeat from step 3 until the reviewer returns clean, a finding stands that you genuinely disagree with, or you have run three rounds.
+6. Mint the review receipt on the exact file you will stage, so the stage gate lets the draft through:
+   `python ~/.claude/plugins/cache/*/document-authoring/*/hooks/verify_gate.py mint <body-file>` (run the newest if several are cached).
+   Mint the same file the stage command passes as `--body-file` / `--json`, after the loop above has converged on the text you're keeping.
+   Any later edit to that file needs a fresh review and a fresh mint, since the receipt binds to the file's content.
 
 **The loop finishes before Russell sees anything.**
 He gets the work, not the findings, and not the rounds it took.
@@ -48,6 +52,16 @@ What reaches him depends on how the loop ended:
 - **Clean** - the work alone.
 - **Ended on a disagreement** - the work, plus one line naming the finding and why you rejected it.
 - **Three rounds without converging** - the work, plus what is still contested. Text that will not converge usually means the rule and the writing are both defensible, and that is worth his attention.
+
+## The stage gate
+
+For an outward message, the Verify step is contractual, not advisory: a PreToolUse hook (`hooks/verify_gate.py` in this plugin) blocks the mail-staging commands until a fresh receipt exists for the body file's content.
+It covers personal Gmail and personal Outlook (`--reply` / `--draft-new` / `--send-self`, keyed on `--body-file`) and work Outlook (`create-draft` / `create-reply`, keyed on `--json`), and it denies the native Gmail connector's compose and send verbs with a redirect to the `gmail` skill's `gmail.js`.
+The receipt attests that a review ran against this exact text; it never judges the verdict, so the standing-to-disagree rules below still hold - a draft you reviewed and chose to keep over a finding mints and stages the same way a clean one does.
+
+A body with no letters (a bare emoji reaction) carries no prose and is exempt.
+Teams and Slack composer drafts type their text straight into the browser, where no command carries it for the hook to read; those two are outside the hook's reach, so mint the receipt on a file holding the body and run `verify_gate.py check <body-file>` to assert it before driving the composer.
+When a stage is blocked, the block message names the exact body file and the mint command to run, so the path through the gate is always one command away.
 
 ## Standing to disagree
 

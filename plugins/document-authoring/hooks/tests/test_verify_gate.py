@@ -1,0 +1,214 @@
+"""Tests for the writing-review gate (verify_gate.py).
+
+Drive the script exactly as the harness does: the hook via stdin JSON, mint/check via
+argv. Receipts are pointed at a per-test temp dir through WRITING_REVIEW_RECEIPT_DIR so
+nothing touches the real ~/.claude store.
+"""
+import json
+import os
+import subprocess
+import sys
+
+HOOK = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "verify_gate.py")
+
+
+def run(args, stdin=None, cwd=None, receipt_dir=None):
+    env = dict(os.environ)
+    if receipt_dir:
+        env["WRITING_REVIEW_RECEIPT_DIR"] = receipt_dir
+    return subprocess.run(
+        [sys.executable, HOOK, *args],
+        input=stdin,
+        cwd=cwd,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+
+def decision(stdout):
+    text = (stdout or "").strip()
+    if not text:
+        return "DEFER"
+    obj = json.loads(text)
+    return obj["hookSpecificOutput"]["permissionDecision"].upper()  # ALLOW / DENY / ASK
+
+
+def bash_payload(command):
+    return json.dumps({"tool_name": "Bash", "tool_input": {"command": command}})
+
+
+def mcp_payload(tool):
+    return json.dumps({"tool_name": tool, "tool_input": {}})
+
+
+def write_body(tmp_path, name, text):
+    p = tmp_path / name
+    p.write_text(text, encoding="utf-8")
+    return p
+
+
+# --- stage command detection + gating ---
+
+def test_stage_without_receipt_is_blocked(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    write_body(tmp_path, "reply.md", "Hi Addie - I can help with that.")
+    r = run([], stdin=bash_payload("node gmail.js --reply --message-id=X --body-file=reply.md"),
+            cwd=str(tmp_path), receipt_dir=receipts)
+    assert decision(r.stdout) == "DENY"
+    assert "writing-review" in r.stdout
+
+
+def test_mint_then_stage_is_allowed_through(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    body = write_body(tmp_path, "reply.md", "Hi Addie - I can help with that.")
+    m = run(["mint", str(body)], receipt_dir=receipts)
+    assert m.returncode == 0
+    r = run([], stdin=bash_payload("node gmail.js --reply --message-id=X --body-file=reply.md"),
+            cwd=str(tmp_path), receipt_dir=receipts)
+    assert decision(r.stdout) == "DEFER"
+
+
+def test_edit_after_review_reblocks(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    body = write_body(tmp_path, "reply.md", "Original reviewed text.")
+    run(["mint", str(body)], receipt_dir=receipts)
+    body.write_text("Happy to help!", encoding="utf-8")  # edited after review
+    r = run([], stdin=bash_payload("node gmail.js --reply --message-id=X --body-file=reply.md"),
+            cwd=str(tmp_path), receipt_dir=receipts)
+    assert decision(r.stdout) == "DENY"
+
+
+def test_draft_new_gated(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    write_body(tmp_path, "note.md", "A fresh outreach note with prose.")
+    r = run([], stdin=bash_payload('node gmail.js --draft-new --to="a@b.com" --subject="Hi" --body-file=note.md'),
+            cwd=str(tmp_path), receipt_dir=receipts)
+    assert decision(r.stdout) == "DENY"
+
+
+def test_ms_graph_body_file_gated(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    write_body(tmp_path, "b.html", "<p>Some real prose here.</p>")
+    r = run([], stdin=bash_payload("node mail.js --reply --message-id=X --body-file=b.html"),
+            cwd=str(tmp_path), receipt_dir=receipts)
+    assert decision(r.stdout) == "DENY"
+
+
+def test_ms_rest_json_space_form_gated(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    write_body(tmp_path, "d.json", '{"comment": "<p>reply prose</p>"}')
+    r = run([], stdin=bash_payload("node outlook-mail.js create-reply MSGID --json d.json"),
+            cwd=str(tmp_path), receipt_dir=receipts)
+    assert decision(r.stdout) == "DENY"
+
+
+def test_send_self_is_gated(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    write_body(tmp_path, "s.md", "A note to myself with words.")
+    r = run([], stdin=bash_payload("node mail.js --send-self --subject=Note --body-file=s.md"),
+            cwd=str(tmp_path), receipt_dir=receipts)
+    assert decision(r.stdout) == "DENY"
+
+
+# --- things that must NOT be gated ---
+
+def test_send_draft_not_gated(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    r = run([], stdin=bash_payload("node gmail.js --send-draft --draft-id=ABC"),
+            cwd=str(tmp_path), receipt_dir=receipts)
+    assert decision(r.stdout) == "DEFER"
+
+
+def test_pure_reaction_exempt(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    write_body(tmp_path, "react.md", "👍")
+    r = run([], stdin=bash_payload("node gmail.js --reply --message-id=X --body-file=react.md"),
+            cwd=str(tmp_path), receipt_dir=receipts)
+    assert decision(r.stdout) == "DEFER"
+
+
+def test_unrelated_bash_defers(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    r = run([], stdin=bash_payload("git status && ls -la"), cwd=str(tmp_path), receipt_dir=receipts)
+    assert decision(r.stdout) == "DEFER"
+
+
+def test_missing_body_file_fails_open(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    r = run([], stdin=bash_payload("node gmail.js --reply --message-id=X --body-file=nope.md"),
+            cwd=str(tmp_path), receipt_dir=receipts)
+    assert decision(r.stdout) == "DEFER"
+
+
+def test_unparseable_command_defers(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    r = run([], stdin=bash_payload('node gmail.js --reply --body-file="unbalanced'),
+            cwd=str(tmp_path), receipt_dir=receipts)
+    assert decision(r.stdout) == "DEFER"
+
+
+# --- MCP native Gmail ---
+
+def test_native_gmail_create_draft_blocked(tmp_path):
+    r = run([], stdin=mcp_payload("mcp__claude_ai_Gmail__create_draft"))
+    assert decision(r.stdout) == "DENY"
+    assert "gmail.js" in r.stdout
+
+
+def test_native_gmail_send_blocked(tmp_path):
+    r = run([], stdin=mcp_payload("mcp__claude_ai_Gmail__send_message"))
+    assert decision(r.stdout) == "DENY"
+
+
+def test_native_gmail_readonly_defers(tmp_path):
+    r = run([], stdin=mcp_payload("mcp__claude_ai_Gmail__search_threads"))
+    assert decision(r.stdout) == "DEFER"
+
+
+def test_other_mcp_defers(tmp_path):
+    r = run([], stdin=mcp_payload("mcp__playwright__browser_click"))
+    assert decision(r.stdout) == "DEFER"
+
+
+# --- check subcommand ---
+
+def test_check_fails_without_receipt(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    body = write_body(tmp_path, "t.md", "Prose needing review.")
+    r = run(["check", str(body)], receipt_dir=receipts)
+    assert r.returncode == 1
+
+
+def test_check_passes_after_mint(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    body = write_body(tmp_path, "t.md", "Prose needing review.")
+    run(["mint", str(body)], receipt_dir=receipts)
+    r = run(["check", str(body)], receipt_dir=receipts)
+    assert r.returncode == 0
+
+
+def test_check_reaction_passes_without_receipt(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    body = write_body(tmp_path, "t.md", "✅")
+    r = run(["check", str(body)], receipt_dir=receipts)
+    assert r.returncode == 0
+
+
+def test_compound_command_is_gated(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    write_body(tmp_path, "reply.md", "A real reply with prose.")
+    r = run([], stdin=bash_payload("echo staging && node gmail.js --reply --message-id=X --body-file=reply.md"),
+            cwd=str(tmp_path), receipt_dir=receipts)
+    assert decision(r.stdout) == "DENY"
+
+
+def test_grep_mentioning_script_not_gated(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    r = run([], stdin=bash_payload("grep --reply gmail.js"), cwd=str(tmp_path), receipt_dir=receipts)
+    assert decision(r.stdout) == "DEFER"
+
+
+def test_malformed_stdin_defers(tmp_path):
+    r = run([], stdin="not json")
+    assert decision(r.stdout) == "DEFER"

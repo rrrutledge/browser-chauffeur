@@ -29,6 +29,14 @@ Conversational writing rules as a review pass. If anything was trimmed, re-stage
 (Teams/Slack: re-type it; Outlook: re-create the draft from the gated body). Report `voice-gate=passed` in
 the done-criteria once it has run.
 
+**Review gate (mint a receipt for the reviewed body):** the `document-authoring` Verify step is
+harness-enforced through `writing-review`'s stage gate. Compose the final body into a file, run the
+Verify loop against that file, then mint its receipt (see `writing-review`'s **The stage gate** for the
+`verify_gate.py mint` command). For **Outlook**, that file is the `--json` payload the create-draft /
+create-reply command already uses, so minting it is all the gate needs. For **Teams** and **Slack**, mint
+on a `.tmp` body file and run `verify_gate.py check <body-file>` before the first keystroke (see the same
+section for why those two fall outside the hook), and report the receipt hash in the done-criteria.
+
 ## Behavioral preferences
 
 - **Prefer replying to an existing thread over composing a fresh message.** When a relevant thread
