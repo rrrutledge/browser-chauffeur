@@ -1,17 +1,17 @@
 """Classify EnterWorktree and ExitWorktree tool calls as auto-allowable.
 
-Entering an *existing* worktree (`path` given) only ever relocates the
-session into a directory the tool itself will refuse unless that path is
-already registered in `git worktree list` for the repo that owns it -- so
-running that same check here, before the tool executes, is enough to prove
-the target is a real, git-tracked worktree rather than an arbitrary
-model-supplied directory. That holds regardless of whether the path lives
-under `.claude/worktrees/` or a project's own convention (e.g. `.worktrees/`)
--- the location doesn't matter, git's own bookkeeping is the proof.
-
-Creating a *new* worktree (no `path`, optional `name`) is the EnterWorktree
-equivalent of `git worktree add` under `.claude/worktrees/`, which is already
-a trusted git subcommand -- so it's approved unconditionally.
+EnterWorktree is approved unconditionally, for both its forms. Creating a
+*new* worktree (no `path`, optional `name`) is the EnterWorktree equivalent
+of `git worktree add` under `.claude/worktrees/`, which is already a trusted
+git subcommand. Relocating into an *existing* worktree (`path` given) only
+ever succeeds when that path is already registered in `git worktree list`
+for the repo that owns it -- the tool enforces that itself and refuses
+otherwise -- so a bad or stale path just makes EnterWorktree error out
+harmlessly instead of relocating anywhere; there's no destructive outcome
+for the hook to gate against. That holds regardless of whether the path
+lives under `.claude/worktrees/` or a project's own convention (e.g.
+`.worktrees/`) -- the location doesn't matter, the tool's own bookkeeping is
+the guarantee.
 
 ExitWorktree takes no path at all -- it only ever acts on the one worktree
 this same session entered via EnterWorktree, tracked internally by the
@@ -23,42 +23,13 @@ forces it through -- so plain removal is reversible (everything it deletes
 is already preserved elsewhere) and only the `discard_changes` override,
 which knowingly throws work away, needs a human.
 """
-import subprocess
-
 from .log import log_debug
-from .paths import normalize_path_cross_platform, resolve_against_cwd
-
-
-def _is_registered_worktree(path):
-    resolved = resolve_against_cwd(path)
-    try:
-        result = subprocess.run(
-            ['git', '-C', resolved, 'worktree', 'list', '--porcelain'],
-            capture_output=True, text=True, timeout=5,
-        )
-    except Exception:
-        return False
-    if result.returncode != 0:
-        return False
-    target = normalize_path_cross_platform(resolved)
-    for line in result.stdout.splitlines():
-        if line.startswith('worktree '):
-            if normalize_path_cross_platform(line[len('worktree '):].strip()) == target:
-                return True
-    return False
 
 
 def classify_enter_worktree(tool_input):
     """Return True to auto-allow an EnterWorktree tool call, False to prompt."""
-    path = tool_input.get('path')
-    if not path:
-        log_debug("EnterWorktree: creating new worktree (no path), approving")
-        return True
-    if _is_registered_worktree(path):
-        log_debug(f"EnterWorktree: {path!r} is a registered git worktree, approving")
-        return True
-    log_debug(f"EnterWorktree: {path!r} not a registered git worktree, prompting")
-    return False
+    log_debug(f"EnterWorktree: approving (path={tool_input.get('path')!r})")
+    return True
 
 
 def classify_exit_worktree(tool_input):

@@ -7,8 +7,8 @@ Decision order (preserved from the original single-file hook):
   mcp__*           -> mcp.classify_mcp_tool
   Workflow         -> workflow.classify_workflow_tool (blanket-approved saved names,
                        or an AI safety verdict on an inline script's agent() prompts)
-  EnterWorktree    -> worktree_tool.classify_enter_worktree (new worktree, or an
-                       existing path confirmed via `git worktree list`)
+  EnterWorktree    -> worktree_tool.classify_enter_worktree (always approved -- the
+                       tool itself refuses to relocate into an unregistered path)
   ExitWorktree     -> worktree_tool.classify_exit_worktree (keep, or a remove the
                        tool itself won't force past unsaved work)
   Bash             -> enforce.enforce_bash (deny), then per-segment trust (allow)
