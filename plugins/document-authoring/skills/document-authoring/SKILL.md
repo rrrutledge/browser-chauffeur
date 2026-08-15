@@ -211,7 +211,7 @@ The specifics that most often separate a message that reads as Russell's from on
   In outreach re-engagement, lead with one open question and stop; the invitation to participate carries the ask on its own.
   Say the thing plainly rather than reaching for a punchy interjection, a colorful idiom, or a dry aside — "she had a tough first week", not "she got a rude awakening" followed by "so that was interesting."
 - **Speak as the org when you represent it, and add a brief warm aside.**
-  Writing on behalf of an organization Russell leads, use "we/us" for its appreciation, questions, position, and ongoing activity - not a bare, subject-less verb; open with a short human acknowledgment before getting to the point - and when that opening is to a peer leading something he's contributing to, make it about *their* leadership and affirm them in the role, and frame his own returned work humbly ("a first cut") rather than a transactional "happy to, answers below."
+  Writing on behalf of an organization Russell leads, use "we/us" for its appreciation, questions, position, and ongoing activity - not a bare, subject-less verb; open with a short human acknowledgment before getting to the point.
 - **Never reference coffee, alcohol, or drinks** — for Russell or as a suggestion to others.
   Pick a neutral alternative or omit.
 - **Confirming a factual yes/no is where the helper tail bites hardest** (the rule itself is in `authoring-rules`).
@@ -249,6 +249,7 @@ The specifics that most often separate a message that reads as Russell's from on
   They mentioned it in passing; answering it in kind, or not at all, matches the weight they gave it.
 - **Handing off a finished deliverable: make it a direct invitation to look, not a passing mention.**
   Give the artifact its own sentence and invite the reader to open it, rather than burying it in a subordinate clause.
+  When it's work a peer asked him to contribute and they lead the effort, frame his part as a first cut, not a finished position.
   **Exception — a quick status flag that has supporting detail behind it:** state the findings plainly and stop; don't auto-attach the backing document unless handing it off is the actual point of the message. Share it separately, if and when it's asked for.
 - **Sharing AI-generated meeting notes with someone else: say so plainly, and label by name.**
   Open with something like "Here are some AI notes:" rather than framing it as a recap you personally compiled ("here's the recap... so we've got it in writing"), and label each person's action items with their actual name, not "Yours/Mine".
