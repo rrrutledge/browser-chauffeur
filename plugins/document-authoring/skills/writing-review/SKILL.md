@@ -24,6 +24,8 @@ The reviewer must come to the text cold.
 
 ## When to run it
 
+This is the **Review** step of `writing-flow`, the cold pass every piece of writing runs before it stages or ships.
+
 - After authoring or editing any shipped prose, before handing the work to Russell.
 - On a diff, when asked to check a branch or PR.
 - On a single document, when asked to check it directly.

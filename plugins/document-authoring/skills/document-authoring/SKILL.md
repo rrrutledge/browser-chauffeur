@@ -17,6 +17,7 @@ The **Formal writing** and **Conversational writing** sections describe **regist
 
 ## The drafting loop: Read → Write → Verify → Stage → Learn (mandatory)
 
+This is the message-shaped detail of the three-step spine in `writing-flow` (Draft → Review → Stage): load that first for the overall map, then follow the message-specific steps here.
 Every message in Russell's name — a Jira comment, an email, a Teams post, a PR — runs through these steps, in order.
 Skipping a step is what leaks the patterns this skill bans: reading once then composing "in the voice" is not enough.
 
