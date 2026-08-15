@@ -367,7 +367,7 @@ class TriageUnavailable(Exception):
     of the cycle's dispatch down with it."""
 
 
-def _triage_one(item, brain, repo, model, providers_by_name):
+def _triage_one(item, brain, repo, model, providers_by_name, bg_config_dir=None):
     """Classify ONE item: the shared brain (byte-identical every call this cycle) as the stable
     prefix, this item's payload as the sole variable suffix — so the model's full attention lands
     on one item against the general rules, instead of splitting across a whole cycle's batch."""
@@ -381,6 +381,14 @@ def _triage_one(item, brain, repo, model, providers_by_name):
                 "subject": item.get("subject"), "received": item.get("received"),
                 "isRead": item.get("isRead"), "preview": preview}]
     prompt = f"{brain}## New item to triage (JSON)\n{json.dumps(payload, indent=2)}\n"
+    # Run this headless triage call under the background account when one is configured. The directory
+    # is threaded in as an argument (not published to the process environment) on purpose: triage is the
+    # only Claude launch that should move accounts. Worker tabs and the digest are launched via
+    # subprocess spawns that inherit os.environ, and Russell interacts with those tabs (including from
+    # his phone), so they must stay on his main account — setting CLAUDE_CONFIG_DIR only on THIS
+    # subprocess's env, and nowhere process-wide, is what keeps that boundary. None -> inherit the
+    # ambient environment, exactly as before.
+    env = {**os.environ, "CLAUDE_CONFIG_DIR": bg_config_dir} if bg_config_dir else None
     try:
         res = subprocess.run(
             # Triage is pure text-in / JSON-out (rubric + context are embedded above), so it needs no
@@ -388,6 +396,7 @@ def _triage_one(item, brain, repo, model, providers_by_name):
             [claude, "-p", "--model", model, "--output-format", "json", "--setting-sources", ""],
             input=prompt,  # prompt goes on stdin (too long for an argv on Windows)
             capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=repo, timeout=420,
+            env=env,
             creationflags=NO_WINDOW,  # no console flash under pythonw
         )
     except subprocess.TimeoutExpired:
@@ -420,7 +429,7 @@ def _triage_one(item, brain, repo, model, providers_by_name):
     raise TriageUnavailable(f"{item['_id']}: triage returned no JSON for this item:\n{result[:400]}")
 
 
-def triage(items, repo, local_dir, model, providers_by_name):
+def triage(items, repo, local_dir, model, providers_by_name, bg_config_dir=None):
     """One `claude -p` call PER item, not one batched call for the whole cycle — with ~30 items and
     hundreds of lines of rules in a single prompt, attention spread thin enough that a correct,
     already-present general rule got skipped. One item + the general rules, with full attention, is
@@ -446,7 +455,7 @@ def triage(items, repo, local_dir, model, providers_by_name):
 
     first, rest = items[0], items[1:]
     try:
-        v = _triage_one(first, brain, repo, model, providers_by_name)
+        v = _triage_one(first, brain, repo, model, providers_by_name, bg_config_dir)
         if v.get("id"):
             verdicts[v["id"]] = v
     except TriageUnavailable as e:
@@ -455,7 +464,7 @@ def triage(items, repo, local_dir, model, providers_by_name):
 
     if rest:
         with ThreadPoolExecutor(max_workers=min(TRIAGE_PARALLEL_CALLS, len(rest))) as pool:
-            futures = {pool.submit(_triage_one, it, brain, repo, model, providers_by_name): it for it in rest}
+            futures = {pool.submit(_triage_one, it, brain, repo, model, providers_by_name, bg_config_dir): it for it in rest}
             for fut in as_completed(futures):
                 it = futures[fut]
                 try:
@@ -1065,7 +1074,8 @@ def main():
     # --- one combined triage call over all sources (remaining items) ---
     prov = {p.name: p for p in providers}  # name -> adapter (also used below for cross-source dispatch)
     if ai_triage:
-        verdicts, triage_unavailable_ids = triage(ai_triage, repo, cfg["local_dir"], cfg["triage_model"], prov)
+        verdicts, triage_unavailable_ids = triage(ai_triage, repo, cfg["local_dir"], cfg["triage_model"], prov,
+                                                  cfg["background_config_dir"] or None)
     else:
         verdicts, triage_unavailable_ids = {}, set()
     for it in ai_triage:
