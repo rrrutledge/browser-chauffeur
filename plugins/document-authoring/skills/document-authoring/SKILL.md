@@ -289,6 +289,7 @@ The specifics that most often separate a message that reads as Russell's from on
   Plain words, short sentences. When a reply covers more than one idea, give each its own sentence rather than chaining them with commas or "and" into one long run-on — a string of short declaratives reads more like him than one fused sentence.
 - **Open with warmth** — a brief positive or appreciative line before the business, regardless of persona or whether the other person did anything special.
   Aim that line at the person or their intent - affirm what they're doing or thinking about, rather than restating the deliverable as the thing you're glad of.
+  When someone is specifically asking for his own expertise or experience, react to being asked before diving into the answer - "I'm honored that you'd want to hear from me" reads warmer than a transactional "glad to help."
   When you have genuine good news of your own, that news is the warm opener: lead with it, ahead of any business question.
   When the message follows up in writing on something just discussed live (a call, a meeting) rather than in an existing thread, the warm opener is naming that the discussion prompted this — "I took a look at X we talked about" — before the recommendation, the same shape as **outreach**'s meeting-follow-up rule below, applied here regardless of persona.
   **"Great to talk with/meet you today" is the standing exception to the "great" amplifier caution in `authoring-rules`** — as a fixed post-call/post-meeting opener idiom, not a modifier chosen fresh, "great" stays; reserve "good" for the rest of that Check's cases.
@@ -344,7 +345,7 @@ His palette:
 
 Don't invent emoji outside this palette, don't stack them, and skip them entirely in more serious messages.
 **The exception is warm relationship gratitude — to a sponsor, partner, community contributor, or someone Russell leads whose completed work he's thanking them for** — where Russell reaches for 🙏, ‼️, 👏, and 🎉 (stacked, beyond the palette's one-emoji cap), usually on a closing thank-you ("Thank you 🙏‼️", "Sounds good 👏🎉‼️"). Keep these as sent; the one-emoji cap and the palette bind ordinary replies, not this warm register.
-A second exception is personal-friend banter (per **Register** above) — joking around with a close friend can reach outside the palette too, e.g. 🙂 to punctuate a self-deprecating laugh ("Farming - haha 🙂").
+A second exception is a genuine joke or callback landing at a message's close — personal-friend banter (per **Register** above), or a warm, established-rapport callback to something the recipient said earlier in the thread — reaching outside the palette, and past the one-emoji cap when an earlier emoji already opened the message, to punctuate it: 🙂 to punctuate a self-deprecating laugh ("Farming - haha 🙂"), or a second, off-palette emoji closing out a joke that echoes the recipient's own words back to them.
 
 ### Persona modes — pick the one matching the context
 
