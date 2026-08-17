@@ -48,10 +48,15 @@ decide it here.
   he'd take** — a pending interview or assessment invite/reminder from a hiring platform, an
   application-status action — is his action (do the interview, take the next step), the automated send
   notwithstanding.
-- it names that action **no matter how broadly it was sent** — audience breadth doesn't change anything,
-  and an automated sender doesn't make it junk. A message to a hundred people that names something Russell
-  would do (sign the card, submit the goals, RSVP for the offsite) is his action exactly as much as if he
-  were the only recipient; ask only whether he'd do the thing.
+- it names that action **no matter who or what delivered it - the content decides, never the envelope.**
+  Audience breadth doesn't change anything and an automated sender doesn't make it junk: a message to a
+  hundred people that names something Russell would do (sign the card, submit the goals, RSVP for the
+  offsite) is his action exactly as much as if he were the only recipient. The same holds when an
+  **automated system relays a message a real person actually wrote to him**: a marketplace forwarding a
+  buyer's question ("send me the tracking number"), a platform passing along a member's note, any
+  notification wrapper around real human words aimed at Russell. Look through the relay to the content and
+  triage it as if that person had emailed him directly; the automated envelope never downgrades a real
+  message to junk. Ask only whether he'd act on what the person actually said.
 - **someone reaches out on a human level** — a personal, individually-written note, not a
   corporate/automated/mass announcement. Replying *is* the thing to do even when it asks nothing
   explicitly: acknowledging that he got it and appreciates it counts. The personal tone is the signal;
@@ -64,14 +69,6 @@ decide it here.
   names Russell directly or leaves an actual open ask. A group or meeting message that names Russell
   directly counts the same as the 1:1 case; only automated, mass, or not-aimed-at-him chatter (including a
   closing remark addressed to someone else in a group thread) stays fyi.
-- a **marketplace/member message carries a real question from a buyer or seller** - an eBay, Etsy,
-  Facebook-Marketplace, or similar member-to-member message where a real person is asking Russell
-  something about a transaction: a buyer waiting on a tracking number, a shipment or refund query, a
-  question about an item he's selling or buying. The automated relay it arrives through (a
-  `members.ebay.com`-style forwarding address, "so-and-so sent a message about <item>") does not make it
-  junk - a person asking a direct question is the signal, exactly as a plain email would be, so it's
-  **needs-you** (hint: "reply"). The generic marketplace promo/notification stream - deals, "items you
-  might like", price-drop alerts, offer or listing-view counts, nobody asking anything - stays **junk**.
 - a **dated to-do** comes due — a Trello tracker or outreach card, any dated item, the moment its due
   date arrives or passes. The due date IS the queue: a due item is the action surfacing when it was
   scheduled for.
@@ -112,10 +109,11 @@ decide it here.
     that it's a bulk send. (A link-hosted one is a pointer the digest opens — see "recognize pointers"
     above.)
 - **junk** — not even worth surfacing: automated noise, pure marketing, cold newsletters (a sender
-  Russell has no relationship with), generic marketplace promo (deals, "items you might like"; but a
-  member *question* from a buyer/seller is needs-you, see the marketplace bullet above), passing or
-  duplicate automated status churn (an automated *something-you-own-is-broken/failing* alert is
-  needs-you, see the action bullet above), chatter not aimed at the user.
+  Russell has no relationship with), generic marketplace promo with no one asking anything (deals, "items
+  you might like", price-drop alerts; but a real member *question* relayed from a buyer/seller is
+  needs-you, see the envelope note in the action bullets above), passing or duplicate automated status
+  churn (an automated *something-you-own-is-broken/failing* alert is needs-you, see the action bullet
+  above), chatter not aimed at the user.
   Junk is also a signal to stop it arriving again; *how* to stop it is provider mechanics — each
   provider's **JUNK-LEARNING** section owns the remediation (unsubscribe → source-app notification
   settings → inbox rule, in that order).
