@@ -172,9 +172,11 @@ their discipline too.
 
 ## Track 2 (deferred backstop): the generic per-turn nudge
 
-Deferred to a second phase, after Track 1 lands and its dent is visible. Its value is the untunable long
-tail - the Strock divorce financial reviews, blog posts, and ad-hoc interactive sessions that have no
-skill to tune but still marathon (Strock peaks at about 405k per turn, blog at about 455k).
+Deferred to a second phase, after Track 1 lands and its dent is visible, and parked on a Trello card
+(Personal Follow-Up, https://trello.com/c/Bm2MVdLT) that resurfaces in mid-September to decide whether it
+is still worth building. Its value is the untunable long tail - the Strock divorce financial reviews,
+blog posts, and ad-hoc interactive sessions that have no skill to tune but still marathon (Strock peaks
+at about 405k per turn, blog at about 455k).
 
 The design, when built: extend `close-check.py` (the existing Stop hook) so that on each Stop passing its
 once-per-real-turn gate it tail-reads `transcript_path`, takes `cache_read_input_tokens` from the latest
