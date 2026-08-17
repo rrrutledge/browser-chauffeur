@@ -69,7 +69,8 @@ A body with no letters (a bare emoji reaction) carries no prose and is exempt.
 The Teams and Slack composers type into a web page rather than a command argument, so `message-draft` routes their body through a reviewed `.tmp` file and drives the composer with `--body-file` on the browser-chauffeur run, which is how the gate reaches them; a composer run that declares no body file is a screenshot or a scrape, not a stage, and passes straight through.
 
 **Shipped prose.**
-A skill, a README, or a repo doc reaches Russell when a PR opens, so the gate fires on `gh pr create` and `gh pr ready`.
+A skill, a README, or a repo doc reaches Russell when a PR opens, so the gate fires on `gh pr create` - the moment the prose lands on the Files Changed tab (a draft PR counts; Russell reviews drafts there).
+It does not fire on `gh pr ready` or `gh pr merge`, which act on an already-open PR whose prose he has already seen - those are the time-to-merge step, not a fresh prose-reaches-Russell moment.
 The hook computes the PR diff itself and blocks unless every changed markdown file that ships has a fresh receipt for its current content.
 Markdown under `.tmp/` and a top-level `handoffs/` is exempt - those are change-explanations, not shipped artifacts - and a code-only PR passes straight through.
 Mint each changed prose file after its review, so `gh pr create` lets the PR through; the voice-learning loop's independent-reviewer step already runs the review, and mints there so it composes with this gate rather than fighting it.
