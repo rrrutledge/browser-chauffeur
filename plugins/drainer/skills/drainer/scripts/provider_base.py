@@ -260,6 +260,20 @@ class ProviderBase:
         """Write the item's files under <runtime_dir>/items/ and return the path to <id>.json."""
         raise NotImplementedError
 
+    def clear(self, item):
+        """Archive this item's source object at triage time, for an fyi/junk item being queued for the
+        daily digest. An inbox provider whose CLEAR is a reversible archive overrides this so a message
+        Russell has effectively already dispositioned leaves his inbox the moment it's triaged, rather
+        than sitting there as noise until he approves clearing it at the digest. Return True on a
+        successful archive, False on a failure. The default returns None: the provider has no safe
+        poll-time archive (its CLEAR isn't a plain archive, or the source has no inbox), so its fyi/junk
+        items stay put and the digest clears them on Russell's approval as before.
+
+        Called by the poller only AFTER the item is safely captured, queued for the digest, and recorded
+        seen — so a failed or absent clear never loses the item; the worst case is one that lingers in
+        the inbox until the digest, exactly the prior behavior."""
+        return None
+
     def still_in_inbox_ids(self):
         """Optional: the set of this provider's message ids currently sitting in the live Inbox. This
         is what the poller's reconcile reads completion off - an item whose message is gone from the

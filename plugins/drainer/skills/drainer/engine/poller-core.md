@@ -66,8 +66,19 @@ spawn, record — is code. No AI re-implements the loop.
      dispatched unconditionally, never throttled by `target_open_tabs`. It's recorded with its own
      `auto-handle` triage; the worker takes worker-core's auto-handle branch (act → CLEAR → queue a
      digest entry → close up) and never interrupts the user. The digest reports it under "Auto-handled."
-   - **fyi / junk** → capture, add to the digest queue (`seen-state.js queue-add`), record seen.
-7. **Never clear.** Workers clear needs-you on completion; the daily digest clears fyi/junk after review.
+   - **fyi / junk** → capture, add to the digest queue (`seen-state.js queue-add`), record seen, **then
+     archive the source** (the provider's `clear`) so mail Russell has effectively already dispositioned
+     leaves his inbox at triage instead of sitting there as noise until the digest. The archive runs
+     **last**, after the item is safely queued and recorded, so a failed or absent archive never loses it
+     — the worst case is one that lingers in the inbox until the digest, exactly the prior behavior. A
+     provider with a reversible-archive CLEAR (the inbox email providers) overrides `clear` and stamps the
+     item `pollCleared`; a provider whose CLEAR isn't a plain archive (e.g. outlook-graph-junk, whose CLEAR
+     *un-junks* into the inbox) or that has no inbox returns `None`, and the digest clears it on approval
+     as before. Russell still reviews every fyi/junk item in the digest — only *when* the archive happens
+     moved earlier, not *whether* he reviews.
+7. **Clear timing.** Workers clear needs-you on completion. fyi/junk are archived at triage above (for
+   providers whose CLEAR is a reversible archive); the daily digest is queue-clear-only for those and
+   still runs the source CLEAR for any fyi/junk item that wasn't archived at triage.
 
 ## Reconcile: completion is read off the source, not off a receipt
 
@@ -85,8 +96,10 @@ in the same cycle.
 
 Three guards keep it from re-queuing work that is fine:
 
-- **the digest queue is excluded** - an fyi/junk item sits in the inbox by design until Russell approves
-  clearing it at the daily digest, and never had a worker session
+- **the digest queue is excluded** - an fyi/junk item is archived at triage (dispatch step 6) so it's
+  normally already gone from the inbox, and it never had a worker session; excluding the queue is the
+  belt-and-suspenders that keeps even an item whose triage-time archive failed - still sitting in the
+  inbox, awaiting the digest by design - from re-queuing on every cycle
 - **a live session guid** (`claude --session-id <guid>`, recorded in `seeds/<id>.prompt.txt.session`)
   means a tab is open on the item: being worked, or parked for Russell. Liveness is the whole test -
   an open tab is left alone however long it's up, so there is no timeout.

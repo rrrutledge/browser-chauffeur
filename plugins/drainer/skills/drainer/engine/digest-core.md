@@ -1,9 +1,12 @@
 # drainer digest-core — the once-a-day EOD digest procedure (interactive, reviewed)
 
-The fast loop (`engine/poller-core.md`) never clears fyi/junk — it queues them for this digest. The
-digest is the **slow loop**: once a day it empties that queue **with Russell in the loop**. It is the
-opposite of the poller in one way that governs everything below: **it is interactive and clears nothing
-without Russell's review.**
+The fast loop (`engine/poller-core.md`) archives each fyi/junk item's source at triage (for providers
+whose CLEAR is a reversible archive) and queues it for this digest. The digest is the **slow loop**: once
+a day it empties that queue **with Russell in the loop**. It is the opposite of the poller in one way that
+governs everything below: **it is interactive and disposes of nothing without Russell's review.** The
+archive already happening earlier doesn't change that — Russell still reviews every item here; what he
+approves is dropping it from the queue (and clearing the source for any item the poller couldn't archive
+at triage).
 
 Unfinished needs-you items are not your concern - the poller's own reconcile catches them every cycle,
 by re-queuing any item whose source object is still unhandled with no live worker on it, so a crashed or
@@ -137,6 +140,15 @@ in one step.
 the proposal from it — don't hand-write a rule from memory. A company-specific `from:<sender>` filter is
 the tell that the skill was skipped.
 
+**A `kind: phishing` junk item gets a report-phishing proposal, not a rule.** For a junk item triage
+marked `kind: phishing` (a deceptive/lookalike-domain message — see `triage.md`), the source-stop is that
+provider's **REPORT-PHISHING** action, which reports the message to the mail provider (retraining its
+filter) and moves it out of the inbox — read `<providers_dir>/<source>-provider.md` → REPORT-PHISHING for
+the exact command. It's reversible (the message stays recoverable from Junk/Spam), so on Russell's OK run
+it in place of the ordinary CLEAR for that item, then `queue-clear`. If a provider has no REPORT-PHISHING
+action, fall back to the normal junk stop and note that reporting isn't available for that source. Present
+phishing items as their own group so Russell sees at a glance what was flagged as deceptive.
+
 This step's proposal, and his go-ahead on it in step 4, approve **building a rule for this type of
 junk** — they are not approval of a rule's literal text. When the chosen stop is a mail rule, creating
 or appending it always routes through the provider's JUNK-LEARNING section, which in turn requires the
@@ -153,18 +165,21 @@ For **each auto-handled item** (already actioned + source-cleared by its worker)
 it from the queue: `node <seen-state.js> queue-clear <runtime_dir> <id>` — no provider CLEAR.
 
 On his OK, for **each fyi/junk item he approves clearing**:
-1. Read the item's `source` and ids from its `items/<id>.json` (or the queue entry).
-2. Run that provider's **CLEAR** op — read `<providers_dir>/<source>-provider.md` → CLEAR and use
-   exactly what it specifies; narrate each with a one-line reason. CLEAR is reversible by design
-   (never a permanent purge).
+1. Read the item's `source`, ids, and `pollCleared` flag from its `items/<id>.json` (or the queue entry).
+2. **If `pollCleared` is set**, the poller already archived the source at triage — approval is
+   **queue-clear only**, no provider CLEAR (running it again would just re-archive an already-archived
+   message). **Otherwise** (a provider without a poll-time archive), run that provider's **CLEAR** op —
+   read `<providers_dir>/<source>-provider.md` → CLEAR and use exactly what it specifies; narrate each
+   with a one-line reason. CLEAR is reversible by design (never a permanent purge).
 3. Remove it from the queue: `node <seen-state.js> queue-clear <runtime_dir> <id>`.
 
 For any junk source-stop Russell approves, apply it per that provider's JUNK-LEARNING.
 
 If Russell defers some items, leave them in the queue — they ride to the next digest. Empty only what
-he approved. **Do the provider CLEAR and the `queue-clear` together, in that order, for every item you
-empty.** An item dropped from the queue while its source object is still sitting in the inbox is one
-the poller's reconcile reads as unfinished, so it re-dispatches as a fresh worker tab.
+he approved. **For any item you clear the source of (a non-`pollCleared` one), do the provider CLEAR and
+the `queue-clear` together, in that order.** An item dropped from the queue while its source object is
+still sitting in the inbox is one the poller's reconcile reads as unfinished, so it re-dispatches as a
+fresh worker tab. A `pollCleared` item is already out of the inbox, so queue-clear alone is enough.
 
 ## Hard rules (carry forward from the engine)
 

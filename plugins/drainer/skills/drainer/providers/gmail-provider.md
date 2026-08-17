@@ -46,7 +46,9 @@ Message-ID header (with angle brackets). The `url` opens the message in Gmail by
 ## CLEAR
 `node gmail.js --archive=<messageId>` — removes the message from the inbox and keeps it in **[Gmail]/All
 Mail** (reversible; narrate it). Archiving, not trashing, is the drainer's clear: a drained item has
-been dealt with, not discarded.
+been dealt with, not discarded. The poller also calls this (via the adapter's `clear`) to archive an
+fyi/junk message the moment it's triaged, so it leaves the inbox without waiting for the digest — the
+daily digest then only queue-clears such an item on Russell's review.
 
 `--reply` looks the original up in both the inbox and All Mail, so it can thread and quote whether the
 message is still in the inbox or has already been archived — archive order relative to drafting no longer
@@ -64,6 +66,15 @@ company-specific noise. Once Russell has OK'd the shown rule, append it with the
 `node filters.js --append-filter=<id> --add-subject='"<phrase>"'` for a subject phrase, or `--add-body`
 for a body phrase — `--list-filters` first to find the bucket's id. Create a new bucket with
 `--create-filter --query='…' --archive --mark-read` only for a genuinely new mechanism.
+
+## REPORT-PHISHING (not yet available — design follow-up)
+Gmail has no report-phishing command yet, so a `kind: phishing` Gmail item falls back to the ordinary
+junk stop at digest time (a filter, per JUNK-LEARNING above) and the digest notes that reporting isn't
+available for this source. The intended action is a new `gmail.js --report-spam=<messageId>` that
+IMAP-moves the message to `[Gmail]/Spam` — Gmail treats a move into Spam as a spam report and retrains its
+filter, and it's reversible from the Spam folder, the IMAP-transport equivalent of Outlook's
+`--report-phish`. Build it in the `gmail` skill, then wire it here the same way the outlook-graph provider
+wires `--report-phish`.
 
 ## DRAFT-MODE CLI commands
 Follow all voice and reply-vs-fresh rules in `email-base.md`, then use these Gmail commands.

@@ -127,6 +127,13 @@ class Provider(ProviderBase):
             return None
         return {m["id"] for m in msgs if m.get("id")}
 
+    def clear(self, item):
+        """Archive an fyi/junk message at triage time (the provider CLEAR: `gmail.js --archive` removes it
+        from the inbox, keeping it in [Gmail]/All Mail — reversible and still searchable). Returns True on
+        success, False on failure — see ProviderBase.clear for why this is safe for the poller to call."""
+        res = run_node([self.gmailjs, f"--archive={item['id']}"])
+        return res.returncode == 0
+
     def stable_id(self, item):
         # Timestamp to the second so two messages from the same sender with the same opening subject in
         # the same minute don't collide and silently drop one. Mirrors the outlook-graph scheme.

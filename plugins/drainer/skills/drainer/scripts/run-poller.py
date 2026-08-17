@@ -11,8 +11,11 @@ The orchestration below is **provider-agnostic**: it reads which providers are e
 All source-specific mechanics — mail.js, the Outlook id scheme, the Graph message body — live inside an
 adapter class, never in the loop. New sources (Gmail, Trello, …) plug in by adding an adapter.
 
-Fail-safe: the poller never clears; a message-id is recorded as seen only AFTER its dispatch succeeds;
-losing seen-state re-processes items (safe), never drops one. See engine/poller-core.md for the contract.
+Fail-safe: a message-id is recorded as seen only AFTER its dispatch succeeds; losing seen-state
+re-processes items (safe), never drops one. The poller clears only fyi/junk, and only at the end of
+dispatch — after the item is captured, queued for the digest, and recorded — so an inbox provider archives
+mail Russell has already dispositioned right at triage; a failed clear leaves the item queued, never lost.
+needs-you items are still cleared by their worker on completion. See engine/poller-core.md for the contract.
 
 Usage:
     python run-poller.py --repo C:/Users/russe/Dev/personal-ai-pod            # one live cycle
@@ -35,7 +38,7 @@ SKILL_DIR = os.path.dirname(SCRIPT_DIR)
 PROVIDERS_DIR = os.path.join(SKILL_DIR, "providers")
 sys.path.insert(0, SCRIPT_DIR)
 import presence  # noqa: E402  (sibling module)
-from provider_base import run_node, NO_WINDOW, ProviderError, spawn_tab, spawn_silent, NEUTRAL_PRIORITY_BAND  # noqa: E402  (subprocess helper + typed provider failure)
+from provider_base import run_node, NO_WINDOW, ProviderError, ProviderBase, spawn_tab, spawn_silent, NEUTRAL_PRIORITY_BAND  # noqa: E402  (subprocess helper + typed provider failure)
 _LIVE_UNSET = object()  # reconcile_unhandled sentinel: scan for live sessions itself unless one is passed in
 from drainer_config import read_config, find_provider_file, ensure_main_worktree  # noqa: E402  (shared reader + provider resolution + main-pinned config worktree)
 
@@ -190,11 +193,14 @@ TRIAGE_INSTRUCTIONS = (
     "the world-knowledge below. For EACH item decide its bucket; for needs-you (and auto-handle) also "
     "give kind = reply | work | work-then-reply (else null) and complexity = simple | complex (simple = "
     "a quick reply or a trivial action; complex = multi-step work, research, code, or a delicate / "
-    "high-stakes message — these get a stronger model). Use bucket = auto-handle ONLY when a provider "
+    "high-stakes message — these get a stronger model). For a JUNK item that is deceptive — a phishing "
+    "lure, a spoofed or lookalike sender domain, a credential-harvest or scam (per the rubric's phishing "
+    "note) — set kind = phishing so it gets the report-phishing disposition; otherwise a junk/fyi item's "
+    "kind is null. Use bucket = auto-handle ONLY when a provider "
     "AUTO-HANDLE rule (in the world-knowledge / provider docs) plainly matches — a standing decision with "
     "no judgment left; when in doubt use needs-you. Return ONLY a JSON array, one object per input "
     'id: [{"id": "...", "bucket": "needs-you|auto-handle|fyi|junk", '
-    '"kind": "reply|work|work-then-reply|null", '
+    '"kind": "reply|work|work-then-reply|phishing|null", '
     '"complexity": "simple|complex", "reason": "<short>"}] — no prose, no code fence.'
 )
 
@@ -854,6 +860,22 @@ def _item_source_ref(runtime_dir, iid):
     return rec.get("messageId"), ts
 
 
+def _mark_poll_cleared(json_file):
+    """Stamp `pollCleared: true` onto a captured item's json after the poller archived its source at
+    triage time. The digest reads this: a poll-cleared fyi/junk item is already out of the inbox, so its
+    approval is queue-clear only (no second provider CLEAR). Best-effort — a write failure just leaves the
+    stamp off, and the digest falls back to running CLEAR, which is idempotent for an already-archived
+    message."""
+    try:
+        with open(json_file, encoding="utf-8") as f:
+            rec = json.load(f)
+        rec["pollCleared"] = True
+        with open(json_file, "w", encoding="utf-8") as f:
+            json.dump(rec, f, indent=2)
+    except (OSError, ValueError):
+        pass
+
+
 def load_handled(runtime_dir):
     """The per-source id sets whose source object has been observed gone from the inbox.
 
@@ -1187,9 +1209,13 @@ def main():
             print(f"    [{it['_source']:20}] {it['_id']}  ->  {action}\n"
                   f"        {it.get('received')} | {it.get('from')} | {it.get('subject')}")
         if others:
-            print("  others -> digest:")
+            print("  others -> digest (fyi/junk archived at triage where the provider supports it):")
             for it in others:
-                print(f"    [{it['_bucket']:9}] [{it['_source']:20}] {it['_id']}\n"
+                # A provider that overrides clear() archives its fyi/junk at triage; the default returns
+                # None. Introspect the override (never CALL clear here — dry-run touches nothing) so the
+                # report shows which items would leave the inbox.
+                archive = " +archive" if type(prov[it["_source"]]).clear is not ProviderBase.clear else ""
+                print(f"    [{it['_bucket']:9}] [{it['_source']:20}] {it['_id']}{archive}\n"
                       f"        {it.get('from')} | {it.get('subject')}")
         teams_others = [it for it in others if it["_source"] == "teams"]
         if teams_others:
@@ -1197,7 +1223,7 @@ def main():
                   + ", ".join(it.get("convId") or it["_id"] for it in teams_others))
         return
 
-    dispatched, auto_dispatched, held, held_corr, queued = 0, 0, 0, 0, 0
+    dispatched, auto_dispatched, held, held_corr, queued, poll_cleared = 0, 0, 0, 0, 0, 0
     # auto-handle first: a worker that executes a standing rule and clears the source immediately. Not
     # throttled by target_open_tabs, recorded with its own triage so capture stamps the json and the worker
     # takes worker-core's auto-handle branch (act -> CLEAR -> queue digest -> close up). Its correspondent
@@ -1247,6 +1273,15 @@ def main():
         seen_state("queue-add", cfg["runtime_dir"], it["_source"], iid, json_file)
         seen_state("record", cfg["runtime_dir"], it["_source"], iid, it["_bucket"])
         queued += 1
+        # Archive the source NOW, once it's an fyi/junk item safely in the digest queue and recorded seen,
+        # so mail Russell has effectively already dispositioned leaves his inbox at triage instead of
+        # sitting there as noise until the digest. Done last, so a failed/absent clear never loses the
+        # item (it's already queued). A provider without a safe poll-time archive returns None (no stamp);
+        # the digest clears it on approval as before. The archived message is then gone from the inbox, so
+        # reconcile also reads it as handled — the queue-guard and the archive both keep it from re-queuing.
+        if provider.clear(it):
+            _mark_poll_cleared(json_file)
+            poll_cleared += 1
 
     # Correctly-junked items from outlook-graph-junk (already in the right place) are recorded as
     # seen with NO capture and NO queue-add — they generate zero noise and never surface to the user.
@@ -1261,9 +1296,10 @@ def main():
         _spawn_teams_mark_read(teams_others, prov["teams"], repo, cfg["runtime_dir"], cfg["worker_model"])
 
     print(f"dispatched {dispatched} worker tab(s), {auto_dispatched} auto-handle worker(s), "
-          f"queued {queued} for digest, {correctly_junked_count} correctly-filed junk (no action), "
+          f"queued {queued} for digest ({poll_cleared} archived at triage), "
+          f"{correctly_junked_count} correctly-filed junk (no action), "
           f"held {held} (of which {held_corr} behind an open item from the same correspondent) at "
-          f"target open tabs of {cfg['target_open_tabs']}. Poller never clears.")
+          f"target open tabs of {cfg['target_open_tabs']}. Workers clear needs-you on completion.")
 
 
 if __name__ == "__main__":
