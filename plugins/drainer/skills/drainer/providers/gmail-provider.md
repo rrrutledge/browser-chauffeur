@@ -39,6 +39,14 @@ All Mail in both directions. Read newest-first. CLEAR archives to All Mail (not 
 the contact sent after capture is always findable here. Also run `node gmail.js --list-drafts` to check
 for an existing draft before staging a new one.
 
+**`search_threads`'s index can lag behind the mailbox by hours, silently dropping the newest messages
+in an active thread** — observed missing 5 of 10 messages in a thread, including ones from the two days
+right before capture, exactly the recent activity a situational check most needs. Once `search_threads`
+gives you the thread's id, follow up with `mcp__claude_ai_Gmail__get_thread` on that id — it reads the
+mailbox directly rather than the search index, so it returns the complete thread. Do this for any thread
+with recent back-and-forth (multiple messages within the last day or two); treat `search_threads` alone
+as sufficient only for a thread that's been quiet a while.
+
 ## CAPTURE
 See `email-base.md` for the shared two-file shape. Gmail-specific: `messageId` is the RFC822
 Message-ID header (with angle brackets). The `url` opens the message in Gmail by that id.
