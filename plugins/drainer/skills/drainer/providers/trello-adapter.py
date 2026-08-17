@@ -288,14 +288,17 @@ class Provider(ProviderBase):
 
     @staticmethod
     def _level_band(card):
-        """Return a card's level rank from its 'Priority: ... · <level>' desc line — 1 for
-        Director/VP-level, 0 for IC-level or when the card carries no such line (every non-job-search
-        board, or a job-search card job-board-poll hasn't scored yet). Mirrors job-board-poll's
-        tiers.js PREVIEW_LEVEL_RANK so the drainer's real dispatch order matches the terminal preview
-        it was always documented to match."""
+        """Return a card's level rank from its 'Priority: ... · <level>' desc line — 0 for
+        Director/VP-level, every non-job-search card, and a job-search card job-board-poll hasn't
+        scored yet; -1 for an IC-level job-search card. Zero is the shared neutral level that
+        email/Slack and ordinary Trello cards also carry by default (see run-poller.py's sort), so a
+        Director/VP-level lead interleaves with today's mail by date within its priority band; only an
+        IC-level posting drops below and waits for that neutral level to clear. Still mirrors
+        job-board-poll's tiers.js PREVIEW_LEVEL_RANK's relative order (lead ahead of ic) — only where
+        the zero point sits has moved."""
         desc = card.get("desc") or ""
-        if "Director/VP-level" in desc:
-            return 1
+        if "IC-level" in desc:
+            return -1
         return 0
 
     def _has_skip_label(self, card):

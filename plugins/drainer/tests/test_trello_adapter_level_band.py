@@ -37,10 +37,10 @@ def card(desc="", labels=None):
 def test_level_band_reads_desc_line():
     print("test: _level_band parses the 'Priority: ... · <level>' desc line")
     Provider = adapter_mod.Provider
-    check("Director/VP-level -> 1",
-          Provider._level_band(card("Priority: P1 · Developer enablement · Director/VP-level")) == 1)
-    check("IC-level -> 0",
-          Provider._level_band(card("Priority: P1 · Developer enablement · IC-level")) == 0)
+    check("Director/VP-level -> 0 (shared neutral level with email/Slack)",
+          Provider._level_band(card("Priority: P1 · Developer enablement · Director/VP-level")) == 0)
+    check("IC-level -> -1",
+          Provider._level_band(card("Priority: P1 · Developer enablement · IC-level")) == -1)
     check("no priority line -> 0 (non-job-search board)", Provider._level_band(card("just a normal card")) == 0)
     check("empty desc -> 0", Provider._level_band(card(None)) == 0)
 
@@ -71,9 +71,9 @@ def test_sort_key_orders_level_within_band():
 def test_priority_band_still_leads_level_band():
     print("test: a higher priority band still beats a lower band regardless of level")
     Provider = adapter_mod.Provider
-    p1_ic = {"name": "P1 IC", "_priority_band": adapter_mod._PRIORITY_BAND[1], "_level_band": 0,
+    p1_ic = {"name": "P1 IC", "_priority_band": adapter_mod._PRIORITY_BAND[1], "_level_band": -1,
              "_due_sort": "2026-01-01"}
-    p2_director = {"name": "P2 Director", "_priority_band": adapter_mod._PRIORITY_BAND[2], "_level_band": 1,
+    p2_director = {"name": "P2 Director", "_priority_band": adapter_mod._PRIORITY_BAND[2], "_level_band": 0,
                     "_due_sort": "2026-08-01"}
     ranked = sorted([p2_director, p1_ic],
                      key=lambda it: (it["_priority_band"], it["_level_band"], it["_due_sort"]),

@@ -1116,10 +1116,12 @@ def main():
 
     # --- split: needs-you (globally ordered), auto-handle (own worker, no cap), others (digest) ---
     # Ordered across ALL sources by (priority band, level band, date) descending. Only job-search cards
-    # carry a non-neutral band or level (the trello adapter stamps `_priority_band` and `_level_band` —
-    # see its _PRIORITY_BAND and _level_band for the policy); every other item defaults to neutral band
-    # and level-0, so it orders purely by `received` date as before (an inbox message's arrival time, a
-    # dated card's due date, or an undated card's creation date).
+    # carry a non-neutral priority band or level (the trello adapter stamps `_priority_band` and
+    # `_level_band` — see its _PRIORITY_BAND and _level_band for the policy). Level-0 is the shared
+    # neutral level — email/Slack, ordinary Trello cards, and Director/VP-level job cards all default
+    # or resolve to it — so within a priority band those interleave purely by `received` date (an inbox
+    # message's arrival time, a dated card's due date, or an undated card's creation date); only an
+    # IC-level job-search card drops to level -1 and waits behind its band's level-0 items.
     needs_you_items = [it for it in needs_and_others if it["_bucket"] == "needs-you"]
     # orphan-sessions dispatches FIRST, ahead of every other source, explicitly — not via
     # priority-band/received-timestamp tie-breaking (a coincidentally-recent or high-priority
