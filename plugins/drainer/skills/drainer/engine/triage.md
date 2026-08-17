@@ -35,17 +35,16 @@ decide it here.
   decide to act on: a reply to write, a form to return, a survey to fill, an RSVP, a decision to make,
   work to kick off (code, a doc, a ticket, a lookup, a system update…), or delegating it to the team. A
   training deadline he'd complete is an action; a security alert for a failed login he already knows
-  about is not — reading it changes nothing he'd do. An **automated notification that something he owns is
-  broken or failing** — a failed build or CI run on a repo he maintains or authored the PR for, a
-  monitor/health alert on a service he runs, a **service/integration notice that something he (or an
-  organization he runs) configured has stopped working or needs reconnecting** (a dropped integration,
-  disconnected social accounts, an expired connection — e.g. a Hootsuite "social networks disconnected"
-  notice), a job-failure or broken-link report — is work to do (go fix it), the same as any other work
-  he'd kick off; a passing, routine, subscription-digest, or already-known-good status is not. A **CI or
-  Actions FAILURE on a pull request he authored** is his to fix (go fix the failure) — the failure itself
-  is the signal, and it stays needs-you even when the same repo's routine success notices and subscription
-  mail are fyi/junk; use the failure-vs-success distinction, not the repo, to sort GitHub notification
-  mail. A **job-application step
+  about is not - reading it changes nothing he'd do. An **automated notification that something he owns is
+  broken or failing** - a failed build or CI run on a repo he maintains, a monitor/health alert on a
+  service he runs, a **service/integration notice that something he (or an organization he runs) configured
+  has stopped working or needs reconnecting** (a dropped integration, disconnected social accounts, an
+  expired connection, e.g. a Hootsuite "social networks disconnected" notice), a job-failure or
+  broken-link report - is work to do (go fix it), the same as any other work he'd kick off; a passing,
+  routine, subscription-digest, or already-known-good status is not. A **CI or Actions FAILURE on a pull
+  request he authored** is his to fix (go fix the failure): the failure itself is the signal, and it stays
+  needs-you even when the same repo's routine success notices and subscription mail are fyi/junk; use the
+  failure-vs-success distinction, not the repo, to sort GitHub notification mail. A **job-application step
   he'd take** — a pending interview or assessment invite/reminder from a hiring platform, an
   application-status action — is his action (do the interview, take the next step), the automated send
   notwithstanding.
@@ -65,14 +64,14 @@ decide it here.
   names Russell directly or leaves an actual open ask. A group or meeting message that names Russell
   directly counts the same as the 1:1 case; only automated, mass, or not-aimed-at-him chatter (including a
   closing remark addressed to someone else in a group thread) stays fyi.
-- a **marketplace/member message carries a real question from a buyer or seller** — an eBay, Etsy,
+- a **marketplace/member message carries a real question from a buyer or seller** - an eBay, Etsy,
   Facebook-Marketplace, or similar member-to-member message where a real person is asking Russell
   something about a transaction: a buyer waiting on a tracking number, a shipment or refund query, a
   question about an item he's selling or buying. The automated relay it arrives through (a
   `members.ebay.com`-style forwarding address, "so-and-so sent a message about <item>") does not make it
-  junk — a person asking a direct question is the signal, exactly as a plain email would be → **needs-you**
-  (hint: "reply"). The generic marketplace promo/notification stream — deals, "items you might like",
-  price-drop alerts, offer or listing-view counts, nobody asking anything — stays **junk**.
+  junk - a person asking a direct question is the signal, exactly as a plain email would be, so it's
+  **needs-you** (hint: "reply"). The generic marketplace promo/notification stream - deals, "items you
+  might like", price-drop alerts, offer or listing-view counts, nobody asking anything - stays **junk**.
 - a **dated to-do** comes due — a Trello tracker or outreach card, any dated item, the moment its due
   date arrives or passes. The due date IS the queue: a due item is the action surfacing when it was
   scheduled for.
@@ -113,24 +112,24 @@ decide it here.
     that it's a bulk send. (A link-hosted one is a pointer the digest opens — see "recognize pointers"
     above.)
 - **junk** — not even worth surfacing: automated noise, pure marketing, cold newsletters (a sender
-  Russell has no relationship with), generic marketplace promo (deals, "items you might like" — but a
+  Russell has no relationship with), generic marketplace promo (deals, "items you might like"; but a
   member *question* from a buyer/seller is needs-you, see the marketplace bullet above), passing or
   duplicate automated status churn (an automated *something-you-own-is-broken/failing* alert is
-  needs-you — see the action bullet above), chatter not aimed at the user.
+  needs-you, see the action bullet above), chatter not aimed at the user.
   Junk is also a signal to stop it arriving again; *how* to stop it is provider mechanics — each
   provider's **JUNK-LEARNING** section owns the remediation (unsubscribe → source-app notification
   settings → inbox rule, in that order).
 
-**Phishing is junk with a sharper disposition — mark it.** Mail that isn't merely unwanted but
-*deceptive* — a spoofed or lookalike sender domain (a throwaway domain dressed up as a real brand, e.g. a
+**Phishing is junk with a sharper disposition - mark it.** Mail that isn't merely unwanted but
+*deceptive* - a spoofed or lookalike sender domain (a throwaway domain dressed up as a real brand, e.g. a
 "CarShield" ad from `info@nvr.nivobuscaf.com`), a credential-harvest or fake-account-alert lure, a
-payment or gift-card scam — is still **junk**, but stamp its `kind` as **`phishing`**. That marker routes
+payment or gift-card scam - is still **junk**, but stamp its `kind` as **`phishing`**. That marker routes
 it, at digest time, to the provider's **report-phishing** action (report the message to the mail provider
-so its filter learns, then move it out of the inbox) instead of an ordinary archive, rule, or
-unsubscribe — a stronger disposition that is still reversible (the message stays recoverable from Junk/
-Spam). Reserve the mark for mail built to trick: when a message is only low-quality marketing rather than
-deceptive, leave it plain junk. The provider capability and the digest's report-on-approval handling live
-in `providers/<source>-provider.md` → REPORT-PHISHING and `engine/digest-core.md` step 3.
+so its filter learns, then move it out of the inbox) instead of an ordinary archive, rule, or unsubscribe:
+a stronger disposition that is still reversible (the message stays recoverable from Junk/Spam). Reserve the
+mark for mail built to trick: when a message is only low-quality marketing rather than deceptive, leave it
+plain junk. The provider capability and the digest's report-on-approval handling live in
+`providers/<source>-provider.md` → REPORT-PHISHING and `engine/digest-core.md` step 3.
 
 ## Tie-breakers
 - **auto-handle** is never a tie-breaker default: pick it ONLY when a provider AUTO-HANDLE rule clearly

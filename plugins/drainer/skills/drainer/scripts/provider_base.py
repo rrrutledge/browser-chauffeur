@@ -267,11 +267,11 @@ class ProviderBase:
         than sitting there as noise until he approves clearing it at the digest. Return True on a
         successful archive, False on a failure. The default returns None: the provider has no safe
         poll-time archive (its CLEAR isn't a plain archive, or the source has no inbox), so its fyi/junk
-        items stay put and the digest clears them on Russell's approval as before.
+        items stay put and the digest clears them on Russell's approval.
 
         Called by the poller only AFTER the item is safely captured, queued for the digest, and recorded
-        seen — so a failed or absent clear never loses the item; the worst case is one that lingers in
-        the inbox until the digest, exactly the prior behavior."""
+        seen, so a failed or absent clear never loses the item: an item whose clear fails just stays in
+        the inbox to the digest, which still clears it on Russell's review."""
         return None
 
     def still_in_inbox_ids(self):

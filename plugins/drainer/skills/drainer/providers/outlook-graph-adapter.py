@@ -86,7 +86,7 @@ class Provider(ProviderBase):
 
     def clear(self, item):
         """Archive an fyi/junk message at triage time (the provider CLEAR: `mail.js --delete` moves it to
-        Archive, reversible and still searchable). Returns True on success, False on failure — see
+        Archive, reversible and still searchable). Returns True on success, False on failure - see
         ProviderBase.clear for why the poller can call this without risk of losing the item."""
         res = run_node([self.mailjs, f"--delete={item['id']}"])
         return res.returncode == 0

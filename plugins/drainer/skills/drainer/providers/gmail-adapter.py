@@ -129,8 +129,8 @@ class Provider(ProviderBase):
 
     def clear(self, item):
         """Archive an fyi/junk message at triage time (the provider CLEAR: `gmail.js --archive` removes it
-        from the inbox, keeping it in [Gmail]/All Mail — reversible and still searchable). Returns True on
-        success, False on failure — see ProviderBase.clear for why this is safe for the poller to call."""
+        from the inbox, keeping it in [Gmail]/All Mail - reversible and still searchable). Returns True on
+        success, False on failure - see ProviderBase.clear for why this is safe for the poller to call."""
         res = run_node([self.gmailjs, f"--archive={item['id']}"])
         return res.returncode == 0
 

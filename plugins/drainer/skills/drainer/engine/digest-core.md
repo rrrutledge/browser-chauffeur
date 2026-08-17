@@ -4,7 +4,7 @@ The fast loop (`engine/poller-core.md`) archives each fyi/junk item's source at 
 whose CLEAR is a reversible archive) and queues it for this digest. The digest is the **slow loop**: once
 a day it empties that queue **with Russell in the loop**. It is the opposite of the poller in one way that
 governs everything below: **it is interactive and disposes of nothing without Russell's review.** The
-archive already happening earlier doesn't change that — Russell still reviews every item here; what he
+archive already happening earlier doesn't change that: Russell still reviews every item here, and what he
 approves is dropping it from the queue (and clearing the source for any item the poller couldn't archive
 at triage).
 
@@ -141,9 +141,9 @@ the proposal from it — don't hand-write a rule from memory. A company-specific
 the tell that the skill was skipped.
 
 **A `kind: phishing` junk item gets a report-phishing proposal, not a rule.** For a junk item triage
-marked `kind: phishing` (a deceptive/lookalike-domain message — see `triage.md`), the source-stop is that
+marked `kind: phishing` (a deceptive/lookalike-domain message, see `triage.md`), the source-stop is that
 provider's **REPORT-PHISHING** action, which reports the message to the mail provider (retraining its
-filter) and moves it out of the inbox — read `<providers_dir>/<source>-provider.md` → REPORT-PHISHING for
+filter) and moves it out of the inbox; read `<providers_dir>/<source>-provider.md` → REPORT-PHISHING for
 the exact command. It's reversible (the message stays recoverable from Junk/Spam), so on Russell's OK run
 it in place of the ordinary CLEAR for that item, then `queue-clear`. If a provider has no REPORT-PHISHING
 action, fall back to the normal junk stop and note that reporting isn't available for that source. Present
@@ -166,9 +166,9 @@ it from the queue: `node <seen-state.js> queue-clear <runtime_dir> <id>` — no 
 
 On his OK, for **each fyi/junk item he approves clearing**:
 1. Read the item's `source`, ids, and `pollCleared` flag from its `items/<id>.json` (or the queue entry).
-2. **If `pollCleared` is set**, the poller already archived the source at triage — approval is
+2. **If `pollCleared` is set**, the poller already archived the source at triage, so approval is
    **queue-clear only**, no provider CLEAR (running it again would just re-archive an already-archived
-   message). **Otherwise** (a provider without a poll-time archive), run that provider's **CLEAR** op —
+   message). **Otherwise** (a provider without a poll-time archive), run that provider's **CLEAR** op:
    read `<providers_dir>/<source>-provider.md` → CLEAR and use exactly what it specifies; narrate each
    with a one-line reason. CLEAR is reversible by design (never a permanent purge).
 3. Remove it from the queue: `node <seen-state.js> queue-clear <runtime_dir> <id>`.

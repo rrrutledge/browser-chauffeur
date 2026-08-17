@@ -13,9 +13,9 @@ adapter class, never in the loop. New sources (Gmail, Trello, …) plug in by ad
 
 Fail-safe: a message-id is recorded as seen only AFTER its dispatch succeeds; losing seen-state
 re-processes items (safe), never drops one. The poller clears only fyi/junk, and only at the end of
-dispatch — after the item is captured, queued for the digest, and recorded — so an inbox provider archives
+dispatch (after the item is captured, queued for the digest, and recorded), so an inbox provider archives
 mail Russell has already dispositioned right at triage; a failed clear leaves the item queued, never lost.
-needs-you items are still cleared by their worker on completion. See engine/poller-core.md for the contract.
+needs-you items are cleared by their worker on completion. See engine/poller-core.md for the contract.
 
 Usage:
     python run-poller.py --repo C:/Users/russe/Dev/personal-ai-pod            # one live cycle
@@ -193,9 +193,9 @@ TRIAGE_INSTRUCTIONS = (
     "the world-knowledge below. For EACH item decide its bucket; for needs-you (and auto-handle) also "
     "give kind = reply | work | work-then-reply (else null) and complexity = simple | complex (simple = "
     "a quick reply or a trivial action; complex = multi-step work, research, code, or a delicate / "
-    "high-stakes message — these get a stronger model). For a JUNK item that is deceptive — a phishing "
-    "lure, a spoofed or lookalike sender domain, a credential-harvest or scam (per the rubric's phishing "
-    "note) — set kind = phishing so it gets the report-phishing disposition; otherwise a junk/fyi item's "
+    "high-stakes message — these get a stronger model). For a JUNK item that is deceptive (a phishing "
+    "lure, a spoofed or lookalike sender domain, a credential-harvest or scam, per the rubric's phishing "
+    "note) set kind = phishing so it gets the report-phishing disposition; otherwise a junk/fyi item's "
     "kind is null. Use bucket = auto-handle ONLY when a provider "
     "AUTO-HANDLE rule (in the world-knowledge / provider docs) plainly matches — a standing decision with "
     "no judgment left; when in doubt use needs-you. Return ONLY a JSON array, one object per input "
@@ -863,7 +863,7 @@ def _item_source_ref(runtime_dir, iid):
 def _mark_poll_cleared(json_file):
     """Stamp `pollCleared: true` onto a captured item's json after the poller archived its source at
     triage time. The digest reads this: a poll-cleared fyi/junk item is already out of the inbox, so its
-    approval is queue-clear only (no second provider CLEAR). Best-effort — a write failure just leaves the
+    approval is queue-clear only (no second provider CLEAR). Best-effort: a write failure just leaves the
     stamp off, and the digest falls back to running CLEAR, which is idempotent for an already-archived
     message."""
     try:
@@ -1212,8 +1212,8 @@ def main():
             print("  others -> digest (fyi/junk archived at triage where the provider supports it):")
             for it in others:
                 # A provider that overrides clear() archives its fyi/junk at triage; the default returns
-                # None. Introspect the override (never CALL clear here — dry-run touches nothing) so the
-                # report shows which items would leave the inbox.
+                # None. Introspect the override (never CALL clear here, since dry-run touches nothing) so
+                # the report shows which items would leave the inbox.
                 archive = " +archive" if type(prov[it["_source"]]).clear is not ProviderBase.clear else ""
                 print(f"    [{it['_bucket']:9}] [{it['_source']:20}] {it['_id']}{archive}\n"
                       f"        {it.get('from')} | {it.get('subject')}")
@@ -1276,9 +1276,9 @@ def main():
         # Archive the source NOW, once it's an fyi/junk item safely in the digest queue and recorded seen,
         # so mail Russell has effectively already dispositioned leaves his inbox at triage instead of
         # sitting there as noise until the digest. Done last, so a failed/absent clear never loses the
-        # item (it's already queued). A provider without a safe poll-time archive returns None (no stamp);
-        # the digest clears it on approval as before. The archived message is then gone from the inbox, so
-        # reconcile also reads it as handled — the queue-guard and the archive both keep it from re-queuing.
+        # item (it's already queued). A provider without a safe poll-time archive returns None (no stamp),
+        # and the digest clears it on approval. The archived message is then gone from the inbox, so
+        # reconcile also reads it as handled: the queue-guard and the archive both keep it from re-queuing.
         if provider.clear(it):
             _mark_poll_cleared(json_file)
             poll_cleared += 1
