@@ -1,9 +1,9 @@
 # drainer digest-core — the once-a-day EOD digest procedure (interactive, reviewed)
 
-The fast loop (`engine/poller-core.md`) never clears fyi/junk — it queues them for this digest. The
-digest is the **slow loop**: once a day it empties that queue **with Russell in the loop**. It is the
-opposite of the poller in one way that governs everything below: **it is interactive and clears nothing
-without Russell's review.**
+The fast loop (`engine/poller-core.md`) archives each fyi/junk item at triage and queues it for this
+digest. The digest is the **slow loop**: once a day it empties that queue **with Russell in the loop**. It
+is the opposite of the poller in one way that governs everything below: **it is interactive and disposes
+of nothing without Russell's review.**
 
 Unfinished needs-you items are not your concern - the poller's own reconcile catches them every cycle,
 by re-queuing any item whose source object is still unhandled with no live worker on it, so a crashed or
@@ -137,6 +137,15 @@ in one step.
 the proposal from it — don't hand-write a rule from memory. A company-specific `from:<sender>` filter is
 the tell that the skill was skipped.
 
+**A `kind: phishing` junk item gets a report-phishing proposal, not a rule.** For a junk item triage
+marked `kind: phishing` (a deceptive/lookalike-domain message, see `triage.md`), the source-stop is that
+provider's **REPORT-PHISHING** action, which reports the message to the mail provider (retraining its
+filter) and moves it out of the inbox; read `<providers_dir>/<source>-provider.md` → REPORT-PHISHING for
+the exact command. It's reversible (the message stays recoverable from Junk/Spam), so on Russell's OK run
+it in place of the ordinary CLEAR for that item, then `queue-clear`. If a provider has no REPORT-PHISHING
+action, fall back to the normal junk stop and note that reporting isn't available for that source. Present
+phishing items as their own group so Russell sees at a glance what was flagged as deceptive.
+
 This step's proposal, and his go-ahead on it in step 4, approve **building a rule for this type of
 junk** — they are not approval of a rule's literal text. When the chosen stop is a mail rule, creating
 or appending it always routes through the provider's JUNK-LEARNING section, which in turn requires the
@@ -156,7 +165,9 @@ On his OK, for **each fyi/junk item he approves clearing**:
 1. Read the item's `source` and ids from its `items/<id>.json` (or the queue entry).
 2. Run that provider's **CLEAR** op — read `<providers_dir>/<source>-provider.md` → CLEAR and use
    exactly what it specifies; narrate each with a one-line reason. CLEAR is reversible by design
-   (never a permanent purge).
+   (never a permanent purge). The poller already archived the source at triage, so for an inbox
+   provider this re-archive is a harmless no-op; it does the real clear for any provider that couldn't
+   archive at triage.
 3. Remove it from the queue: `node <seen-state.js> queue-clear <runtime_dir> <id>`.
 
 For any junk source-stop Russell approves, apply it per that provider's JUNK-LEARNING.

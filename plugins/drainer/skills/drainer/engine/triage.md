@@ -35,17 +35,28 @@ decide it here.
   decide to act on: a reply to write, a form to return, a survey to fill, an RSVP, a decision to make,
   work to kick off (code, a doc, a ticket, a lookup, a system update…), or delegating it to the team. A
   training deadline he'd complete is an action; a security alert for a failed login he already knows
-  about is not — reading it changes nothing he'd do. An **automated notification that something he owns is
-  broken or failing** — a failed build or CI run on a repo he maintains, a monitor/health alert on a
-  service he runs, a job-failure or broken-link report — is work to do (go fix it), the same as any other
-  work he'd kick off; a passing, routine, or already-known-good status is not. A **job-application step
+  about is not - reading it changes nothing he'd do. An **automated notification that something he owns is
+  broken or failing** - a failed build or CI run on a repo he maintains, a monitor/health alert on a
+  service he runs, a **service/integration notice that something he (or an organization he runs) configured
+  has stopped working or needs reconnecting** (a dropped integration, disconnected social accounts, an
+  expired connection, e.g. a Hootsuite "social networks disconnected" notice), a job-failure or
+  broken-link report - is work to do (go fix it), the same as any other work he'd kick off; a passing,
+  routine, subscription-digest, or already-known-good status is not. A **CI or Actions FAILURE on a pull
+  request he authored** is his to fix (go fix the failure): the failure itself is the signal, and it stays
+  needs-you even when the same repo's routine success notices and subscription mail are fyi/junk; use the
+  failure-vs-success distinction, not the repo, to sort GitHub notification mail. A **job-application step
   he'd take** — a pending interview or assessment invite/reminder from a hiring platform, an
   application-status action — is his action (do the interview, take the next step), the automated send
   notwithstanding.
-- it names that action **no matter how broadly it was sent** — audience breadth doesn't change anything,
-  and an automated sender doesn't make it junk. A message to a hundred people that names something Russell
-  would do (sign the card, submit the goals, RSVP for the offsite) is his action exactly as much as if he
-  were the only recipient; ask only whether he'd do the thing.
+- it names that action **no matter who or what delivered it - the content decides, never the envelope.**
+  Audience breadth doesn't change anything and an automated sender doesn't make it junk: a message to a
+  hundred people that names something Russell would do (sign the card, submit the goals, RSVP for the
+  offsite) is his action exactly as much as if he were the only recipient. The same holds when an
+  **automated system relays a message a real person actually wrote to him**: a marketplace forwarding a
+  buyer's question ("send me the tracking number"), a platform passing along a member's note, any
+  notification wrapper around real human words aimed at Russell. Look through the relay to the content and
+  triage it as if that person had emailed him directly; the automated envelope never downgrades a real
+  message to junk. Ask only whether he'd act on what the person actually said.
 - **someone reaches out on a human level** — a personal, individually-written note, not a
   corporate/automated/mass announcement. Replying *is* the thing to do even when it asks nothing
   explicitly: acknowledging that he got it and appreciates it counts. The personal tone is the signal;
@@ -98,12 +109,25 @@ decide it here.
     that it's a bulk send. (A link-hosted one is a pointer the digest opens — see "recognize pointers"
     above.)
 - **junk** — not even worth surfacing: automated noise, pure marketing, cold newsletters (a sender
-  Russell has no relationship with), passing or duplicate automated status churn (an automated
-  *something-you-own-is-broken/failing* alert is needs-you — see the action bullet above), chatter not
-  aimed at the user.
+  Russell has no relationship with), generic marketplace promo with no one asking anything (deals, "items
+  you might like", price-drop alerts; but a real member *question* relayed from a buyer/seller is
+  needs-you, see the envelope note in the action bullets above), passing or duplicate automated status
+  churn (an automated *something-you-own-is-broken/failing* alert is needs-you, see the action bullet
+  above), chatter not aimed at the user.
   Junk is also a signal to stop it arriving again; *how* to stop it is provider mechanics — each
   provider's **JUNK-LEARNING** section owns the remediation (unsubscribe → source-app notification
   settings → inbox rule, in that order).
+
+**Phishing is junk with a sharper disposition - mark it.** Mail that isn't merely unwanted but
+*deceptive* - a spoofed or lookalike sender domain (a throwaway domain dressed up as a real brand, e.g. a
+"CarShield" ad from `info@nvr.nivobuscaf.com`), a credential-harvest or fake-account-alert lure, a
+payment or gift-card scam - is still **junk**, but stamp its `kind` as **`phishing`**. That marker routes
+it, at digest time, to the provider's **report-phishing** action (report the message to the mail provider
+so its filter learns, then move it out of the inbox) instead of an ordinary archive, rule, or unsubscribe:
+a stronger disposition that is still reversible (the message stays recoverable from Junk/Spam). Reserve the
+mark for mail built to trick: when a message is only low-quality marketing rather than deceptive, leave it
+plain junk. The provider capability and the digest's report-on-approval handling live in
+`providers/<source>-provider.md` → REPORT-PHISHING and `engine/digest-core.md` step 3.
 
 ## Tie-breakers
 - **auto-handle** is never a tie-breaker default: pick it ONLY when a provider AUTO-HANDLE rule clearly

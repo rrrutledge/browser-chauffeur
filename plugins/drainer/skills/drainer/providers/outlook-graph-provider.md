@@ -42,7 +42,9 @@ message id.
 
 ## CLEAR
 `node mail.js --delete=<messageId>` — moves the message to **Archive** (reversible; keeps it searchable
-later; narrate it). Never a permanent purge.
+later; narrate it). Never a permanent purge. The poller also calls this (via the adapter's `clear`) to
+archive an fyi/junk message the moment it's triaged, so it leaves the inbox without waiting for the digest;
+the digest's own CLEAR on approval then re-archives it, a harmless no-op.
 
 ## JUNK-LEARNING (the first-reach rule — Outlook.com-specific)
 The first-reach stop (per `email-base.md`'s rule-first order, including its show-literal-rule gate): an
@@ -50,6 +52,15 @@ The first-reach stop (per `email-base.md`'s rule-first order, including its show
 sender-domain exclusion whitelist that fences every broad bucket; pin the phrase to a single sender only
 when it isn't distinctive enough to stand on its own. Once Russell has OK'd the shown rule, create it via
 `ms-graph`'s `mail.js --append-rule`/`--create-rule`.
+
+## REPORT-PHISHING
+For a junk item triage marked `kind: phishing` (see `../engine/triage.md`), the stronger disposition:
+`node mail.js --report-phish=<messageId>` reports the message to Microsoft (retraining the filter) and
+moves it out of the inbox to **Junk Email**. Reversible: the message stays recoverable from Junk. Personal
+Outlook.com accepts a `junk` report (not `phishing`), so the command reports `junk` under the hood and, if
+even that is refused, falls back to a plain move to Junk so the message still leaves the inbox. The daily
+digest runs this on Russell's approval in place of the ordinary CLEAR for a phishing item (see
+`../engine/digest-core.md` step 3).
 
 ## DRAFT-MODE CLI commands
 Follow all voice and reply-vs-fresh rules in `email-base.md`, then use these Graph commands:

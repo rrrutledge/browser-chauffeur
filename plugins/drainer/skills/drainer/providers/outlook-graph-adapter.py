@@ -84,6 +84,13 @@ class Provider(ProviderBase):
         show = run_node([self.mailjs, f"--show={item['id']}"])
         return show.stdout if show.returncode == 0 else ""
 
+    def clear(self, item):
+        """Archive an fyi/junk message at triage time (the provider CLEAR: `mail.js --delete` moves it to
+        Archive, reversible and still searchable). Returns True on success, False on failure - see
+        ProviderBase.clear for why the poller can call this without risk of losing the item."""
+        res = run_node([self.mailjs, f"--delete={item['id']}"])
+        return res.returncode == 0
+
     def stable_id(self, item):
         # Timestamp to the second (plus ms when Graph supplies them) so two messages from the same
         # sender with the same opening subject in the same minute don't collide and silently drop one.
