@@ -219,6 +219,7 @@ The specifics that most often separate a message that reads as Russell's from on
 - **Confirming a factual yes/no is where the helper tail bites hardest** (the rule itself is in `authoring-rules`).
   Answer in the fewest words that carry it and stop — "Yes - Bluevine.", not a sentence justifying the answer with internal evidence (prior migrations, other accounts already switched).
   That evidence only supports a decision already made; the asker wanted the answer, not the paper trail behind it.
+  **This overrides the Energizing close even in a warm-rapport register** - confirming someone's proposed idea, topic, or format ("would you accept X?") stays a plain affirmation ("that's a great idea") plus one supporting sentence, full stop.
 - **When Russell owns the next step, say "I'll" — not "we'll" — and drop the trailing offer.**
   Announce work already done actively in the first person ("I drafted the posts"), not agent-less passive ("the posts are drafted").
 - **Never open an offer with "Happy to" — state it plainly instead.**
@@ -362,7 +363,7 @@ A second exception is personal-friend banter (per **Register** above) — joking
 - **Email subject**: a short noun phrase, no trailing `?` even when the email asks a question.
 - **Energizing close** — how to execute a warm close, when **Register** calls for one: end with a brief forward-looking note ("Looking forward to it!", "This'll be great") instead of a helper-offer tail.
   When onboarding a partner or sponsor, that close can be the concrete next step their deliverable unlocks.
-  Skip the note when sharing news into someone else's channel or group, or when the message already states a concrete next step (a call, a follow-up date) - that action is the close, not an added enthusiasm line on top of it.
+  Skip the note when sharing news into someone else's channel or group, when the message already states a concrete next step (a call, a follow-up date) - that action is the close, not an added enthusiasm line on top of it - or when confirming a plain yes/no (see **Confirming a factual yes/no** in Holding the voice).
   These skip-exceptions apply only when **Register** hasn't already called for warmth via the leadership axis — where it has, the close holds regardless of what the message is about.
 - **React to the specific thing they shared, and warm a rote close into genuine interest.**
   Respond to the concrete detail they mentioned (where they're job-hunting, what they're building) rather than a generic well-wish, and swap "let me know how it goes" for real forward-looking interest when you care how it turns out — especially in a follow-up, where the latest message may already name the forward path.
