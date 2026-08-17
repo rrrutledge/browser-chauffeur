@@ -1,22 +1,19 @@
-"""Tests for archive-fyi/junk-at-triage: ProviderBase.clear's default, the poller's pollCleared stamp,
-and the two inbox adapters' clear() calling their reversible-archive CLEAR.
+"""Tests for archive-fyi/junk-at-triage: ProviderBase.clear's default and the two inbox adapters'
+clear() calling their reversible-archive CLEAR.
 
 Run directly:
     python plugins/drainer/tests/test_poll_clear.py
 """
 import importlib.util
-import json
 import os
 import sys
-import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PLUGIN_ROOT = os.path.abspath(os.path.join(HERE, ".."))
 SCRIPTS = os.path.join(PLUGIN_ROOT, "skills", "drainer", "scripts")
 PROVIDERS = os.path.join(PLUGIN_ROOT, "skills", "drainer", "providers")
-POLLER = os.path.join(SCRIPTS, "run-poller.py")
 
-sys.path.insert(0, SCRIPTS)  # run-poller and the adapters import their siblings by bare name
+sys.path.insert(0, SCRIPTS)  # the adapters import their siblings (provider_base) by bare name
 
 
 def _load(name, path):
@@ -26,7 +23,6 @@ def _load(name, path):
     return mod
 
 
-poller = _load("run_poller", POLLER)
 import provider_base  # noqa: E402  (on sys.path via SCRIPTS)
 outlook = _load("outlook_graph_adapter", os.path.join(PROVIDERS, "outlook-graph-adapter.py"))
 gmail = _load("gmail_adapter", os.path.join(PROVIDERS, "gmail-adapter.py"))
@@ -51,24 +47,6 @@ class _Res:
 
 print("\nProviderBase.clear default is None (a provider with no safe poll-time archive)")
 check("base clear -> None", provider_base.ProviderBase().clear({"id": "x"}), None)
-
-
-print("\n_mark_poll_cleared stamps the captured json, best-effort")
-with tempfile.TemporaryDirectory() as d:
-    jf = os.path.join(d, "item.json")
-    with open(jf, "w", encoding="utf-8") as f:
-        json.dump({"id": "a", "triage": "junk"}, f)
-    poller._mark_poll_cleared(jf)
-    with open(jf, encoding="utf-8") as f:
-        rec = json.load(f)
-    check("pollCleared set true", rec.get("pollCleared"), True)
-    check("existing fields kept", rec.get("triage"), "junk")
-    # A missing file must not raise (best-effort).
-    try:
-        poller._mark_poll_cleared(os.path.join(d, "nope.json"))
-        check("missing file is a no-op (no raise)", True, True)
-    except Exception as e:  # noqa: BLE001
-        check("missing file is a no-op (no raise)", repr(e), "no exception")
 
 
 print("\noutlook-graph adapter clear() archives via mail.js --delete and reports success/failure")

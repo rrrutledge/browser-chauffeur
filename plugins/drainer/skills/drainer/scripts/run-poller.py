@@ -860,22 +860,6 @@ def _item_source_ref(runtime_dir, iid):
     return rec.get("messageId"), ts
 
 
-def _mark_poll_cleared(json_file):
-    """Stamp `pollCleared: true` onto a captured item's json after the poller archived its source at
-    triage time. The digest reads this: a poll-cleared fyi/junk item is already out of the inbox, so its
-    approval is queue-clear only (no second provider CLEAR). Best-effort: a write failure just leaves the
-    stamp off, and the digest falls back to running CLEAR, which is idempotent for an already-archived
-    message."""
-    try:
-        with open(json_file, encoding="utf-8") as f:
-            rec = json.load(f)
-        rec["pollCleared"] = True
-        with open(json_file, "w", encoding="utf-8") as f:
-            json.dump(rec, f, indent=2)
-    except (OSError, ValueError):
-        pass
-
-
 def load_handled(runtime_dir):
     """The per-source id sets whose source object has been observed gone from the inbox.
 
@@ -1276,11 +1260,13 @@ def main():
         # Archive the source NOW, once it's an fyi/junk item safely in the digest queue and recorded seen,
         # so mail Russell has effectively already dispositioned leaves his inbox at triage instead of
         # sitting there as noise until the digest. Done last, so a failed/absent clear never loses the
-        # item (it's already queued). A provider without a safe poll-time archive returns None (no stamp),
-        # and the digest clears it on approval. The archived message is then gone from the inbox, so
-        # reconcile also reads it as handled: the queue-guard and the archive both keep it from re-queuing.
+        # item (it's already queued). A provider without a safe poll-time archive returns None and leaves
+        # the item in the inbox for the digest to clear on approval. The digest re-runs the provider CLEAR
+        # on approval regardless: an already-archived message re-archives to a harmless no-op, and a
+        # provider that couldn't archive here gets its real clear then. The archived message is gone from
+        # the inbox, so reconcile reads it as handled too: the queue-guard and the archive both keep it
+        # from re-queuing.
         if provider.clear(it):
-            _mark_poll_cleared(json_file)
             poll_cleared += 1
 
     # Correctly-junked items from outlook-graph-junk (already in the right place) are recorded as

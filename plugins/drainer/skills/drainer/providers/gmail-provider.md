@@ -48,7 +48,7 @@ Message-ID header (with angle brackets). The `url` opens the message in Gmail by
 Mail** (reversible; narrate it). Archiving, not trashing, is the drainer's clear: a drained item has
 been dealt with, not discarded. The poller also calls this (via the adapter's `clear`) to archive an
 fyi/junk message the moment it's triaged, so it leaves the inbox without waiting for the digest; the
-daily digest then only queue-clears such an item on Russell's review.
+digest's own CLEAR on approval then re-archives it, a harmless no-op.
 
 `--reply` looks the original up in both the inbox and All Mail, so it can thread and quote whether the
 message is still in the inbox or has already been archived — archive order relative to drafting no longer

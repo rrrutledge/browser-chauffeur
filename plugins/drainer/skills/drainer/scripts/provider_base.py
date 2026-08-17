@@ -271,7 +271,7 @@ class ProviderBase:
 
         Called by the poller only AFTER the item is safely captured, queued for the digest, and recorded
         seen, so a failed or absent clear never loses the item: an item whose clear fails just stays in
-        the inbox to the digest, which still clears it on Russell's review."""
+        the inbox until the digest, which still clears it on Russell's review."""
         return None
 
     def still_in_inbox_ids(self):

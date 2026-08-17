@@ -44,7 +44,7 @@ message id.
 `node mail.js --delete=<messageId>` — moves the message to **Archive** (reversible; keeps it searchable
 later; narrate it). Never a permanent purge. The poller also calls this (via the adapter's `clear`) to
 archive an fyi/junk message the moment it's triaged, so it leaves the inbox without waiting for the digest;
-the daily digest then only queue-clears such an item on Russell's review.
+the digest's own CLEAR on approval then re-archives it, a harmless no-op.
 
 ## JUNK-LEARNING (the first-reach rule — Outlook.com-specific)
 The first-reach stop (per `email-base.md`'s rule-first order, including its show-literal-rule gate): an

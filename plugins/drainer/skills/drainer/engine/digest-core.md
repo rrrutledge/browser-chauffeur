@@ -1,12 +1,9 @@
 # drainer digest-core — the once-a-day EOD digest procedure (interactive, reviewed)
 
-The fast loop (`engine/poller-core.md`) archives each fyi/junk item's source at triage (for providers
-whose CLEAR is a reversible archive) and queues it for this digest. The digest is the **slow loop**: once
-a day it empties that queue **with Russell in the loop**. It is the opposite of the poller in one way that
-governs everything below: **it is interactive and disposes of nothing without Russell's review.** The
-archive already happening earlier doesn't change that: Russell still reviews every item here, and what he
-approves is dropping it from the queue (and clearing the source for any item the poller couldn't archive
-at triage).
+The fast loop (`engine/poller-core.md`) archives each fyi/junk item at triage and queues it for this
+digest. The digest is the **slow loop**: once a day it empties that queue **with Russell in the loop**. It
+is the opposite of the poller in one way that governs everything below: **it is interactive and disposes
+of nothing without Russell's review.**
 
 Unfinished needs-you items are not your concern - the poller's own reconcile catches them every cycle,
 by re-queuing any item whose source object is still unhandled with no live worker on it, so a crashed or
@@ -165,21 +162,20 @@ For **each auto-handled item** (already actioned + source-cleared by its worker)
 it from the queue: `node <seen-state.js> queue-clear <runtime_dir> <id>` — no provider CLEAR.
 
 On his OK, for **each fyi/junk item he approves clearing**:
-1. Read the item's `source`, ids, and `pollCleared` flag from its `items/<id>.json` (or the queue entry).
-2. **If `pollCleared` is set**, the poller already archived the source at triage, so approval is
-   **queue-clear only**, no provider CLEAR (running it again would just re-archive an already-archived
-   message). **Otherwise** (a provider without a poll-time archive), run that provider's **CLEAR** op:
-   read `<providers_dir>/<source>-provider.md` → CLEAR and use exactly what it specifies; narrate each
-   with a one-line reason. CLEAR is reversible by design (never a permanent purge).
+1. Read the item's `source` and ids from its `items/<id>.json` (or the queue entry).
+2. Run that provider's **CLEAR** op — read `<providers_dir>/<source>-provider.md` → CLEAR and use
+   exactly what it specifies; narrate each with a one-line reason. CLEAR is reversible by design
+   (never a permanent purge). The poller already archived the source at triage, so for an inbox
+   provider this re-archive is a harmless no-op; it does the real clear for any provider that couldn't
+   archive at triage.
 3. Remove it from the queue: `node <seen-state.js> queue-clear <runtime_dir> <id>`.
 
 For any junk source-stop Russell approves, apply it per that provider's JUNK-LEARNING.
 
 If Russell defers some items, leave them in the queue — they ride to the next digest. Empty only what
-he approved. **For any item you clear the source of (a non-`pollCleared` one), do the provider CLEAR and
-the `queue-clear` together, in that order.** An item dropped from the queue while its source object is
-still sitting in the inbox is one the poller's reconcile reads as unfinished, so it re-dispatches as a
-fresh worker tab. A `pollCleared` item is already out of the inbox, so queue-clear alone is enough.
+he approved. **Do the provider CLEAR and the `queue-clear` together, in that order, for every item you
+empty.** An item dropped from the queue while its source object is still sitting in the inbox is one
+the poller's reconcile reads as unfinished, so it re-dispatches as a fresh worker tab.
 
 ## Hard rules (carry forward from the engine)
 

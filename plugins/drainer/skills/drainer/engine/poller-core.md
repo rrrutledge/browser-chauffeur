@@ -67,18 +67,20 @@ spawn, record — is code. No AI re-implements the loop.
      `auto-handle` triage; the worker takes worker-core's auto-handle branch (act → CLEAR → queue a
      digest entry → close up) and never interrupts the user. The digest reports it under "Auto-handled."
    - **fyi / junk** → capture, add to the digest queue (`seen-state.js queue-add`), record seen, **then
-     archive the source** (the provider's `clear`) so mail Russell has effectively already dispositioned
-     leaves his inbox at triage instead of sitting there as noise through to the digest. The archive runs
-     **last**, after the item is safely queued and recorded, so a failed or absent archive never loses it:
-     an item whose archive fails just stays in the inbox to the digest, which still clears it on review. A
-     provider with a reversible-archive CLEAR (the inbox email providers) overrides `clear` and stamps the
-     item `pollCleared`; a provider whose CLEAR isn't a plain archive (e.g. outlook-graph-junk, whose CLEAR
-     *un-junks* into the inbox) or that has no inbox returns `None`, and the digest clears it on approval.
-     The triage-time archive changes only when an fyi/junk item leaves the inbox, not whether Russell
-     reviews it in the digest.
+     archive the source** (the provider's `clear`) so mail that Russell has effectively already
+     dispositioned leaves his inbox at triage instead of sitting there as noise through to the digest. The
+     archive runs **last**, after the item is safely queued and recorded, so a failed or absent archive
+     never loses it: an item whose archive fails just stays in the inbox until the digest, which still
+     clears it on review. A
+     provider with a reversible-archive CLEAR (the inbox email providers) overrides `clear`; a provider
+     whose CLEAR isn't a plain archive (e.g. outlook-graph-junk, whose CLEAR *un-junks* into the inbox) or
+     that has no inbox returns `None` and stays in the inbox for the digest to clear. The triage-time
+     archive changes only when an fyi/junk item leaves the inbox, not whether Russell reviews it in the
+     digest.
 7. **Clear timing.** Workers clear needs-you on completion. fyi/junk are archived at triage above (for
-   providers whose CLEAR is a reversible archive); the daily digest is queue-clear-only for those and
-   still runs the source CLEAR for any fyi/junk item that wasn't archived at triage.
+   providers whose CLEAR is a reversible archive); the daily digest still runs its review-gated CLEAR on
+   each one, a harmless no-op for a message already archived here and the real clear for any provider that
+   couldn't archive at triage.
 
 ## Reconcile: completion is read off the source, not off a receipt
 
