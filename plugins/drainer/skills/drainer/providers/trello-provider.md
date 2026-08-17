@@ -97,8 +97,10 @@ the contact parse (it names a fit rank, not a person), the same way ⛔/⏳ stat
 
 A card's level band comes from its `desc`: `job-board-poll.js` writes a
 `Priority: P<n> · <category> · Director/VP-level` or `· IC-level` line into every Job Search Outreach
-card it scores. A card whose desc contains `Director/VP-level` ranks ahead of an `IC-level` (or unscored)
-card within the same priority band — see the adapter's `_level_band`.
+card it scores. Level-0 is the shared neutral level email/Slack and ordinary Trello cards also carry, so
+a card whose desc contains `Director/VP-level` (or carries no priority line yet) resolves to that same
+neutral level and interleaves with today's mail by date; only a card whose desc contains `IC-level` drops
+to level -1 and waits behind its priority band's neutral-level items — see the adapter's `_level_band`.
 
 Build a stable id:
 `trello-<card-name-slug>-<last6 of cardId>-<goLiveYYYYMMDD|nodue>` where the go-live date is Start when
