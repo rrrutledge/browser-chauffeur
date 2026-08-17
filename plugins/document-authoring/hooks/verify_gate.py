@@ -13,7 +13,11 @@ Two surfaces reach Russell, and the hook gates both against one receipt store:
     outlook-mail.js --json; a browser-chauffeur composer's declared --body-file).
   * Shipped prose (a SKILL.md, README, repo doc) reaches him when it lands in a PR he reads
     on the Files Changed tab. The gate keys on each changed markdown file in the PR diff,
-    computed by the hook itself, and fires on `gh pr create` / `gh pr ready`.
+    computed by the hook itself, and fires on `gh pr create` - the moment the PR opens and
+    its prose becomes visible on Files Changed (a draft counts; Russell reviews drafts
+    there). It does NOT fire on `gh pr ready` or `gh pr merge`, which act on an
+    already-open PR whose prose he has already seen - readying and merging are the
+    time-to-merge step, not a fresh prose-reaches-Russell moment.
 
 Three modes in one file (single source of truth for the hash + receipt layout, so the
 minting side and the gating side can never drift apart):
@@ -167,8 +171,10 @@ _COMMAND_BOUNDARIES = {"&&", "||", ";", "|", "(", "{"}
 
 
 def find_gh_pr_action(command):
-    """Return ('create'|'ready', args_after_the_verb) if `command` opens or readies a PR,
-    else None. Only a `gh pr create` / `gh pr ready` at a command position counts."""
+    """Return ('create', args_after_the_verb) if `command` opens a PR, else None. Only a
+    `gh pr create` at a command position counts. `gh pr ready` and `gh pr merge` act on an
+    already-open PR - the prose reached Russell when it was created - so they are not gated
+    here; the create is the one prose-reaches-Russell moment."""
     try:
         tokens = shlex.split(command, posix=True)
     except ValueError:
@@ -179,7 +185,7 @@ def find_gh_pr_action(command):
         if i > 0 and tokens[i - 1] not in _COMMAND_BOUNDARIES:
             continue
         rest = tokens[i + 1:]
-        if len(rest) >= 2 and rest[0] == "pr" and rest[1] in ("create", "ready"):
+        if len(rest) >= 2 and rest[0] == "pr" and rest[1] == "create":
             return rest[1], rest[2:]
     return None
 
@@ -342,14 +348,22 @@ def message_stage_deny_reason(command):
 
 
 def pr_prose_deny_reason(command):
-    """Deny-reason for a `gh pr create`/`ready` whose changed prose files lack fresh
-    receipts, else None (defer): not a PR-open, no prose changed, all reviewed, or any git
-    step failed (fail-open). Reads each changed file from the working tree, which equals the
-    committed content the PR diff names when the tree is clean at PR time."""
+    """Deny-reason for a `gh pr create` whose changed prose files lack fresh receipts, else
+    None (defer): not a PR-open, no prose changed, all reviewed, or any git step failed
+    (fail-open). Reads each changed file from the working tree, which equals the committed
+    content the PR diff names when the tree is clean at PR time.
+
+    The diff runs in the current directory's repo. When the command carries `-R`/`--repo`,
+    the PR targets a repo named on the command line that need not be the current directory's
+    repo (e.g. `gh pr create -R owner/other` run from an unrelated checkout), so the
+    cwd diff would gate the wrong repo's prose - defer in that case (fail-open) rather than
+    block on files that are not in the PR at all."""
     action = find_gh_pr_action(command)
     if not action:
         return None
     _verb, args = action
+    if extract_flag_value(args, "--repo") or extract_flag_value(args, "-R"):
+        return None
     try:
         base = resolve_pr_base(args)
         if not base:

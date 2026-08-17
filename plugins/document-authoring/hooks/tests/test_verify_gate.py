@@ -309,12 +309,33 @@ def test_pr_create_reblocks_after_edit(tmp_path):
     assert decision(r.stdout) == "DENY"
 
 
-def test_pr_ready_gated(tmp_path):
+def test_pr_ready_not_gated(tmp_path):
+    # `gh pr ready` acts on an already-open PR whose prose reached Russell at create time,
+    # so it is the time-to-merge step and is not gated - even with unreviewed prose present.
     receipts = str(tmp_path / "receipts")
     repo = make_repo(tmp_path)
     commit_file(repo, "README.md", "# Readme\n\nUnreviewed shipped prose.\n")
     r = run([], stdin=bash_payload("gh pr ready"), cwd=str(repo), receipt_dir=receipts)
-    assert decision(r.stdout) == "DENY"
+    assert decision(r.stdout) == "DEFER"
+
+
+def test_pr_merge_not_gated(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    repo = make_repo(tmp_path)
+    commit_file(repo, "README.md", "# Readme\n\nUnreviewed shipped prose.\n")
+    r = run([], stdin=bash_payload("gh pr merge --squash"), cwd=str(repo), receipt_dir=receipts)
+    assert decision(r.stdout) == "DEFER"
+
+
+def test_pr_create_with_repo_flag_defers(tmp_path):
+    # A `-R owner/other` PR targets a repo named on the command line, which need not be the
+    # current directory's repo, so the cwd diff would gate the wrong repo's prose - defer.
+    receipts = str(tmp_path / "receipts")
+    repo = make_repo(tmp_path)
+    commit_file(repo, "README.md", "# Readme\n\nUnreviewed shipped prose.\n")
+    r = run([], stdin=bash_payload("gh pr create -R owner/other --base main"),
+            cwd=str(repo), receipt_dir=receipts)
+    assert decision(r.stdout) == "DEFER"
 
 
 def test_pr_create_code_only_defers(tmp_path):
