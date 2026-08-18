@@ -363,7 +363,7 @@ A second exception is a genuine joke or callback landing at a message's close �
 - **Email subject**: a short noun phrase, no trailing `?` even when the email asks a question.
 - **Energizing close** — how to execute a warm close, when **Register** calls for one: end with a brief forward-looking note ("Looking forward to it!", "This'll be great") instead of a helper-offer tail.
   When onboarding a partner or sponsor, that close can be the concrete next step their deliverable unlocks.
-  Skip the note when sharing news into someone else's channel or group, or when the message already states a concrete next step (a call, a follow-up date) - that action is the close, not an added enthusiasm line on top of it.
+  Skip the note when sharing news into someone else's channel or group, when the message already states a concrete next step (a call, a follow-up date), or when the forward-looking sentiment itself already appears upthread (either party's own prior message on the thread already proposed it) - restating it duplicates rather than energizes, per the Read step's "never restate a detail already shared upthread."
   These skip-exceptions apply only when **Register** hasn't already called for warmth via the leadership axis — where it has, the close holds regardless of what the message is about.
 - **React to the specific thing they shared, and warm a rote close into genuine interest.**
   Respond to the concrete detail they mentioned (where they're job-hunting, what they're building) rather than a generic well-wish, and swap "let me know how it goes" for real forward-looking interest when you care how it turns out — especially in a follow-up, where the latest message may already name the forward path.
