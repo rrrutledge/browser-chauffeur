@@ -43,19 +43,23 @@ _PRIORITY_RE = re.compile(r"^\s*(?:🎯\s*)?P([1-3])\s*$")
 
 # THE priority policy — the one place it is defined; every other site that mentions a band points here.
 # A card's priority label maps to a queue band, ranked (band, date) descending against every other
-# drained item. Bands are relative to NEUTRAL_PRIORITY_BAND (email/Slack and every unlabeled card):
-#   P1 → neutral      a P1 found on a day interleaves with that day's email/Slack by date, not behind it
-#   P2 → one below    surfaces only once the neutral band (email/Slack and P1 job-search cards) is worked down
-#   P3 → two below    the first job-search tier dropped when a cycle overflows
-# This is inert for every other board — only the poller-labeled job-search cards leave neutral. To push
-# every job-search tier fully behind email/Slack instead (worth revisiting once the job-search backlog
-# is caught up), drop all three bands below neutral, e.g.
-# {1: NEUTRAL_PRIORITY_BAND - 1, 2: NEUTRAL_PRIORITY_BAND - 2, 3: NEUTRAL_PRIORITY_BAND - 3}.
+# drained item. Bands are relative to NEUTRAL_PRIORITY_BAND (email/Slack and every non-job-search card):
+#   P1 → one below neutral    surfaces only once the neutral band (email/Slack) is worked down
+#   P2 → two below neutral    the first job-search tier dropped when a cycle overflows
+#   P3 → three below neutral  last to surface
+# Every card on a job-search-initiative board (Job Search Outreach) sits below neutral, whether or not it
+# carries a P1/P2/P3 label — Job Search Outreach runs its own weekly nudge cadence, so Russell wants the
+# whole board to fill tab slots only after email/Slack are drained, never interleaved with them. An
+# unlabeled job-search card (a network contact, an admin follow-up) uses _JOB_SEARCH_DEFAULT_BAND; a
+# labeled one uses its P1/P2/P3 band. To let labeled cards interleave with email again (worth revisiting
+# if the job-search backlog ever needs to compete for attention), raise the P1 band back to
+# NEUTRAL_PRIORITY_BAND.
 _PRIORITY_BAND = {
-    1: NEUTRAL_PRIORITY_BAND,
-    2: NEUTRAL_PRIORITY_BAND - 1,
-    3: NEUTRAL_PRIORITY_BAND - 2,
+    1: NEUTRAL_PRIORITY_BAND - 1,
+    2: NEUTRAL_PRIORITY_BAND - 2,
+    3: NEUTRAL_PRIORITY_BAND - 3,
 }
+_JOB_SEARCH_DEFAULT_BAND = NEUTRAL_PRIORITY_BAND - 3
 
 
 class Provider(ProviderBase):
@@ -276,26 +280,25 @@ class Provider(ProviderBase):
         contacts = [n for n in names if n not in self.channels and n not in self.features]
         return channel, feats, contacts, initiative
 
-    @staticmethod
-    def _priority_band(card):
-        """Return a card's queue band from its priority label (see _PRIORITY_BAND), or neutral when it
-        carries none. The first priority label wins; a card normally wears exactly one."""
+    def _priority_band(self, card, bname):
+        """Return a card's queue band: its P1/P2/P3 priority label (see _PRIORITY_BAND) if it carries
+        one; otherwise _JOB_SEARCH_DEFAULT_BAND when the card sits on a job-search-initiative board, or
+        NEUTRAL_PRIORITY_BAND for every other card. The first priority label wins; a card normally
+        wears exactly one."""
         for l in card.get("labels", []):
             m = _PRIORITY_RE.match(l.get("name") or "")
             if m:
                 return _PRIORITY_BAND[int(m.group(1))]
+        if self.board_initiatives.get(bname) == "job-search":
+            return _JOB_SEARCH_DEFAULT_BAND
         return NEUTRAL_PRIORITY_BAND
 
     @staticmethod
     def _level_band(card):
-        """Return a card's level rank from its 'Priority: ... · <level>' desc line — 0 for
-        Director/VP-level, every non-job-search card, and a job-search card job-board-poll hasn't
-        scored yet; -1 for an IC-level job-search card. Zero is the shared neutral level that
-        email/Slack and ordinary Trello cards also carry by default (see run-poller.py's sort), so a
-        Director/VP-level lead interleaves with today's mail by date within its priority band; only an
-        IC-level posting drops below and waits for that neutral level to clear. Still mirrors
-        job-board-poll's tiers.js PREVIEW_LEVEL_RANK's relative order (lead ahead of ic) — only where
-        the zero point sits has moved."""
+        """Return a card's level rank from its 'Priority: ... · <level>' desc line, breaking ties
+        within a shared priority band — 0 for Director/VP-level, every non-job-search card, and a
+        job-search card job-board-poll hasn't scored yet; -1 for an IC-level job-search card. Mirrors
+        job-board-poll's tiers.js PREVIEW_LEVEL_RANK's relative order (lead ahead of ic)."""
         desc = card.get("desc") or ""
         if "IC-level" in desc:
             return -1
@@ -397,7 +400,7 @@ class Provider(ProviderBase):
                 # Sort rank: a dated card ranks by its go-live date (the earliest of start/due); an
                 # undated card ranks by its creation date (always in the past).
                 sort_dt = min(gate_dts) if gate_dts else self._created_dt(card["id"])
-                priority_band = self._priority_band(card)  # see _PRIORITY_BAND; leads the sort key below
+                priority_band = self._priority_band(card, bname)  # see _PRIORITY_BAND; leads the sort key below
                 level_band = self._level_band(card)  # see _level_band; breaks ties within a priority band
                 channel, feats, contacts, initiative_label = self._classify_labels(card)
                 # A per-card initiative label wins over the board's default initiative. The slug is the
