@@ -39,6 +39,12 @@ Describe the desired behavior directly; a correction names only what to do, not 
 Reserve a negative for a real, tempting failure mode a positive instruction won't prevent on its own, and write it as a single standalone guardrail.
 **Check:** a "don't do X, do Y" couplet where "do Y" alone would carry it; a definition that says what something is for and then appends what it is not for ("A is for X; not for Y", "goes on X instead, not here"), where the positive half stands alone; a prohibition where a recipe would bind better.
 
+**Frame in the positive affirmative.**
+Describe a subject by what it is and what it did, not by what it lacked or fell short of - "I had to learn it" carries what "I was behind" only concedes, and "it spread because it worked" says positively what "a thing that doesn't work dies" states as the absence of failure.
+The affirmative names the action taken or the fact established; the deficit framing describes the same reality as a shortfall, which reads smaller and pulls the eye to what was missing.
+**Check:** a sentence built on a lack or a shortfall - "was behind", "didn't know", "never managed to", "failed to", "couldn't", "a thing that doesn't work" - where the same point states as an action taken or a fact established.
+Innocent: a scar deliberately anchoring a posture, and an honest limitation or gap stated plainly, where recasting it positively would misrepresent it (a cover letter's owned domain-gap, a risk called out to leadership).
+
 **Make the general statement carry it; a wanted example means it's too weak.**
 When writing guidance meant to be reasoned from - a classifier rubric, a SKILL.md, an agent prompt, a review checklist, any doc - state the general condition that decides new cases, strongly enough to stand on its own.
 Reaching for an example to make the point land is the signal the general statement is too weak: sharpen the statement until it needs none, rather than illustrating it.
