@@ -285,6 +285,28 @@ async function buildMime({ to, cc, subject, html, inReplyTo, references }) {
   return { raw: built, messageId: m ? m[1] : null };
 }
 
+async function appendDraft(c, raw) {
+  // Gmail's IMAP server sometimes rewrites the Message-ID header on APPEND (its own generated
+  // ...@mail.gmail.com-style id replaces the one MailComposer built), so the pre-append id from
+  // buildMime() can silently diverge from what's actually stored. Look up the real stored id
+  // instead of trusting that one - Gmail supports UIDPLUS, so append() returns the new UID; fetch
+  // that message's envelope and use its Message-ID. If a UID isn't returned, fall back to the
+  // newest message in Drafts, which is safe because dropDraftsInThread() already cleared any prior
+  // draft on this thread just before append.
+  const info = await c.append(DRAFTS, raw, ['\\Draft']);
+  const lock = await c.getMailboxLock(DRAFTS);
+  try {
+    let msg;
+    if (info && info.uid) {
+      msg = await c.fetchOne(String(info.uid), { envelope: true }, { uid: true });
+    } else {
+      const total = c.mailbox.exists;
+      if (total) msg = await c.fetchOne(String(total), { envelope: true });
+    }
+    return msg && msg.envelope ? msg.envelope.messageId : null;
+  } finally { lock.release(); }
+}
+
 async function dropDraftsInThread(c, threadIds) {
   // Before staging a fresh reply, remove any prior \Draft on the same thread so only one draft per
   // thread ever exists — kills the "opened the wrong (stale) draft" hazard. A reply draft's In-Reply-To
@@ -349,11 +371,11 @@ async function reply(c) {
   const ccList = args.cc
     ? [...new Set([args.cc, ...allRecips])].join(', ')
     : allRecips.join(', ');
-  const { raw, messageId } = await buildMime({
+  const { raw } = await buildMime({
     to, cc: ccList || undefined, subject, html: withSignature(html) + (args['no-quote'] ? '' : quoted),
     inReplyTo: orig.messageId, references: refs,
   });
-  await c.append(DRAFTS, raw, ['\\Draft']);
+  const messageId = await appendDraft(c, raw);
   const note = dropped ? ` (replaced ${dropped} prior draft on this thread)` : '';
   console.log(`Draft reply staged in [Gmail]/Drafts (re: "${clean(subject).slice(0, 60)}")${note}. Review in Gmail; never sent.`);
   if (messageId) console.log(`draft-id: ${messageId}`);
@@ -364,8 +386,8 @@ async function draftNew(c) {
     throw new Error('--draft-new requires --to, --subject, and --body-file');
   }
   const html = marked.parse(fs.readFileSync(args['body-file'], 'utf8'));
-  const { raw, messageId } = await buildMime({ to: args.to, cc: args.cc || undefined, subject: args.subject, html: withSignature(html) });
-  await c.append(DRAFTS, raw, ['\\Draft']);
+  const { raw } = await buildMime({ to: args.to, cc: args.cc || undefined, subject: args.subject, html: withSignature(html) });
+  const messageId = await appendDraft(c, raw);
   console.log(`Draft staged in [Gmail]/Drafts to ${args.to}. Review in Gmail; never sent.`);
   if (messageId) console.log(`draft-id: ${messageId}`);
 }
