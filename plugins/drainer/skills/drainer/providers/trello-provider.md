@@ -91,16 +91,16 @@ Rank is `(priority band, level band, date)`, all descending — level breaks tie
 breaks ties within a band+level. A card's band comes from a **priority label** named exactly `P1`, `P2`,
 or `P3` (optionally with a 🎯 prefix), written by the job-board poller (personal-ai-pod
 `job-board-poll.js`) on Job Search Outreach cards. Only those labeled cards leave the neutral band, so
-every other board is unaffected and orders purely by date as before. The band each tier maps to — and how
-to change it — is defined in one place, the adapter's `_PRIORITY_BAND`; a priority label is held out of
-the contact parse (it names a fit rank, not a person), the same way ⛔/⏳ status labels are.
+every other card — including unlabeled Job Search Outreach cards — is unaffected and orders purely by
+date as before. The band each tier maps to — and how to change it — is defined in one place, the
+adapter's `_PRIORITY_BAND`; a priority label is held out of the contact parse (it names a fit rank, not a
+person), the same way ⛔/⏳ status labels are.
 
-A card's level band comes from its `desc`: `job-board-poll.js` writes a
-`Priority: P<n> · <category> · Director/VP-level` or `· IC-level` line into every Job Search Outreach
-card it scores. Level-0 is the shared neutral level email/Slack and ordinary Trello cards also carry, so
-a card whose desc contains `Director/VP-level` (or carries no priority line yet) resolves to that same
-neutral level and interleaves with today's mail by date; only a card whose desc contains `IC-level` drops
-to level -1 and waits behind its priority band's neutral-level items — see the adapter's `_level_band`.
+A card's level band comes from its `desc`, breaking ties within a shared priority band:
+`job-board-poll.js` writes a `Priority: P<n> · <category> · Director/VP-level` or `· IC-level` line into
+every Job Search Outreach card it scores. A card whose desc contains `Director/VP-level` (or carries no
+priority line yet) resolves to level 0; a card whose desc contains `IC-level` resolves to level -1 and
+waits behind its priority band's level-0 items — see the adapter's `_level_band`.
 
 Build a stable id:
 `trello-<card-name-slug>-<last6 of cardId>-<goLiveYYYYMMDD|nodue>` where the go-live date is Start when
