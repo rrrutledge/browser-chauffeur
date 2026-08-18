@@ -88,6 +88,7 @@ Don't present a menu of options or stack a numbered list of questions.
 - **When a contact declines or gives a discouraging read, accept it humbly and stop** — don't tack on a new ask.
   Defer to their judgment and end.
   When they checked a lead that didn't pan out, close with "No problem ✅" rather than "Good to know" — the former is gracious about their effort — and add a brief "Thanks for checking." for the legwork itself, not "Thanks for asking." (which fits a first ask, not a lead they went and checked on).
+  When they also offered an alternate contact or path, even one you're declining, add a second brief thanks for their willingness to help; this earns the added warmth even for a distant contact with no established rapport, since going out of their way is more than the routine check the register cap otherwise holds them to.
 - **When the ask rested on your own mistake, own it plainly, release the other person, and don't pivot to a replacement ask.**
   Say you got mixed up, tell them not to bother, and stop.
 - **When asking someone to do something — or for their genuine read on an open question — just ask; don't pre-fill the answer.**
