@@ -205,8 +205,8 @@ A single clear sentence ending in a question is usually the whole message — re
   When you do put a position to a group, open the floor to everyone ("others, weigh in as well") rather than aiming a pointed question at one named person.
 - **Proposing call times across timezones: filter to the recipient's normal work day, not just your own open calendar.**
   Converting your free slots to their local time isn't enough — a slot that's open for you can still be very late or very early for them. Before offering a window, check it against a normal work day (roughly 8am-6pm) in *their* timezone and drop anything outside it, even if it's technically free on your end.
-- **Accepting someone else's offer to schedule, when you're open the whole day: confirm the day and hand the invite back to them.**
-  State plainly that you have no commitments that day and ask them to send an invite for whatever works on their end, rather than naming one narrow slot - when you're genuinely open all day, this skips a timezone-conversion round-trip neither of you needs.
+- **Accepting someone else's offer to schedule, when the exact time genuinely doesn't matter to you: hand the invite back to them instead of naming a slot.**
+  State plainly that you have no commitments that day and ask them to send an invite for whatever works on their end - reserve proposing a specific time for when the time actually matters (it's adjacent to something else, or you have a real preference); indifference is what licenses handing it back, not merely having the day open.
 
 ### Holding the voice
 
