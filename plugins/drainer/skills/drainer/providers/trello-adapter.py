@@ -43,23 +43,21 @@ _PRIORITY_RE = re.compile(r"^\s*(?:🎯\s*)?P([1-3])\s*$")
 
 # THE priority policy — the one place it is defined; every other site that mentions a band points here.
 # A card's priority label maps to a queue band, ranked (band, date) descending against every other
-# drained item. Bands are relative to NEUTRAL_PRIORITY_BAND (email/Slack and every non-job-search card):
+# drained item. Bands are relative to NEUTRAL_PRIORITY_BAND (email/Slack and every unlabeled card):
 #   P1 → one below neutral    surfaces only once the neutral band (email/Slack) is worked down
 #   P2 → two below neutral    the first job-search tier dropped when a cycle overflows
 #   P3 → three below neutral  last to surface
-# Every card on a job-search-initiative board (Job Search Outreach) sits below neutral, whether or not it
-# carries a P1/P2/P3 label — Job Search Outreach runs its own weekly nudge cadence, so Russell wants the
-# whole board to fill tab slots only after email/Slack are drained, never interleaved with them. An
-# unlabeled job-search card (a network contact, an admin follow-up) uses _JOB_SEARCH_DEFAULT_BAND; a
-# labeled one uses its P1/P2/P3 band. To let labeled cards interleave with email again (worth revisiting
-# if the job-search backlog ever needs to compete for attention), raise the P1 band back to
-# NEUTRAL_PRIORITY_BAND.
+# This is inert for every other board — only the poller-labeled job-search cards (new auto-sourced role
+# applications) leave neutral; an unlabeled Job Search Outreach card (a network contact, an admin
+# follow-up) stays neutral and interleaves with email like always. Paused new-application surfacing while
+# Russell focuses on an upcoming interview (through Monday 2026-08-24) — see the "Resume job-search
+# interleave" card on Personal Follow-Up. To resume, raise the P1 band back to NEUTRAL_PRIORITY_BAND,
+# e.g. {1: NEUTRAL_PRIORITY_BAND, 2: NEUTRAL_PRIORITY_BAND - 1, 3: NEUTRAL_PRIORITY_BAND - 2}.
 _PRIORITY_BAND = {
     1: NEUTRAL_PRIORITY_BAND - 1,
     2: NEUTRAL_PRIORITY_BAND - 2,
     3: NEUTRAL_PRIORITY_BAND - 3,
 }
-_JOB_SEARCH_DEFAULT_BAND = NEUTRAL_PRIORITY_BAND - 3
 
 
 class Provider(ProviderBase):
@@ -280,17 +278,14 @@ class Provider(ProviderBase):
         contacts = [n for n in names if n not in self.channels and n not in self.features]
         return channel, feats, contacts, initiative
 
-    def _priority_band(self, card, bname):
-        """Return a card's queue band: its P1/P2/P3 priority label (see _PRIORITY_BAND) if it carries
-        one; otherwise _JOB_SEARCH_DEFAULT_BAND when the card sits on a job-search-initiative board, or
-        NEUTRAL_PRIORITY_BAND for every other card. The first priority label wins; a card normally
-        wears exactly one."""
+    @staticmethod
+    def _priority_band(card):
+        """Return a card's queue band from its priority label (see _PRIORITY_BAND), or neutral when it
+        carries none. The first priority label wins; a card normally wears exactly one."""
         for l in card.get("labels", []):
             m = _PRIORITY_RE.match(l.get("name") or "")
             if m:
                 return _PRIORITY_BAND[int(m.group(1))]
-        if self.board_initiatives.get(bname) == "job-search":
-            return _JOB_SEARCH_DEFAULT_BAND
         return NEUTRAL_PRIORITY_BAND
 
     @staticmethod
@@ -400,7 +395,7 @@ class Provider(ProviderBase):
                 # Sort rank: a dated card ranks by its go-live date (the earliest of start/due); an
                 # undated card ranks by its creation date (always in the past).
                 sort_dt = min(gate_dts) if gate_dts else self._created_dt(card["id"])
-                priority_band = self._priority_band(card, bname)  # see _PRIORITY_BAND; leads the sort key below
+                priority_band = self._priority_band(card)  # see _PRIORITY_BAND; leads the sort key below
                 level_band = self._level_band(card)  # see _level_band; breaks ties within a priority band
                 channel, feats, contacts, initiative_label = self._classify_labels(card)
                 # A per-card initiative label wins over the board's default initiative. The slug is the
