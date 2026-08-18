@@ -2,7 +2,7 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash|Write|Edit|PowerShell|mcp__.*",
+        "matcher": "Bash|Write|Edit|PowerShell|mcp__.*|Workflow|EnterWorktree|ExitWorktree",
         "hooks": [
           {
             "type": "command",
