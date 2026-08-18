@@ -85,7 +85,8 @@ Don't present a menu of options or stack a numbered list of questions.
 - **Frame the ask to match the recipient's role.**
   When their job is to route you to a third party (find a volunteer, recommend a speaker), make the asks conditional on that handoff rather than personal requests to them — and don't narrate the follow-up's timing.
   On a repeat ask to someone with standing local knowledge, lean on that ("you have much more insight than me here") rather than citing a specific thing they said they'd do — the former trusts their judgment, the latter reads as holding them to an obligation.
-- **When a contact declines or gives a discouraging read, accept it humbly and stop** — don't tack on a new ask.
+- **When a contact declines or gives a discouraging read, accept it humbly and stop** — don't tack on a new ask, and don't add a closing warmth or forward-looking line either.
+  Anything appended right after a "no" risks putting them in the position of having to say no again, which is uncomfortable for them and, over time, habituates them to saying no to you.
   Defer to their judgment and end.
   When they checked a lead that didn't pan out, close with "No problem ✅" rather than "Good to know" — the former is gracious about their effort — and add a brief "Thanks for checking." for the legwork itself, not "Thanks for asking." (which fits a first ask, not a lead they went and checked on).
 - **When the ask rested on your own mistake, own it plainly, release the other person, and don't pivot to a replacement ask.**
@@ -363,7 +364,7 @@ A second exception is a genuine joke or callback landing at a message's close �
 - **Email subject**: a short noun phrase, no trailing `?` even when the email asks a question.
 - **Energizing close** — how to execute a warm close, when **Register** calls for one: end with a brief forward-looking note ("Looking forward to it!", "This'll be great") instead of a helper-offer tail.
   When onboarding a partner or sponsor, that close can be the concrete next step their deliverable unlocks.
-  Skip the note when sharing news into someone else's channel or group, when the message already states a concrete next step (a call, a follow-up date), or when the forward-looking sentiment itself already appears upthread (either party's own prior message on the thread already proposed it) - restating it duplicates rather than energizes, per the Read step's "never restate a detail already shared upthread."
+  Skip the note when sharing news into someone else's channel or group, when the message already states a concrete next step (a call, a follow-up date), or when the message is accepting someone's decline - see the Asks "when a contact declines" rule; the acceptance itself is the close, not a warmth line stacked after it.
   These skip-exceptions apply only when **Register** hasn't already called for warmth via the leadership axis — where it has, the close holds regardless of what the message is about.
 - **React to the specific thing they shared, and warm a rote close into genuine interest.**
   Respond to the concrete detail they mentioned (where they're job-hunting, what they're building) rather than a generic well-wish, and swap "let me know how it goes" for real forward-looking interest when you care how it turns out — especially in a follow-up, where the latest message may already name the forward path.
