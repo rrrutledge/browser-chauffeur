@@ -390,6 +390,7 @@ A second exception is a genuine joke or callback landing at a message's close �
 - After a recent meeting or interaction, acknowledge it first ("Thanks for the great call.") then transition to the action — skip only for transactional one-liners with close collaborators.
 - Lead with the person's name, then hand them the thing plainly with the link anchored to its title.
 - Frame as helpful and low-pressure; invite a look.
+- **Inviting someone into a new format or initiative: describe concretely how it works and the payoff it produces, then close by asking what they think of it.**
 - Land on a single concrete question or request (see **Asks**).
 - Use the collective **"we"** for a committee/team ask, not "I" — including a joint recommendation to peers/co-leads ("I think we should merge these", not "I'd like to merge these"), even in a 1on1-style note to a couple of named people rather than a broad group.
 - Plain framing over clever phrasing — drop quoted catchphrases, and state what a commitment costs plainly rather than selling how small or easy it is.
