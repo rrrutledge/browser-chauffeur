@@ -358,6 +358,8 @@ A second exception is a genuine joke or callback landing at a message's close �
 
 ### Persona modes — pick the one matching the context
 
+- **Pick the persona by the channel's nominal audience, not by who's currently posting in it.** A team or staff channel keeps `announcement`-flavored framing (a statement addressed to the group, a real @-mention rather than a name-only greeting) even when only one teammate is actually present, since the channel's type sets the register, not its current headcount.
+
 **`1on1` — private direct chat or email reply:**
 - **Email greeting**: run it into the first sentence with ` - ` — "Hi [Name] - thanks and totally makes sense.", not "Hi [Name]," on its own line followed by a new paragraph.
   **Exception — replying to more than one person you're actually engaging with:** keep it a standalone line, own paragraph below, not run into the sentence. Pick the word by group size and who you're actually engaging: two people → "Hi both", or "Hi [main correspondent] (and [the other])" when one clearly leads the exchange (they asked, the reply is chiefly to them) and the other is a cc'd participant in the same news; a small group where you're interacting with everyone directly → "Hi all"; a bigger distribution where some recipients are only cc'd, not people you're directly addressing → "Hi folks".
