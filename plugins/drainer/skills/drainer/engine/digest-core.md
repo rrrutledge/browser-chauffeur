@@ -97,11 +97,15 @@ deadline, RSVP, or link he's meant to open. Link the source with descriptive tex
 `document-authoring` voice, never a bare URL. Order by what's most worth knowing first.
 
 **Resolve pointers, don't restate them.** An fyi item can be a **pointer** (a stub whose real content is
-behind a link - see `triage.md`): a school newsletter Smore link, a hosted "view in browser" bulletin.
+behind a link - see `triage.md`): a school newsletter Smore link, a hosted "view in browser" bulletin, or
+a newsletter whose real content is a hosted PDF or a body-referenced attachment (a Finalsite "Attachments:
+X.pdf" line whose file is a hosted/reference attachment, not a true inline one).
 Open and read the real content per the resolve-a-pointer step in `worker-core.md` § 2b - the same mechanic
-a worker uses for needs-you, here at digest time for fyi, which also covers the browser-chauffeur fallback
-for a plain fetch that returns only a JS-rendered shell and how to extract what you find. The digest's fyi
-summary is that resolved content, never the pointer stub restated.
+a worker uses for needs-you, here at digest time for fyi, which also covers retrieving the hosted PDF or
+attachment when that is where the story lives, plus the browser-chauffeur fallback for a plain fetch that
+returns only a JS-rendered shell and how to extract what you find. The digest's fyi summary is that
+resolved content - for a hosted-PDF or attachment newsletter, read the file, then summarize it and pull
+its **action items for you** to-dos exactly as for a link-hosted bulletin - never the pointer stub restated.
 
 **Before framing any item as still needing Russell** — an open ask, an awaited reply, anything that
 implies he still owes a response — run that provider's **SITUATIONAL-CHECK** first (search Sent +
