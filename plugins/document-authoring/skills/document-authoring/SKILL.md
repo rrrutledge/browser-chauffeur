@@ -404,6 +404,7 @@ A third exception is the terse thread-continuation opener in Slack or Teams (see
   Gauge interest and invite a conversation ("is this of interest?", "can we talk?"); name the commitment lightly and later, after they've engaged.
   Ask one thing, not a menu of next steps.
   The same softening governs pivoting an already-warm thread toward a commitment: keep it to one open "is that something we could explore together?" and cut both the concrete call-to-action and the list of benefits — then close with a no-pressure release per **Core voice**, same as any other ask.
+  **When that pivot would hand the other person a specific role, go further than a softened direct question: take the harder logistics on yourself and make their part conditional on something they'd already have.** Offering to handle the setup yourself and inviting them to contribute only if they already have something ready reads as an open door; asking them to take on a piece of it, even softened and released, still reads as an assignment.
 - **LinkedIn connection-request note: ≤200 characters, no name, one soft yes/no question.**
   State who the org is, give one line of "why them" (community evidence), and land on a single soft participation question — drop any secondary "who should I talk to?" ask, and don't sign it.
 - *Samples:*
