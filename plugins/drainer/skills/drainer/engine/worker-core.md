@@ -182,6 +182,15 @@ shell to a plain fetch, and that empty shell is the signal to render it: fall ba
 load the real URL, and read the rendered body. The content is there behind the render, so an empty plain
 fetch is never grounds to restate the pointer and move on.
 
+A newsletter whose real content is a **hosted PDF or a body-referenced attachment** (a Finalsite
+"Attachments: X.pdf" line whose file is a hosted/reference attachment, not a true inline one) is the same
+kind of pointer: retrieve that file and read it. When the mail API's attachment endpoint does not return
+the file inline - a Finalsite reference attachment reads as "No attachments" and the plaintext body has
+dropped the download link - the browser-chauffeur fallback is how you get it: open the message in the mail
+web UI and open or download the linked file, the same fallback used for a JS-rendered link. The story
+lives in that PDF, so "No attachments" from the API is never grounds to treat the newsletter as
+whole-story fyi without reading it.
+
 **Process the resolved content like meeting notes** - pull out who and what it is about, every date it
 names, and any action items, then summarize that as if the newsletter (or DM, or notes) body had arrived
 inline as the message itself. Reading it is YOUR job; never hand the lookup back to the user ("go read the

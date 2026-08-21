@@ -17,7 +17,10 @@ to do, two when there isn't.
 content; they POINT to it, holding the real thing elsewhere: a Teams meeting-recording notice linking to
 AI notes with action items; a LinkedIn/Facebook "X messaged you" pointing to a DM elsewhere; a bank or
 portal "you have a message waiting"; a newsletter whose body sits behind a hosted "view in browser" link
-(Smore, Finalsite, a Mailchimp campaign). Triage **recognizes** the pointer and routes it but never opens
+(Smore, Finalsite, a Mailchimp campaign); a newsletter whose real content is a hosted PDF or a
+body-referenced attachment - a Finalsite "Attachments: X.pdf" line whose file is a hosted/reference
+attachment rather than a true inline attachment, so the story lives in that linked PDF, not the plaintext
+body. Triage **recognizes** the pointer and routes it but never opens
 it (the batched step has no browser); the stage that acts — a worker, or the digest for an fyi — opens and
 reads it per the resolve-a-pointer step (`worker-core.md` § 2b). So a pointer that plausibly holds
 something for Russell is itself something to do — *open it and act* → **needs-you**, and the worker does
