@@ -10,6 +10,8 @@
 //                    --start="2026-06-20T15:00:00" --end="2026-06-20T16:00:00" \
 //                    [--location="..."] [--body="..."] [--attendees=a@x,b@y] [--reminder=N]
 // Update reminder: node calendar.js --update --subject="Dentist" --reminder=off
+// Delete event:    node calendar.js --delete --subject="Dentist" [--all]
+//                    (deletes the matching upcoming event; --all deletes every subject match)
 //
 // Times are interpreted in --tz (default America/Chicago). Events have NO reminder by
 // default; --reminder=N turns on a pop-up N minutes before start (0 = at start), --reminder=off
@@ -93,6 +95,24 @@ async function updateReminder(client) {
   console.log(`Updated reminder on "${match.subject}" -> ${args.reminder}`);
 }
 
+async function deleteEvent(client) {
+  if (!args.subject) throw new Error('--delete requires --subject');
+  const now = new Date();
+  const end = new Date(now.getTime() + 365 * 86400000);
+  const data = await client.api('/me/calendarView')
+    .query({ startDateTime: now.toISOString(), endDateTime: end.toISOString() })
+    .top(100).orderby('start/dateTime').select('subject,id,start').get();
+  const matches = (data.value || []).filter(e => e.subject === args.subject);
+  if (!matches.length) throw new Error(`No upcoming event with subject "${args.subject}"`);
+  if (matches.length > 1 && !args.all) {
+    throw new Error(`${matches.length} upcoming events match "${args.subject}"; add --all to delete every match, or narrow the subject.`);
+  }
+  for (const m of matches) {
+    await client.api(`/me/events/${m.id}`).delete();
+    console.log(`Deleted: "${m.subject}" (${(m.start && m.start.dateTime) || ''})`);
+  }
+}
+
 // --- Reusable library functions (param-driven; each builds its own client) ---
 
 // All calendars on the account, as [{ id, name }].
@@ -164,6 +184,7 @@ if (require.main === module) {
     const client = await getGraphClient();
     if (args.create) return createEvent(client);
     if (args.update) return updateReminder(client);
+    if (args.delete) return deleteEvent(client);
     return listUpcoming(client);
   })().catch(e => { console.error('Error:', e.message); process.exit(1); });
 }
