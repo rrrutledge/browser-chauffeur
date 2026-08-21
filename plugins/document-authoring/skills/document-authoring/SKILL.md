@@ -193,6 +193,7 @@ A single clear sentence ending in a question is usually the whole message — re
   After a long gap, ask for a single easy yes rather than stacking asks, and affirm that their earlier contribution still matters in plain words.
   Cut any salesy bridge before the ask.
   Warm the reference with a specific personal experience Russell has had with a known piece of their work — not a question, necessarily, just a genuine detail that shows he engaged with it — rather than praise stated abstractly. When the specific experience isn't known, don't invent one or default to a generic question: leave a `[CONFIRM: …]` placeholder (see **When unsure** below) for Russell to fill in.
+  **When there's no specific memory but a genuine, hedged reason for reaching out, like noticing them active in a shared space, say that plainly rather than dropping the opener to nothing.** "I think I've seen you active on our Slack and so wanted to reach out" carries real warmth precisely because the hedge is honest about the mechanism; it's the middle ground between fabricating false specificity and skipping personalization altogether.
 - **Reporting a completed task, stating what you'll do, sharing a recommendation, or answering a question you researched: lead with the outcome; cut the diagnostic play-by-play and the editorial wrap-up.**
   They want the result, not the story of what was wrong, how you found it, which options you ruled out and why, background color on whatever you researched, or a closing "so this means…" they can draw themselves.
   When you're answering a question rather than proposing an action, the explanation itself is the whole reply: skip the "I looked into it / I dug into it" preamble and open on the finding.
@@ -206,6 +207,8 @@ A single clear sentence ending in a question is usually the whole message — re
   When you do put a position to a group, open the floor to everyone ("others, weigh in as well") rather than aiming a pointed question at one named person.
 - **Proposing call times across timezones: filter to the recipient's normal work day, not just your own open calendar.**
   Converting your free slots to their local time isn't enough — a slot that's open for you can still be very late or very early for them. Before offering a window, check it against a normal work day (roughly 8am-6pm) in *their* timezone and drop anything outside it, even if it's technically free on your end.
+- **Naming a recurring US-anchored meeting time to a recipient who may be based elsewhere: spell out "US Central" rather than bare "Central."**
+  "Central" alone collides with Central European Time for a recipient likely based there, so name the country to remove the ambiguity.
 - **Accepting someone else's offer to schedule, when the exact time genuinely doesn't matter to you: hand the invite back to them instead of naming a slot.**
   State plainly that you have no commitments that day and ask them to send an invite for whatever works on their end - reserve proposing a specific time for when the time actually matters (it's adjacent to something else, or you have a real preference); indifference is what licenses handing it back, not merely having the day open.
 
