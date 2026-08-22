@@ -102,6 +102,19 @@ instructions: |-
 
   ---
 
+  ## Due-date time of day
+
+  A card's due date exists so the card surfaces as work for that morning, so time it to the **start** of
+  the day.
+
+  When a card is due on a given calendar day, set its due time to midnight at the start of that day in
+  US Central (Russell's timezone) - `00:00` Central - so it reads as due first thing and stays visible
+  through the day; an end-of-day due time hides the card until the day is nearly over. Central is
+  UTC-5 under daylight time and UTC-6 otherwise, so start-of-day Central is the `05:00` (or `06:00`) UTC
+  value in the timestamp sent to Trello - a card due Tuesday carries that Tuesday's `T05:00:00.000Z` due.
+
+  ---
+
   ## Checklists
 
   Checklists have no typed wrapper - use `trello_request` directly:
