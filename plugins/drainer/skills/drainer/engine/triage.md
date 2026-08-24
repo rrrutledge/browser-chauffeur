@@ -56,17 +56,13 @@ decide it here.
   routine, subscription-digest, or already-known-good status is not. A **CI or Actions FAILURE on a pull
   request he authored** is his to fix (go fix the failure): the failure itself is the signal, and it stays
   needs-you even when the same repo's routine success notices and subscription mail are fyi/junk; use the
-  failure-vs-success distinction, not the repo, to sort GitHub notification mail. A **job-application step
-  he'd take** — a pending interview or assessment invite/reminder from a hiring platform, an
-  application-status action — is his action (do the interview, take the next step), the automated send
-  notwithstanding.
-- it's **a step in something Russell already set in motion and left unfinished** - an application he
-  started but didn't submit (a loan, a job, an account, a benefit), a form filled partway, a checkout or
-  verification he began, any process paused mid-way with his next step still outstanding.
-  Coming back to finish what he started is his action, so it's **needs-you**: a "you didn't finish,"
-  "come back and complete it," or "your application is incomplete" reminder names that step no matter how
-  automated or marketing-styled the sender.
-  He chose to start it; the reminder is just the queue for a step he already owns.
+  failure-vs-success distinction, not the repo, to sort GitHub notification mail.
+- it's **a step in something Russell already set in motion** - either its next scheduled step, which he'd
+  take now, or a step he began and left unfinished, its next move still his to make.
+  Carrying it forward is his action, so it's **needs-you**: an interview to attend, or a "you didn't
+  finish," "come back and complete it," or "your application is incomplete" reminder, names that step no
+  matter how automated or marketing-styled the sender.
+  He set it in motion; the message is just the queue for a step he already owns.
 - it names that action **no matter who or what delivered it - the content decides, never the envelope.**
   Audience breadth doesn't change anything and an automated sender doesn't make it junk: a message to a
   hundred people that names something Russell would do (sign the card, submit the goals, RSVP for the
