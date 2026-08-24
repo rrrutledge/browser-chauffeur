@@ -10,6 +10,15 @@ each bucket (own worker vs digest) lives in the driver and SKILL.
 For every inbound item ask: **is there something for Russell to do?** If there is, now is the time — do
 it immediately, or kick it off in a tab. Everything Russell is going to do, he does right now.
 
+Answer it by **reading the item as Russell would** - the world-knowledge below tells you who he is, the
+people and organizations he's tied to, and the systems he acts in, so you can judge the item the way he
+would on reading it.
+That knowledge informs your judgment.
+The cases it lists are illustrations of the one question - when an item fits no listed case, reason from
+the question anyway.
+A novel item with no rule to its name is still decided by "would Russell act on this?".
+Never drop an item to junk merely because nothing here named it.
+
 Answering that is the whole of triage, and the answer is one of four buckets — two when there's something
 to do, two when there isn't.
 
@@ -47,10 +56,13 @@ decide it here.
   routine, subscription-digest, or already-known-good status is not. A **CI or Actions FAILURE on a pull
   request he authored** is his to fix (go fix the failure): the failure itself is the signal, and it stays
   needs-you even when the same repo's routine success notices and subscription mail are fyi/junk; use the
-  failure-vs-success distinction, not the repo, to sort GitHub notification mail. A **job-application step
-  he'd take** — a pending interview or assessment invite/reminder from a hiring platform, an
-  application-status action — is his action (do the interview, take the next step), the automated send
-  notwithstanding.
+  failure-vs-success distinction, not the repo, to sort GitHub notification mail.
+- it's **a step in something Russell already set in motion** - either its next scheduled step, which he'd
+  take now, or a step he began and left unfinished, its next move still his to make.
+  Carrying it forward is his action, so it's **needs-you**: an interview to attend, or a "you didn't
+  finish," "come back and complete it," or "your application is incomplete" reminder, names that step no
+  matter how automated or marketing-styled the sender.
+  He set it in motion; the message is just the queue for a step he already owns.
 - it names that action **no matter who or what delivered it - the content decides, never the envelope.**
   Audience breadth doesn't change anything and an automated sender doesn't make it junk: a message to a
   hundred people that names something Russell would do (sign the card, submit the goals, RSVP for the
@@ -107,10 +119,14 @@ decide it here.
     regenerated, a password changed, a setting updated, a sign-in confirmed); reading it changes nothing
     Russell would do. It would become an action only if the notice revealed something unexpected, and
     Russell catches that in the digest and escalates himself.
-  - **Newsletters from an institution Russell has a real relationship with** — his children's school,
-    his HOA, his church, a community he belongs to — are fyi, not junk; the test is the relationship, not
-    that it's a bulk send. (A link-hosted one is a pointer the digest opens — see "recognize pointers"
-    above.)
+  - **Any newsletter or bulletin Russell has a standing reason to read** - his children's school, his
+    HOA, his church, a community or mailing list he belongs to - is **fyi with a summary of what's
+    inside**: the dates, deadlines, events, and anything to act on, so he gets the substance without
+    opening it.
+    The test is the relationship, not the sending domain or a bulk/marketing tone; a cold newsletter from
+    a sender he has no relationship with is junk.
+    When the body is a pointer to a hosted issue or an attached PDF, the digest follows it and summarizes
+    that (see "recognize pointers" above).
 - **junk** — not even worth surfacing: automated noise, pure marketing, cold newsletters (a sender
   Russell has no relationship with), generic marketplace promo with no one asking anything (deals, "items
   you might like", price-drop alerts; but a real member *question* relayed from a buyer/seller is
