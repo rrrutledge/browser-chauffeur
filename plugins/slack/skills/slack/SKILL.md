@@ -90,25 +90,34 @@ Under `scripts/` (run with `node`):
 ## Sending
 
 Reading and drafting stay draft-only; `--send` is the single exception, and it is human-in-the-loop.
-A message goes out **only** when Russ gives an explicit per-message instruction to send (e.g. "send it")
-**after** he has reviewed that exact body this turn - the same bar as the `gmail`/`ms-graph` send paths.
+A message goes out **only** when Russ, having read the exact body you printed in the terminal this turn,
+gives an explicit per-message instruction to send it - the same bar as the `gmail`/`ms-graph` send paths.
 Slack has no server-side draft to send by id, so `--send` posts the body it is handed; the writing-review
-receipt on `--body-file` is what proves that exact body was reviewed, so the gate blocks a send whose bytes
-have no fresh receipt. When Russ says to send:
+receipt on `--body-file` proves that exact body was reviewed, so the gate blocks a send whose bytes have no
+fresh receipt.
 
-1. Author (or reuse) the reviewed body as a Slack-mrkdwn file - links as `<url|anchor text>`.
+**The terminal preview is the review surface for a direct send.** Print the exact message text in the
+terminal - that is what Russ reads to decide, usually without opening the browser-staged draft. Two
+outcomes follow from what he reads there:
+
+- **Looks good:** he says to send it, and you run `--send` on that exact body.
+- **Wants changes:** he makes them in the browser composer and sends there himself, so the send is his.
+
+When Russ says to send:
+
+1. Print the exact body in the terminal (if you haven't already this turn), and author (or reuse) it as a
+   Slack-mrkdwn file - links as `<url|anchor text>`.
 2. Dispatch `writing-review` on that file and mint its receipt (the gate reads it), unless a fresh receipt
    for those exact bytes already exists from staging.
 3. Resolve the target: a DM channel via `--find-dm`, or the `channel` (+ `thread-ts`) from the captured item.
 4. Run `node slack.js --send --channel=<C> --body-file=<file> [--thread-ts=<tts>]` and report the permalink.
 
-Hold the line on these - they are what keep send safe:
+These constraints keep send safe:
 
-- Default, silence, or ambiguous phrasing mean draft-only. Never infer a send from anything but a clear,
-  explicit instruction to send this message.
-- Send only the body Russ reviewed this turn. Re-show it (or confirm he just saw it) before you run `--send`.
-- An autonomous or `auto-handle` drain never sends. `--send` is human-in-the-loop only; in any
-  non-interactive run, stop at the staged draft.
+- **Draft-only by default:** silence or ambiguous phrasing never becomes a send; infer a send only from a
+  clear, explicit instruction to send this message.
+- **Never in an autonomous run:** an `auto-handle` or otherwise non-interactive drain has no one to give
+  that instruction, so it stops at the staged draft. `--send` is human-in-the-loop only.
 
 ## Notes
 
