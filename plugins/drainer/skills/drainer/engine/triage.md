@@ -16,8 +16,8 @@ would on reading it.
 That knowledge informs your judgment.
 The cases it lists are illustrations of the one question - when an item fits no listed case, reason from
 the question anyway.
-A novel item with no rule to its name is still decided by "would Russell act on this?", and is never
-dropped to junk merely because nothing named it.
+A novel item with no rule to its name is still decided by "would Russell act on this?".
+Never drop an item to junk merely because nothing here named it.
 
 Answering that is the whole of triage, and the answer is one of four buckets — two when there's something
 to do, two when there isn't.
@@ -123,10 +123,14 @@ decide it here.
     regenerated, a password changed, a setting updated, a sign-in confirmed); reading it changes nothing
     Russell would do. It would become an action only if the notice revealed something unexpected, and
     Russell catches that in the digest and escalates himself.
-  - **Newsletters from an institution Russell has a real relationship with** — his children's school,
-    his HOA, his church, a community he belongs to — are fyi, not junk; the test is the relationship, not
-    that it's a bulk send. (A link-hosted one is a pointer the digest opens — see "recognize pointers"
-    above.)
+  - **Any newsletter or bulletin Russell has a standing reason to read** - his children's school, his
+    HOA, his church, a community or mailing list he belongs to - is **fyi with a summary of what's
+    inside**: the dates, deadlines, events, and anything to act on, so he gets the substance without
+    opening it.
+    The test is the relationship, not the sending domain or a bulk/marketing tone; a cold newsletter from
+    a sender he has no relationship with is junk.
+    When the body is a pointer to a hosted issue or an attached PDF, the digest follows it and summarizes
+    that (see "recognize pointers" above).
 - **junk** — not even worth surfacing: automated noise, pure marketing, cold newsletters (a sender
   Russell has no relationship with), generic marketplace promo with no one asking anything (deals, "items
   you might like", price-drop alerts; but a real member *question* relayed from a buyer/seller is
