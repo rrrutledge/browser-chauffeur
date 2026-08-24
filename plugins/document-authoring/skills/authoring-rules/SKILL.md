@@ -37,6 +37,7 @@ Innocent: "used to" as passive voice, where *used* means employed - "the key use
 **State guidance positively.**
 Describe the desired behavior directly; a correction names only what to do, not the rejected alternative alongside it.
 Reserve a negative for a real, tempting failure mode a positive instruction won't prevent on its own, and write it as a single standalone guardrail.
+A single-valued fact forecloses its alternatives the moment it's named - stating which branch a PR targets already rules out every other branch, so state it once and let it stand alone.
 **Check:** a "don't do X, do Y" couplet where "do Y" alone would carry it; a definition that says what something is for and then appends what it is not for ("A is for X; not for Y", "goes on X instead, not here"), where the positive half stands alone; a prohibition where a recipe would bind better.
 
 **Frame in the positive affirmative.**
