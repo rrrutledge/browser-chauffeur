@@ -111,6 +111,24 @@ def test_send_self_is_gated(tmp_path):
     assert decision(r.stdout) == "DENY"
 
 
+def test_slack_send_without_receipt_is_blocked(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    write_body(tmp_path, "dm.md", "Raimund - can you take a look at the pattern?")
+    r = run([], stdin=bash_payload("node slack.js --send --channel=DAQPLK5PD --body-file=dm.md"),
+            cwd=str(tmp_path), receipt_dir=receipts)
+    assert decision(r.stdout) == "DENY"
+    assert "writing-review" in r.stdout
+
+
+def test_slack_send_mint_then_allowed_through(tmp_path):
+    receipts = str(tmp_path / "receipts")
+    body = write_body(tmp_path, "dm.md", "Raimund - can you take a look at the pattern?")
+    run(["mint", str(body)], receipt_dir=receipts)
+    r = run([], stdin=bash_payload("node slack.js --send --channel=DAQPLK5PD --body-file=dm.md"),
+            cwd=str(tmp_path), receipt_dir=receipts)
+    assert decision(r.stdout) == "DEFER"
+
+
 # --- things that must NOT be gated ---
 
 def test_send_draft_not_gated(tmp_path):
