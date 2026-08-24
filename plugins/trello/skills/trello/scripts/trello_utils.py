@@ -126,6 +126,19 @@ def reorder_lists(board_id, desired_order, session):
                            params={'pos': str((i + 1) * 65536)})
 
 
+_DATE_RE = re.compile(r'^(\d{4})-(\d{2})-(\d{2})')
+
+
+def _due_at_central_midnight(due):
+    """Pin a due value to its calendar day so the card comes due on that day, via a flat `06:00`
+    UTC (about midnight Central - the exact hour doesn't matter). Takes the YYYY-MM-DD the caller
+    passed (a date or an ISO string); returns the input unchanged if it doesn't start with a date."""
+    m = _DATE_RE.match(str(due))
+    if not m:
+        return due
+    return f'{m.group(0)}T06:00:00.000Z'
+
+
 def create_card(list_id, card_data, session):
     body = {
         'idList': list_id,
@@ -135,13 +148,15 @@ def create_card(list_id, card_data, session):
     # `due` is a real deadline; `start` is the next-action / ping-back date (the startable-task model).
     # Outreach cards typically set only `due` (their follow-up date); task cards set `start`.
     if card_data.get('due'):
-        body['due'] = card_data['due']
+        body['due'] = _due_at_central_midnight(card_data['due'])
     if card_data.get('start'):
         body['start'] = card_data['start']
     return trello_request('POST', '/cards', session, body=body)
 
 
 def update_card(card_id, updates, session):
+    if updates.get('due'):
+        updates = {**updates, 'due': _due_at_central_midnight(updates['due'])}
     return trello_request('PUT', f'/cards/{card_id}', session, body=updates)
 
 
