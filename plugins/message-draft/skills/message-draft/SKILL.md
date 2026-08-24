@@ -119,7 +119,9 @@ Inputs: the address, message body, optional hyperlinks (display text + URL), opt
 
 Stages a draft in the **Slack composer** (web) for a DM, group DM, channel message, or threaded reply.
 Slack has no draft API — typing into the composer and stopping leaves Slack's own per-conversation
-auto-saved **draft**. You drive **browser-chauffeur**; never Playwright directly.
+auto-saved **draft**. You drive **browser-chauffeur**; never Playwright directly. This skill never sends;
+sending a reviewed Slack message is the separate, gated `slack.js --send` step in the **`slack`** skill,
+reserved for Russell's explicit per-message OK, parallel to how Outlook's send is `ms-rest send-draft`.
 
 Inputs: the target (a person's name for a DM, or a channel/conversation, or — when replying to a captured
 drainer item — its `channel` + `ts` + optional `threadTs` + permalink), the message body, optional links.

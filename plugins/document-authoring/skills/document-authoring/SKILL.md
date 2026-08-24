@@ -35,7 +35,7 @@ Skipping a step is what leaks the patterns this skill bans: reading once then co
 4. **Stage, never send** — a draft that survives verify is staged for Russell's approval; by default he sends it himself.
    Put the text into the real UI where it'll be sent — the ticket comment box, the Teams compose box, the email reply — via `browser-chauffeur`, so he sees it in context, edits inline, and clicks the app's own Send.
    If the UI genuinely can't be driven, show the proposed text in chat for approval instead.
-   The one send exception: when a channel has a programmatic send path and Russell, having reviewed the exact draft this turn, gives an explicit per-message instruction to send it, you may send that reviewed text for him (today personal Gmail via the `gmail` skill's `--send-draft`, and personal Outlook via the `ms-graph` skill's `mail.js --send-draft`). Default, silence, and any autonomous run mean draft-only — never infer a send. This exception is the same one an interactive **drainer worker session** uses (see `worker-core.md`); an **autonomous drain** (no live Russell present, e.g. an `auto-handle` item) has no one to give that instruction, so it stays draft-only unconditionally.
+   The one send exception: when a channel has a programmatic send path and Russell, having reviewed the exact draft this turn, gives an explicit per-message instruction to send it, you may send that reviewed text for him (today personal Gmail via the `gmail` skill's `gmail.js --send-draft`, personal Outlook via the `ms-graph` skill's `mail.js --send-draft`, and Slack via the `slack` skill's `slack.js --send`). Default, silence, and any autonomous run mean draft-only — never infer a send. This exception is the same one an interactive **drainer worker session** uses (see `worker-core.md`); an **autonomous drain** (no live Russell present, e.g. an `auto-handle` item) has no one to give that instruction, so it stays draft-only unconditionally.
 5. **Learn** — after he sends, run the **Voice learning loop** below: diff what he actually sent against your draft and update this guidance when the voice changed.
 
 A draft that reaches Russell should already read as his, because you verified it against the specific bullets — not because you intended to.
@@ -276,10 +276,11 @@ The specifics that most often separate a message that reads as Russell's from on
   Just ask plainly.
   Exception: the first nudge that directly addresses someone previously only cc'd should restate the concrete ask, since they may not have engaged.
 - **A repeat nudge on an already-unanswered ask shrinks further than the first** — drop the warm-up context line and any separate reassurance clause, and ask one direct binary question with the release folded into the question itself rather than tacked on after.
+  When the unanswered message sits visibly elsewhere in the same thread, skip restating the question in words entirely and just gesture toward it with the emoji matching its actual position — 👆 for a Slack/Teams thread, where the earlier message sits above ("let me know about this 👆"); 👇 for an email reply, where the quoted original sits below the new text.
 - **Lead with a genuine fresh reason when you have one** — the timely hook or honest trigger for writing now, not "circling back" or "just checking in". Skip recapping what you already sent and cut the offer-to-help tail. Release the timeline through the question's own open phrasing, not by tacking on a separate "no rush" reassurance clause at the end — that's a helper tail like any other.
 - **On a sent deliverable, confirm receipt, not review, and release the timeline** — "did you get it? Look at it on whatever schedule works", not "did you get a chance to look at it?"
 - **On unanswered outreach with no attachment, use a plain open prod with a "let me know" close** — "wanted to ask again about this. Let me know what you think." Don't use receipt-confirm framing here.
-- **When a specific factual question went unanswered, restate that exact question** as a direct yes/no rather than a generic check-in; pair it with an explicit release if there's a plausible internal reason for the delay.
+- **When a specific factual question went unanswered, restate that exact question** as a direct yes/no rather than a generic check-in; pair it with an explicit release if there's a plausible internal reason for the delay. Skip the restatement in favor of the pointing-emoji gesture instead when the unanswered question is visible elsewhere in the same thread (see the repeat-nudge bullet above).
 - **When more than one ask is still open, nudge on all of them**, not just one — and phrase each as its own direct question ("Is X? What's Y?"), not one compound sentence joined by "and".
   This covers asks the recipient has had time to answer; leave out one you raised in your own immediately-preceding message on the thread, since repeating it hours later reads as nagging rather than nudging.
 - **Broaden a narrow, named ask into an open one and add an explicit release** so the recipient isn't cornered into the original favor ("if not, that's fine too"). Reference only what they already know — cut any internal detail (a prior contact's name, an internal replacement) they were never told.
@@ -356,7 +357,8 @@ His palette:
 | 🙁 / ☹️ / 😧 | Empathy or mild disappointment, right after an apology or bad news |
 | 👍 | Light acknowledgement, often after "Thanks" |
 | ✅ | Marking a logistics item handled: "Will reschedule ✅" |
-| 👇 | Pointing at a link or recording just below |
+| 👇 | Pointing at a link or recording just below; or, on a repeat nudge, at an unanswered message below (e.g. a quoted email original) |
+| 👆 | On a repeat nudge, pointing at an unanswered message above (e.g. earlier in a Slack/Teams thread) |
 | 🎉 / 👋 / 🔔 | Occasional: celebration, greeting wave, notify nudge |
 
 Don't invent emoji outside this palette, don't stack them, and skip them entirely in more serious messages.

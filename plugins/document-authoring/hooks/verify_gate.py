@@ -63,11 +63,14 @@ TTL_SECONDS = 24 * 3600
 # Send-of-a-staged-draft (gmail --send-draft, outlook-mail send-draft) carries no body and
 # is intentionally absent - that draft was already gated at stage time, and the send is
 # Russell's explicit act. ms-graph --send-self composes fresh into a body file, so it is
-# gated like a stage.
+# gated like a stage. Slack has no server-side draft to send by id, so slack.js --send
+# carries the body it posts (like --send-self) rather than referencing an already-gated
+# draft - so it is gated here, and the receipt binds the exact bytes chat.postMessage emits.
 STAGE_SCRIPTS = {
     "gmail.js": {"verbs": {"--reply", "--draft-new"}, "body_flag": "--body-file"},
     "mail.js": {"verbs": {"--reply", "--draft-new", "--send-self"}, "body_flag": "--body-file"},
     "outlook-mail.js": {"verbs": {"create-draft", "create-reply"}, "body_flag": "--json"},
+    "slack.js": {"verbs": {"--send"}, "body_flag": "--body-file"},
 }
 
 # Native Gmail connector compose/send verbs. Staging Russell's mail this way bypasses both
@@ -120,8 +123,8 @@ def has_fresh_receipt(h):
 def find_body_file(command):
     """Return the body-file path if `command` is a recognized stage command, else None.
 
-    Two shapes count as a stage command. A named mail script (gmail.js / mail.js /
-    outlook-mail.js) carrying its compose verb and body flag is one. A browser-chauffeur
+    Two shapes count as a stage command. A named script (gmail.js / mail.js /
+    outlook-mail.js / slack.js) carrying its compose verb and body flag is one. A browser-chauffeur
     composer run is the other: a `--cdp-port` browser session that declares the message it
     will type via `--body-file`. The Slack and Teams composers type into a web page rather
     than into a script argument, so message-draft routes their body through a declared file,
