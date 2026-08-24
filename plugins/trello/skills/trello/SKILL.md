@@ -104,13 +104,12 @@ instructions: |-
 
   ## Due-date time of day
 
-  `create_card` and `update_card` set any due date to midnight at the start of its day in US Central
-  before sending it to Trello. A due date exists so the card surfaces as work for that morning; an
-  end-of-day time would hide the card until the day is nearly over, so the client normalizes it rather
+  `create_card` and `update_card` set any due date to about midnight at the start of its day in US
+  Central before sending it to Trello. A due date exists so the card surfaces as work for that morning;
+  an end-of-day time would hide the card until the day is nearly over, so the client normalizes it rather
   than leaving the time of day to each caller. Pass a due as a plain calendar day (`2026-08-25`) or a
-  full timestamp - either way the client keeps the date and forces the time to start-of-day Central. The
-  daylight-saving offset is computed in-code (Windows ships no tz database), so the stored due lands at
-  `05:00` UTC under daylight time and `06:00` UTC otherwise.
+  full timestamp - either way the client keeps the date and drops the time. Only the day matters, so it
+  uses a flat `06:00` UTC (midnight to 1 AM Central across the year).
 
   ---
 

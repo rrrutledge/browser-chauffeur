@@ -129,46 +129,18 @@ def reorder_lists(board_id, desired_order, session):
 _DATE_RE = re.compile(r'^(\d{4})-(\d{2})-(\d{2})')
 
 
-def _nth_sunday(year, month, n):
-    """Day-of-month of the n-th Sunday of the given month."""
-    from calendar import monthrange
-    count = 0
-    for day in range(1, monthrange(year, month)[1] + 1):
-        if datetime(year, month, day).weekday() == 6:  # Sunday
-            count += 1
-            if count == n:
-                return day
-    return None
-
-
-def _central_utc_offset_hours(year, month, day):
-    """Hours to add to a US-Central wall-clock time to reach UTC: 5 during Central Daylight
-    Time, 6 during Central Standard Time. DST runs from the 2nd Sunday of March to the 1st
-    Sunday of November (post-2007 US rule); the offset is computed here from that rule because
-    Windows ships no tz database for zoneinfo to read. At midnight the March start day is still
-    standard (the switch is at 2 AM) and the November end day is still daylight, which the bounds
-    below encode."""
-    if month < 3 or month > 11:
-        return 6
-    if 3 < month < 11:
-        return 5
-    if month == 3:
-        return 5 if day > _nth_sunday(year, 3, 2) else 6
-    return 5 if day <= _nth_sunday(year, 11, 1) else 6
-
-
 def _due_at_central_midnight(due):
-    """Normalize a due value to midnight at the START of its day in US Central, as a UTC
-    ISO-8601 `Z` timestamp. A due date exists so the card surfaces as work for that morning,
-    so the client always times it to the start of the day rather than leaving a stray
-    end-of-day time. Takes the YYYY-MM-DD the caller passed (a date or an ISO string) as the
-    intended calendar day; returns the input unchanged if it doesn't start with a date."""
+    """Normalize a due value to about midnight at the START of its day in US Central, as a UTC
+    ISO-8601 `Z` timestamp. A due date exists so the card surfaces as work for that morning, so
+    the client times it to the start of the day rather than leaving a stray end-of-day time. Only
+    the day matters, not the exact minute, so it uses a flat `06:00` UTC - midnight to 1 AM Central
+    across the year. Takes the YYYY-MM-DD the caller passed (a
+    date or an ISO string) as the intended calendar day; returns the input unchanged if it doesn't
+    start with a date."""
     m = _DATE_RE.match(str(due))
     if not m:
         return due
-    y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
-    off = _central_utc_offset_hours(y, mo, d)
-    return datetime(y, mo, d, off, 0, 0, tzinfo=timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.000Z')
+    return f'{m.group(0)}T06:00:00.000Z'
 
 
 def create_card(list_id, card_data, session):
