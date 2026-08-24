@@ -1,0 +1,9 @@
+{
+  "name": "google-docs-scripts",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Google Docs API helper scripts (OAuth via google-auth-library)",
+  "dependencies": {
+    "google-auth-library": "^9.15.0"
+  }
+}
