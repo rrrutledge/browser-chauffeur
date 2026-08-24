@@ -130,13 +130,9 @@ _DATE_RE = re.compile(r'^(\d{4})-(\d{2})-(\d{2})')
 
 
 def _due_at_central_midnight(due):
-    """Normalize a due value to about midnight at the START of its day in US Central, as a UTC
-    ISO-8601 `Z` timestamp. A due date exists so the card surfaces as work for that morning, so
-    the client times it to the start of the day rather than leaving a stray end-of-day time. Only
-    the day matters, not the exact minute, so it uses a flat `06:00` UTC - midnight to 1 AM Central
-    across the year. Takes the YYYY-MM-DD the caller passed (a
-    date or an ISO string) as the intended calendar day; returns the input unchanged if it doesn't
-    start with a date."""
+    """Pin a due value to its calendar day so the card comes due on that day, via a flat `06:00`
+    UTC (about midnight Central - the exact hour doesn't matter). Takes the YYYY-MM-DD the caller
+    passed (a date or an ISO string); returns the input unchanged if it doesn't start with a date."""
     m = _DATE_RE.match(str(due))
     if not m:
         return due

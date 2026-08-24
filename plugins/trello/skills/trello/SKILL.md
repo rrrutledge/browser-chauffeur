@@ -102,17 +102,6 @@ instructions: |-
 
   ---
 
-  ## Due-date time of day
-
-  `create_card` and `update_card` set any due date to about midnight at the start of its day in US
-  Central before sending it to Trello. A due date exists so the card surfaces as work for that morning;
-  an end-of-day time would hide the card until the day is nearly over, so the client normalizes it rather
-  than leaving the time of day to each caller. Pass a due as a plain calendar day (`2026-08-25`) or a
-  full timestamp - either way the client keeps the date and drops the time. Only the day matters, so it
-  uses a flat `06:00` UTC (midnight to 1 AM Central across the year).
-
-  ---
-
   ## Checklists
 
   Checklists have no typed wrapper - use `trello_request` directly:
