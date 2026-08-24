@@ -10,6 +10,15 @@ each bucket (own worker vs digest) lives in the driver and SKILL.
 For every inbound item ask: **is there something for Russell to do?** If there is, now is the time — do
 it immediately, or kick it off in a tab. Everything Russell is going to do, he does right now.
 
+Answer it by **reading the item as Russell would** - the world-knowledge below tells you who he is, the
+people and organizations he's tied to, and the systems he acts in, so you can judge the item the way he
+would on reading it.
+That knowledge informs your judgment.
+The cases it lists are illustrations of the one question - when an item fits no listed case, reason from
+the question anyway.
+A novel item with no rule to its name is still decided by "would Russell act on this?", and is never
+dropped to junk merely because nothing named it.
+
 Answering that is the whole of triage, and the answer is one of four buckets — two when there's something
 to do, two when there isn't.
 
@@ -51,6 +60,13 @@ decide it here.
   he'd take** — a pending interview or assessment invite/reminder from a hiring platform, an
   application-status action — is his action (do the interview, take the next step), the automated send
   notwithstanding.
+- it's **a step in something Russell already set in motion and left unfinished** - an application he
+  started but didn't submit (a loan, a job, an account, a benefit), a form filled partway, a checkout or
+  verification he began, any process paused mid-way with his next step still outstanding.
+  Coming back to finish what he started is his action, so it's **needs-you**: a "you didn't finish,"
+  "come back and complete it," or "your application is incomplete" reminder names that step no matter how
+  automated or marketing-styled the sender.
+  He chose to start it; the reminder is just the queue for a step he already owns.
 - it names that action **no matter who or what delivered it - the content decides, never the envelope.**
   Audience breadth doesn't change anything and an automated sender doesn't make it junk: a message to a
   hundred people that names something Russell would do (sign the card, submit the goals, RSVP for the
