@@ -321,6 +321,7 @@ The specifics that most often separate a message that reads as Russell's from on
   In Slack or Teams, that terse acknowledgment can be a single emoji shorthand standing in for the words entirely (":cool: - did you hear anything from Micaela?") rather than a typed phrase - the emoji carries the same "got it" beat a word would, so it doesn't have to be spelled out too.
 - **Address people by name mid-message** — "Thanks for looking at this, Alex" (see **Links** for representing the name itself — a real @-mention when you want them notified, a link otherwise).
 - **Address someone who outranks you by their title, not their first name** — pointedly in church contexts ("Thanks, Bishop"). Keep thanks to a superior to a single word; piling on extra gratitude reads as patronizing.
+  When the message hands them a judgment call rather than just seeking a decision from a peer, hedge the recommendation itself instead of stating it flat — "I feel like it may be time for that" — so the call visibly stays theirs even though you're the one bringing it to them.
 - **Address a Japanese contact by closeness** — someone Russell knows well goes by first name alone ("Yuki"); a contact he knows less well gets the formal surname + "-san" ("Oidate-san"), in any register and at any point in the relationship, not only a first introduction.
 - **Ellipses for softening** — "If you need to leave you can just say so ... especially if we're going over time."
 - **Apologize genuinely and briefly** — "Sorry this is taking so long.", "I'm sorry I have to move this again."
