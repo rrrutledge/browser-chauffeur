@@ -25,6 +25,12 @@
 // Mark read:     node slack.js --mark --channel=<C> --ts=<ts> [--thread-ts=<tts>]
 //                (conversations.mark up to <ts>, or subscriptions.thread.mark when --thread-ts is given —
 //                 the conversation/thread's "gone"; reversible, never deletes)
+// Send (REAL):   node slack.js --send --channel=<C> --body-file=<file> [--thread-ts=<tts>]
+//                (chat.postMessage of the reviewed body in <file> as the signed-in user, then prints the
+//                 sent message's permalink. The body is Slack mrkdwn — a link is `<url|anchor text>`. This
+//                 is the one write that reaches another person: human-in-the-loop only, run solely on
+//                 Russ's explicit per-message say-so after he's reviewed this exact body this turn, and
+//                 gated by the writing-review receipt on <file>. See "Sending" in the skill's SKILL.md.)
 // Find DM:       node slack.js --find-dm=<name substring> [--json]
 //                (users.list matched against real name, then conversations.open per match to resolve the
 //                 1:1 DM channel id — conversations.open only opens/returns the existing DM, it never
@@ -348,6 +354,38 @@ async function mark() {
   console.log(`Marked ${args.channel} read up to ${args.ts}. Reversible — re-reading the conversation re-surfaces it.`);
 }
 
+// REAL SEND — post a reviewed body to a conversation as the signed-in user. This is the only write in
+// this script that reaches another person, so it stays human-in-the-loop: run it solely on Russ's
+// explicit per-message instruction to send, after he has reviewed this exact body this turn. The body
+// comes from a file (never an inline arg) so the writing-review gate can read and receipt it, the same way
+// the mail staging commands take --body-file. The body is Slack mrkdwn: chat.postMessage renders `<url|text>`
+// as a link and `<@U…>` as a mention.
+async function send() {
+  if (!args.channel) {
+    throw new Error('--send requires --channel (a DM/group/channel/conversation id; resolve a person with --find-dm)');
+  }
+  const bodyFile = args['body-file'];
+  if (!bodyFile || bodyFile === true) {
+    throw new Error('--send requires --body-file (the reviewed message body; the writing-review gate reads it)');
+  }
+  let text;
+  try {
+    text = require('fs').readFileSync(bodyFile, 'utf8').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+  } catch {
+    throw new Error(`--send: cannot read --body-file ${bodyFile}`);
+  }
+  if (!text) throw new Error(`--send: --body-file ${bodyFile} is empty`);
+
+  const params = { channel: args.channel, text };
+  if (args['thread-ts']) params.thread_ts = args['thread-ts'];
+  const r = await call('chat.postMessage', params);
+  let permalink = '';
+  try {
+    permalink = (await call('chat.getPermalink', { channel: r.channel, message_ts: r.ts })).permalink || '';
+  } catch { /* permalink optional — the send already succeeded */ }
+  console.log(`Sent to ${r.channel} at ts ${r.ts}.${permalink ? ` Link: ${permalink}` : ''}`);
+}
+
 async function check() {
   const r = await call('auth.test');
   console.log(`Signed in as ${r.user} (${r.team}, team ${r.team_id}). user_id ${r.user_id}.`);
@@ -407,7 +445,8 @@ async function findByDomain() {
   if (args.history) return await history();
   if (args.react) return await react();
   if (args.mark) return await mark();
+  if (args.send) return await send();
   if (args['find-dm']) return await findDm();
   if (args['find-by-domain']) return await findByDomain();
-  throw new Error('Specify --check, --list-unread, --show, --history, --react, --mark, --find-dm, or --find-by-domain');
+  throw new Error('Specify --check, --list-unread, --show, --history, --react, --mark, --send, --find-dm, or --find-by-domain');
 })().catch(e => { console.error('Error:', e.message); process.exit(1); });

@@ -1,6 +1,6 @@
 ---
 name: slack
-description: Read and mark-read a Slack workspace via the Slack Web API — no browser. Use to list unread DMs / group DMs / @-mentions / unread thread replies (muted conversations skipped), show a message with its permalink, or mark a conversation or thread read. Headless-safe. Reply drafting is a separate concern — the message-draft skill's `slack` mode (browser, draft-only) handles it.
+description: Read, mark-read, and (on explicit approval) send in a Slack workspace via the Slack Web API - no browser. Use to list unread DMs / group DMs / @-mentions / unread thread replies (muted conversations skipped), show a message with its permalink, mark a conversation or thread read, or send one reviewed message via chat.postMessage on Russ's explicit per-message say-so (gated by the writing-review receipt). Headless-safe. Reply drafting stays with the message-draft skill's `slack` mode (browser, draft-only); this skill's send posts an already-reviewed body.
 ---
 
 # Slack — Read/Mark a Workspace via the Web API
@@ -8,10 +8,13 @@ description: Read and mark-read a Slack workspace via the Slack Web API — no b
 Read and clear a Slack workspace directly over the **Slack Web API** with a token call — no browser. Zero
 npm dependencies: `slack.js` uses Node's built-in `fetch` (Node 18+).
 
-**Read-only here; drafting lives elsewhere.** This skill enumerates unread items and advances read
-cursors. Composing a reply is a separate, general capability — the **`message-draft`** skill's `slack`
-mode stages a reply in the Slack composer (browser) and leaves it unsent. Keep the two apart: reads go
-through `slack.js`, drafts go through `message-draft`.
+**This skill reads unread items and advances read cursors; drafting is elsewhere; the one gated send is
+`--send`.** Composing a reply is a separate, general capability - the **`message-draft`** skill's `slack`
+mode stages a reply in the Slack composer (browser) and leaves it unsent for Russ to review in his own
+Slack. Keep those two apart: reads go through `slack.js`, drafts go through `message-draft`. The one write
+in this script that reaches another person is `--send` (see **Sending** below): it posts a body Russ has
+already reviewed and explicitly told you to send this turn, which is why the send belongs next to the
+token-call plumbing here rather than in the browser composer.
 
 ## Auth
 
@@ -59,6 +62,13 @@ Under `scripts/` (run with `node`):
   - Mark read: `node slack.js --mark --channel=<C> --ts=<ts> [--thread-ts=<tts>]` — `conversations.mark`
     up to `<ts>`, or `subscriptions.thread.mark` when `--thread-ts` is given (the conversation/thread's
     "gone"; reversible — re-reading re-surfaces it, never deletes).
+  - Send (REAL SEND): `node slack.js --send --channel=<C> --body-file=<file> [--thread-ts=<tts>]` -
+    `chat.postMessage` of the reviewed body in `<file>` as the signed-in user, then prints the sent
+    message's permalink. Pass `--thread-ts` to reply inside a thread; omit it to post a top-level message
+    (a DM, group DM, or channel message). The body is **Slack mrkdwn**: a link is `<url|anchor text>` and
+    a mention is `<@U…>`. `--body-file` (never an inline body) is what lets the writing-review gate read
+    and receipt the exact bytes that go out. See **Sending** below - this runs only on Russ's explicit
+    per-message say-so.
 
 ## How it works (Web API endpoints)
 
@@ -72,8 +82,33 @@ Under `scripts/` (run with `node`):
   `last_read`, separate from the channel's, so thread replies aren't in `conversations.history`).
 - `conversations.replies` — the messages of one thread (for `--show`/`--mark` on a threaded reply).
 - `conversations.info` / `users.info` — resolve channel names and sender real-names (cached per run).
-- `chat.getPermalink` — a stable web link to one message (the captured item's `url`).
+- `chat.getPermalink` — a stable web link to one message (the captured item's `url`, and the link `--send`
+  prints for the message it just posted).
+- `chat.postMessage` - post one reviewed message as the signed-in user (`--send`; needs the `d` cookie).
 - `conversations.mark` / `subscriptions.thread.mark` — advance the conversation / thread read cursor (CLEAR).
+
+## Sending
+
+Reading and drafting stay draft-only; `--send` is the single exception, and it is human-in-the-loop.
+A message goes out **only** when Russ gives an explicit per-message instruction to send (e.g. "send it")
+**after** he has reviewed that exact body this turn - the same bar as the `gmail`/`ms-graph` send paths.
+Slack has no server-side draft to send by id, so `--send` posts the body it is handed; the writing-review
+receipt on `--body-file` is what proves that exact body was reviewed, so the gate blocks a send whose bytes
+have no fresh receipt. When Russ says to send:
+
+1. Author (or reuse) the reviewed body as a Slack-mrkdwn file - links as `<url|anchor text>`.
+2. Dispatch `writing-review` on that file and mint its receipt (the gate reads it), unless a fresh receipt
+   for those exact bytes already exists from staging.
+3. Resolve the target: a DM channel via `--find-dm`, or the `channel` (+ `thread-ts`) from the captured item.
+4. Run `node slack.js --send --channel=<C> --body-file=<file> [--thread-ts=<tts>]` and report the permalink.
+
+Hold the line on these - they are what keep send safe:
+
+- Default, silence, or ambiguous phrasing mean draft-only. Never infer a send from anything but a clear,
+  explicit instruction to send this message.
+- Send only the body Russ reviewed this turn. Re-show it (or confirm he just saw it) before you run `--send`.
+- An autonomous or `auto-handle` drain never sends. `--send` is human-in-the-loop only; in any
+  non-interactive run, stop at the staged draft.
 
 ## Notes
 
@@ -82,5 +117,6 @@ Under `scripts/` (run with `node`):
 - An **item** is one **conversation** for a DM/group-DM (keyed to its latest unread message), one
   **message** for each channel @-mention, and one **thread** for each subscribed thread with unread
   replies (keyed to its latest unread reply).
-- **No reply drafting here.** Slack has no draft API — the **`message-draft`** skill's `slack` mode types
-  a reply into the Slack composer (browser) and leaves it as an unsent draft for review.
+- **Drafting stays in `message-draft` (see the intro); only the approved send is here.** Slack has no
+  draft API, so a reply is composed in the browser composer over there. The one send this script performs
+  is `--send` (see **Sending**), and only on Russ's explicit per-message say-so.
