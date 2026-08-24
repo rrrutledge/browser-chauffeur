@@ -1,6 +1,7 @@
-// Installs the google-docs script dependency (google-auth-library) into a stable per-user location so
-// every google-docs script can resolve it, regardless of which directory it runs from. Mirrors gmail's
-// setup.js / ms-graph's setup.js / browser-chauffeur's dependency-bootstrap pattern.
+// Installs the google-docs script dependencies (googleapis, google-auth-library) into a stable
+// per-user location so every google-docs script can resolve them, regardless of which directory it
+// runs from. Mirrors gmail's setup.js / ms-graph's setup.js / browser-chauffeur's
+// dependency-bootstrap pattern.
 //
 //   node setup.js   -> idempotent; skips install if deps already present.
 
@@ -17,7 +18,7 @@ function present(pkg) {
   try { require.resolve(pkg, { paths: [DEP_DIR] }); return true; } catch { return false; }
 }
 
-if (present('google-auth-library')) {
+if (present('google-auth-library') && present('googleapis')) {
   console.log('[OK] google-docs deps already installed at ' + DEP_DIR);
   process.exit(0);
 }
