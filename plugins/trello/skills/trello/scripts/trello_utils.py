@@ -126,6 +126,51 @@ def reorder_lists(board_id, desired_order, session):
                            params={'pos': str((i + 1) * 65536)})
 
 
+_DATE_RE = re.compile(r'^(\d{4})-(\d{2})-(\d{2})')
+
+
+def _nth_sunday(year, month, n):
+    """Day-of-month of the n-th Sunday of the given month."""
+    from calendar import monthrange
+    count = 0
+    for day in range(1, monthrange(year, month)[1] + 1):
+        if datetime(year, month, day).weekday() == 6:  # Sunday
+            count += 1
+            if count == n:
+                return day
+    return None
+
+
+def _central_utc_offset_hours(year, month, day):
+    """Hours to add to a US-Central wall-clock time to reach UTC: 5 during Central Daylight
+    Time, 6 during Central Standard Time. DST runs from the 2nd Sunday of March to the 1st
+    Sunday of November (post-2007 US rule); the offset is computed here from that rule because
+    Windows ships no tz database for zoneinfo to read. At midnight the March start day is still
+    standard (the switch is at 2 AM) and the November end day is still daylight, which the bounds
+    below encode."""
+    if month < 3 or month > 11:
+        return 6
+    if 3 < month < 11:
+        return 5
+    if month == 3:
+        return 5 if day > _nth_sunday(year, 3, 2) else 6
+    return 5 if day <= _nth_sunday(year, 11, 1) else 6
+
+
+def _due_at_central_midnight(due):
+    """Normalize a due value to midnight at the START of its day in US Central, as a UTC
+    ISO-8601 `Z` timestamp. A due date exists so the card surfaces as work for that morning,
+    so the client always times it to the start of the day rather than leaving a stray
+    end-of-day time. Takes the YYYY-MM-DD the caller passed (a date or an ISO string) as the
+    intended calendar day; returns the input unchanged if it doesn't start with a date."""
+    m = _DATE_RE.match(str(due))
+    if not m:
+        return due
+    y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+    off = _central_utc_offset_hours(y, mo, d)
+    return datetime(y, mo, d, off, 0, 0, tzinfo=timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.000Z')
+
+
 def create_card(list_id, card_data, session):
     body = {
         'idList': list_id,
@@ -135,13 +180,15 @@ def create_card(list_id, card_data, session):
     # `due` is a real deadline; `start` is the next-action / ping-back date (the startable-task model).
     # Outreach cards typically set only `due` (their follow-up date); task cards set `start`.
     if card_data.get('due'):
-        body['due'] = card_data['due']
+        body['due'] = _due_at_central_midnight(card_data['due'])
     if card_data.get('start'):
         body['start'] = card_data['start']
     return trello_request('POST', '/cards', session, body=body)
 
 
 def update_card(card_id, updates, session):
+    if updates.get('due'):
+        updates = {**updates, 'due': _due_at_central_midnight(updates['due'])}
     return trello_request('PUT', f'/cards/{card_id}', session, body=updates)
 
 
