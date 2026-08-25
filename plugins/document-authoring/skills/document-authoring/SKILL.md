@@ -262,6 +262,7 @@ The specifics that most often separate a message that reads as Russell's from on
 - **Handing off a finished deliverable: make it a direct invitation to look, not a passing mention.**
   Give the artifact its own sentence and invite the reader to open it, rather than burying it in a subordinate clause.
   **Exception — a quick status flag that has supporting detail behind it:** state the findings plainly and stop; don't auto-attach the backing document unless handing it off is the actual point of the message. Share it separately, if and when it's asked for.
+  **An inline image gets the same sentence-of-its-own treatment, adapted for something already visible rather than clicked open:** name what it shows in the sentence right before it ("and here's a picture of where I submitted") instead of letting it render silently after unrelated text with no pointer to it.
 - **Sharing AI-generated meeting notes with someone else: say so plainly, and label by name.**
   Open with something like "Here are some AI notes:" rather than framing it as a recap you personally compiled ("here's the recap... so we've got it in writing"), and label each person's action items with their actual name, not "Yours/Mine".
   Let that line itself be the opener — skip a separate warm-up sentence ("Good session today!") before it.
