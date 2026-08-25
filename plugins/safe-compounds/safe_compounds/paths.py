@@ -214,6 +214,20 @@ def extract_pending_worktree_paths(segments):
             log_debug(f"Recorded pending worktree path: {norm}")
 
 
+def is_under_claude_worktrees(path):
+    """True if `path` lives under a `.claude/worktrees/` directory (any repo).
+
+    This is the one location EnterWorktree's native permission-root relocation
+    check treats as pre-approved -- entering or creating a worktree anywhere
+    else triggers a manual confirmation that no PreToolUse hook decision can
+    suppress. Static, so a `git worktree add` destination or an EnterWorktree
+    `path` can both be checked against it before ever reaching that dialog.
+    """
+    segments = _path_segments(_abs_against_cwd(path))
+    return any(segments[i] == '.claude' and segments[i + 1] == 'worktrees'
+               for i in range(len(segments) - 1))
+
+
 def is_path_within_git_worktree(path):
     """True if `path` is within a worktree declared in this compound command."""
     try:

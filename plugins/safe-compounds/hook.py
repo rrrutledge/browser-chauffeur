@@ -7,8 +7,9 @@ Decision order (preserved from the original single-file hook):
   mcp__*           -> mcp.classify_mcp_tool
   Workflow         -> workflow.classify_workflow_tool (blanket-approved saved names,
                        or an AI safety verdict on an inline script's agent() prompts)
-  EnterWorktree    -> worktree_tool.classify_enter_worktree (always approved -- the
-                       tool itself refuses to relocate into an unregistered path)
+  EnterWorktree    -> worktree_tool.classify_enter_worktree (approved for a new worktree
+                       or an existing one under .claude/worktrees/; blocked elsewhere --
+                       Claude Code's own relocation confirmation isn't hookable)
   ExitWorktree     -> worktree_tool.classify_exit_worktree (keep, or a remove the
                        tool itself won't force past unsaved work)
   Bash             -> enforce.enforce_bash (deny), then per-segment trust (allow)
@@ -27,7 +28,7 @@ import traceback
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from safe_compounds import config, paths, scripts  # noqa: E402
+from safe_compounds import commands, config, paths, scripts  # noqa: E402
 from safe_compounds.approve import is_segment_trusted  # noqa: E402
 from safe_compounds.enforce import enforce_bash  # noqa: E402
 from safe_compounds.log import log_debug  # noqa: E402
@@ -84,9 +85,9 @@ def handle_bash(command):
     paths.extract_pending_worktree_paths(non_empty)
 
     if not all(is_segment_trusted(seg, trusted) for seg in non_empty):
-        block = scripts.get_block_reason()
+        block = scripts.get_block_reason() or commands.get_worktree_block_reason()
         if block:
-            log_debug(f"DECISION: Deny (AI judged script unsafe): {block[:80]}")
+            log_debug(f"DECISION: Deny (block reason set): {block[:80]}")
             deny(block)
         log_debug("DECISION: Defer (not all segments trusted)")
         defer()
@@ -120,6 +121,7 @@ def dispatch(data):
     paths.reset_allowed_edit_dirs()
     scripts.reset_block_reason()
     workflow.reset_block_reason()
+    commands.reset_worktree_block_reason()
 
     tool = data.get('tool_name')
     tool_input = data.get('tool_input', {})
@@ -167,9 +169,13 @@ def dispatch(data):
         defer()
 
     if tool == 'EnterWorktree':
-        if classify_enter_worktree(tool_input):
+        decision, reason = classify_enter_worktree(tool_input)
+        if decision == 'allow':
             log_debug(f"DECISION: Allow EnterWorktree {tool_input.get('path') or tool_input.get('name')}")
             allow()
+        if decision == 'block':
+            log_debug(f"DECISION: Deny EnterWorktree: {reason[:80]}")
+            deny(reason)
         defer()
 
     if tool == 'ExitWorktree':

@@ -16,6 +16,7 @@ from safe_compounds import config  # noqa: E402
 from safe_compounds.commands import (  # noqa: E402
     is_git_command_safe, is_curl_safe, is_output_redirection_safe, is_sed_command_safe, is_start_safe,
     is_taskkill_safe, strip_safe_redirections, check_cwd_file_command,
+    get_worktree_block_reason, reset_worktree_block_reason,
 )
 from safe_compounds.paths import is_safe_read_location  # noqa: E402
 from safe_compounds import paths  # noqa: E402
@@ -168,6 +169,26 @@ class TestGit:
         assert enforce_bash("git -C /repo push -u origin feature") is None
         assert enforce_bash("git -C /repo add file.txt") is None
         assert enforce_bash("git -C /repo commit -m x") is None
+
+    # "git worktree add" is gated on its destination: .claude/worktrees/ is
+    # the only location EnterWorktree's own relocation confirmation skips.
+    def test_worktree_list_ok(self):
+        assert is_git_command_safe("git worktree list") is True
+
+    def test_worktree_remove_ok(self):
+        assert is_git_command_safe("git worktree remove .claude/worktrees/old") is True
+
+    def test_worktree_add_under_claude_worktrees_ok(self, tmp_path):
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        assert is_git_command_safe("git worktree add .claude/worktrees/feature -b feature main") is True
+
+    def test_worktree_add_outside_claude_worktrees_blocked(self, tmp_path):
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        reset_worktree_block_reason()
+        assert is_git_command_safe("git worktree add .worktrees/feature -b feature main") is False
+        reason = get_worktree_block_reason()
+        assert reason is not None
+        assert ".claude/worktrees/" in reason
 
 
 class TestCurl:
@@ -457,16 +478,24 @@ class TestWorkflow:
 
 class TestEnterWorktree:
     def test_no_path_creates_new_worktree_approves(self):
-        assert classify_enter_worktree({}) is True
+        assert classify_enter_worktree({}) == ("allow", None)
 
     def test_name_only_creates_new_worktree_approves(self):
-        assert classify_enter_worktree({"name": "some-feature"}) is True
+        assert classify_enter_worktree({"name": "some-feature"}) == ("allow", None)
 
-    def test_existing_path_approves(self, tmp_path):
-        # The tool itself refuses to relocate into a path that isn't a
-        # registered worktree, so the hook approves unconditionally --
-        # a bad path just makes EnterWorktree error out harmlessly.
-        assert classify_enter_worktree({"path": str(tmp_path / "whatever")}) is True
+    def test_path_under_claude_worktrees_approves(self, tmp_path):
+        os.environ['CLAUDE_CWD'] = str(tmp_path)
+        decision, reason = classify_enter_worktree({"path": ".claude/worktrees/some-feature"})
+        assert decision == "allow"
+        assert reason is None
+
+    def test_path_outside_claude_worktrees_blocks(self, tmp_path):
+        # Claude Code shows a manual, non-hookable confirmation for any
+        # relocation outside .claude/worktrees/, so approving here would
+        # just mean the user hits that dialog anyway with no guidance.
+        decision, reason = classify_enter_worktree({"path": str(tmp_path / "whatever")})
+        assert decision == "block"
+        assert ".claude/worktrees/" in reason
 
 
 class TestExitWorktree:
