@@ -1,7 +1,7 @@
 # drainer poller-core — the continuous keeper's contract
 
-The drainer runs as a **continuous keeper**: a presence-gated poller runs one short cycle every few
-minutes and holds each source at **zero un-started actionable items**. The cycle is a deterministic
+The drainer runs as a **continuous keeper**: a poller runs one short cycle every few
+minutes, whether or not anyone's at the keyboard, and holds each source at **zero un-started actionable items**. The cycle is a deterministic
 algorithm, so it is implemented as a **script** — `scripts/run-poller.py` — not prose an AI re-derives
 each run. This doc is the *contract*: what the script does and where AI is (and isn't) used. The full
 rationale is in `docs/superpowers/specs/2026-06-17-drainer-continuous-keeper-redesign.md`.
@@ -22,37 +22,34 @@ The script owns everything deterministic. AI is invoked for exactly two things:
    `engine/worker-core.md` (the actual reply/work, draft-only; auto-handle runs the standing rule and
    self-clears without surfacing to the user).
 
-Everything else — presence, enumerate, stable ids, the seen-state check, the concurrency cap, capture,
+Everything else — enumerate, stable ids, the seen-state check, the concurrency cap, capture,
 spawn, record — is code. No AI re-implements the loop.
 
 ## What `run-poller.py` does each cycle
 
 `python run-poller.py --repo <project> [--dry-run]`
 
-1. **Presence-gate** (`scripts/presence.py`) — away/locked → exit silently (skipped under `--dry-run`,
-   and skipped entirely when `require_presence: false` in `drainer.local.md`, for a machine that
-   should keep draining around the clock regardless of who's at the keyboard).
-2. **Read config** from `<project>/.claude/drainer.local.md`: enabled providers, `runtime_dir`,
-   `idle_threshold_seconds`, `require_presence`. Also reads `target_open_tabs` from the `DRAINER_TARGET_OPEN_TABS`
-   environment variable (default 12) — the only per-cycle throttle in the whole loop (see step 6).
-3. **Reconcile** (`reconcile_unhandled()`) — re-queue any email item whose source object is still
+1. **Read config** from `<project>/.claude/drainer.local.md`: enabled providers, `runtime_dir`.
+   Also reads `target_open_tabs` from the `DRAINER_TARGET_OPEN_TABS`
+   environment variable (default 12) — the only per-cycle throttle in the whole loop (see step 5).
+2. **Reconcile** (`reconcile_unhandled()`) — re-queue any email item whose source object is still
    unhandled with no live worker session on it, so it re-enumerates below. See the section after this
    list for the rule and its guards.
-4. **Per provider — enumerate everything eligible:** call the provider's enumerate (for outlook-graph,
+3. **Per provider — enumerate everything eligible:** call the provider's enumerate (for outlook-graph,
    `mail.js --list-inbox --json --top=<ENUMERATE_PAGE_SIZE>` — read+unread, newest-first, no time
    window). There is no per-cycle work cap: every cycle asks every source for everything it currently
    has to offer (`ENUMERATE_PAGE_SIZE`, a generous constant in `run-poller.py`, bounds only how many
    rows one API call requests — a technical page size, not a throttle; a backlog bigger than that one
    page just carries into the next cycle). Compute each item's stable id and drop any already in
    seen-state (`scripts/seen-state.js`). Whatever remains all becomes triage/dispatch input this cycle;
-   `target_open_tabs` in step 6 is what actually limits how much of it gets worked on at once.
-5. **Triage** each new item with its own `claude -p` call → bucket (needs-you / auto-handle / fyi /
+   `target_open_tabs` in step 5 is what actually limits how much of it gets worked on at once.
+4. **Triage** each new item with its own `claude -p` call → bucket (needs-you / auto-handle / fyi /
    junk) + kind + complexity (simple / complex). Every call this cycle shares one prompt prefix —
    `engine/triage.md`, the local `context.md`, and each enabled provider's AUTO-HANDLE section (so
    the model can recognize a standing-rule item; the rules live in the provider docs, surfaced here at
    triage time) — with only the one item's payload varying per call, so the model spends its full
    attention on that item instead of a whole cycle's batch at once.
-6. **Dispatch** (deterministic):
+5. **Dispatch** (deterministic):
    - **needs-you** → hold this item if an earlier item from the **same correspondent** is still open (see
      "Hold by correspondent" below); otherwise, if live Claude Code tabs system-wide (`total_claude_tabs()`
      — every running `claude.exe` process: drainer worker tabs, the drainer itself, and any tab Russell
@@ -79,7 +76,7 @@ spawn, record — is code. No AI re-implements the loop.
      that has no inbox returns `None` and stays in the inbox for the digest to clear. The triage-time
      archive changes only when an fyi/junk item leaves the inbox, not whether Russell reviews it in the
      digest.
-7. **Clear timing.** Workers clear needs-you on completion. fyi/junk are archived at triage above (for
+6. **Clear timing.** Workers clear needs-you on completion. fyi/junk are archived at triage above (for
    providers whose CLEAR is a reversible archive); the daily digest still runs its review-gated CLEAR on
    each one, a harmless no-op for a message already archived here and the real clear for any provider that
    couldn't archive at triage.

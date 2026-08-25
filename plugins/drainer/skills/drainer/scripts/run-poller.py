@@ -37,7 +37,6 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 SKILL_DIR = os.path.dirname(SCRIPT_DIR)
 PROVIDERS_DIR = os.path.join(SKILL_DIR, "providers")
 sys.path.insert(0, SCRIPT_DIR)
-import presence  # noqa: E402  (sibling module)
 from provider_base import run_node, NO_WINDOW, ProviderError, ProviderBase, spawn_tab, spawn_silent, NEUTRAL_PRIORITY_BAND  # noqa: E402  (subprocess helper + typed provider failure)
 _LIVE_UNSET = object()  # reconcile_unhandled sentinel: scan for live sessions itself unless one is passed in
 from drainer_config import read_config, find_provider_file, ensure_main_worktree  # noqa: E402  (shared reader + provider resolution + main-pinned config worktree)
@@ -122,28 +121,17 @@ def record_health_failure(health, name, error, kind):
     health[name] = h
 
 
-def record_heartbeat(health, decision, idle=None, locked=None):
-    """Stamp the poller's own liveness into the health file on every LIVE cycle — including a
-    presence-gated no-op, which otherwise writes nothing at all.
+def record_heartbeat(health):
+    """Stamp the poller's own liveness into the health file on every live cycle.
 
-    Without this, a frozen provider-health.json is ambiguous three ways that look identical: the machine
-    slept (the scheduled task never fired), it was away/locked (the poller ran and correctly did nothing),
-    or the poller broke before its health write. The per-provider failure streak catches expired
-    credentials but says nothing about the poller itself, so a genuinely dead poller is invisible. This
-    heartbeat records which of the three happened, so the daily digest can tell 'correctly idle' from
-    'silently dead'.
-
-    `decision` is one of: "drained" (ran a full cycle past the presence gate), "skipped-away" (input idle
-    past the threshold), "skipped-locked" (workstation locked). `last_drained_ts` advances only on
-    "drained", so the digest can flag a drain gone stale while the machine was demonstrably in use."""
+    Without this, a frozen provider-health.json is ambiguous: the machine slept (the scheduled task
+    never fired) vs. the poller broke before its health write. The per-provider failure streak catches
+    expired credentials but says nothing about the poller itself, so a genuinely dead poller is
+    invisible. This heartbeat lets the daily digest flag a drain gone stale."""
     h = health.setdefault(POLLER_KEY, {})
     now = datetime.now(timezone.utc).isoformat()
     h["last_run_ts"] = now
-    h["last_decision"] = decision
-    h["idle_seconds"] = round(idle) if idle is not None else None
-    h["locked"] = locked
-    if decision == "drained":
-        h["last_drained_ts"] = now
+    h["last_drained_ts"] = now
     health[POLLER_KEY] = h
 
 
@@ -992,22 +980,12 @@ def main():
     cfg = read_config(config_repo, runtime_root=source_repo)
 
     health = load_health(cfg["runtime_dir"])
-    idle = locked = None
-    if not args.dry_run and cfg["require_presence"]:
-        present, idle, locked = presence.is_present(cfg["idle_threshold_seconds"])
-        if not present:
-            # Away/locked -> do no work, but still stamp a heartbeat and persist it. This is the ONLY
-            # write on this path, and it's what lets the digest read a frozen health file as "poller ran
-            # and correctly idled" rather than "poller silently died".
-            record_heartbeat(health, "skipped-locked" if locked else "skipped-away", idle, locked)
-            save_health(cfg["runtime_dir"], health)
-            return
 
     providers = load_providers(cfg, health)
     if not providers:
         print("No providers with a poller adapter are enabled; nothing to do.")
         if not args.dry_run:
-            record_heartbeat(health, "drained", idle, locked)  # ran a full live cycle (just nothing to drain)
+            record_heartbeat(health)  # ran a full live cycle (just nothing to drain)
             save_health(cfg["runtime_dir"], health)  # persist any config-load failures recorded above
         return
 
@@ -1045,7 +1023,7 @@ def main():
     # Dry-run is a manual diagnostic often run from a shell without the User-scope creds; persisting
     # health then would log false failures, so only a live cycle records the outcome.
     if not args.dry_run:
-        record_heartbeat(health, "drained", idle, locked)  # a full live cycle ran past the presence gate
+        record_heartbeat(health)  # a full live cycle ran
         save_health(cfg["runtime_dir"], health)  # persist this cycle's per-provider outcomes
 
     if not all_new:

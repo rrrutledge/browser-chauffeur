@@ -41,11 +41,10 @@ the guaranteed-visible channel that closes that gap. Before anything else:
   - Example: *"⚠️ **gmail** hasn't drained since 2026-06-19 14:05 — 38 cycles failing: `gmail enumerate
     failed (auth/IMAP?): …`. Likely an expired GMAIL_APP_PASSWORD (User-scope env var) — refresh it and
     the next cycle recovers."*
-- **Heartbeat** — the `_poller` entry (`{ last_run_ts, last_decision, last_drained_ts }`) is the poller's
-  own liveness, stamped every cycle including no-op ones. Flag it ONLY when `last_run_ts` is many hours
-  stale and the machine wasn't just asleep — that means DrainerKeeper stopped firing or a poller instance
-  hung (check `schtasks /query /tn DrainerKeeper /v` and running `pythonw`). A fresh `last_run_ts` with an
-  old `last_drained_ts` is just an idle/away machine — benign, say nothing.
+- **Heartbeat** — the `_poller` entry (`{ last_run_ts, last_drained_ts }`) is the poller's own liveness,
+  stamped every cycle. Flag it ONLY when it's many hours stale and the machine wasn't just asleep — that
+  means DrainerKeeper stopped firing or a poller instance hung (check `schtasks /query /tn DrainerKeeper
+  /v` and running `pythonw`).
 
 This is informational — there's nothing to clear. It just makes a silently-dead provider impossible to
 miss. Then continue to the queue below.
