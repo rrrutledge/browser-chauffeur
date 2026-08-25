@@ -42,15 +42,15 @@ instructions: |-
 
   - **A card exists → update it, don't duplicate.** Fold the new development into the existing card:
     advance/reschedule it, post a dated comment recording what happened (via `add_comment`), and set the
-    next due date. The existing card is the source of truth and carries the entity's whole history - keep
+    next Start date. The existing card is the source of truth and carries the entity's whole history - keep
     it there.
   - **Nothing matches → create on the entity's OWN board.** A sponsor/company or its contact belongs on
     that campaign's outreach board (match by the registry `purpose`/`initiative`), not as a generic
     reminder on a catch-all board. Put the card where that entity's funnel lives so it isn't orphaned
     from its history.
 
-  **A freshly-created card with no Start/Due is eligible for drainer pickup on the very next cycle** -
-  see the `trello` skill's "Guarding a new card against the drainer" for setting a real date at
+  **A freshly-created card with no Start is eligible for drainer pickup on the very next cycle** -
+  see the `trello` skill's "Guarding a new card against the drainer" for setting a real Start date at
   creation (padded out when the true follow-up date isn't known yet) so a session still working the
   card isn't raced by a worker.
 

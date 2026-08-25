@@ -1,12 +1,11 @@
 # trello provider — outreach boards (Trello API)
 
-A provider for the **outreach** source. The card's **go-live date IS the queue**: harvested on
+A provider for the **outreach** source. The card's **Start date IS the queue**: harvested on
 every run like any other source, it returns the cards that are startable now and not wearing a ⛔
-Blocked label. A card with a Start is startable once that Start has arrived, and a future Start defers
-it even when its Due has already slipped. A card with no Start is startable when its Due is
-now-or-earlier or it is undated. Outreach cards set no Start, so they queue purely on their **due
-date** (the follow-up date) exactly as before. Task cards use the **startable model** (see
-STARTABLE-TASK MODEL): Start = the "work-on-it-next / go-live" date, Due = a real deadline. It rides the single schedule with no special cadence. All Trello reads and mutations
+Blocked label. A card is startable once its Start has arrived, or immediately when it has no Start; a
+future Start is the only thing that holds a card back - "not okay to begin until this day". Start is the
+one date the queue reads (see STARTABLE-TASK MODEL): the "work-on-it / go-live" day, whether the card is
+an outreach follow-up or a task. It rides the single schedule with no special cadence. All Trello reads and mutations
 go through the **`trello`** skill's `trello_utils.py` - never the Trello REST API directly. The
 credentials sit in the environment, so a raw `curl` to `api.trello.com` is tempting; it skips the
 shared auth, timeout, and read-after-write verification, and a raw write is blocked by the
@@ -51,12 +50,10 @@ Confirm `TRELLO_API_KEY`/`TRELLO_TOKEN` are set. If not, tell the user to set th
 
 ## STARTABLE-TASK MODEL
 The default posture is **hungry to start**: everything is startable now unless it's genuinely blocked.
-Two facts live in native Trello fields, two in labels + a description convention:
-- **Start date = "work-on-it-next / ping-back"** — the day the card should resurface. This is the queue
-  driver. A startable-now task carries **no** Start; a ⏳ Waiting card's Start is when to re-nudge.
-- **Due date = a real deadline** - tracked and shown, but not what surfaces the card. On a Start-less
-  card a slipped Due forces it up as a safety net; when a card also carries a future Start, that Start
-  wins and the card stays deferred, so a stale Due can't un-defer it. Reserved for genuine deadlines.
+Start is the one date, alongside two labels + a description convention:
+- **Start date = "work-on-it / ping-back"** — the day the card should resurface, and the only date the
+  queue reads. A startable-now card carries **no** Start; a future Start is the only way to hold a card
+  back until a chosen day; a ⏳ Waiting card's Start is when to re-nudge.
 - **⏳ Waiting** (label) = blocked on a **person's** reply. Still surfaces on its ping-back Start so the
   worker can re-nudge. Record `Waiting-for: <name> · <channel>` in the description (Phase 2's reply
   matcher reads it).
@@ -84,12 +81,10 @@ remember to call cascade_unblock, and cross-board blocking just works.
 
 ## ENUMERATE
 Via the `trello` skill, list cards across the configured boards that sit in an **active** list (not in
-`skip_lists`), are **not** wearing a `skip_labels` label (⛔ Blocked), and are **startable**. A card
-with a Start is startable once its Start is now-or-earlier - a future Start defers it even if its Due
-has already slipped. A Start-less card is startable when its Due is now-or-earlier (overdue counts) or
-it carries no date at all. Rank a card by its **go-live date** - its Start when it has one, else its
-Due, most recent first - and an undated card by its **creation date** (decoded from the card's
-ObjectId).
+`skip_lists`), are **not** wearing a `skip_labels` label (⛔ Blocked), and are **startable** — Start
+now-or-earlier, or no Start at all. A future Start is the only thing that holds a card back. Rank a card
+by its **Start date** (its go-live), most recent first, and an undated card by its **creation date**
+(decoded from the card's ObjectId).
 
 Rank is `(priority band, level band, date)`, all descending — level breaks ties within a band, date
 breaks ties within a band+level. A card's band comes from a **priority label** named exactly `P1`, `P2`,
@@ -107,10 +102,10 @@ neutral level and interleaves with today's mail by date; only a card whose desc 
 to level -1 and waits behind its priority band's neutral-level items — see the adapter's `_level_band`.
 
 Build a stable id:
-`trello-<card-name-slug>-<last6 of cardId>-<goLiveYYYYMMDD|nodue>` where the go-live date is Start when
-present, else Due. That date is part of the id on purpose: a card recurs every cycle (a nudge bumps its
-Start out; an outreach CLEAR bumps its Due out), and seen-state keeps a drained id forever, so without
-the stamp a card would be marked seen on its first drain and never resurface. Parse each card's labels
+`trello-<card-name-slug>-<last6 of cardId>-<startYYYYMMDD|nodue>` where the stamp is the card's Start
+date, or the fixed sentinel `nodue` when it has none. That date is part of the id on purpose: a card
+recurs every cycle (a nudge or CLEAR bumps its Start out), and seen-state keeps a drained id forever, so
+without the stamp a card would be marked seen on its first drain and never resurface. Parse each card's labels
 with `label_vocab` into channel / features / contacts (⛔/⏳ status labels are held out) so the worker
 knows where the conversation lives, and resolve the card's `initiative` (the initiative-colored label's
 slug, else the board default).
@@ -125,15 +120,15 @@ and every later cycle drops the card as already-seen for as long as its go-live 
 mints a fresh id — the go-live date is part of the id (see ENUMERATE), and CLEAR is what bumps it out — so
 the card resurfaces on its new date, never while this work is in flight.
 
-**Leave Start/Due untouched until CLEAR.** Bumping a date to "claim" the card forges the very id CLEAR is
+**Leave the Start date untouched until CLEAR.** Bumping it to "claim" the card forges the very id CLEAR is
 meant to mint later — one seen-state never recorded — so the next cycle reads a brand-new item and spawns
-a second worker on top of this one. The go-live date moves only when the work advances (CLEAR), never to
+a second worker on top of this one. The Start date moves only when the work advances (CLEAR), never to
 mark a card in-flight.
 
 Read its description + structured comments FIRST; then run INITIATIVE-LOOKUP for program context; act on
 that before re-discovering anything. Write `items/<id>.json`:
 `{ "id","source":"trello","triage":"needs-you","kind":"reply|work","cardId","board","list","name",`
-`"due","url","contacts":[...],"channelLabel":"<Email|Teams|Slack|...>","initiative":"<slug|null>","ts":"<ISO now>" }`
+`"start","url","contacts":[...],"channelLabel":"<Email|Teams|Slack|...>","initiative":"<slug|null>","ts":"<ISO now>" }`
 Then find the relevant **thread** (email / Teams / Slack) for the contact + channel and read it to
 decide the move — a card's `url`/description links to one specific message, not the whole conversation,
 so pull full context per **that source's own SITUATIONAL-CHECK guidance** before deciding the move
@@ -211,19 +206,19 @@ column as the nearest generic phase and let the initiative doc say what that ste
 
 Always situation-check before acting: if they've already replied or the step already happened, the move
 is usually to **advance** the card (CLEAR) rather than send again; if it's simply not yet time to follow
-up, silently bump the due date (CLEAR) and surface no tab.
+up, silently bump the Start date (CLEAR) and surface no tab.
 
 ## CLEAR (advance the card)
 Only **after** the user confirms they sent/handled the message, advance the card via the `trello` skill:
-- **nudge** — bump the due date out N days (they haven't replied; follow up later). Use the cadence below.
-- **advance** — move to a later stage + set the next due date (it progressed).
-- **stop** — move to Abandoned + clear the due date (not pursuing). If a message draft was staged for
+- **nudge** — bump the Start date out N days (they haven't replied; follow up later). Use the cadence below.
+- **advance** — move to a later stage + set the next Start date (it progressed).
+- **stop** — move to Abandoned + clear the Start date (not pursuing). If a message draft was staged for
   this card and never sent, discard it too (e.g. `node gmail.js --delete-draft=<draft-id>` for a Gmail
   draft) — an abandoned card means the draft is dead weight, not a reminder to revisit.
 Each advance also posts a dated comment recording what happened, so the board reflects reality.
 
-For **task cards** (startable model), a ⏳ Waiting card also nudges by bumping its **Start** (ping-back
-date), never its Due; and whenever a card is **finished** (moved to a terminal/skip list), fire
+A ⏳ Waiting card nudges the same way — bump its **Start** (ping-back date) out. Whenever a card is
+**finished** (moved to a terminal/skip list), fire
 `trello_utils.cascade_unblock(board_id, finished_card_id, session)` so any ⛔ Blocked cards waiting on
 it are freed (⛔ stripped, Start set to today) on the spot.
 
@@ -249,13 +244,13 @@ Otherwise, when no such timeframe was given, pick the tier based on how closely 
 
 When unsure, default to infrequent. When the ask requires real commitment or internal approval from the contact (e.g. sponsorship money, a formal agreement), start at **2 weeks** instead of 1 — regardless of how closely the user works with them.
 
-If the situational check finds **nothing to do right now**, silently bump the due date and finish —
+If the situational check finds **nothing to do right now**, silently bump the Start date and finish —
 surface no tab. "Not yet time to follow up" is decided by the **nudge cadence above**: it's
 nothing-to-do only while that interval hasn't elapsed since the last outbound message (or they replied
-and the user already answered). Once the card is due, they still haven't replied, **and** the cadence
-interval has elapsed, it *is* time to follow up — **draft the nudge** (needs-you), don't bump the date
-again. (A due card whose cadence has run out is not "nothing to do" — that misread is what turns a card
-into one that gets bumped forever without a follow-up ever going out.)
+and the user already answered). Once the card's Start has arrived, they still haven't replied, **and** the
+cadence interval has elapsed, it *is* time to follow up — **draft the nudge** (needs-you), don't bump the
+date again. (A started card whose cadence has run out is not "nothing to do" — that misread is what turns
+a card into one that gets bumped forever without a follow-up ever going out.)
 
 ## JUNK-LEARNING
 N/A — outreach cards are curated, not inbound noise.

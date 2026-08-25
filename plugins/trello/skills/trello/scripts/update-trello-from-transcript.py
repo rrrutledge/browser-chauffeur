@@ -13,14 +13,14 @@ The config file should have this structure:
     {
       "search": ["keyword1", "keyword2"],
       "search_type": "name",
-      "action": "due_date",
+      "action": "start_date",
       "days_offset": 1,
       "desc": "Description of the update"
     },
     {
       "search": ["Secrets Migration"],
       "search_type": "label",
-      "action": "due_date",
+      "action": "start_date",
       "days_offset": 1,
       "desc": "All cards with this label"
     },
@@ -43,7 +43,7 @@ Search types:
 - label: Find all cards with a label matching the search term (case-insensitive)
 
 Actions:
-- due_date: Set card due date (requires days_offset)
+- start_date: Set card Start date, days_offset days out (requires days_offset)
 - abandon: Move card to the abandoned list
 """
 import sys
@@ -175,23 +175,23 @@ def main():
 
         # Process each target card
         for card in target_cards:
-            if update['action'] == 'due_date':
+            if update['action'] == 'start_date':
                 if 'days_offset' not in update:
                     print(f"   [ERROR] {update['desc']}")
-                    print(f"           Missing 'days_offset' for due_date action\n")
+                    print(f"           Missing 'days_offset' for start_date action\n")
                     skipped += 1
                     continue
 
-                due_date = today + timedelta(days=update['days_offset'])
-                update_card(card['id'], {'due': due_date.isoformat() + 'Z'}, session)
-                date_str = due_date.strftime('%Y-%m-%d')
+                start_date = today + timedelta(days=update['days_offset'])
+                update_card(card['id'], {'start': start_date.isoformat() + 'Z'}, session)
+                date_str = start_date.strftime('%Y-%m-%d')
 
                 if len(target_cards) == 1:
                     print(f"   [OK] {update['desc']}")
                     print(f"        Card: {card['name']}")
-                    print(f"        Due date set to: {date_str}\n")
+                    print(f"        Start date set to: {date_str}\n")
                 else:
-                    print(f"        - {card['name']}: due date set to {date_str}")
+                    print(f"        - {card['name']}: Start date set to {date_str}")
 
                 successful += 1
 
@@ -214,7 +214,7 @@ def main():
                 break  # Don't process remaining cards for this update
 
         # Print summary line for multi-card updates
-        if len(target_cards) > 1 and update['action'] in ['due_date', 'abandon']:
+        if len(target_cards) > 1 and update['action'] in ['start_date', 'abandon']:
             print(f"   [OK] {update['desc']} - {len(target_cards)} cards updated\n")
 
     print(f"=== SUMMARY ===")

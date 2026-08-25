@@ -54,57 +54,47 @@ def test_sort_key_orders_level_within_band():
     sentinelone = {
         "name": "SentinelOne", "_priority_band": p1_band,
         "_level_band": Provider._level_band(card("Priority: P1 · Eng leadership · Director/VP-level")),
-        "_due_sort": "2026-07-22",
+        "_sort_dt": "2026-07-22",
     }
     ebay = {
         "name": "eBay", "_priority_band": p1_band,
         "_level_band": Provider._level_band(card("Priority: P1 · Platform · IC-level")),
-        "_due_sort": "2026-08-15",
+        "_sort_dt": "2026-08-15",
     }
     ranked = sorted([ebay, sentinelone],
-                     key=lambda it: (it["_priority_band"], it["_level_band"], it["_due_sort"]),
+                     key=lambda it: (it["_priority_band"], it["_level_band"], it["_sort_dt"]),
                      reverse=True)
     check("Director/VP-level card dispatches before a same-band, newer-dated IC-level card",
           ranked[0]["name"] == "SentinelOne", [it["name"] for it in ranked])
 
 
-def test_startable_gate_future_start_defers_past_slipped_due():
-    print("test: _startable - a future Start defers a card even when its Due has already slipped")
+def test_startable_gate_start_is_the_only_date():
+    print("test: _startable - Start is the only date; a future Start is the sole way to defer a card")
     Provider = adapter_mod.Provider
     from datetime import datetime, timezone, timedelta
     now = datetime(2026, 8, 18, tzinfo=timezone.utc)
     past = now - timedelta(days=30)
     future = now + timedelta(days=6)
 
-    # The Huntress case: Start deferred to a future Monday, but a stale past Due lingered on the card.
-    # The future Start must win, or the stale Due drags the card into play early - the premature
-    # dispatch that then burned the card's own go-live date-stamp in seen-state and hid it for good.
-    check("future Start + past Due -> deferred (not startable)",
-          Provider._startable(future, past, now) is False)
-    check("future Start + future Due -> deferred", Provider._startable(future, future, now) is False)
-    check("future Start alone -> deferred", Provider._startable(future, None, now) is False)
-
-    check("past Start + past Due -> startable", Provider._startable(past, past, now) is True)
-    check("past Start + future Due -> startable", Provider._startable(past, future, now) is True)
-    check("past Start alone -> startable", Provider._startable(past, None, now) is True)
-
-    # No Start: Due is the queue, and a slipped Due forces the card up as a safety net (outreach cards).
-    check("no Start + past Due -> startable (slipped-deadline safety net)",
-          Provider._startable(None, past, now) is True)
-    check("no Start + future Due -> not yet startable", Provider._startable(None, future, now) is False)
-    check("no Start + no Due -> startable (hungry to start)",
-          Provider._startable(None, None, now) is True)
+    # A future Start defers, full stop - nothing else can pull the card into play early. This is what
+    # keeps a card deferred to "next Monday" from surfacing before then (the Huntress failure was a
+    # stale Due dragging a future-Start card in early, which no longer exists as a concept).
+    check("future Start -> deferred (not startable)", Provider._startable(future, now) is False)
+    check("past Start -> startable", Provider._startable(past, now) is True)
+    check("Start exactly now -> startable", Provider._startable(now, now) is True)
+    check("no Start -> startable immediately (hungry to start)",
+          Provider._startable(None, now) is True)
 
 
 def test_priority_band_still_leads_level_band():
     print("test: a higher priority band still beats a lower band regardless of level")
     Provider = adapter_mod.Provider
     p1_ic = {"name": "P1 IC", "_priority_band": adapter_mod._PRIORITY_BAND[1], "_level_band": -1,
-             "_due_sort": "2026-01-01"}
+             "_sort_dt": "2026-01-01"}
     p2_director = {"name": "P2 Director", "_priority_band": adapter_mod._PRIORITY_BAND[2], "_level_band": 0,
-                    "_due_sort": "2026-08-01"}
+                    "_sort_dt": "2026-08-01"}
     ranked = sorted([p2_director, p1_ic],
-                     key=lambda it: (it["_priority_band"], it["_level_band"], it["_due_sort"]),
+                     key=lambda it: (it["_priority_band"], it["_level_band"], it["_sort_dt"]),
                      reverse=True)
     check("P1 IC still outranks P2 Director/VP", ranked[0]["name"] == "P1 IC", [it["name"] for it in ranked])
 
@@ -112,7 +102,7 @@ def test_priority_band_still_leads_level_band():
 if __name__ == "__main__":
     test_level_band_reads_desc_line()
     test_sort_key_orders_level_within_band()
-    test_startable_gate_future_start_defers_past_slipped_due()
+    test_startable_gate_start_is_the_only_date()
     test_priority_band_still_leads_level_band()
     print()
     if failures:

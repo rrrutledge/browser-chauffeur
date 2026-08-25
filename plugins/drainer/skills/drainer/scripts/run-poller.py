@@ -1038,17 +1038,17 @@ def main():
     ai_triage = []
     for it in all_new:
         if it["_source"] == "trello":
-            # The adapter only enumerates cards in play — due now-or-earlier, or with no due date at all.
-            # A due card's moment has arrived ("the due date IS the queue"); an undated card is on the
-            # board precisely because it needs a look — at minimum to give it a date — so it must not be
-            # sidelined to the digest. Either way the answer is needs-you, so skip the AI call: it's a
-            # tautology the model sometimes gets wrong (it mis-filed undated cards to fyi).
+            # The adapter only enumerates cards in play — Start now-or-earlier, or no Start at all.
+            # A started card's moment has arrived ("the Start date IS the queue"); a Start-less card is on
+            # the board precisely because it needs a look — at minimum to give it a Start — so it must not
+            # be sidelined to the digest. Either way the answer is needs-you, so skip the AI call: it's a
+            # tautology the model sometimes gets wrong (it mis-filed Start-less cards to fyi).
             it["_bucket"], it["_kind"] = "needs-you", "work"
             it["_complexity"] = "simple"
             pre_triaged.append(it)
         elif it["_source"] == "orphan-sessions":
             # An orphaned session unconditionally needs resuming — no judgment to make, so
-            # this skips the AI call the same way trello's due cards do.
+            # this skips the AI call the same way trello's started cards do.
             it["_bucket"], it["_kind"] = "needs-you", "resume"
             it["_complexity"] = "simple"
             pre_triaged.append(it)
@@ -1098,7 +1098,7 @@ def main():
     # `_level_band` — see its _PRIORITY_BAND and _level_band for the policy). Level-0 is the shared
     # neutral level — email/Slack, ordinary Trello cards, and Director/VP-level job cards all default
     # or resolve to it — so within a priority band those interleave purely by `received` date (an inbox
-    # message's arrival time, a dated card's due date, or an undated card's creation date); only an
+    # message's arrival time, a card's Start date, or a Start-less card's creation date); only an
     # IC-level job-search card drops to level -1 and waits behind its band's level-0 items.
     needs_you_items = [it for it in needs_and_others if it["_bucket"] == "needs-you"]
     # orphan-sessions dispatches FIRST, ahead of every other source, explicitly — not via

@@ -2,7 +2,7 @@
 
 All Trello mechanics live HERE, alongside the prose contract in `trello-provider.md`: locating
 trello_utils.py, reading the `providers.trello` board config out of `.claude/drainer.local.md`, the
-due-date-as-queue enumerate, the `trello-<slug>-<last6>` id scheme, and the captured item shape. The
+Start-date-as-queue enumerate, the `trello-<slug>-<last6>` id scheme, and the captured item shape. The
 poller (`scripts/run-poller.py`) loads this adapter dynamically and drives it through the
 `ProviderBase` interface — it contains no Trello specifics.
 
@@ -13,17 +13,15 @@ per board). The drainer drains EVERY board in that registry. Per-drainer knobs (
 `label_vocab`) stay in that repo's drainer.local.md. If no registry file is present, it falls back to a
 legacy `providers.trello.boards` block in drainer.local.md.
 
-The **go-live date IS the queue** (startable-task model): the native Start date is a card's
-"work-on-it-next / go-live" date and the native Due date is a real deadline. enumerate returns cards in
-active lists that are startable and NOT wearing a ⛔ Blocked (skip) label. A card with a Start is in play
-once that Start has arrived; a future Start defers it even when its Due has already slipped, so a stale
-past Due can't silently un-defer a card its Start puts off (see _startable). A card with no Start queues
-on Due: due now-or-earlier surfaces (a slipped deadline forces it up), and no date at all is startable
-now, so outreach cards, which set no Start, queue purely on Due. Cards rank by their go-live date - a
-Start when present, else the Due, most recent first; undated cards rank by their creation date, decoded
-from the card's ObjectId. Blocked cards are suppressed until finishing their upstream runs
-trello_utils.cascade_unblock (strips ⛔, sets Start=today). Credentials are TRELLO_API_KEY /
-TRELLO_TOKEN in the environment (read by trello_utils.get_trello_session).
+The **Start date IS the queue** (startable-task model): the native Start date is a card's
+"work-on-it / go-live" date, and it is the only date the queue reads. enumerate returns cards in active
+lists that are startable and NOT wearing a ⛔ Blocked (skip) label. A card is startable once its Start
+has arrived, or immediately when it carries no Start; a future Start is the sole way to defer a card -
+"not okay to begin until this day" (see _startable). Cards rank by their Start (their go-live), most
+recent first; an undated card ranks by its creation date, decoded from the card's ObjectId, so it sorts
+by age. Blocked cards are suppressed until finishing their upstream runs trello_utils.cascade_unblock
+(strips ⛔, sets Start=today). Credentials are TRELLO_API_KEY / TRELLO_TOKEN in the environment (read by
+trello_utils.get_trello_session).
 """
 import glob
 import json
@@ -312,11 +310,12 @@ class Provider(ProviderBase):
         return False
 
     @staticmethod
-    def _due_dt(due):
-        if not due:
+    def _parse_dt(value):
+        """Parse a Trello date field (an ISO-8601 string) to an aware datetime, or None if absent/bad."""
+        if not value:
             return None
         try:
-            return datetime.fromisoformat(due.replace("Z", "+00:00"))
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
         except ValueError:
             return None
 
@@ -331,19 +330,11 @@ class Provider(ProviderBase):
             return None
 
     @staticmethod
-    def _startable(start_dt, due_dt, now):
-        """Whether a card is in play now under the startable-task model.
-
-        An explicit FUTURE Start defers the card outright, even when its Due has already slipped: a
-        deliberate "not before this day" beats a stale past deadline, so a Due left on a card long after
-        it stopped meaning anything can't silently un-defer a card its Start puts off. With no Start, Due
-        is the queue - due now-or-earlier surfaces (a slipped deadline forces it up as a safety net) and
-        no date at all is startable now. Outreach cards set no Start, so they still queue purely on Due."""
-        if start_dt is not None:
-            return start_dt <= now
-        if due_dt is not None:
-            return due_dt <= now
-        return True
+    def _startable(start_dt, now):
+        """Whether a card is in play now. Start is the only date the queue reads: a card is startable
+        when it has no Start (start immediately) or its Start has arrived. A future Start is the sole way
+        to defer a card - it means "not okay to begin until this day". No other field holds it back."""
+        return start_dt is None or start_dt <= now
 
     # --------------------------------------------------------------- the ProviderBase contract
     def enumerate(self, limit):
@@ -402,17 +393,15 @@ class Provider(ProviderBase):
                 assigned = card.get("idMembers") or []
                 if assigned and my_id not in assigned:
                     continue
-                # Startable-task model: Start = the "work-on-it-next / go-live" date, Due = a real
-                # deadline. An explicit FUTURE Start defers the card even when its Due has already
-                # slipped - see _startable. Outreach cards set no Start, so they still queue purely on
-                # Due (a slipped deadline forces them up) - unchanged behavior.
-                start_dt = self._due_dt(card.get("start"))
-                due_dt = self._due_dt(card.get("due"))
-                if not self._startable(start_dt, due_dt, now):
+                # Start is the only date the queue reads: a card is in play once its Start has arrived,
+                # or immediately when it carries no Start. A future Start is the sole way to defer a card
+                # (see _startable).
+                start_dt = self._parse_dt(card.get("start"))
+                if not self._startable(start_dt, now):
                     continue
-                # Sort rank / go-live: a card with a Start ranks by it (its resurface day); a Start-less
-                # card ranks by its Due; an undated card by its creation date (always in the past).
-                sort_dt = start_dt or due_dt or self._created_dt(card["id"])
+                # Sort rank / go-live: a card ranks by its Start (its resurface day); an undated card by
+                # its creation date (always in the past), so it sorts by age alongside email/Slack.
+                sort_dt = start_dt or self._created_dt(card["id"])
                 priority_band = self._priority_band(card)  # see _PRIORITY_BAND; leads the sort key below
                 level_band = self._level_band(card)  # see _level_band; breaks ties within a priority band
                 channel, feats, contacts, initiative_label = self._classify_labels(card)
@@ -427,7 +416,6 @@ class Provider(ProviderBase):
                     "board": bname,
                     "list": list_name,
                     "name": card.get("name", ""),
-                    "due": card.get("due"),
                     "start": card.get("start"),
                     "url": card.get("shortUrl") or card.get("url"),
                     "desc": card.get("desc", ""),
@@ -438,19 +426,19 @@ class Provider(ProviderBase):
                     # Triage payload fields (mirror the inbox adapters):
                     "from": who,
                     "subject": card.get("name", ""),
-                    # `received` carries the card's date for the cross-source ordering; an undated card
-                    # uses its creation date, so it sorts by age alongside email/Slack and dated cards.
-                    "received": card.get("due") or (sort_dt.isoformat() if sort_dt else "(no due date)"),
+                    # `received` carries the card's Start for the cross-source ordering; an undated card
+                    # uses its creation date, so it sorts by age alongside email/Slack.
+                    "received": sort_dt.isoformat() if sort_dt else "(no date)",
                     "preview": f"[{bname} / {list_name}] {(card.get('desc') or '').strip()[:200]}",
-                    "_due_sort": sort_dt,
+                    "_sort_dt": sort_dt,
                     "_priority_band": priority_band,
                     "_level_band": level_band,
                 })
         # Ranked (band, level, date) descending — band leads (see _PRIORITY_BAND), level breaks ties
         # within a band (Director/VP-level ahead of IC-level, see _level_band), date breaks ties within a
-        # band+level (most-recent-first; an undated card by its creation date, set above, or `now` if even
-        # that couldn't be derived).
-        items.sort(key=lambda it: (it["_priority_band"], it["_level_band"], it["_due_sort"] or now),
+        # band+level (most-recent-first by Start; an undated card by its creation date, set above, or
+        # `now` if even that couldn't be derived).
+        items.sort(key=lambda it: (it["_priority_band"], it["_level_band"], it["_sort_dt"] or now),
                    reverse=True)
         # Return every eligible card, untruncated: get_board_cards() already fetched all of them
         # regardless, and the poller's cross-source (priority band, level band, date) sort against
@@ -463,14 +451,13 @@ class Provider(ProviderBase):
         return items
 
     def stable_id(self, item):
-        # The go-live date is PART OF the identity, not just a field: a card recurs every cycle (a
-        # nudge bumps its Start out, CLEAR bumps an outreach card's Due out), and seen-state's `clear`
-        # leaves a drained id in seen.json forever (status=cleared, key persists) while dedup is pure
-        # key-presence. So a stable per-card id would be marked seen on the first drain and never
-        # resurface when the next date arrives. Folding the go-live date (Start when present, else Due,
-        # YYYYMMDD) in makes each cycle a distinct item that surfaces anew; an undated card uses "nodue"
-        # and so stays seen until it's given a date.
-        stamp_src = item.get("start") or item.get("due") or ""
+        # The Start date is PART OF the identity, not just a field: a card recurs every cycle (a nudge
+        # bumps its Start out, CLEAR bumps it out), and seen-state's `clear` leaves a drained id in
+        # seen.json forever (status=cleared, key persists) while dedup is pure key-presence. So a stable
+        # per-card id would be marked seen on the first drain and never resurface when the next Start
+        # arrives. Folding the Start (YYYYMMDD) in makes each go-live a distinct item that surfaces anew;
+        # an undated card stamps to the fixed sentinel `nodue`, so it stays seen until it's given a Start.
+        stamp_src = item.get("start") or ""
         stamp = "".join(c for c in stamp_src if c.isdigit())[:8] or "nodue"
         return f"{self.name}-{slug(item.get('name'), 40)}-{item['cardId'][-6:]}-{stamp}".strip("-")[:72]
 
@@ -482,8 +469,7 @@ class Provider(ProviderBase):
         with open(body_file, "w", encoding="utf-8") as f:
             f.write(f"# {item.get('name')}\n\n"
                     f"Board: {item.get('board')} / List: {item.get('list')}\n"
-                    f"Next-action (start): {item.get('start') or '(none)'}\n"
-                    f"Deadline (due): {item.get('due') or '(none)'}\n"
+                    f"Start (work-on-it date): {item.get('start') or '(startable now)'}\n"
                     f"Channel: {item.get('channelLabel') or '(none)'}\n"
                     f"Contacts: {', '.join(item.get('contacts') or []) or '(none)'}\n"
                     f"Initiative: {item.get('initiative') or '(none)'}\n"
@@ -492,7 +478,7 @@ class Provider(ProviderBase):
         record = {
             "id": iid, "source": self.name, "triage": item.get("_bucket", "needs-you"),
             "kind": item.get("_kind"), "cardId": item["cardId"], "board": item.get("board"),
-            "list": item.get("list"), "name": item.get("name"), "due": item.get("due"),
+            "list": item.get("list"), "name": item.get("name"),
             "start": item.get("start"),
             "url": item.get("url"), "contacts": item.get("contacts") or [],
             "channelLabel": item.get("channelLabel"), "initiative": item.get("initiative"),
