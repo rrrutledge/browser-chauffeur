@@ -30,7 +30,7 @@ Every enumerated item is unconditionally `needs-you` — an orphaned session unc
 needs resuming, no judgment involved. `run-poller.py`'s pre-triage block stamps
 `_bucket="needs-you"`, `_kind="resume"`, `_complexity="simple"` for every `orphan-sessions`
 item before the AI triage call, the same tautology-bypass the `trello` adapter gets for its
-always-needs-you due cards, so this source never reaches the AI triage call at all.
+always-needs-you startable cards, so this source never reaches the AI triage call at all.
 
 ## CAPTURE (needs-you)
 

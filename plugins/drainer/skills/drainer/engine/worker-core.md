@@ -167,7 +167,7 @@ the same as confirming nothing happened.
 individual who might already be a tracked contact — regardless of which source it arrived on. Read
 `trello-boards.yaml` (the registry the `trello` source and `trello-outreach` skill use — from the
 merged-main config repo named in your seed, per step 0) for an existing card naming that company or contact. A match means the item is already tracked: reference the
-card in what you present (and consider updating it — bump the due date, add a comment) instead of acting
+card in what you present (and consider updating it — bump the Start date, add a comment) instead of acting
 as if this were unstarted outreach. No match → treat it as genuinely new. This isn't source-specific, so
 it applies the same way no matter which provider captured the item.
 
@@ -294,12 +294,12 @@ complete.
 Anything irreversible / outbound-to-others waits for the user's explicit OK; safe, reversible work
 proceeds immediately.
 
-**A Trello card you adopt from §2's check needs no claiming — leave its dates alone.**
+**A Trello card you adopt from §2's check needs no claiming — leave its Start date alone.**
 When §2's lookup finds an existing Trello card for this item, do the work above without touching the
-card's Start/Due. Bumping a date to "claim" it only forges a fresh id that escapes seen-state and spawns
+card's Start. Bumping it to "claim" the card only forges a fresh id that escapes seen-state and spawns
 the very second tab you were trying to avoid (see `providers/trello-provider.md`'s CAPTURE section); a
 card the poller happens to dispatch in parallel is harmless anyway, since each worker's situational check
-resolves a duplicate quietly. Advance the card (CLEAR) at the end — the one place its dates move. This
+resolves a duplicate quietly. Advance the card (CLEAR) at the end — the one place its Start moves. This
 applies whether Trello is your own source or you found the card from another source entirely.
 
 ## 4. Contact the person (draft-only by default)
@@ -358,13 +358,13 @@ handled, never a per-message step.
 
 If the situational check finds nothing to do right now - a thread where they replied and the user
 already answered, or an outreach card still inside its nudge cadence (the follow-up interval hasn't
-elapsed since the last outbound) - resolve it quietly: bump the due date / clear without surfacing a
+elapsed since the last outbound) - resolve it quietly: bump the Start date / clear without surfacing a
 tab or beep.
 For an outreach card, "not yet time to follow up" means exactly that cadence window, and the interval
 is defined in the trello provider's CLEAR → Nudge cadence - read it there rather than guessing.
-A card that is due, still unanswered, and past its cadence has crossed into "time to follow up": that
-is a nudge to draft, so keep it needs-you and present it normally, never a silent bump.
-Bumping such a card's date again instead of drafting the nudge is what turns it into one that gets
+A card whose Start has arrived, still unanswered, and past its cadence has crossed into "time to follow
+up": that is a nudge to draft, so keep it needs-you and present it normally, never a silent bump.
+Bumping such a card's Start again instead of drafting the nudge is what turns it into one that gets
 pushed forever without a follow-up ever going out.
 
 **Waiting on someone else → tracker card.** The delegation case from the framing above. Decide by who's
@@ -382,10 +382,10 @@ ask him for the missing content live, start the piece you can start without him.
 this kind of work unless he's told you, in this session, that he wants to pick it up later rather than
 now - and even then, per the next section, that doesn't clear you to close the tab.
 
-**A Trello card you create mid-session gets a future next-action date — never today.** The poller holds
+**A Trello card you create mid-session gets a future Start date — never today.** The poller holds
 no seen-state entry for a card it never dispatched, so a freshly-created card that's startable now
-(Start/Due now-or-earlier) is eligible for its own worker tab on the very next cycle — a second tab
-launched onto work this session is already doing. Set the card's next-action date out to when the work
+(Start now-or-earlier, or no Start) is eligible for its own worker tab on the very next cycle — a second
+tab launched onto work this session is already doing. Set the card's Start out to when the work
 should genuinely next surface (the real follow-up date if you know it, otherwise tomorrow or later); it
 then stays out of the queue until this session has set that date for real or closed, and the poller picks
 it up on its own terms once the date arrives. This is the created card's correct starting date, not a
@@ -457,9 +457,9 @@ close it as soon as that's clear rather than waiting.
 finished" bar to this tab, not just to browser tabs opened along the way — and the bar is about what's
 still *live*, not about whether the eventual outcome has happened yet. The tab and the source item are two
 different places to hold state, and they serve different jobs: the source item's own mechanism (a Trello
-due date, a resurfaced email) is what brings the item back around on its own schedule, but **the open tab
+Start date, a resurfaced email) is what brings the item back around on its own schedule, but **the open tab
 is where the two of you hold your shared unfinished work on this item right now**, per the framing at the
-top of this file. Closing it early throws that away and substitutes nothing until whatever due date you
+top of this file. Closing it early throws that away and substitutes nothing until whatever Start date you
 set eventually fires - far too late for something Russell meant to do today, like sending a draft you
 staged.
 

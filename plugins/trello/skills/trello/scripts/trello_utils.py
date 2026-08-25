@@ -126,17 +126,16 @@ def reorder_lists(board_id, desired_order, session):
                            params={'pos': str((i + 1) * 65536)})
 
 
-_DATE_RE = re.compile(r'^(\d{4})-(\d{2})-(\d{2})')
+_DATE_RE = re.compile(r'^\d{4}-\d{2}-\d{2}$')
 
 
-def _due_at_central_midnight(due):
-    """Pin a due value to its calendar day so the card comes due on that day, via a flat `06:00`
-    UTC (about midnight Central - the exact hour doesn't matter). Takes the YYYY-MM-DD the caller
-    passed (a date or an ISO string); returns the input unchanged if it doesn't start with a date."""
-    m = _DATE_RE.match(str(due))
-    if not m:
-        return due
-    return f'{m.group(0)}T06:00:00.000Z'
+def _start_at_central_midnight(start):
+    """Pin a bare YYYY-MM-DD Start to that calendar day, via a flat `06:00` UTC (about midnight
+    Central - the exact hour doesn't matter), so the card surfaces that morning. A value carrying a
+    time already (a full ISO timestamp) is returned unchanged, as is anything that isn't a bare date."""
+    if _DATE_RE.match(str(start)):
+        return f'{start}T06:00:00.000Z'
+    return start
 
 
 def create_card(list_id, card_data, session):
@@ -145,18 +144,16 @@ def create_card(list_id, card_data, session):
         'name': card_data['title'],
         'desc': card_data.get('description', ''),
     }
-    # `due` is a real deadline; `start` is the next-action / ping-back date (the startable-task model).
-    # Outreach cards typically set only `due` (their follow-up date); task cards set `start`.
-    if card_data.get('due'):
-        body['due'] = _due_at_central_midnight(card_data['due'])
+    # `start` is the only date the queue reads (the startable-task model): the "work-on-it / go-live"
+    # day. A card with no Start is startable at once. A bare YYYY-MM-DD is pinned to that morning.
     if card_data.get('start'):
-        body['start'] = card_data['start']
+        body['start'] = _start_at_central_midnight(card_data['start'])
     return trello_request('POST', '/cards', session, body=body)
 
 
 def update_card(card_id, updates, session):
-    if updates.get('due'):
-        updates = {**updates, 'due': _due_at_central_midnight(updates['due'])}
+    if updates.get('start'):
+        updates = {**updates, 'start': _start_at_central_midnight(updates['start'])}
     return trello_request('PUT', f'/cards/{card_id}', session, body=updates)
 
 
@@ -175,7 +172,7 @@ def add_comment(card_id, text, session):
 def get_board_cards(board_id, session, fields=None):
     """List a board's open cards. Pass fields='all' (or a comma-separated list) to control which
     card fields come back — the default Trello card payload omits the newer `start` date, so callers
-    that need Start/Due together (the startable-task model) should request fields='all'."""
+    that need the Start (the startable-task model's one date) should request fields='all'."""
     params = {'fields': fields} if fields else None
     return trello_request('GET', f'/boards/{board_id}/cards', session, params=params)
 
@@ -196,7 +193,7 @@ def create_card_from_template(list_id, template_card_id, name, session, keep='ch
     """Create a card copying content from a template/source card.
 
     Uses Trello's idCardSource + keepFromSource. `keep` is 'all', 'none', or a
-    comma-separated list e.g. 'checklists,labels,attachments,due'. Defaults to
+    comma-separated list e.g. 'checklists,labels,attachments,start'. Defaults to
     copying checklists only.
     """
     return trello_request('POST', '/cards', session, body={

@@ -76,8 +76,8 @@ Each is a complete implementation to copy from:
   DRAFT stay browser-driven (Teams' `isRead` flips only on a real open; no draft API). Includes the Teams
   footguns and the meeting-recording container case.
 - **`trello-provider.md`** — a config-driven provider that delegates all reads/mutations to the
-  `trello-outreach` skill (due-date source: returns due-now-or-earlier cards, plus cards with no due
-  date; usually little).
+  `trello-outreach` skill (Start-date source: returns cards whose Start is now-or-earlier, plus cards
+  with no Start; usually little).
 
 Copy whichever is closest, change the mechanics for your source, and a machine enables it in
 `.claude/drainer.local.md` → `providers` (the entry key is the source name; its value holds any config
