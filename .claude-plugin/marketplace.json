@@ -56,6 +56,11 @@
       "description": "Read/draft/clear a personal Gmail or Google Workspace mailbox via IMAP using a Google app password — no OAuth app, no Cloud project, no browser. List the inbox, show a message, move mail to Trash, or stage reply/new drafts in Drafts (never sent)."
     },
     {
+      "name": "google-docs",
+      "source": "./plugins/google-docs",
+      "description": "Read/write Google Docs content (table rows, paragraphs, hyperlinks) via the Docs API — no browser. Append or delete table rows, and set a cell to plain text, a bulleted list, or a short clickable hyperlink. Reuses the gmail plugin's OAuth client with a separate token scoped to the documents API."
+    },
+    {
       "name": "mail-filters",
       "source": "./plugins/mail-filters",
       "description": "Russell's calibrated strategy for mail filters/rules that auto-archive never-process mail at the server before it reaches the drainer. Teaches the phrase-selection craft (broad enough to recur across senders, strict enough to never bury wanted mail) and the create/delete mechanics for Gmail filters and Outlook rules."
