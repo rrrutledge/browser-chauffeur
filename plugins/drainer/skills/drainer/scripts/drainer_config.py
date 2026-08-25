@@ -128,6 +128,11 @@ def read_config(repo, runtime_root=None):
         # process each poller cycle, so a changed value takes effect on the very next cycle.
         "target_open_tabs": int(os.environ.get("DRAINER_TARGET_OPEN_TABS", "12")),
         "idle_threshold_seconds": int(scalar("idle_threshold_seconds", "600")),
+        # Whether the poller skips a cycle when the user is away/idle or the workstation is locked.
+        # Default true (the original behavior). Set false on a machine that should keep draining
+        # around the clock regardless of who's at the keyboard — e.g. Russell working remotely from
+        # his phone, where the desktop sits locked but he still wants worker tabs opening.
+        "require_presence": scalar("require_presence", "true").lower() != "false",
         # Worker tabs need an explicit model — otherwise they inherit the session default, which may be
         # a 1M-context model the account can't use. The poller picks per item by triage complexity:
         # simple -> worker_model, complex -> worker_model_complex (both standard context).

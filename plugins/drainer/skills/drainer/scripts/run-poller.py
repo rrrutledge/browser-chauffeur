@@ -993,7 +993,7 @@ def main():
 
     health = load_health(cfg["runtime_dir"])
     idle = locked = None
-    if not args.dry_run:
+    if not args.dry_run and cfg["require_presence"]:
         present, idle, locked = presence.is_present(cfg["idle_threshold_seconds"])
         if not present:
             # Away/locked -> do no work, but still stamp a heartbeat and persist it. This is the ONLY

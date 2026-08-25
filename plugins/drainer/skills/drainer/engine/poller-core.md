@@ -29,9 +29,11 @@ spawn, record — is code. No AI re-implements the loop.
 
 `python run-poller.py --repo <project> [--dry-run]`
 
-1. **Presence-gate** (`scripts/presence.py`) — away/locked → exit silently (skipped under `--dry-run`).
+1. **Presence-gate** (`scripts/presence.py`) — away/locked → exit silently (skipped under `--dry-run`,
+   and skipped entirely when `require_presence: false` in `drainer.local.md`, for a machine that
+   should keep draining around the clock regardless of who's at the keyboard).
 2. **Read config** from `<project>/.claude/drainer.local.md`: enabled providers, `runtime_dir`,
-   `idle_threshold_seconds`. Also reads `target_open_tabs` from the `DRAINER_TARGET_OPEN_TABS`
+   `idle_threshold_seconds`, `require_presence`. Also reads `target_open_tabs` from the `DRAINER_TARGET_OPEN_TABS`
    environment variable (default 12) — the only per-cycle throttle in the whole loop (see step 6).
 3. **Reconcile** (`reconcile_unhandled()`) — re-queue any email item whose source object is still
    unhandled with no live worker session on it, so it re-enumerates below. See the section after this

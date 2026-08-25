@@ -2,7 +2,8 @@
 #
 # This is the ONLY PowerShell in the keeper, and you run it BY HAND once (not from a Claude session),
 # after the manual tryout is trusted. It registers a Windows Scheduled Task that runs the Python
-# poller every N minutes; the poller is itself presence-gated, so idle/locked cycles are cheap no-ops.
+# poller every N minutes; the poller is itself presence-gated by default (idle/locked cycles are
+# cheap no-ops), unless `require_presence: false` in drainer.local.md turns that gate off.
 #
 #   powershell -File install-schedule.ps1 -RepoDir C:/Users/russe/Dev/personal-ai-pod [-IntervalMinutes 5]
 #   powershell -File install-schedule.ps1 -RepoDir C:/Users/russe/Dev/personal-ai-pod -Remove
