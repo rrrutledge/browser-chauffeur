@@ -90,6 +90,9 @@ Under `scripts/` (run with `node`):
     supplies its own quote (the sender's text in styled `<blockquote>`s) with responses spliced between
     their points, instead of a single clean quote at the bottom. Without it, `--reply` always appends
     the full quoted original.
+  - **`--inline=<img[,img]>` (with `--reply` / `--draft-new`)** — embed image files in the message body via `cid:` references, placed after the body text, so they render inline rather than as a bottom-of-message attachment.
+    It combines with `--attach` for regular files; reach for it when the reader should see a screenshot in context.
+  - **`--to=<addr>` (with `--reply`)** — override the computed recipient, for threading a reply off a no-reply relay whose real correspondent is in `Reply-To` (e.g. a Google "shared a file" notification) so the reply reaches the person, not the no-reply box.
   - Draft new (never sends): `node gmail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.md [--cc=c@z]`
     (`--reply` and `--draft-new` each print a `draft-id:` line — the staged draft's Message-ID. That id
     is what `--send-draft` takes. `--reply` also replaces any prior draft on the same thread, so a thread

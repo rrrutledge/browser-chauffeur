@@ -25,21 +25,26 @@
 //                (downloads every attachment on a message to <dir> (default: cwd); looked up in the
 //                 inbox and All Mail like --show. Prints each saved filename + size. Attachments with
 //                 no filename are named "attachment-N".)
-// Draft a reply: node gmail.js --reply --message-id=<id> --body-file=reply.md [--attach=a.pdf,b.png] [--no-quote]
+// Draft a reply: node gmail.js --reply --message-id=<id> --body-file=reply.md [--attach=a.pdf,b.png] [--inline=s1.png,s2.png] [--no-quote]
 //                (appends a DRAFT reply in the thread to [Gmail]/Drafts; never sends; replaces any
 //                 prior draft on the same thread; prints a draft-id for --send-draft. <id> is looked up
 //                 in the inbox and All Mail — pass the most recent message in the thread, even one the
 //                 user sent; a reply to the user's own message keeps its recipients instead of self.
+//                 --to overrides the computed recipient (for threading off a no-reply relay whose real
+//                 correspondent is in Reply-To, e.g. a Google "shared a file" notification).
 //                 --body-file is Markdown — bold, links, lists all work; HTML tags pass through.
 //                 Appends GMAIL_SIGNATURE_HTML, if set, after the body and before the quoted original.
 //                 --no-quote suppresses the auto-appended quoted original (threading headers still set),
 //                 for an interleaved reply where --body-file supplies its own quote with responses
 //                 spliced between the sender's lines.)
-// Draft new:     node gmail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.md [--cc=c@z] [--attach=a.pdf,b.png]
+// Draft new:     node gmail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.md [--cc=c@z] [--attach=a.pdf,b.png] [--inline=s1.png,s2.png]
 //                (appends a fresh DRAFT to [Gmail]/Drafts; never sends; prints a draft-id.
 //                 --body-file is Markdown — bold, links, lists all work; HTML tags pass through.
 //                 Appends GMAIL_SIGNATURE_HTML, if set, after the body.)
-//                (--attach takes one path or a comma-separated list; files ride along on the draft)
+//                (--attach takes one path or a comma-separated list; files ride along as attachments.
+//                 --inline takes image paths the same way but embeds them in the body via cid: references
+//                 (rendered after the body text), so they show inline instead of as a file list. Both
+//                 flags may be combined.)
 // Send a draft:  node gmail.js --send-draft --draft-id=<draft-message-id>
 //                (promotes one already-staged draft: transmits its exact bytes via SMTP, then removes
 //                 it from Drafts — Gmail files the sent copy in Sent. The <draft-message-id> is the
@@ -264,12 +269,34 @@ async function listDrafts(c) {
   } finally { lock.release(); }
 }
 
+function inlineList() {
+  // --inline=<path[,path]> — images embedded in the body via cid: references (see inlineImagesHtml),
+  // so they render in-line where the reader is looking rather than as a file list at the bottom. Each
+  // gets a stable index-based cid so attachments() and inlineImagesHtml() agree on the same reference.
+  if (!args.inline) return [];
+  const paths = String(args.inline).split(',').map(s => s.trim()).filter(Boolean);
+  return paths.map((p, i) => ({ path: p, filename: path.basename(p), cid: `inline${i}@gmail-skill` }));
+}
+
+function inlineImagesHtml() {
+  // One <img> per --inline file, referencing its cid attachment, appended after the body text so the
+  // images appear in the message body. Each on its own line, capped to the message width.
+  const items = inlineList();
+  if (!items.length) return '';
+  return '<br><br>' + items.map(a =>
+    `<div style="margin:8px 0"><img src="cid:${a.cid}" alt="${a.filename}" style="max-width:100%;height:auto"></div>`
+  ).join('');
+}
+
 function attachments() {
-  // --attach=<path> — one path or a comma-separated list. Object.fromEntries collapses a repeated
-  // flag to its last value, so the comma-separated form is the way to attach several files.
-  if (!args.attach) return undefined;
-  const paths = String(args.attach).split(',').map(s => s.trim()).filter(Boolean);
-  return paths.map(p => ({ filename: path.basename(p), path: p }));
+  // --attach=<path[,path]> — regular file attachments (comma-separated for several). --inline=<path[,path]>
+  // — images cid-embedded in the body instead. Both flags may be used together.
+  const regular = args.attach
+    ? String(args.attach).split(',').map(s => s.trim()).filter(Boolean).map(p => ({ filename: path.basename(p), path: p }))
+    : [];
+  const inline = inlineList().map(a => ({ ...a, contentDisposition: 'inline' }));
+  const all = [...regular, ...inline];
+  return all.length ? all : undefined;
 }
 
 async function buildMime({ to, cc, subject, html, inReplyTo, references }) {
@@ -360,9 +387,14 @@ async function reply(c) {
   //   nudge goes to the people we wrote to (To/CC) rather than back to ourselves.
   const fromSelf = orig.from && orig.from.value.some(
     a => a.address && a.address.toLowerCase() === USER.toLowerCase());
-  const to = fromSelf
-    ? (orig.to ? fromList(orig.to.value) : '')
-    : (orig.from ? orig.from.text : '');
+  // --to overrides the computed recipient: needed when replying into a thread whose From is a no-reply
+  // relay (e.g. a Google "shared a file" notification) whose real correspondent is in Reply-To — pass
+  // that address so the threaded reply reaches the person, not the no-reply box.
+  const to = args.to
+    ? args.to
+    : (fromSelf
+        ? (orig.to ? fromList(orig.to.value) : '')
+        : (orig.from ? orig.from.text : ''));
   const ccSource = fromSelf
     ? (orig.cc ? orig.cc.value : [])
     : [...(orig.to ? orig.to.value : []), ...(orig.cc ? orig.cc.value : [])];
@@ -372,7 +404,7 @@ async function reply(c) {
     ? [...new Set([args.cc, ...allRecips])].join(', ')
     : allRecips.join(', ');
   const { raw } = await buildMime({
-    to, cc: ccList || undefined, subject, html: withSignature(html) + (args['no-quote'] ? '' : quoted),
+    to, cc: ccList || undefined, subject, html: withSignature(html + inlineImagesHtml()) + (args['no-quote'] ? '' : quoted),
     inReplyTo: orig.messageId, references: refs,
   });
   const messageId = await appendDraft(c, raw);
@@ -386,7 +418,7 @@ async function draftNew(c) {
     throw new Error('--draft-new requires --to, --subject, and --body-file');
   }
   const html = marked.parse(fs.readFileSync(args['body-file'], 'utf8'));
-  const { raw } = await buildMime({ to: args.to, cc: args.cc || undefined, subject: args.subject, html: withSignature(html) });
+  const { raw } = await buildMime({ to: args.to, cc: args.cc || undefined, subject: args.subject, html: withSignature(html + inlineImagesHtml()) });
   const messageId = await appendDraft(c, raw);
   console.log(`Draft staged in [Gmail]/Drafts to ${args.to}. Review in Gmail; never sent.`);
   if (messageId) console.log(`draft-id: ${messageId}`);
