@@ -17,8 +17,8 @@ A provider is **two files** that sit together, because two different consumers d
 `<source>-adapter.py` defines `class Provider(ProviderBase)` (from `scripts/provider_base.py`) with:
 
 - **`name`** — the source key as it appears in `drainer.local.md` → `providers`.
-- **`enumerate(limit)`** — return up to `limit` candidate item dicts (newest-first; due-now-or-earlier
-  for due-date sources). Surface an auth failure clearly here (the poller skips the source on error).
+- **`enumerate(limit)`** — return up to `limit` candidate item dicts (newest-first; Start-now-or-earlier
+  for date-gated sources like Trello). Surface an auth failure clearly here (the poller skips the source on error).
 - **`stable_id(item)`** — a deterministic id, stable across cycles (the poller dedups on it via
   seen-state).
 - **`capture(item, iid, runtime_dir)`** — write `<runtime_dir>/items/<iid>.json` (fields: `id`,

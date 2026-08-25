@@ -84,9 +84,9 @@ decide it here.
   names Russell directly or leaves an actual open ask. A group or meeting message that names Russell
   directly counts the same as the 1:1 case; only automated, mass, or not-aimed-at-him chatter (including a
   closing remark addressed to someone else in a group thread) stays fyi.
-- a **dated to-do** comes due — a Trello tracker or outreach card, any dated item, the moment its due
-  date arrives or passes. The due date IS the queue: a due item is the action surfacing when it was
-  scheduled for.
+- a **dated to-do** becomes startable — a Trello tracker or outreach card, any dated item, the moment
+  its Start date arrives or passes. The Start date IS the queue: a started item is the action surfacing
+  on the day it was scheduled for.
 - **Russell sent it to himself** — a note from his own address is a deliberate self-note, not noise.
   Evaluate it by content exactly as you would any other item: **needs-you** when the content implies an
   action, fyi when it's just something to re-read. Never junk for being terse or self-addressed — and not

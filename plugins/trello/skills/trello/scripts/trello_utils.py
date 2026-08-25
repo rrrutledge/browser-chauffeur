@@ -172,7 +172,7 @@ def add_comment(card_id, text, session):
 def get_board_cards(board_id, session, fields=None):
     """List a board's open cards. Pass fields='all' (or a comma-separated list) to control which
     card fields come back — the default Trello card payload omits the newer `start` date, so callers
-    that need Start/Due together (the startable-task model) should request fields='all'."""
+    that need the Start (the startable-task model's one date) should request fields='all'."""
     params = {'fields': fields} if fields else None
     return trello_request('GET', f'/boards/{board_id}/cards', session, params=params)
 
@@ -193,7 +193,7 @@ def create_card_from_template(list_id, template_card_id, name, session, keep='ch
     """Create a card copying content from a template/source card.
 
     Uses Trello's idCardSource + keepFromSource. `keep` is 'all', 'none', or a
-    comma-separated list e.g. 'checklists,labels,attachments,due'. Defaults to
+    comma-separated list e.g. 'checklists,labels,attachments,start'. Defaults to
     copying checklists only.
     """
     return trello_request('POST', '/cards', session, body={
