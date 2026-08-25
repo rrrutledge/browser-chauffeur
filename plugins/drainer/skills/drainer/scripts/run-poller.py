@@ -880,8 +880,12 @@ def reconcile_unhandled(runtime_dir, cfg, providers, dry_run=False, live=_LIVE_U
     from there (worker-core's situational-check recognizes an already-answered thread and closes
     quietly; a genuinely open one surfaces as a normal needs-you item).
 
-    Email only. `still_in_inbox_ids()` is None on every other provider, so Slack, Teams, Trello and
-    orphan-sessions are skipped and keep resurfacing on their own source's terms.
+    Email and Trello. Email reads completion off the inbox; Trello reads it off the boards -
+    `still_in_inbox_ids()` returns the ids of every startable card, and a seen id still in that set is a
+    card whose worker crashed before running CLEAR (CLEAR bumps the card's Start, minting a new id, so a
+    cleared card's old id drops out of the set on its own). `still_in_inbox_ids()` is None on the
+    remaining providers, so Slack, Teams and orphan-sessions are skipped and keep resurfacing on their
+    own source's terms.
 
     Three guards, each load-bearing:
       - an item awaiting the daily digest sits in the inbox BY DESIGN, so the digest queue is excluded;
