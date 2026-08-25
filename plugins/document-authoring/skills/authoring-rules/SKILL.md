@@ -50,8 +50,9 @@ Innocent: a scar deliberately anchoring a posture, and an honest limitation or g
 When writing guidance meant to be reasoned from - a classifier rubric, a SKILL.md, an agent prompt, a review checklist, any doc - state the general condition that decides new cases, strongly enough to stand on its own.
 Reaching for an example to make the point land is the signal the general statement is too weak: sharpen the statement until it needs none, rather than illustrating it.
 The general condition is what catches the next case; a named example only ever covers the one that already came up.
-**Check:** an illustrative example offered to clarify or ground a rule - "e.g. X", "such as A, B, C", "for example …", a named sample case - standing in for a stronger general statement.
-Innocent: the Check lines' own surface-form evidence, which is a reviewer's detection cue rather than guidance being illustrated, and a genuinely closed, finite set with no further members possible.
+A real, named organization, repo, or person carries this cost even when the general statement is already strong enough to stand alone without any example: the reader applying the rule later brings full runtime judgment to whatever situation is actually in front of them, so naming an actual instance still narrows the rule to the one case that prompted it and goes stale the moment that instance's own practice changes - illustrate with the category of case.
+**Check:** an illustrative example offered to clarify or ground a rule - "e.g. X", "such as A, B, C", "for example …", a named sample case - standing in for a stronger general statement; a real, named organization, repo, or person embedded as illustration, present even when the general statement is otherwise strong.
+Innocent: the Check lines' own surface-form evidence, which is a reviewer's detection cue rather than guidance being illustrated; a genuinely closed, finite set with no further members possible; and a change-explanation (see above), where naming the actual instance is what lets the reader evaluate the specific decision in front of them.
 
 **No helper tail.**
 Stop the moment the point is made.
