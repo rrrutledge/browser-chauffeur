@@ -66,13 +66,12 @@ def _fmt_local(ts):
 
 def _print_heartbeat(hb):
     """Show the poller's own liveness (`_poller` heartbeat) so a run of empty cycles is legible: the
-    poller stamps this every live cycle — including a presence-gated no-op — so a stale `last_drained`
-    reads as 'correctly idle' or 'not running' instead of a silent death."""
+    poller stamps this every live cycle, so a stale `last_drained_ts` reads as 'not running' instead of
+    a silent death."""
     if not hb:
         print("  Poller heartbeat: none recorded yet (no live cycle has run since this was added).")
         return
-    print(f"  Poller heartbeat: last ran {_fmt_local(hb.get('last_run_ts'))} "
-          f"(decided: {hb.get('last_decision', '?')}); last drained {_fmt_local(hb.get('last_drained_ts'))}.")
+    print(f"  Poller heartbeat: last drained {_fmt_local(hb.get('last_drained_ts'))}.")
 
 
 def print_brief(runtime_dir, cfg):

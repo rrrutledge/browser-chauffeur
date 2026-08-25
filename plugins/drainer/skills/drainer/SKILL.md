@@ -10,8 +10,9 @@ instructions: |-
   in the user's voice **draft-only, never sent** → clear the item. Outlook / Teams / outreach are the
   **same loop over different sources**.
 
-  It runs as a **continuous keeper**: a presence-gated poller (`scripts/run-poller.py`) runs a short
-  cycle every few minutes and holds each source at **zero un-started actionable items** — needs-you
+  It runs as a **continuous keeper**: a poller (`scripts/run-poller.py`) runs a short
+  cycle every few minutes and holds each source at
+  **zero un-started actionable items** — needs-you
   items immediately open a worker tab, dispatched as fast as possible until live Claude Code tabs
   system-wide reach `target_open_tabs`, fyi/junk queue for a once-a-day digest, and the poller itself
   never clears. The loop is code; AI is used only to **triage** each cycle's new items and to run each
@@ -19,7 +20,7 @@ instructions: |-
 
   ### 1. Load per-machine settings FIRST
   Read **`.claude/drainer.local.md`** in the current project (YAML frontmatter): which `providers` are
-  active, per-provider config (e.g. Trello board ids), the harvest interval, presence, and `local_dir`
+  active, per-provider config (e.g. Trello board ids), the harvest interval, and `local_dir`
   (a folder holding `context.md`). If it's missing, copy `templates/drainer.local.example.md` to
   `.claude/drainer.local.md` and help the user fill it in.
 
@@ -39,7 +40,7 @@ instructions: |-
   - **`engine/triage.md`** — the one rubric: needs-you / fyi / junk (only three; junk → propose a
     source-stop in priority order: unsubscribe, then app notification settings, then an inbox rule).
   - **`engine/poller-core.md`** — the continuous keeper's contract: what `scripts/run-poller.py` does
-    each cycle (presence → enumerate → triage → dispatch, never clear; `--dry-run` for a report) and
+    each cycle (enumerate → triage → dispatch, never clear; `--dry-run` for a report) and
     where AI is used (batched triage + the worker).
   - **`engine/worker-core.md`** — the per-item worker procedure (read brain → situational-check → do
     the work → draft in voice → learn from the send → advance the item).

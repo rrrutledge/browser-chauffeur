@@ -37,8 +37,6 @@ runtime_dir: .tmp/drainer
 
 # Actual poll cadence is the DrainerKeeper scheduled task's own repeat interval, not a config
 # value here - the poller has no internal cadence knob.
-presence:
-  idle_threshold_seconds: 600
 
 # The continuous-keeper (run-poller.py) has no per-cycle work cap: every cycle enumerates everything
 # eligible from every source. The target open-tab count — tuned via the DRAINER_TARGET_OPEN_TABS

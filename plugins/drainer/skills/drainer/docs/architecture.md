@@ -20,8 +20,9 @@ later follow-up day.
 
 ## The continuous keeper (the one model)
 
-The drainer runs as a **continuous keeper**: a presence-gated **poller** runs a short cycle every few
-minutes (a ~5-min cron) and holds each source at **zero un-started actionable items** all day.
+The drainer runs as a **continuous keeper**: a **poller** runs a short cycle every few
+minutes (a ~5-min cron) and holds each source at
+**zero un-started actionable items** all day.
 
 - **needs-you →** the poller immediately spawns a **worker tab** so the user starts acting right away,
   dispatching as fast as possible until the count of live Claude Code tabs system-wide reaches
@@ -88,7 +89,7 @@ stale config) rather than not at all.
 
 | In the plugin (generic) | Injected per machine |
 | --- | --- |
-| `engine/` — poller contract, worker procedure, triage rubric, provider contract; `scripts/` — the deterministic glue | `.claude/drainer.local.md` — which providers are active, per-provider config, presence |
+| `engine/` — poller contract, worker procedure, triage rubric, provider contract; `scripts/` — the deterministic glue | `.claude/drainer.local.md` — which providers are active, per-provider config |
 | `providers/` — the providers (Outlook, Teams, Trello) | `context.md` (in `local_dir`) — who the user is, their systems, standing rules |
 | `docs/`, `templates/` | **credentials + tuning env vars** (OS store / env) — e.g. `DRAINER_TARGET_OPEN_TABS` |
 

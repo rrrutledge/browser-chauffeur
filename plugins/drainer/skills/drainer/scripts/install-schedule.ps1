@@ -2,13 +2,12 @@
 #
 # This is the ONLY PowerShell in the keeper, and you run it BY HAND once (not from a Claude session),
 # after the manual tryout is trusted. It registers a Windows Scheduled Task that runs the Python
-# poller every N minutes; the poller is itself presence-gated, so idle/locked cycles are cheap no-ops.
+# poller every N minutes.
 #
 #   powershell -File install-schedule.ps1 -RepoDir C:/Users/russe/Dev/personal-ai-pod [-IntervalMinutes 5]
 #   powershell -File install-schedule.ps1 -RepoDir C:/Users/russe/Dev/personal-ai-pod -Remove
 #
-# Runs in your interactive desktop session (LogonType Interactive) so presence detection and the
-# spawned worker tabs work.
+# Runs in your interactive desktop session (LogonType Interactive) so the spawned worker tabs work.
 
 param(
     [Parameter(Mandatory = $true)][string]$RepoDir,
@@ -49,12 +48,12 @@ $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoi
     -StartWhenAvailable -MultipleInstances IgnoreNew
 
 # Run in the logged-on interactive desktop session - required so the spawned worker tabs (wt.exe
-# new-tab) actually appear on screen and so presence detection reads the real user's idle time.
+# new-tab) actually appear on screen.
 $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType Interactive -RunLevel Limited
 
 Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings `
     -Principal $principal `
-    -Description "Drainer continuous keeper - one presence-gated poller cycle every $IntervalMinutes min." `
+    -Description "Drainer continuous keeper - one poller cycle every $IntervalMinutes min." `
     -Force | Out-Null
 
 Write-Host "Registered '$TaskName': python run-poller.py --repo $RepoDir every $IntervalMinutes min."

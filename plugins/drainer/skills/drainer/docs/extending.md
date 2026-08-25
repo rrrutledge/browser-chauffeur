@@ -7,9 +7,8 @@ env, never in any repo.
 ## 1. Settings — `.claude/drainer.local.md`
 The single per-machine config (the plugin-settings pattern). Copy
 `templates/drainer.local.example.md` to `.claude/drainer.local.md` and fill in: which `providers` are
-active (by name), per-provider config (e.g. Trello `boards`, label vocab), `local_dir`, the harvest
-interval, and presence. **You decide whether to version it** — keep it in a repo, in this project, or
-uncommitted.
+active (by name), per-provider config (e.g. Trello `boards`, label vocab), `local_dir`, and the harvest
+interval. **You decide whether to version it** — keep it in a repo, in this project, or uncommitted.
 
 ## 2. context.md (the local brain)
 Copy `templates/context.example.md` to `<local_dir>/context.md` and fill in **your** world: who you
@@ -64,5 +63,5 @@ tracker cards), and `browser-chauffeur` (the Outlook/Teams browser providers). A
    fill in their config (set `local_dir`).
 3. Create `<local_dir>/context.md` from `templates/context.example.md`.
 4. Wire credentials into your OS store; ensure the sibling skills are installed.
-5. Add scheduling glue (presence-gate, overlap lock, one interval) for your OS.
+5. Add scheduling glue (overlap lock, one interval) for your OS.
 6. Run a source by hand until trustworthy, then schedule a single harvest of all sources.
