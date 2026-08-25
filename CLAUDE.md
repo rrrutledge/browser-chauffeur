@@ -131,29 +131,19 @@ reasoning.
 
 #### 7. EnterWorktree / ExitWorktree tool calls (`worktree_tool.py`)
 
-Creating a new worktree (no `path` given) is always approved — it always lands under
-`.claude/worktrees/`, the tool's own hard-coded default. Switching into an *existing*
-worktree (`path` given) is approved only when that path is under `.claude/worktrees/`;
-any other location — including a project's own top-level `.worktrees/` convention — is
-denied with a message pointing at `.claude/worktrees/`. That's not about the tool's own
-registration check (it already refuses to relocate into an unregistered path, so a bad
-path just errors out harmlessly). It's because Claude Code layers a second, non-hookable
-confirmation on top: relocating the permission root into a path outside
-`.claude/worktrees/` always shows the user a manual dialog, regardless of what this hook
-decides. Approving here would just mean the user hits that dialog anyway with no
-corrective guidance, so the hook denies first and points at the location that skips it.
-The same destination check applies to a raw `git worktree add <path>` in Bash (see
-`commands.py`'s `_git_worktree_ok`) — `worktree` is no longer unconditionally trusted;
-only its non-`add` subcommands (`list`, `remove`, `prune`, ...) and an `add` whose
-destination is under `.claude/worktrees/` are.
+Creating a new worktree (no `path` given) is always approved.
+It always lands under `.claude/worktrees/`, the tool's own hard-coded default.
+Switching into an *existing* worktree (`path` given) is approved only when that path is under `.claude/worktrees/`.
+Any other location - including a project's own top-level `.worktrees/` convention - is denied with a message pointing at `.claude/worktrees/`.
+Claude Code layers a second, non-hookable confirmation on relocating the permission root into a path outside `.claude/worktrees/`: it shows the user a manual dialog regardless of what this hook decides.
+Approving here would only mean the user hits that dialog anyway with no corrective guidance, so the hook denies first and points at the location that skips it.
+(The tool's own registration check refuses to relocate into an unregistered path on top of this, so a bad path errors out harmlessly either way.)
+The same destination check applies to a raw `git worktree add <path>` in Bash (see `commands.py`'s `_git_worktree_ok`): `worktree` is trusted only for its non-`add` subcommands (`list`, `remove`, `prune`, ...) and for an `add` whose destination is under `.claude/worktrees/`.
 
-ExitWorktree takes no path — it only ever acts on the one worktree the current session
-entered via EnterWorktree, tracked internally by the harness rather than supplied by the
-model. `action: "keep"` is always approved (nothing is deleted). `action: "remove"` mirrors
-`git branch -d`: the tool itself refuses when the worktree has uncommitted files or commits
-that never landed on the original branch, so a plain remove is approved; only
-`discard_changes: true`, which forces the removal through and knowingly throws away
-unsaved work, falls through to a manual prompt.
+ExitWorktree takes no path - it only ever acts on the one worktree the current session entered via EnterWorktree, tracked internally by the harness rather than supplied by the model.
+`action: "keep"` is always approved (nothing is deleted).
+`action: "remove"` mirrors `git branch -d`: the tool itself refuses when the worktree has uncommitted files or commits that never landed on the original branch, so a plain remove is approved.
+Only `discard_changes: true`, which forces the removal through and knowingly throws away unsaved work, falls through to a manual prompt.
 
 ### Learned → source promotion (`tools/sync_learned.py`)
 
