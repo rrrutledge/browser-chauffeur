@@ -8,7 +8,7 @@ description: Russell's git/GitHub workflow rules - branching from main, when PRs
 ## Before opening a PR - read the target repo's own CLAUDE.md and CONTRIBUTING.md
 Every repo can carry its own contribution rules on top of everything in this skill - a required screenshot, a local build/test step, a specific PR template.
 Read that repo's own `CLAUDE.md` and `CONTRIBUTING.md` (repo root) before opening a PR there, every time, even in a repo worked in before - a rule can be added after the last visit.
-Follow whatever they ask in full: run the build/preview step they name, attach the artifact they ask for (e.g. innersourcecommons.org wants a full-page screenshot of every changed page, taken from a local `hugo server` preview, attached under a "Screenshots" section in the PR description), and match their PR template if one exists.
+Follow whatever they ask in full: run the build/preview step they name, attach whatever artifact they ask for, and match their PR template if one exists.
 
 ## Auto Branch/Commit/PR
 **HARD RULE: Never push directly to main. All changes go through a PR - no exceptions.**
@@ -21,14 +21,14 @@ If review surfaces changes, push follow-up commits to the same branch.
 **Closing a PR without merging it (superseded, duplicate, abandoned experiment): use `gh pr close <n> --delete-branch` as one command.**
 GitHub's repo-level "auto-delete branch on merge" setting only fires on merge, never on close, so a closed PR's branch needs explicit cleanup.
 `gh pr close --delete-branch` deletes it via the GitHub API as part of the close and is already on the trusted `gh pr` allowlist regardless of flags - it never prompts for approval.
-A separate `git push origin --delete <branch>` after the fact does prompt every time (push carries a destructive-flag gate for `--delete`/`--force`), so don't split the cleanup into two commands.
+A separate `git push origin --delete <branch>` after the fact does prompt every time (push carries a destructive-flag gate for `--delete`/`--force`).
 
-**Run `/code-review` only when Russell asks for it** - it's token-heavy, so it's opt-in, not part of the default PR flow.
+**Run `/code-review` only when Russell asks for it** - it's token-heavy, so it's opt-in.
 When he does request a review, run it on the local branch diff, apply the findings that make sense, and report what it found and fixed.
 If a PR is already open when a review is requested, push the fixes as follow-up commits to the same branch.
 
 **Always branch new work from main.**
-Before creating a branch, check `git status` - if HEAD is not on main, create a worktree from main instead of branching from the current branch.
+Before creating a branch, check `git status` - if HEAD is not on main, create a worktree from main.
 Branching from a feature branch silently inherits its unmerged commits into the new PR.
 
 ```bash
@@ -43,10 +43,10 @@ git worktree add .claude/worktrees/<name> -b <branch-name> main
    - **Lower confidence** → Say "Ready to create a PR for these changes?"
 
 **High confidence criteria (all must be true):**
-- **Specific, bounded change** - fix bug, add feature, update config
+- **Specific, bounded change** - touches one concern with no ripple into unrelated code
 - **Fully implemented** - all requested changes work as expected
 - **No open threads** - no obvious next steps or unresolved issues
-- **Focused and reviewable** - not exploratory or experimental
+- **Focused and reviewable** - a single diff a reviewer can take in at a glance
 
 **Never auto-create PR when:**
 - **Still debugging or exploring**
@@ -55,7 +55,7 @@ git worktree add .claude/worktrees/<name> -b <branch-name> main
 - **More work is coming** - the conversation suggests it
 
 **After user merges:**
-- **Sync main automatically** - `git checkout main && git pull`, don't wait to be told
+- **Sync main automatically** - `git checkout main && git pull`
 
 ## GitHub
 - **Repo deletion**: Always use browser chauffeur to delete repos through the GitHub UI (Settings → Delete this repository).
