@@ -1,7 +1,7 @@
 # drainer poller-core — the continuous keeper's contract
 
 The drainer runs as a **continuous keeper**: a poller runs one short cycle every few
-minutes, whether or not anyone's at the keyboard, and holds each source at **zero un-started actionable items**. The cycle is a deterministic
+minutes and holds each source at **zero un-started actionable items**. The cycle is a deterministic
 algorithm, so it is implemented as a **script** — `scripts/run-poller.py` — not prose an AI re-derives
 each run. This doc is the *contract*: what the script does and where AI is (and isn't) used. The full
 rationale is in `docs/superpowers/specs/2026-06-17-drainer-continuous-keeper-redesign.md`.

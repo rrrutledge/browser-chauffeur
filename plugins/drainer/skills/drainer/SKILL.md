@@ -11,7 +11,7 @@ instructions: |-
   **same loop over different sources**.
 
   It runs as a **continuous keeper**: a poller (`scripts/run-poller.py`) runs a short
-  cycle every few minutes — whether or not anyone's at the keyboard — and holds each source at
+  cycle every few minutes and holds each source at
   **zero un-started actionable items** — needs-you
   items immediately open a worker tab, dispatched as fast as possible until live Claude Code tabs
   system-wide reach `target_open_tabs`, fyi/junk queue for a once-a-day digest, and the poller itself

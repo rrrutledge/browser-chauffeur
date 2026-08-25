@@ -2,7 +2,7 @@
 #
 # This is the ONLY PowerShell in the keeper, and you run it BY HAND once (not from a Claude session),
 # after the manual tryout is trusted. It registers a Windows Scheduled Task that runs the Python
-# poller every N minutes, whether or not anyone's at the keyboard.
+# poller every N minutes.
 #
 #   powershell -File install-schedule.ps1 -RepoDir C:/Users/russe/Dev/personal-ai-pod [-IntervalMinutes 5]
 #   powershell -File install-schedule.ps1 -RepoDir C:/Users/russe/Dev/personal-ai-pod -Remove

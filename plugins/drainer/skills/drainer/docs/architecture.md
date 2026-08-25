@@ -21,7 +21,7 @@ later follow-up day.
 ## The continuous keeper (the one model)
 
 The drainer runs as a **continuous keeper**: a **poller** runs a short cycle every few
-minutes (a ~5-min cron), whether or not anyone's at the keyboard, and holds each source at
+minutes (a ~5-min cron) and holds each source at
 **zero un-started actionable items** all day.
 
 - **needs-you →** the poller immediately spawns a **worker tab** so the user starts acting right away,
