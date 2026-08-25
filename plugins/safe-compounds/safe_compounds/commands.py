@@ -11,7 +11,7 @@ from .log import log_debug
 from .paths import (
     is_in_trusted_script_dir, is_path_within_allowed_edits, is_path_within_claude_plugins,
     is_path_within_cwd, is_path_within_git_worktree, is_path_within_trusted_destination,
-    is_safe_read_location, is_within_any_tmp_dir, read_script_file,
+    is_safe_read_location, is_under_claude_worktrees, is_within_any_tmp_dir, read_script_file,
 )
 from .shell import ASSIGNMENT_ONLY, get_subcommands, shell_tokenize
 
@@ -172,7 +172,9 @@ GIT_TRUSTED_SUBCOMMANDS = {
     'range-diff', 'patch-id', 'var', 'help', 'interpret-trailers', 'index-pack',
     # reversible writes (the effect can be undone)
     'add', 'branch', 'commit', 'mv', 'rm', 'stash', 'fetch', 'pull', 'merge', 'rebase', 'revert', 'cherry-pick',
-    'worktree', 'config', 'init', 'clone', 'update-ref', 'restore',
+    'config', 'init', 'clone', 'update-ref', 'restore',
+    # 'worktree' is NOT unconditionally trusted -- see _git_worktree_ok, which
+    # gates only its destination-taking form ("add").
 }
 
 GIT_CONDITIONAL_SUBCOMMANDS = {
@@ -214,11 +216,65 @@ def _git_reset_ok(args):
     return bool(non_flag_args) and non_flag_args[0].startswith('origin/')
 
 
+# When "git worktree add" targets a destination outside .claude/worktrees/,
+# the orchestrator turns the silent prompt into an actionable block -- Claude
+# Code's own permission-root relocation confirmation isn't hookable, so
+# nudging toward the one location it doesn't gate is more useful than a
+# manual prompt on a command that will just recreate the same problem
+# EnterWorktree already gates (see worktree_tool.py). The reason is stashed
+# here for one hook run; hook.py resets it at the start of every invocation.
+_last_worktree_block_reason = None
+
+
+def reset_worktree_block_reason():
+    global _last_worktree_block_reason
+    _last_worktree_block_reason = None
+
+
+def get_worktree_block_reason():
+    return _last_worktree_block_reason
+
+
+def _git_worktree_add_path(args):
+    """Return the destination path from `git worktree add [opts] <path> ...`
+    args (everything after "add"), or None if it can't be found."""
+    skip_with_arg = {'-b', '-B', '--reason', '--track'}
+    i = 0
+    while i < len(args):
+        if args[i] in skip_with_arg and i + 1 < len(args):
+            i += 2
+        elif args[i].startswith('-'):
+            i += 1
+        else:
+            return args[i].strip('\'"')
+    return None
+
+
+def _git_worktree_ok(args):
+    if not args or args[0] != 'add':
+        return True
+    path = _git_worktree_add_path(args[1:])
+    if path is None or is_under_claude_worktrees(path):
+        return True
+    global _last_worktree_block_reason
+    _last_worktree_block_reason = (
+        f'BLOCKED: "git worktree add {path}" places the worktree outside .claude/worktrees/. '
+        'Claude Code shows a manual, non-hookable confirmation for any worktree relocation '
+        'outside that directory, so this cannot be auto-approved. Use the EnterWorktree tool '
+        'instead (it creates new worktrees under .claude/worktrees/ automatically), or target '
+        '.claude/worktrees/<name> directly.'
+    )
+    return False
+
+
 GIT_SPEC = {
     'command': 'git',
     'trusted': GIT_TRUSTED_SUBCOMMANDS,
     'conditional': GIT_CONDITIONAL_SUBCOMMANDS,
-    'specials': {'checkout': _git_checkout_ok, 'clean': _git_clean_ok, 'reset': _git_reset_ok},
+    'specials': {
+        'checkout': _git_checkout_ok, 'clean': _git_clean_ok, 'reset': _git_reset_ok,
+        'worktree': _git_worktree_ok,
+    },
     'global_opts': GIT_GLOBAL_OPTS_WITH_ARG,
     'allow_empty': True,
     'category': None,  # no AI fallback: unknown git subcommands prompt
