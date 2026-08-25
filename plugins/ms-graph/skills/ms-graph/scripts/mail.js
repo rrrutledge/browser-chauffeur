@@ -11,15 +11,16 @@
 //                (drafts folder, most-recently-edited first; same block format with id)
 // Search:        node mail.js --search="Griffiths" [--top=10]
 // Show one:      node mail.js --show=<messageId>
-// Draft a reply: node mail.js --reply --message-id=<id> --body-file=reply.html [--attach=file1.pdf,file2.png]
-//                (creates a DRAFT reply-all in the thread; never sends. --attach adds file
-//                 attachments, same syntax as --draft-new.)
-// Draft new:     node mail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.html \
+// Draft a reply: node mail.js --reply --message-id=<id> --body-file=reply.md [--attach=file1.pdf,file2.png]
+//                (creates a DRAFT reply-all in the thread; never sends. --body-file is Markdown —
+//                 blank-line paragraphs, lists, **bold**, and links all render as HTML; raw HTML
+//                 passes through. --attach adds file attachments, same syntax as --draft-new.)
+// Draft new:     node mail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.md \
 //                  [--cc=c@z] [--attach=file1.pdf,file2.png] [--replace] [--text]
-//                (creates a fresh DRAFT to specific recipients; never sends. --attach adds file
-//                 attachments; --replace first deletes any existing drafts with the same subject
-//                 so re-runs don't pile up duplicates; --text treats the body-file as plain text
-//                 instead of HTML.)
+//                (creates a fresh DRAFT to specific recipients; never sends. --body-file is Markdown
+//                 (same as --reply). --attach adds file attachments; --replace first deletes any
+//                 existing drafts with the same subject so re-runs don't pile up duplicates; --text
+//                 sends the body-file as literal plain text instead of rendering the Markdown.)
 // Send to self:  node mail.js --send-self --subject="..." --body-file=note.txt
 //                (sends a plain-text mail to your own inbox; handy for phone copy-paste)
 // Send a draft:  node mail.js --send-draft --message-id=<draftId>
@@ -63,6 +64,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { marked } = require('marked');
 const { getGraphClient } = require('./graph-client');
 
 // Outlook's own compose editor stamps newly-typed text with Calibri 12pt black. An HTML body posted
@@ -82,6 +84,14 @@ function withDefaultFont(html) {
   });
   if (!/<p[\s>]/i.test(styled)) styled = `<p style="${DEFAULT_FONT_STYLE}">${styled}</p>`;
   return styled;
+}
+
+// A --body-file is authored as Markdown (matching the gmail skill), so blank-line-separated
+// paragraphs, `1.`/`-` lists, **bold**, and [links](url) render as structured HTML with their line
+// breaks intact instead of collapsing into one run-on block. Raw HTML in the file passes through
+// untouched. `--text` (draft-new) bypasses this to send the file as literal plain text.
+function renderBody(md) {
+  return withDefaultFont(marked.parse(md));
 }
 
 const args = Object.fromEntries(
@@ -350,10 +360,10 @@ async function reply(client) {
   if (!args['message-id'] || !args['body-file']) {
     throw new Error('--reply requires --message-id and --body-file');
   }
-  const html = fs.readFileSync(args['body-file'], 'utf8');
+  const raw = fs.readFileSync(args['body-file'], 'utf8');
   const draft = await client.api(`/me/messages/${args['message-id']}/createReplyAll`).post({});
   const quoted = draft.body?.content || '';
-  await client.api(`/me/messages/${draft.id}`).patch({ body: { contentType: 'html', content: withDefaultFont(html) + quoted } });
+  await client.api(`/me/messages/${draft.id}`).patch({ body: { contentType: 'html', content: renderBody(raw) + quoted } });
   const attachments = buildAttachments(args.attach);
   for (const a of attachments) {
     await client.api(`/me/messages/${draft.id}/attachments`).post(a);
@@ -376,7 +386,7 @@ async function createDraft(client, { to, subject, body = '', cc, attach, replace
     for (const m of existing.value || []) await client.api(`/me/messages/${m.id}`).delete();
   }
   const recip = (s) => String(s).split(',').map(a => ({ emailAddress: { address: a.trim() } }));
-  const finalBody = contentType === 'html' ? withDefaultFont(body) : body;
+  const finalBody = contentType === 'html' ? renderBody(body) : body;
   const message = { subject, body: { contentType, content: finalBody }, toRecipients: recip(to) };
   if (cc) message.ccRecipients = recip(cc);
   const attachments = buildAttachments(attach);
