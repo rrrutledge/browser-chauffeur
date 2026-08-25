@@ -83,6 +83,16 @@ blank = {"from": "Securus eMessaging <donotreply@jpay.com>", "fromAddress": "don
 check("no name anywhere -> None (falls through to no hold, never to the shared address)",
       ProviderStub().correspondent(blank), None)
 
+print("\nself-note: fromMe+toMe never holds, even against another self-note from the same address")
+selfnote_a = ProviderStub().correspondent({"from": "Russell Rutledge <russell.rutledge@outlook.com>",
+                                            "fromAddress": "russell.rutledge@outlook.com",
+                                            "fromMe": True, "toMe": True})
+selfnote_b = ProviderStub().correspondent({"from": "Russell Rutledge <russell.rutledge@outlook.com>",
+                                            "fromAddress": "russell.rutledge@outlook.com",
+                                            "fromMe": True, "toMe": True})
+check("a self-note has no correspondent identity to hold on", selfnote_a, None)
+check("two self-notes from the same address both get None, not a shared key", selfnote_b, None)
+
 print("\ndirect sender: the correspondent IS the From address, so two of their messages share it")
 a = ProviderStub().correspondent({"from": "Jane Q <jane@example.com>", "fromAddress": "jane@example.com"})
 b = ProviderStub().correspondent({"from": "Jane Q <jane@example.com>", "fromAddress": "jane@example.com"})

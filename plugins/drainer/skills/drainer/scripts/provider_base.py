@@ -248,7 +248,14 @@ class ProviderBase:
         correspondent out of dispatch while an earlier one of theirs is still being worked. A direct
         sender keys on their from-address; a relay sender (a shared no-reply fronting many real people,
         e.g. Securus/JPay) keys on the name parsed from the notification instead — see
-        `relay_correspondent`. None means there is no identity to hold on, so the item always dispatches."""
+        `relay_correspondent`. A self-note (`fromMe` and `toMe` both set) has no identity to hold on
+        either: every self-note shares Russell's own address, so without this exemption one open
+        self-note tab would silently queue every other self-note behind it, indefinitely and without a
+        trace (the hold leaves them uncaptured so they re-enumerate next cycle) — each is its own
+        independent task, not a thread with a correspondent who might get duplicate outreach. None means
+        there is no identity to hold on, so the item always dispatches."""
+        if item.get("fromMe") and item.get("toMe"):
+            return None
         relay = relay_correspondent(item, lambda: self._fetch_body(item))
         return relay if relay is not False else from_identity(item)
 
