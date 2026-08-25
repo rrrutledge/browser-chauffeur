@@ -46,6 +46,15 @@ later; narrate it). Never a permanent purge. The poller also calls this (via the
 archive an fyi/junk message the moment it's triaged, so it leaves the inbox without waiting for the digest;
 the digest's own CLEAR on approval then re-archives it, a harmless no-op.
 
+**The Graph move reissues the message id — CLEAR before drafting invalidates the captured `messageId`.**
+Moving a message to another folder (Archive, Junk) gives it a new Graph id; the `messageId` captured at
+triage time (or in `items/<id>.json`) stops resolving the moment CLEAR runs against it, and `--reply`
+against the stale id fails with "The specified object was not found in the store." Since email items
+CLEAR before step 3's work per `worker-core.md` §2d, this is the normal order, not an edge case: after
+CLEAR, re-resolve the message with a fresh `node mail.js --search="<subject>"` (which covers Archive, per
+SITUATIONAL-CHECK above) and use the id from that result for `--reply`, rather than the id captured
+earlier in the session.
+
 ## JUNK-LEARNING (the first-reach rule — Outlook.com-specific)
 The first-reach stop (per `email-base.md`'s rule-first order, including its show-literal-rule gate): an
 **Outlook.com inbox rule** — append the type phrase to the right consolidated bucket, keeping the
