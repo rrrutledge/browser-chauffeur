@@ -14,12 +14,14 @@ per board). The drainer drains EVERY board in that registry. Per-drainer knobs (
 legacy `providers.trello.boards` block in drainer.local.md.
 
 The **go-live date IS the queue** (startable-task model): the native Start date is a card's
-"work-on-it-next / ping-back" date and the native Due date is a real deadline. enumerate returns cards
-in active lists that are startable — Start now-or-earlier, OR Due now-or-earlier (a slipped deadline
-forces the card up), OR no date at all — and NOT wearing a ⛔ Blocked (skip) label. Outreach cards set
-no Start, so they still queue purely on Due — unchanged. Dated cards rank by their go-live date (the
-earliest of start/due), most recent first; undated cards rank by their creation date, decoded from the
-card's ObjectId. Blocked cards are suppressed until finishing their upstream runs
+"work-on-it-next / go-live" date and the native Due date is a real deadline. enumerate returns cards in
+active lists that are startable and NOT wearing a ⛔ Blocked (skip) label. A card with a Start is in play
+once that Start has arrived; a future Start defers it even when its Due has already slipped, so a stale
+past Due can't silently un-defer a card its Start puts off (see _startable). A card with no Start queues
+on Due: due now-or-earlier surfaces (a slipped deadline forces it up), and no date at all is startable
+now, so outreach cards, which set no Start, queue purely on Due. Cards rank by their go-live date - a
+Start when present, else the Due, most recent first; undated cards rank by their creation date, decoded
+from the card's ObjectId. Blocked cards are suppressed until finishing their upstream runs
 trello_utils.cascade_unblock (strips ⛔, sets Start=today). Credentials are TRELLO_API_KEY /
 TRELLO_TOKEN in the environment (read by trello_utils.get_trello_session).
 """
@@ -328,6 +330,21 @@ class Provider(ProviderBase):
         except (ValueError, TypeError):
             return None
 
+    @staticmethod
+    def _startable(start_dt, due_dt, now):
+        """Whether a card is in play now under the startable-task model.
+
+        An explicit FUTURE Start defers the card outright, even when its Due has already slipped: a
+        deliberate "not before this day" beats a stale past deadline, so a Due left on a card long after
+        it stopped meaning anything can't silently un-defer a card its Start puts off. With no Start, Due
+        is the queue - due now-or-earlier surfaces (a slipped deadline forces it up as a safety net) and
+        no date at all is startable now. Outreach cards set no Start, so they still queue purely on Due."""
+        if start_dt is not None:
+            return start_dt <= now
+        if due_dt is not None:
+            return due_dt <= now
+        return True
+
     # --------------------------------------------------------------- the ProviderBase contract
     def enumerate(self, limit):
         if not self.boards:
@@ -385,18 +402,17 @@ class Provider(ProviderBase):
                 assigned = card.get("idMembers") or []
                 if assigned and my_id not in assigned:
                     continue
-                # Startable-task model: Start = the "go-live / ping-back" date, Due = a real deadline.
-                # A card is in play when its Start has arrived, OR its Due has arrived (a slipped
-                # deadline forces it up as a safety net), OR it carries neither date (startable now).
-                # Outreach cards set no Start, so they still queue purely on Due — unchanged behavior.
+                # Startable-task model: Start = the "work-on-it-next / go-live" date, Due = a real
+                # deadline. An explicit FUTURE Start defers the card even when its Due has already
+                # slipped - see _startable. Outreach cards set no Start, so they still queue purely on
+                # Due (a slipped deadline forces them up) - unchanged behavior.
                 start_dt = self._due_dt(card.get("start"))
                 due_dt = self._due_dt(card.get("due"))
-                gate_dts = [d for d in (start_dt, due_dt) if d is not None]
-                if gate_dts and min(gate_dts) > now:
+                if not self._startable(start_dt, due_dt, now):
                     continue
-                # Sort rank: a dated card ranks by its go-live date (the earliest of start/due); an
-                # undated card ranks by its creation date (always in the past).
-                sort_dt = min(gate_dts) if gate_dts else self._created_dt(card["id"])
+                # Sort rank / go-live: a card with a Start ranks by it (its resurface day); a Start-less
+                # card ranks by its Due; an undated card by its creation date (always in the past).
+                sort_dt = start_dt or due_dt or self._created_dt(card["id"])
                 priority_band = self._priority_band(card)  # see _PRIORITY_BAND; leads the sort key below
                 level_band = self._level_band(card)  # see _level_band; breaks ties within a priority band
                 channel, feats, contacts, initiative_label = self._classify_labels(card)

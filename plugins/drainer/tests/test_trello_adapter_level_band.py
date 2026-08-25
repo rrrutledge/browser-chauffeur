@@ -68,6 +68,34 @@ def test_sort_key_orders_level_within_band():
           ranked[0]["name"] == "SentinelOne", [it["name"] for it in ranked])
 
 
+def test_startable_gate_future_start_defers_past_slipped_due():
+    print("test: _startable - a future Start defers a card even when its Due has already slipped")
+    Provider = adapter_mod.Provider
+    from datetime import datetime, timezone, timedelta
+    now = datetime(2026, 8, 18, tzinfo=timezone.utc)
+    past = now - timedelta(days=30)
+    future = now + timedelta(days=6)
+
+    # The Huntress case: Start deferred to a future Monday, but a stale past Due lingered on the card.
+    # The future Start must win, or the stale Due drags the card into play early - the premature
+    # dispatch that then burned the card's own go-live date-stamp in seen-state and hid it for good.
+    check("future Start + past Due -> deferred (not startable)",
+          Provider._startable(future, past, now) is False)
+    check("future Start + future Due -> deferred", Provider._startable(future, future, now) is False)
+    check("future Start alone -> deferred", Provider._startable(future, None, now) is False)
+
+    check("past Start + past Due -> startable", Provider._startable(past, past, now) is True)
+    check("past Start + future Due -> startable", Provider._startable(past, future, now) is True)
+    check("past Start alone -> startable", Provider._startable(past, None, now) is True)
+
+    # No Start: Due is the queue, and a slipped Due forces the card up as a safety net (outreach cards).
+    check("no Start + past Due -> startable (slipped-deadline safety net)",
+          Provider._startable(None, past, now) is True)
+    check("no Start + future Due -> not yet startable", Provider._startable(None, future, now) is False)
+    check("no Start + no Due -> startable (hungry to start)",
+          Provider._startable(None, None, now) is True)
+
+
 def test_priority_band_still_leads_level_band():
     print("test: a higher priority band still beats a lower band regardless of level")
     Provider = adapter_mod.Provider
@@ -84,6 +112,7 @@ def test_priority_band_still_leads_level_band():
 if __name__ == "__main__":
     test_level_band_reads_desc_line()
     test_sort_key_orders_level_within_band()
+    test_startable_gate_future_start_defers_past_slipped_due()
     test_priority_band_still_leads_level_band()
     print()
     if failures:

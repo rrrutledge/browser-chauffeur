@@ -1,11 +1,12 @@
 # trello provider — outreach boards (Trello API)
 
 A provider for the **outreach** source. The card's **go-live date IS the queue**: harvested on
-every run like any other source, it returns cards that are startable now — Start now-or-earlier, OR
-Due now-or-earlier, OR undated — and not wearing a ⛔ Blocked label. Outreach cards set no Start, so
-they queue purely on their **due date** (the follow-up date) exactly as before. Task cards use the
-**startable model** (see STARTABLE-TASK MODEL): Start = the "work-on-it-next / ping-back" date, Due =
-a real deadline. It rides the single schedule with no special cadence. All Trello reads and mutations
+every run like any other source, it returns the cards that are startable now and not wearing a ⛔
+Blocked label. A card with a Start is startable once that Start has arrived, and a future Start defers
+it even when its Due has already slipped. A card with no Start is startable when its Due is
+now-or-earlier or it is undated. Outreach cards set no Start, so they queue purely on their **due
+date** (the follow-up date) exactly as before. Task cards use the **startable model** (see
+STARTABLE-TASK MODEL): Start = the "work-on-it-next / go-live" date, Due = a real deadline. It rides the single schedule with no special cadence. All Trello reads and mutations
 go through the **`trello`** skill's `trello_utils.py` - never the Trello REST API directly. The
 credentials sit in the environment, so a raw `curl` to `api.trello.com` is tempting; it skips the
 shared auth, timeout, and read-after-write verification, and a raw write is blocked by the
@@ -53,8 +54,9 @@ The default posture is **hungry to start**: everything is startable now unless i
 Two facts live in native Trello fields, two in labels + a description convention:
 - **Start date = "work-on-it-next / ping-back"** — the day the card should resurface. This is the queue
   driver. A startable-now task carries **no** Start; a ⏳ Waiting card's Start is when to re-nudge.
-- **Due date = a real deadline** — tracked and shown, but not what surfaces the card (a slipped Due
-  does force it up as a safety net). Reserved for genuine deadlines.
+- **Due date = a real deadline** - tracked and shown, but not what surfaces the card. On a Start-less
+  card a slipped Due forces it up as a safety net; when a card also carries a future Start, that Start
+  wins and the card stays deferred, so a stale Due can't un-defer it. Reserved for genuine deadlines.
 - **⏳ Waiting** (label) = blocked on a **person's** reply. Still surfaces on its ping-back Start so the
   worker can re-nudge. Record `Waiting-for: <name> · <channel>` in the description (Phase 2's reply
   matcher reads it).
@@ -82,10 +84,12 @@ remember to call cascade_unblock, and cross-board blocking just works.
 
 ## ENUMERATE
 Via the `trello` skill, list cards across the configured boards that sit in an **active** list (not in
-`skip_lists`), are **not** wearing a `skip_labels` label (⛔ Blocked), and are **startable** — Start
-now-or-earlier, OR Due now-or-earlier (overdue counts), OR carrying neither date. Rank dated cards by
-their **go-live date** (the earliest of Start/Due, most recent first) and undated cards by their
-**creation date** (decoded from the card's ObjectId).
+`skip_lists`), are **not** wearing a `skip_labels` label (⛔ Blocked), and are **startable**. A card
+with a Start is startable once its Start is now-or-earlier - a future Start defers it even if its Due
+has already slipped. A Start-less card is startable when its Due is now-or-earlier (overdue counts) or
+it carries no date at all. Rank a card by its **go-live date** - its Start when it has one, else its
+Due, most recent first - and an undated card by its **creation date** (decoded from the card's
+ObjectId).
 
 Rank is `(priority band, level band, date)`, all descending — level breaks ties within a band, date
 breaks ties within a band+level. A card's band comes from a **priority label** named exactly `P1`, `P2`,
