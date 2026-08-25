@@ -182,18 +182,31 @@ def from_identity(item):
 
 
 def relay_correspondent(item, get_body):
-    """Correspondent identity for a RELAY sender, whose envelope From is a shared no-reply that fronts
-    many real people and so does not identify who wrote. Returns one of three things:
+    """Correspondent identity for a sender whose envelope From address should NOT be used as-is. Covers
+    two distinct cases, both resolved here so `correspondent()` stays a plain two-way dispatch:
+      - a RELAY: a shared no-reply that fronts many real people and so does not identify who wrote
+        (e.g. Securus/JPay). Its identity has to be extracted from the subject/preview/body instead.
+      - a SELF-NOTE (`fromMe` and `toMe` both set): every self-note shares the account owner's own
+        address, so using that address as-is would collapse them all into one correspondent — one open
+        self-note tab would then silently hold every other self-note out of dispatch, indefinitely and
+        without a trace, until it closed. Content extraction is the wrong tool here too (recurring or
+        near-duplicate subjects, e.g. two "Research plane ticket prices" notes sent seconds apart, would
+        collide and reintroduce the same bug) — a self-note is always exempt, full stop.
+
+    Returns one of three things:
       - a namespaced identity string when the item is from a known relay and the correspondent's name is
         extractable from its subject / preview / body (e.g. Securus's "Message from: TYLER COSSEY"),
-      - None when it IS a relay but the name can't be extracted — so the caller holds nothing rather than
-        falling back to the shared From address, which would wrongly collapse two different real people
-        onto one key,
-      - False when the sender is NOT a relay, so the caller uses the ordinary from-address identity.
+      - None when there is no identity to hold on — a relay whose name can't be extracted, or a
+        self-note — so the caller holds nothing rather than falling back to the shared From address,
+        which would wrongly collapse two different real people (or every self-note) onto one key,
+      - False when the sender is a plain direct sender, so the caller uses the ordinary from-address
+        identity.
 
     The tag namespaces the extracted name so it can never collide with a real from-address, and the body
     (`get_body()`, an expensive per-item fetch) is consulted only after the cheap in-memory subject and
     preview both miss."""
+    if item.get("fromMe") and item.get("toMe"):
+        return None
     sender = item.get("fromAddress") or item.get("from") or ""
     for relay in RELAY_CORRESPONDENTS:
         if not relay["from_rx"].search(sender):
@@ -246,9 +259,9 @@ class ProviderBase:
     def correspondent(self, item):
         """A stable identity for WHO an item is from, used to hold a second item from the same
         correspondent out of dispatch while an earlier one of theirs is still being worked. A direct
-        sender keys on their from-address; a relay sender (a shared no-reply fronting many real people,
-        e.g. Securus/JPay) keys on the name parsed from the notification instead — see
-        `relay_correspondent`. None means there is no identity to hold on, so the item always dispatches."""
+        sender keys on their from-address; a sender whose address shouldn't be used as-is (a relay
+        fronting many real people, or a self-note) is resolved by `relay_correspondent` instead — see
+        its docstring. None means there is no identity to hold on, so the item always dispatches."""
         relay = relay_correspondent(item, lambda: self._fetch_body(item))
         return relay if relay is not False else from_identity(item)
 
