@@ -336,6 +336,37 @@ class Provider(ProviderBase):
         to defer a card - it means "not okay to begin until this day". No other field holds it back."""
         return start_dt is None or start_dt <= now
 
+    def _startable_cards(self, board, now, my_id):
+        """Yield `(card, list_name, start_dt)` for every currently-startable card on one board.
+
+        The single source of truth for "in play", so enumerate (which builds full items) and
+        still_in_inbox_ids (which needs only the ids, for the reconcile) apply an identical gate and can
+        never drift: on an active, non-skip list; not wearing a ⛔ Blocked/skip label; not assigned to
+        someone else; and startable now (no Start, or a Start that has arrived - a future Start defers).
+        The board fetches hit the Trello REST API; a bad token or network error raises to the caller."""
+        bid = board["id"]
+        lists = {l["id"]: l["name"] for l in self._utils.get_board_lists(bid, self.session)}
+        for card in self._utils.get_board_cards(bid, self.session, fields="all"):
+            list_name = lists.get(card.get("idList"))
+            # get_board_lists returns only OPEN lists; a card whose list isn't in that map sits on an
+            # archived/closed list (still an open card, but off the board) — not active, skip it.
+            if not list_name:
+                continue
+            if any(tok in list_name.lower() for tok in self.skip_lists):
+                continue
+            # ⛔ Blocked cards are suppressed until their upstream clears (the push cascade removes the
+            # label and sets Start = today, so they resurface on a later drain).
+            if self._has_skip_label(card):
+                continue
+            # Skip cards assigned to someone else; unassigned cards are always Russell's.
+            assigned = card.get("idMembers") or []
+            if assigned and my_id not in assigned:
+                continue
+            start_dt = self._parse_dt(card.get("start"))
+            if not self._startable(start_dt, now):
+                continue
+            yield card, list_name, start_dt
+
     # --------------------------------------------------------------- the ProviderBase contract
     def enumerate(self, limit):
         if not self.boards:
@@ -373,32 +404,11 @@ class Provider(ProviderBase):
         if unblocked:
             print(f"  sweep_unblock freed {len(unblocked)} card(s): {unblocked}")
         for board in self.boards:
-            bid, bname = board["id"], board.get("name", board["id"])
-            lists = {l["id"]: l["name"] for l in self._utils.get_board_lists(bid, self.session)}
-            # fields="all" so the newer `start` date comes back (the default card payload omits it).
-            for card in self._utils.get_board_cards(bid, self.session, fields="all"):
-                list_name = lists.get(card.get("idList"))
-                # get_board_lists returns only OPEN lists; a card whose list isn't in that map sits on
-                # an archived/closed list (still an open card, but off the board) — not active, skip it.
-                if not list_name:
-                    continue
-                ln = list_name.lower()
-                if any(tok in ln for tok in self.skip_lists):
-                    continue
-                # ⛔ Blocked cards are suppressed until their upstream clears (the push cascade removes
-                # the label and sets Start = today, so they resurface on a later drain).
-                if self._has_skip_label(card):
-                    continue
-                # Skip cards assigned to someone else; unassigned cards are always Russell's.
-                assigned = card.get("idMembers") or []
-                if assigned and my_id not in assigned:
-                    continue
-                # Start is the only date the queue reads: a card is in play once its Start has arrived,
-                # or immediately when it carries no Start. A future Start is the sole way to defer a card
-                # (see _startable).
-                start_dt = self._parse_dt(card.get("start"))
-                if not self._startable(start_dt, now):
-                    continue
+            bname = board.get("name", board["id"])
+            # fields="all" (inside _startable_cards) so the newer `start` date comes back; the same gate
+            # feeds still_in_inbox_ids, so a card in play here is exactly one reconcile treats as
+            # outstanding.
+            for card, list_name, start_dt in self._startable_cards(board, now, my_id):
                 # Sort rank / go-live: a card ranks by its Start (its resurface day); an undated card by
                 # its creation date (always in the past), so it sorts by age alongside email/Slack.
                 sort_dt = start_dt or self._created_dt(card["id"])
@@ -461,6 +471,37 @@ class Provider(ProviderBase):
         stamp = "".join(c for c in stamp_src if c.isdigit())[:8] or "nodue"
         return f"{self.name}-{slug(item.get('name'), 40)}-{item['cardId'][-6:]}-{stamp}".strip("-")[:72]
 
+    def still_in_inbox_ids(self):
+        """The stable_ids of every currently-startable card across all drained boards — Trello's answer
+        to the reconcile's "is this seen item still outstanding at the source?".
+
+        Trello has no inbox, but it has an equivalent: a seen id that STILL names a startable card is one
+        whose worker never ran CLEAR (a crashed or closed tab). CLEAR bumps a card's Start, and the Start
+        is part of the stable_id, so a properly cleared card mints a NEW id and its old id is absent from
+        this set — reconcile then leaves it alone, exactly as it leaves an archived email alone. The set
+        is computed fresh from the boards, so a card CLEAR deferred into the future (its new Start not yet
+        arrived) is correctly excluded, and it applies the same gate as enumerate (via _startable_cards),
+        so a blocked / skip-listed / reassigned card is never re-queued.
+
+        Returns None on any board-fetch failure so reconcile SKIPS Trello that cycle: an empty set would
+        read as "every Trello card is gone" and re-queue all of them — the failure mode the email path
+        guards against the same way. `capture` writes each item's messageId = its stable_id, so the
+        reconcile's existing messageId-in-inbox check works over this set unchanged."""
+        if not self.boards:
+            return None
+        try:
+            now = datetime.now(timezone.utc)
+            my_id = self._my_id()
+            ids = set()
+            for board in self.boards:
+                for card, _list_name, _start_dt in self._startable_cards(board, now, my_id):
+                    ids.add(self.stable_id({"name": card.get("name", ""),
+                                            "cardId": card["id"], "start": card.get("start")}))
+            return ids
+        except Exception as e:
+            print(f"  trello: still_in_inbox check FAILED ({e}); reconcile skips trello this cycle.")
+            return None
+
     def capture(self, item, iid, runtime_dir):
         items_dir = os.path.join(runtime_dir, "items")
         os.makedirs(items_dir, exist_ok=True)
@@ -477,6 +518,11 @@ class Provider(ProviderBase):
                     f"## Description\n\n{item.get('desc') or '(empty)'}\n\n## Comments\n\n{comments}\n")
         record = {
             "id": iid, "source": self.name, "triage": item.get("_bucket", "needs-you"),
+            # messageId == the stable_id: it is the handle the reconcile checks against
+            # still_in_inbox_ids() (the set of startable-card ids). A cleared card's Start bump mints a
+            # new id, so this old one drops out of that set and reconcile leaves it alone; a crashed
+            # worker's card keeps this id, stays in the set, and is re-queued.
+            "messageId": iid,
             "kind": item.get("_kind"), "cardId": item["cardId"], "board": item.get("board"),
             "list": item.get("list"), "name": item.get("name"),
             "start": item.get("start"),

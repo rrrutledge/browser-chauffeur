@@ -292,5 +292,7 @@ class ProviderBase:
         is what the poller's reconcile reads completion off - an item whose message is gone from the
         inbox was handled; one still sitting there, with no live worker session on it, was not.
         Return None if this provider has no such check available this run (a transient failure) or no
-        meaningful notion of "still in inbox" at all (Slack, Teams, Trello) -- the reconcile skips it."""
+        meaningful notion of "still in inbox" at all (Slack, Teams) -- the reconcile skips it. The trello
+        adapter overrides this: its analog is the set of currently-startable card ids (see its override).
+        """
         return None
