@@ -22,6 +22,7 @@
 // Delete a plain (non-recurring) event by subject + date:
 //                   node calendar.js --delete-event --subject="Dentist" --date=2026-06-20
 // Update reminder: node calendar.js --update --subject="Dentist" --reminder=off
+//                    [--date=YYYY-MM-DD]  (narrows to one day when the subject isn't unique)
 //
 // Times are interpreted in --tz (default America/Chicago). Events have NO reminder by
 // default; --reminder=N turns on a pop-up N minutes before start (0 = at start), --reminder=off
@@ -208,22 +209,38 @@ async function deleteEvent(client) {
   }
 }
 
+// --date narrows the search to one day - needed when the subject isn't unique across the year
+// (e.g. several one-off events sharing a subject on different dates). Without --date, keeps the
+// original behavior: first upcoming match within the next 365 days.
 async function updateReminder(client) {
   if (!args.subject || args.reminder === undefined) {
-    throw new Error('--update requires --subject and --reminder=N|off');
+    throw new Error('--update requires --subject and --reminder=N|off [--date=YYYY-MM-DD]');
   }
-  const now = new Date();
-  const end = new Date(now.getTime() + 365 * 86400000);
-  const data = await client.api('/me/calendarView')
-    .query({ startDateTime: now.toISOString(), endDateTime: end.toISOString() })
-    .top(100).orderby('start/dateTime').select('subject,id,start').get();
-  const match = (data.value || []).find(e => e.subject === args.subject);
-  if (!match) throw new Error(`No upcoming event with subject "${args.subject}"`);
+  let data;
+  if (args.date) {
+    data = await client.api('/me/calendarView')
+      .query({ startDateTime: `${args.date}T00:00:00`, endDateTime: `${args.date}T23:59:59` })
+      .header('Prefer', `outlook.timezone="${TZ}"`)
+      .select('subject,id,start')
+      .get();
+  } else {
+    const now = new Date();
+    const end = new Date(now.getTime() + 365 * 86400000);
+    data = await client.api('/me/calendarView')
+      .query({ startDateTime: now.toISOString(), endDateTime: end.toISOString() })
+      .top(100).orderby('start/dateTime').select('subject,id,start').get();
+  }
+  const matches = (data.value || []).filter(e => e.subject === args.subject);
+  if (!matches.length) {
+    throw new Error(`No ${args.date ? `event on ${args.date}` : 'upcoming event'} with subject "${args.subject}"`);
+  }
   const patch = args.reminder === 'off'
     ? { isReminderOn: false }
     : { isReminderOn: true, reminderMinutesBeforeStart: parseInt(args.reminder, 10) || 0 };
-  await client.api(`/me/events/${match.id}`).patch(patch);
-  console.log(`Updated reminder on "${match.subject}" -> ${args.reminder}`);
+  for (const match of matches) {
+    await client.api(`/me/events/${match.id}`).patch(patch);
+    console.log(`Updated reminder on "${match.subject}"${args.date ? ` (${args.date})` : ''} -> ${args.reminder}`);
+  }
 }
 
 // --- Reusable library functions (param-driven; each builds its own client) ---
