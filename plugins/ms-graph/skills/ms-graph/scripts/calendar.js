@@ -9,6 +9,13 @@
 // Create event:    node calendar.js --create --subject="Dentist" \
 //                    --start="2026-06-20T15:00:00" --end="2026-06-20T16:00:00" \
 //                    [--location="..."] [--body="..."] [--attendees=a@x,b@y] [--reminder=N]
+// Create recurring: node calendar.js --create-recurring --subject="Drop off Ryan" \
+//                    --start=06:35 --end=06:55 --days=MO,TU,TH \
+//                    --range-start=2026-08-31 --range-end=2026-10-31 \
+//                    [--location="..."] [--reminder=N]
+//                    (weekly recurrence; --days from MO,TU,WE,TH,FR,SA,SU; --range-end is inclusive)
+// Delete one occurrence of a recurring series:
+//                   node calendar.js --delete-occurrence --subject="Drop off Ryan" --date=2026-09-14
 // Update reminder: node calendar.js --update --subject="Dentist" --reminder=off
 //
 // Times are interpreted in --tz (default America/Chicago). Events have NO reminder by
@@ -73,6 +80,64 @@ async function createEvent(client) {
   }
   const created = await client.api('/me/events').post(event);
   console.log(`Created: "${created.subject}" on ${created.start.dateTime} (${created.id.slice(0, 16)}...)`);
+}
+
+const WEEKDAY_CODES = { MO: 'monday', TU: 'tuesday', WE: 'wednesday', TH: 'thursday', FR: 'friday', SA: 'saturday', SU: 'sunday' };
+
+async function createRecurringEvent(client) {
+  if (!args.subject || !args.start || !args.end || !args.days || !args['range-start'] || !args['range-end']) {
+    throw new Error('--create-recurring requires --subject, --start=HH:MM, --end=HH:MM, --days=MO,TU,..., --range-start=YYYY-MM-DD, --range-end=YYYY-MM-DD');
+  }
+  const daysOfWeek = String(args.days).split(',').map(d => WEEKDAY_CODES[d.trim().toUpperCase()]);
+  if (daysOfWeek.some(d => !d)) {
+    throw new Error(`--days must be a comma list from ${Object.keys(WEEKDAY_CODES).join(',')}`);
+  }
+  const rangeStart = args['range-start'];
+  const event = {
+    subject: args.subject,
+    start: { dateTime: `${rangeStart}T${args.start}:00`, timeZone: TZ },
+    end: { dateTime: `${rangeStart}T${args.end}:00`, timeZone: TZ },
+    isReminderOn: false,
+    recurrence: {
+      pattern: { type: 'weekly', interval: 1, daysOfWeek, firstDayOfWeek: 'sunday' },
+      range: { type: 'endDate', startDate: rangeStart, endDate: args['range-end'], recurrenceTimeZone: TZ },
+    },
+  };
+  if (args.location) event.location = { displayName: args.location };
+  if (args.reminder !== undefined && args.reminder !== 'off') {
+    event.isReminderOn = true;
+    event.reminderMinutesBeforeStart = parseInt(args.reminder, 10) || 0;
+  }
+  const created = await client.api('/me/events').post(event);
+  console.log(`Created recurring: "${created.subject}" ${args.days} ${args.start}-${args.end} ${rangeStart}..${args['range-end']} (${created.id.slice(0, 16)}...)`);
+}
+
+// Deletes a single occurrence of a recurring series (e.g. a day the athlete has no practice)
+// without touching the rest of the series. Graph requires resolving the series master first,
+// then asking it for the specific day's occurrence id via /instances - a calendarView-expanded
+// occurrence id is not itself deletable.
+async function deleteOccurrence(client) {
+  if (!args.subject || !args.date) {
+    throw new Error('--delete-occurrence requires --subject and --date=YYYY-MM-DD');
+  }
+  const escaped = String(args.subject).replace(/'/g, "''");
+  const found = await client.api('/me/events').filter(`subject eq '${escaped}'`).select('id,subject').top(5).get();
+  const master = (found.value || [])[0];
+  if (!master) throw new Error(`No event found with subject "${args.subject}"`);
+  const instances = await client.api(`/me/events/${master.id}/instances`)
+    .query({ startDateTime: `${args.date}T00:00:00`, endDateTime: `${args.date}T23:59:59` })
+    .header('Prefer', `outlook.timezone="${TZ}"`)
+    .select('id,subject,start')
+    .get();
+  const occurrences = instances.value || [];
+  if (!occurrences.length) {
+    console.log(`No occurrence of "${args.subject}" on ${args.date} (already removed, or none scheduled that day).`);
+    return;
+  }
+  for (const occ of occurrences) {
+    await client.api(`/me/events/${occ.id}`).delete();
+    console.log(`Deleted occurrence of "${master.subject}" on ${args.date}`);
+  }
 }
 
 async function updateReminder(client) {
@@ -162,6 +227,8 @@ if (require.main === module) {
       return;
     }
     const client = await getGraphClient();
+    if (args['create-recurring']) return createRecurringEvent(client);
+    if (args['delete-occurrence']) return deleteOccurrence(client);
     if (args.create) return createEvent(client);
     if (args.update) return updateReminder(client);
     return listUpcoming(client);
