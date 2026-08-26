@@ -116,28 +116,38 @@ async function createRecurringEvent(client) {
 // without touching the rest of the series. Graph requires resolving the series master first,
 // then asking it for the specific day's occurrence id via /instances - a calendarView-expanded
 // occurrence id is not itself deletable.
+//
+// A subject can match more than one series master (an old expired series left in place, a
+// duplicate created by mistake), so this doesn't just take the first match - it checks each
+// candidate's /instances for the target date and acts on whichever one actually has it, which
+// is the only series that matters for "delete the exception on that day."
 async function deleteOccurrence(client) {
   if (!args.subject || !args.date) {
     throw new Error('--delete-occurrence requires --subject and --date=YYYY-MM-DD');
   }
   const escaped = String(args.subject).replace(/'/g, "''");
-  const found = await client.api('/me/events').filter(`subject eq '${escaped}'`).select('id,subject').top(5).get();
-  const master = (found.value || [])[0];
-  if (!master) throw new Error(`No event found with subject "${args.subject}"`);
-  const instances = await client.api(`/me/events/${master.id}/instances`)
-    .query({ startDateTime: `${args.date}T00:00:00`, endDateTime: `${args.date}T23:59:59` })
-    .header('Prefer', `outlook.timezone="${TZ}"`)
-    .select('id,subject,start')
-    .get();
-  const occurrences = instances.value || [];
-  if (!occurrences.length) {
-    console.log(`No occurrence of "${args.subject}" on ${args.date} (already removed, or none scheduled that day).`);
+  const found = await client.api('/me/events')
+    .filter(`subject eq '${escaped}' and type eq 'seriesMaster'`)
+    .select('id,subject').top(10).get();
+  const candidates = found.value || [];
+  if (!candidates.length) {
+    throw new Error(`No recurring series found with subject "${args.subject}" (a non-recurring event with that exact subject doesn't count)`);
+  }
+  for (const master of candidates) {
+    const instances = await client.api(`/me/events/${master.id}/instances`)
+      .query({ startDateTime: `${args.date}T00:00:00`, endDateTime: `${args.date}T23:59:59` })
+      .header('Prefer', `outlook.timezone="${TZ}"`)
+      .select('id,subject,start')
+      .get();
+    const occurrences = instances.value || [];
+    if (!occurrences.length) continue;
+    for (const occ of occurrences) {
+      await client.api(`/me/events/${occ.id}`).delete();
+      console.log(`Deleted occurrence of "${master.subject}" on ${args.date}`);
+    }
     return;
   }
-  for (const occ of occurrences) {
-    await client.api(`/me/events/${occ.id}`).delete();
-    console.log(`Deleted occurrence of "${master.subject}" on ${args.date}`);
-  }
+  console.log(`No occurrence of "${args.subject}" on ${args.date} across ${candidates.length} matching series (already removed, or none scheduled that day).`);
 }
 
 async function updateReminder(client) {
