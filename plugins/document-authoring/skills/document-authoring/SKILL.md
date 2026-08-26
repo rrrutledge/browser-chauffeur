@@ -297,6 +297,10 @@ The specifics that most often separate a message that reads as Russell's from on
   Email sign-offs are always `Russ`, never "Russell". Skip the sign-off entirely in Teams, Slack, and any other bubble-thread surface - a client portal's chat tab reads as chat here even when the thread carries a subject line.
   "Russell" is only for third-party references (a formal document header). In an LDS church context, sign off as `Bro. [Lastname]`. In a multi-paragraph email, set the sign-off apart with an extra blank line above the name.
   **Exception — immediate family (parents, siblings):** sign off `Love, Russell`, not bare `Russ`.
+- **Writing to a departing ward member as membership clerk: personal, not institutional, even though the correspondence is official.**
+  Add a genuine one-line well-wish about their new home before any ask ("I hope that things are wonderful in your new location").
+  Frame an address request as a personal favor ("Do you have a current mailing address? I can make a note so future folks are aware"), not the institutional mechanism ("transferred to the right ward").
+  Write as "I/me", not the ward's "we/us", the opposite of the **Speak as the org** rule above, because the warmth of a one-to-one goodbye outweighs the org voice here.
 - **Warm, direct, humble.**
   Plain words, short sentences. When a reply covers more than one idea, give each its own sentence of even weight rather than chaining them into one long run-on - whether the join is a comma, an "and", or a dash or colon bolting a trailing clause onto an already-complete sentence.
 - **Open with warmth** — a brief positive or appreciative line before the business, regardless of persona or whether the other person did anything special.
