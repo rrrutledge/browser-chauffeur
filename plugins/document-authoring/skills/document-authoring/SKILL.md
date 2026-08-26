@@ -442,7 +442,7 @@ A third exception is the terse thread-continuation opener in Slack or Teams (see
 - **Tag @here or @channel when the ask needs the whole channel's eyes, not just whoever happens to be scrolling** — a favor-ask or call for volunteers is easy for busy members to miss otherwise.
 - State what you did or want, then a tight bulleted list of specifics if needed, then a low-pressure call for feedback.
 - **Preliminary, not-yet-final news is shared tentatively and lean** — hedge that it isn't official yet ("still going through the paperwork to make it official, but a positive direction!") and leave out the hard specifics (a sponsorship's dollar amount) and the individual name-credits that a finalized or public announcement would carry.
-- End with what happens next + "let me know".
+- **Close on the ask.** Name a genuine next step and add "let me know" only when there's a real one beyond the ask itself; a self-contained ask - a survey, a single request - is complete once stated with its link, so end there rather than appending a next-step-plus-"let me know" tail.
 - *Sample:* "Hey folks, I'm working with Adam on a training curriculum for our engineers on having a quality mindset… I prepared [Quality Mindset Training — Session Agenda](URL) with a draft. Is anyone here interested in reviewing and sharing feedback?"
 
 ### When unsure
