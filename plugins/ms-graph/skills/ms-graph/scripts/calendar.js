@@ -16,6 +16,11 @@
 //                    (weekly recurrence; --days from MO,TU,WE,TH,FR,SA,SU; --range-end is inclusive)
 // Delete one occurrence of a recurring series:
 //                   node calendar.js --delete-occurrence --subject="Drop off Ryan" --date=2026-09-14
+// Reschedule one occurrence of a recurring series (same day, different time):
+//                   node calendar.js --reschedule-occurrence --subject="Drive Ryan" \
+//                     --date=2026-08-31 --start=06:35 --end=06:55
+// Delete a plain (non-recurring) event by subject + date:
+//                   node calendar.js --delete-event --subject="Dentist" --date=2026-06-20
 // Update reminder: node calendar.js --update --subject="Dentist" --reminder=off
 //
 // Times are interpreted in --tz (default America/Chicago). Events have NO reminder by
@@ -112,42 +117,95 @@ async function createRecurringEvent(client) {
   console.log(`Created recurring: "${created.subject}" ${args.days} ${args.start}-${args.end} ${rangeStart}..${args['range-end']} (${created.id.slice(0, 16)}...)`);
 }
 
-// Deletes a single occurrence of a recurring series (e.g. a day the athlete has no practice)
-// without touching the rest of the series. Graph requires resolving the series master first,
-// then asking it for the specific day's occurrence id via /instances - a calendarView-expanded
-// occurrence id is not itself deletable.
-//
-// A subject can match more than one series master (an old expired series left in place, a
-// duplicate created by mistake), so this doesn't just take the first match - it checks each
-// candidate's /instances for the target date and acts on whichever one actually has it, which
-// is the only series that matters for "delete the exception on that day."
-async function deleteOccurrence(client) {
-  if (!args.subject || !args.date) {
-    throw new Error('--delete-occurrence requires --subject and --date=YYYY-MM-DD');
-  }
-  const escaped = String(args.subject).replace(/'/g, "''");
+// Resolves which series (of possibly several sharing a subject - an old expired series left in
+// place, a duplicate created by mistake) actually has an occurrence on `date`. Checking every
+// candidate's /instances rather than taking the first match is what makes --delete-occurrence and
+// --reschedule-occurrence safe to point at a subject without knowing in advance which series (if
+// any) is the live one.
+async function resolveOccurrenceForDate(client, subject, date) {
+  const escaped = String(subject).replace(/'/g, "''");
   const found = await client.api('/me/events')
     .filter(`subject eq '${escaped}' and type eq 'seriesMaster'`)
     .select('id,subject').top(10).get();
   const candidates = found.value || [];
-  if (!candidates.length) {
-    throw new Error(`No recurring series found with subject "${args.subject}" (a non-recurring event with that exact subject doesn't count)`);
-  }
   for (const master of candidates) {
     const instances = await client.api(`/me/events/${master.id}/instances`)
-      .query({ startDateTime: `${args.date}T00:00:00`, endDateTime: `${args.date}T23:59:59` })
+      .query({ startDateTime: `${date}T00:00:00`, endDateTime: `${date}T23:59:59` })
       .header('Prefer', `outlook.timezone="${TZ}"`)
-      .select('id,subject,start')
+      .select('id,subject,start,end')
       .get();
     const occurrences = instances.value || [];
-    if (!occurrences.length) continue;
-    for (const occ of occurrences) {
-      await client.api(`/me/events/${occ.id}`).delete();
-      console.log(`Deleted occurrence of "${master.subject}" on ${args.date}`);
-    }
+    if (occurrences.length) return { master, occurrences, candidateCount: candidates.length };
+  }
+  return { master: null, occurrences: [], candidateCount: candidates.length };
+}
+
+// Deletes a single occurrence of a recurring series (e.g. a day the athlete has no practice)
+// without touching the rest of the series. Graph requires resolving the series master first,
+// then asking it for the specific day's occurrence id via /instances - a calendarView-expanded
+// occurrence id is not itself deletable.
+async function deleteOccurrence(client) {
+  if (!args.subject || !args.date) {
+    throw new Error('--delete-occurrence requires --subject and --date=YYYY-MM-DD');
+  }
+  const { master, occurrences, candidateCount } = await resolveOccurrenceForDate(client, args.subject, args.date);
+  if (!candidateCount) {
+    throw new Error(`No recurring series found with subject "${args.subject}" (a non-recurring event with that exact subject doesn't count)`);
+  }
+  if (!master) {
+    console.log(`No occurrence of "${args.subject}" on ${args.date} across ${candidateCount} matching series (already removed, or none scheduled that day).`);
     return;
   }
-  console.log(`No occurrence of "${args.subject}" on ${args.date} across ${candidates.length} matching series (already removed, or none scheduled that day).`);
+  for (const occ of occurrences) {
+    await client.api(`/me/events/${occ.id}`).delete();
+    console.log(`Deleted occurrence of "${master.subject}" on ${args.date}`);
+  }
+}
+
+// Moves a single occurrence of a recurring series to a different time on the same day, without
+// touching the rest of the series - e.g. an existing "drive to school" reminder becomes that day's
+// earlier "drive to practice" time instead of leaving both a stale normal-time reminder and a
+// separately-created event competing for the same drive.
+async function rescheduleOccurrence(client) {
+  if (!args.subject || !args.date || !args.start || !args.end) {
+    throw new Error('--reschedule-occurrence requires --subject, --date=YYYY-MM-DD, --start=HH:MM, --end=HH:MM');
+  }
+  const { master, occurrences, candidateCount } = await resolveOccurrenceForDate(client, args.subject, args.date);
+  if (!candidateCount) {
+    throw new Error(`No recurring series found with subject "${args.subject}" (a non-recurring event with that exact subject doesn't count)`);
+  }
+  if (!master) {
+    throw new Error(`No occurrence of "${args.subject}" on ${args.date} across ${candidateCount} matching series to reschedule`);
+  }
+  for (const occ of occurrences) {
+    await client.api(`/me/events/${occ.id}`).patch({
+      start: { dateTime: `${args.date}T${args.start}:00`, timeZone: TZ },
+      end: { dateTime: `${args.date}T${args.end}:00`, timeZone: TZ },
+    });
+    console.log(`Rescheduled "${master.subject}" on ${args.date} to ${args.start}-${args.end}`);
+  }
+}
+
+// Deletes a plain (non-recurring) event by subject + date - e.g. a one-off event created in
+// error, or one being replaced by a differently-timed one-off.
+async function deleteEvent(client) {
+  if (!args.subject || !args.date) {
+    throw new Error('--delete-event requires --subject and --date=YYYY-MM-DD');
+  }
+  const data = await client.api('/me/calendarView')
+    .query({ startDateTime: `${args.date}T00:00:00`, endDateTime: `${args.date}T23:59:59` })
+    .header('Prefer', `outlook.timezone="${TZ}"`)
+    .select('id,subject,start')
+    .get();
+  const matches = (data.value || []).filter(e => e.subject === args.subject);
+  if (!matches.length) {
+    console.log(`No event "${args.subject}" on ${args.date} (already removed).`);
+    return;
+  }
+  for (const m of matches) {
+    await client.api(`/me/events/${m.id}`).delete();
+    console.log(`Deleted "${m.subject}" on ${args.date}`);
+  }
 }
 
 async function updateReminder(client) {
@@ -239,6 +297,8 @@ if (require.main === module) {
     const client = await getGraphClient();
     if (args['create-recurring']) return createRecurringEvent(client);
     if (args['delete-occurrence']) return deleteOccurrence(client);
+    if (args['reschedule-occurrence']) return rescheduleOccurrence(client);
+    if (args['delete-event']) return deleteEvent(client);
     if (args.create) return createEvent(client);
     if (args.update) return updateReminder(client);
     return listUpcoming(client);
