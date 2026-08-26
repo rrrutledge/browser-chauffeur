@@ -102,6 +102,25 @@ instructions: |-
 
   ---
 
+  ## Start vs Due
+
+  Trello cards carry two distinct native date fields - don't confuse them:
+
+  - **`start`** is the one date the drainer's queue reads (see the drainer's `trello-provider.md` for the
+    full model) - it's the "work-on-it / resurface" day. Every reschedule (a nudge, a hold-back, an
+    advance, a Russell-requested date change) means setting `start`.
+  - **`due`** is a separate, purely informational deadline. Nothing in this system reads it to decide when
+    a card resurfaces. Set it alongside `start` when a card genuinely has an external deadline worth
+    displaying, but setting `due` alone and expecting the card to nudge, hold back, or resurface on that
+    date does nothing - the queue never looks at it.
+
+  ```python
+  update_card(card_id, {'start': '2026-08-28'}, session)  # reschedules when it resurfaces
+  update_card(card_id, {'due': '2026-08-28'}, session)     # cosmetic only - does not reschedule anything
+  ```
+
+  ---
+
   ## Checklists
 
   Checklists have no typed wrapper - use `trello_request` directly:
