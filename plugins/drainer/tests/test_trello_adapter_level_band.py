@@ -1,5 +1,5 @@
 """Test for providers/trello-adapter.py's band ranking (_referral_band, _level_band, and the
-(priority_band, referral_band, level_band, date) sort key used by both trello-adapter._enumerate and
+(priority_band, level_band, referral_band, date) sort key used by both trello-adapter._enumerate and
 run-poller.py's cross-source needs-you sort). No network/Trello credentials required —
 _priority_band/_referral_band/_level_band are pure functions of a card dict.
 Run directly:
@@ -70,11 +70,11 @@ def test_referral_label_held_out_of_contacts():
     check("Referral held out; a real person stays a contact", contacts == ["Zack Koppert"], contacts)
 
 
-SORT_KEY = lambda it: (it["_priority_band"], it.get("_referral_band", 0), it["_level_band"], it["_sort_dt"])
+SORT_KEY = lambda it: (it["_priority_band"], it["_level_band"], it.get("_referral_band", 0), it["_sort_dt"])
 
 
 def test_sort_key_orders_level_within_band():
-    print("test: (priority_band, referral_band, level_band, date) sort puts Director/VP ahead of IC within the same band")
+    print("test: (priority_band, level_band, referral_band, date) sort puts Director/VP ahead of IC within the same band")
     Provider = adapter_mod.Provider
     # Mirrors the real-world case: SentinelOne (P1 Director/VP, older date) must outrank
     # eBay (P1 IC, newer date) even though eBay's date alone would sort first.
@@ -94,25 +94,26 @@ def test_sort_key_orders_level_within_band():
           ranked[0]["name"] == "SentinelOne", [it["name"] for it in ranked])
 
 
-def test_referral_leads_level_within_band():
-    print("test: within a fit tier, referral outranks a same-band cold role of either level")
+def test_level_leads_referral_within_band():
+    print("test: within a fit tier, level outranks referral — a cold leadership role ahead of a referral IC role")
     p1 = adapter_mod._PRIORITY_BAND[1]
-    # Russell's stated order within a tier: referral+Director → referral+IC → cold+Director → cold+IC.
+    # Russell's stated order within a tier: referral+Director → cold+Director → referral+IC → cold+IC.
+    # A leadership role without a referral is worked before an IC role even with one.
     referral_ic = {"name": "referral IC", "_priority_band": p1, "_referral_band": 1, "_level_band": -1,
                    "_sort_dt": "2026-01-01"}
     cold_director = {"name": "cold Director", "_priority_band": p1, "_referral_band": 0, "_level_band": 0,
                      "_sort_dt": "2026-08-01"}
     ranked = sorted([cold_director, referral_ic], key=SORT_KEY, reverse=True)
-    check("a referral IC-level role outranks a same-band cold Director/VP-level role",
-          ranked[0]["name"] == "referral IC", [it["name"] for it in ranked])
+    check("a cold Director/VP-level role outranks a same-band referral IC-level role",
+          ranked[0]["name"] == "cold Director", [it["name"] for it in ranked])
 
     referral_director = {"name": "referral Director", "_priority_band": p1, "_referral_band": 1,
                          "_level_band": 0, "_sort_dt": "2026-01-01"}
     full = sorted([cold_director, referral_ic, referral_director,
                    {"name": "cold IC", "_priority_band": p1, "_referral_band": 0, "_level_band": -1,
                     "_sort_dt": "2026-08-01"}], key=SORT_KEY, reverse=True)
-    check("full within-tier order is referral-Director, referral-IC, cold-Director, cold-IC",
-          [it["name"] for it in full] == ["referral Director", "referral IC", "cold Director", "cold IC"],
+    check("full within-tier order is referral-Director, cold-Director, referral-IC, cold-IC",
+          [it["name"] for it in full] == ["referral Director", "cold Director", "referral IC", "cold IC"],
           [it["name"] for it in full])
 
 
@@ -163,7 +164,7 @@ if __name__ == "__main__":
     test_referral_band_reads_label()
     test_referral_label_held_out_of_contacts()
     test_sort_key_orders_level_within_band()
-    test_referral_leads_level_within_band()
+    test_level_leads_referral_within_band()
     test_startable_gate_start_is_the_only_date()
     test_priority_band_still_leads_level_band()
     test_priority_band_still_leads_referral_band()

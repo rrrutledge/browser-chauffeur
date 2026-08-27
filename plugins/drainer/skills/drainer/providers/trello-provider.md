@@ -92,16 +92,13 @@ now-or-earlier, or no Start at all. A future Start is the only thing that holds 
 by its **Start date** (its go-live), most recent first, and an undated card by its **creation date**
 (decoded from the card's ObjectId).
 
-Rank is `(priority band, referral band, level band, date)`, all descending — referral breaks ties within
-a band, level breaks ties within a band+referral, date breaks ties within a band+referral+level. A card's
+Rank is `(priority band, level band, referral band, date)`, all descending — level breaks ties within
+a band, referral breaks ties within a band+level, date breaks ties within a band+level+referral. A card's
 band comes from a **priority label** named exactly `P1`, `P2`, or `P3` (optionally with a 🎯 prefix),
 written by the job-board poller (personal-ai-pod `job-board-poll.js`) on Job Search Outreach cards. Only
 those labeled cards leave the neutral band, so every other board is unaffected and orders purely by date
 as before. The band each tier maps to — and how to change it — is defined in one place, the adapter's
-`_PRIORITY_BAND`. The referral band comes from a **`🤝 Referral` label** (a role at a company where
-someone in Russell's network will refer him): it lifts the card ahead of the cold roles in its tier — see
-the adapter's `_referral_band`. Both labels, like ⛔/⏳ status labels, are held out of the contact parse
-so neither is read as a person.
+`_PRIORITY_BAND`.
 
 A card's level band comes from its `desc`: `job-board-poll.js` writes a
 `Priority: P<n> · <category> · Director/VP-level` or `· IC-level` line into every Job Search Outreach
@@ -109,6 +106,12 @@ card it scores. Level-0 is the shared neutral level email/Slack and ordinary Tre
 a card whose desc contains `Director/VP-level` (or carries no priority line yet) resolves to that same
 neutral level and interleaves with today's mail by date; only a card whose desc contains `IC-level` drops
 to level -1 and waits behind its priority band's neutral-level items — see the adapter's `_level_band`.
+
+The referral band comes from a **`🤝 Referral` label** (a role at a company where someone in Russell's
+network will refer him): it breaks ties within a band+level, lifting a referral role ahead of a cold one
+of the **same level** — but a leadership role without a referral is still worked before an IC role even
+with one, because level leads referral. See the adapter's `_referral_band`. The priority and referral
+labels, like ⛔/⏳ status labels, are held out of the contact parse so neither is read as a person.
 
 Build a stable id:
 `trello-<card-name-slug>-<last6 of cardId>-<startYYYYMMDD|nodue>` where the stamp is the card's Start

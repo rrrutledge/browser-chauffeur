@@ -298,11 +298,13 @@ class Provider(ProviderBase):
     @staticmethod
     def _referral_band(card):
         """Return a card's referral rank from its 🤝 Referral label — 1 when a referral is in hand, 0
-        otherwise. Sits between priority and level in the sort key, so within a fit tier a referral-backed
-        role (of either level) is worked ahead of every cold one, and a referral Director/VP-level role
-        ahead of a referral IC-level one (level still breaks the tie among referrals). Zero is the shared
-        neutral referral rank email/Slack and every non-referral card carry, so a referral card promotes
-        above them within its band."""
+        otherwise. Sits below level in the sort key, so within a fit tier the level leads and a referral
+        breaks the tie among same-level roles: a referral Director/VP-level role ahead of a cold
+        Director/VP-level one, a referral IC-level role ahead of a cold IC-level one, but a cold
+        Director/VP-level role still ahead of a referral IC-level one (a leadership role without a
+        referral is worked before an IC role even with one). Zero is the shared neutral referral rank
+        email/Slack and every non-referral card carry, so a referral card promotes above them within its
+        band and level."""
         for l in card.get("labels", []):
             if _REFERRAL_RE.match(l.get("name") or ""):
                 return 1
@@ -312,12 +314,13 @@ class Provider(ProviderBase):
     def _level_band(card):
         """Return a card's level rank from its 'Priority: ... · <level>' desc line — 0 for
         Director/VP-level, every non-job-search card, and a job-search card job-board-poll hasn't
-        scored yet; -1 for an IC-level job-search card. Zero is the shared neutral level that
-        email/Slack and ordinary Trello cards also carry by default (see run-poller.py's sort), so a
-        Director/VP-level lead interleaves with today's mail by date within its priority band; only an
-        IC-level posting drops below and waits for that neutral level to clear. Still mirrors
-        job-board-poll's tiers.js PREVIEW_LEVEL_RANK's relative order (lead ahead of ic) — only where
-        the zero point sits has moved."""
+        scored yet; -1 for an IC-level job-search card. Leads referral in the sort key, so within a fit
+        tier the level decides first and referral only breaks ties among same-level roles. Zero is the
+        shared neutral level that email/Slack and ordinary Trello cards also carry by default (see
+        run-poller.py's sort), so a Director/VP-level lead interleaves with today's mail by date within
+        its priority band; only an IC-level posting drops below and waits for that neutral level to
+        clear. Still mirrors job-board-poll's tiers.js PREVIEW_LEVEL_RANK's relative order (lead ahead of
+        ic) — only where the zero point sits has moved."""
         desc = card.get("desc") or ""
         if "IC-level" in desc:
             return -1
@@ -435,8 +438,8 @@ class Provider(ProviderBase):
                 # its creation date (always in the past), so it sorts by age alongside email/Slack.
                 sort_dt = start_dt or self._created_dt(card["id"])
                 priority_band = self._priority_band(card)  # see _PRIORITY_BAND; leads the sort key below
-                referral_band = self._referral_band(card)  # see _referral_band; ranks under band, over level
-                level_band = self._level_band(card)  # see _level_band; breaks ties within a band+referral
+                referral_band = self._referral_band(card)  # see _referral_band; breaks ties within a band+level
+                level_band = self._level_band(card)  # see _level_band; ranks under band, over referral
                 channel, feats, contacts, initiative_label = self._classify_labels(card)
                 # A per-card initiative label wins over the board's default initiative. The slug is the
                 # initiative label's name slugified (→ initiatives/<slug>.md); board defaults are already
@@ -468,16 +471,16 @@ class Provider(ProviderBase):
                     "_referral_band": referral_band,
                     "_level_band": level_band,
                 })
-        # Ranked (band, referral, level, date) descending — band leads (see _PRIORITY_BAND), referral
-        # breaks ties within a band (a referral-backed role ahead of a cold one, see _referral_band), level
-        # breaks ties within a band+referral (Director/VP-level ahead of IC-level, see _level_band), date
-        # breaks ties within a band+referral+level (most-recent-first by Start; an undated card by its
-        # creation date, set above, or `now` if even that couldn't be derived).
-        items.sort(key=lambda it: (it["_priority_band"], it["_referral_band"], it["_level_band"],
+        # Ranked (band, level, referral, date) descending — band leads (see _PRIORITY_BAND), level
+        # breaks ties within a band (Director/VP-level ahead of IC-level, see _level_band), referral
+        # breaks ties within a band+level (a referral-backed role ahead of a cold one of the same level,
+        # see _referral_band), date breaks ties within a band+level+referral (most-recent-first by Start;
+        # an undated card by its creation date, set above, or `now` if even that couldn't be derived).
+        items.sort(key=lambda it: (it["_priority_band"], it["_level_band"], it["_referral_band"],
                                    it["_sort_dt"] or now),
                    reverse=True)
         # Return every eligible card, untruncated: get_board_cards() already fetched all of them
-        # regardless, and the poller's cross-source (priority band, referral band, level band, date) sort against
+        # regardless, and the poller's cross-source (priority band, level band, referral band, date) sort against
         # target_open_tabs (run-poller.py's `needs` list) is what decides how much actually gets
         # dispatched. Truncating
         # here instead would share one board-local budget across only Trello's own boards: once the OTHER
