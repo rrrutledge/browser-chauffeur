@@ -1,13 +1,18 @@
-"""Test for providers/trello-adapter.py's level-band ranking (_level_band, and the
-(priority_band, level_band, date) sort key used by both trello-adapter._enumerate and
+"""Test for providers/trello-adapter.py's band ranking (_referral_band, _level_band, and the
+(priority_band, referral_band, level_band, date) sort key used by both trello-adapter._enumerate and
 run-poller.py's cross-source needs-you sort). No network/Trello credentials required —
-_priority_band/_level_band are pure functions of a card dict.
+_priority_band/_referral_band/_level_band are pure functions of a card dict.
 Run directly:
     python plugins/drainer/tests/test_trello_adapter_level_band.py
 """
 import importlib.util
 import os
 import sys
+
+try:  # labels under test carry emoji; keep printing them safe on a non-UTF-8 console (Windows cp1252)
+    sys.stdout.reconfigure(encoding="utf-8")
+except Exception:
+    pass
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PLUGIN_ROOT = os.path.abspath(os.path.join(HERE, ".."))
@@ -45,27 +50,83 @@ def test_level_band_reads_desc_line():
     check("empty desc -> 0", Provider._level_band(card(None)) == 0)
 
 
+def test_referral_band_reads_label():
+    print("test: _referral_band reads the Referral label - 1 with, 0 without")
+    Provider = adapter_mod.Provider
+    check("canonical '🤝 Referral' label -> 1", Provider._referral_band(card(labels=[{"name": "🤝 Referral"}])) == 1)
+    check("bare 'Referral' without the emoji prefix -> 0 (only the canonical form counts)",
+          Provider._referral_band(card(labels=[{"name": "Referral"}])) == 0)
+    check("no referral label -> 0", Provider._referral_band(card(labels=[{"name": "🎯 P1"}])) == 0)
+    check("contact name containing 'referral' does NOT trip it -> 0",
+          Provider._referral_band(card(labels=[{"name": "Referral from Zack"}])) == 0)
+    check("no labels -> 0", Provider._referral_band(card()) == 0)
+
+
+def test_referral_label_held_out_of_contacts():
+    print("test: the Referral label is not misread as a contact name")
+    prov = adapter_mod.Provider.__new__(adapter_mod.Provider)
+    prov.channels, prov.features, prov.status_labels = set(), set(), {"blocked", "waiting"}
+    _, _, contacts, _ = prov._classify_labels(card(labels=[{"name": "🤝 Referral"}, {"name": "Zack Koppert"}]))
+    check("Referral held out; a real person stays a contact", contacts == ["Zack Koppert"], contacts)
+
+
+SORT_KEY = lambda it: (it["_priority_band"], it.get("_referral_band", 0), it["_level_band"], it["_sort_dt"])
+
+
 def test_sort_key_orders_level_within_band():
-    print("test: (priority_band, level_band, date) sort puts Director/VP ahead of IC within the same band")
+    print("test: (priority_band, referral_band, level_band, date) sort puts Director/VP ahead of IC within the same band")
     Provider = adapter_mod.Provider
     # Mirrors the real-world case: SentinelOne (P1 Director/VP, older date) must outrank
     # eBay (P1 IC, newer date) even though eBay's date alone would sort first.
     p1_band = adapter_mod._PRIORITY_BAND[1]
     sentinelone = {
-        "name": "SentinelOne", "_priority_band": p1_band,
+        "name": "SentinelOne", "_priority_band": p1_band, "_referral_band": 0,
         "_level_band": Provider._level_band(card("Priority: P1 · Eng leadership · Director/VP-level")),
         "_sort_dt": "2026-07-22",
     }
     ebay = {
-        "name": "eBay", "_priority_band": p1_band,
+        "name": "eBay", "_priority_band": p1_band, "_referral_band": 0,
         "_level_band": Provider._level_band(card("Priority: P1 · Platform · IC-level")),
         "_sort_dt": "2026-08-15",
     }
-    ranked = sorted([ebay, sentinelone],
-                     key=lambda it: (it["_priority_band"], it["_level_band"], it["_sort_dt"]),
-                     reverse=True)
+    ranked = sorted([ebay, sentinelone], key=SORT_KEY, reverse=True)
     check("Director/VP-level card dispatches before a same-band, newer-dated IC-level card",
           ranked[0]["name"] == "SentinelOne", [it["name"] for it in ranked])
+
+
+def test_referral_leads_level_within_band():
+    print("test: within a fit tier, referral outranks a same-band cold role of either level")
+    p1 = adapter_mod._PRIORITY_BAND[1]
+    # Russell's stated order within a tier: referral+Director → referral+IC → cold+Director → cold+IC.
+    referral_ic = {"name": "referral IC", "_priority_band": p1, "_referral_band": 1, "_level_band": -1,
+                   "_sort_dt": "2026-01-01"}
+    cold_director = {"name": "cold Director", "_priority_band": p1, "_referral_band": 0, "_level_band": 0,
+                     "_sort_dt": "2026-08-01"}
+    ranked = sorted([cold_director, referral_ic], key=SORT_KEY, reverse=True)
+    check("a referral IC-level role outranks a same-band cold Director/VP-level role",
+          ranked[0]["name"] == "referral IC", [it["name"] for it in ranked])
+
+    referral_director = {"name": "referral Director", "_priority_band": p1, "_referral_band": 1,
+                         "_level_band": 0, "_sort_dt": "2026-01-01"}
+    full = sorted([cold_director, referral_ic, referral_director,
+                   {"name": "cold IC", "_priority_band": p1, "_referral_band": 0, "_level_band": -1,
+                    "_sort_dt": "2026-08-01"}], key=SORT_KEY, reverse=True)
+    check("full within-tier order is referral-Director, referral-IC, cold-Director, cold-IC",
+          [it["name"] for it in full] == ["referral Director", "referral IC", "cold Director", "cold IC"],
+          [it["name"] for it in full])
+
+
+def test_priority_band_still_leads_referral_band():
+    print("test: a higher priority band still beats a lower band's referral")
+    p1 = adapter_mod._PRIORITY_BAND[1]
+    p2 = adapter_mod._PRIORITY_BAND[2]
+    p1_cold_ic = {"name": "P1 cold IC", "_priority_band": p1, "_referral_band": 0, "_level_band": -1,
+                  "_sort_dt": "2026-01-01"}
+    p2_referral_director = {"name": "P2 referral Director", "_priority_band": p2, "_referral_band": 1,
+                            "_level_band": 0, "_sort_dt": "2026-08-01"}
+    ranked = sorted([p2_referral_director, p1_cold_ic], key=SORT_KEY, reverse=True)
+    check("P1 cold IC still outranks a P2 referral Director/VP (tier leads referral)",
+          ranked[0]["name"] == "P1 cold IC", [it["name"] for it in ranked])
 
 
 def test_startable_gate_start_is_the_only_date():
@@ -89,21 +150,23 @@ def test_startable_gate_start_is_the_only_date():
 def test_priority_band_still_leads_level_band():
     print("test: a higher priority band still beats a lower band regardless of level")
     Provider = adapter_mod.Provider
-    p1_ic = {"name": "P1 IC", "_priority_band": adapter_mod._PRIORITY_BAND[1], "_level_band": -1,
-             "_sort_dt": "2026-01-01"}
-    p2_director = {"name": "P2 Director", "_priority_band": adapter_mod._PRIORITY_BAND[2], "_level_band": 0,
-                    "_sort_dt": "2026-08-01"}
-    ranked = sorted([p2_director, p1_ic],
-                     key=lambda it: (it["_priority_band"], it["_level_band"], it["_sort_dt"]),
-                     reverse=True)
+    p1_ic = {"name": "P1 IC", "_priority_band": adapter_mod._PRIORITY_BAND[1], "_referral_band": 0,
+             "_level_band": -1, "_sort_dt": "2026-01-01"}
+    p2_director = {"name": "P2 Director", "_priority_band": adapter_mod._PRIORITY_BAND[2], "_referral_band": 0,
+                    "_level_band": 0, "_sort_dt": "2026-08-01"}
+    ranked = sorted([p2_director, p1_ic], key=SORT_KEY, reverse=True)
     check("P1 IC still outranks P2 Director/VP", ranked[0]["name"] == "P1 IC", [it["name"] for it in ranked])
 
 
 if __name__ == "__main__":
     test_level_band_reads_desc_line()
+    test_referral_band_reads_label()
+    test_referral_label_held_out_of_contacts()
     test_sort_key_orders_level_within_band()
+    test_referral_leads_level_within_band()
     test_startable_gate_start_is_the_only_date()
     test_priority_band_still_leads_level_band()
+    test_priority_band_still_leads_referral_band()
     print()
     if failures:
         print(f"{len(failures)} FAILED: {failures}")

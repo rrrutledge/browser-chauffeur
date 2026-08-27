@@ -41,6 +41,13 @@ from provider_base import ProviderBase, ProviderError, slug, NEUTRAL_PRIORITY_BA
 # whose whole label IS the priority marker — never a contact name that happens to contain "P1".
 _PRIORITY_RE = re.compile(r"^\s*(?:🎯\s*)?P([1-3])\s*$")
 
+# A referral label marks a Job Search Outreach card at a company where someone in Russell's network has
+# agreed to refer him — the highest predictor of landing an interview, so within a fit tier a
+# referral-backed role is worked before an equally-ranked cold one. The label is always written as the
+# exact string "🤝 Referral" by personal-ai-pod's apply-referral-labels.js (the sole writer), so this
+# matches that one canonical form; anchored so a contact name containing "referral" never trips it.
+_REFERRAL_RE = re.compile(r"^\s*🤝 Referral\s*$")
+
 # THE priority policy — the one place it is defined; every other site that mentions a band points here.
 # A card's priority label maps to a queue band, ranked (band, date) descending against every other
 # drained item. Bands are relative to NEUTRAL_PRIORITY_BAND (email/Slack and every unlabeled card):
@@ -264,13 +271,15 @@ class Provider(ProviderBase):
         initiative = next((l.get("name") for l in labels
                            if (l.get("color") or "").lower() == "yellow" and l.get("name")),
                           None)
-        # Hold status labels (⛔ Blocked / ⏳ Waiting) and priority labels (🎯 P1/P2/P3) out of the name
-        # pool so neither is ever read as a contact — a status label carries dependency state and a
-        # priority label carries fit rank, not a person.
+        # Hold status labels (⛔ Blocked / ⏳ Waiting), priority labels (🎯 P1/P2/P3), and the 🤝 Referral
+        # label out of the name pool so none is ever read as a contact — a status label carries dependency
+        # state, a priority label carries fit rank, and the referral label carries a queue promotion, not a
+        # person.
         names = [l.get("name") for l in labels
                  if l.get("name") and l.get("name") != initiative
                  and not any(tok in l.get("name").lower() for tok in self.status_labels)
-                 and not _PRIORITY_RE.match(l.get("name"))]
+                 and not _PRIORITY_RE.match(l.get("name"))
+                 and not _REFERRAL_RE.match(l.get("name"))]
         channel = next((n for n in names if n in self.channels), None)
         feats = [n for n in names if n in self.features]
         contacts = [n for n in names if n not in self.channels and n not in self.features]
@@ -285,6 +294,19 @@ class Provider(ProviderBase):
             if m:
                 return _PRIORITY_BAND[int(m.group(1))]
         return NEUTRAL_PRIORITY_BAND
+
+    @staticmethod
+    def _referral_band(card):
+        """Return a card's referral rank from its 🤝 Referral label — 1 when a referral is in hand, 0
+        otherwise. Sits between priority and level in the sort key, so within a fit tier a referral-backed
+        role (of either level) is worked ahead of every cold one, and a referral Director/VP-level role
+        ahead of a referral IC-level one (level still breaks the tie among referrals). Zero is the shared
+        neutral referral rank email/Slack and every non-referral card carry, so a referral card promotes
+        above them within its band."""
+        for l in card.get("labels", []):
+            if _REFERRAL_RE.match(l.get("name") or ""):
+                return 1
+        return 0
 
     @staticmethod
     def _level_band(card):
@@ -413,7 +435,8 @@ class Provider(ProviderBase):
                 # its creation date (always in the past), so it sorts by age alongside email/Slack.
                 sort_dt = start_dt or self._created_dt(card["id"])
                 priority_band = self._priority_band(card)  # see _PRIORITY_BAND; leads the sort key below
-                level_band = self._level_band(card)  # see _level_band; breaks ties within a priority band
+                referral_band = self._referral_band(card)  # see _referral_band; ranks under band, over level
+                level_band = self._level_band(card)  # see _level_band; breaks ties within a band+referral
                 channel, feats, contacts, initiative_label = self._classify_labels(card)
                 # A per-card initiative label wins over the board's default initiative. The slug is the
                 # initiative label's name slugified (→ initiatives/<slug>.md); board defaults are already
@@ -442,16 +465,19 @@ class Provider(ProviderBase):
                     "preview": f"[{bname} / {list_name}] {(card.get('desc') or '').strip()[:200]}",
                     "_sort_dt": sort_dt,
                     "_priority_band": priority_band,
+                    "_referral_band": referral_band,
                     "_level_band": level_band,
                 })
-        # Ranked (band, level, date) descending — band leads (see _PRIORITY_BAND), level breaks ties
-        # within a band (Director/VP-level ahead of IC-level, see _level_band), date breaks ties within a
-        # band+level (most-recent-first by Start; an undated card by its creation date, set above, or
-        # `now` if even that couldn't be derived).
-        items.sort(key=lambda it: (it["_priority_band"], it["_level_band"], it["_sort_dt"] or now),
+        # Ranked (band, referral, level, date) descending — band leads (see _PRIORITY_BAND), referral
+        # breaks ties within a band (a referral-backed role ahead of a cold one, see _referral_band), level
+        # breaks ties within a band+referral (Director/VP-level ahead of IC-level, see _level_band), date
+        # breaks ties within a band+referral+level (most-recent-first by Start; an undated card by its
+        # creation date, set above, or `now` if even that couldn't be derived).
+        items.sort(key=lambda it: (it["_priority_band"], it["_referral_band"], it["_level_band"],
+                                   it["_sort_dt"] or now),
                    reverse=True)
         # Return every eligible card, untruncated: get_board_cards() already fetched all of them
-        # regardless, and the poller's cross-source (priority band, level band, date) sort against
+        # regardless, and the poller's cross-source (priority band, referral band, level band, date) sort against
         # target_open_tabs (run-poller.py's `needs` list) is what decides how much actually gets
         # dispatched. Truncating
         # here instead would share one board-local budget across only Trello's own boards: once the OTHER
