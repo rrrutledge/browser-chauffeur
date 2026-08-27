@@ -230,6 +230,68 @@ def _ref_exists(ref):
         return False
 
 
+def normalize_repo(value):
+    """Reduce a repo reference to a lowercase `owner/repo` slug, or None if it doesn't look
+    like one. Handles every shape `gh --repo` accepts and every shape a git remote URL takes:
+    bare `owner/repo` shorthand, gh's `[HOST/]owner/repo`, an https URL, and an scp-style ssh
+    URL (`git@github.com:owner/repo.git`). The host is dropped so an https flag value matches
+    an ssh remote for the same repo; the trailing `.git` and any surrounding slashes are
+    stripped, and the last two path segments are taken as owner and repo."""
+    if not value:
+        return None
+    v = value.strip()
+    scp = re.match(r"^[^@/]+@[^:/]+:(.+)$", v)
+    if scp:
+        v = scp.group(1)
+    else:
+        v = re.sub(r"^[a-zA-Z][a-zA-Z0-9+.\-]*://", "", v)
+    if v.endswith(".git"):
+        v = v[:-4]
+    parts = [p for p in v.split("/") if p]
+    if len(parts) < 2:
+        return None
+    owner, repo = parts[-2], parts[-1]
+    if not owner or not repo:
+        return None
+    return f"{owner.lower()}/{repo.lower()}"
+
+
+def cwd_repo_slugs():
+    """Normalized `owner/repo` slugs for every git remote of the cwd's repo, empty on any
+    failure (not a repo, no remotes, git error) so the caller fails open."""
+    try:
+        out = git_output(["remote", "-v"])
+    except Exception:
+        return set()
+    slugs = set()
+    for line in out.splitlines():
+        cols = line.split()
+        if len(cols) >= 2:
+            slug = normalize_repo(cols[1])
+            if slug:
+                slugs.add(slug)
+    return slugs
+
+
+def repo_flag_targets_other_repo(args):
+    """True when a `--repo`/`-R` flag names a repo other than the cwd's own - the only case
+    where the cwd diff would gate the wrong repo's prose, so the PR gate must defer. Absent
+    the flag, or when it names this same repo (matching any of the cwd's remotes), returns
+    False so the gate runs on the cwd diff. Fails toward deferring (True) when the flag is
+    present but the flag value can't be parsed or the cwd's own repo can't be resolved, so an
+    unverifiable target never gates possibly-wrong prose."""
+    value = extract_flag_value(args, "--repo") or extract_flag_value(args, "-R")
+    if not value:
+        return False
+    target = normalize_repo(value)
+    if not target:
+        return True
+    own = cwd_repo_slugs()
+    if not own:
+        return True
+    return target not in own
+
+
 def resolve_pr_base(args):
     """The ref the PR diffs against, matching what GitHub shows. `gh pr create --base <b>`
     diffs against the branch <b> on the remote, so a named base resolves to its
@@ -356,16 +418,17 @@ def pr_prose_deny_reason(command):
     (fail-open). Reads each changed file from the working tree, which equals the committed
     content the PR diff names when the tree is clean at PR time.
 
-    The diff runs in the current directory's repo. When the command carries `-R`/`--repo`,
-    the PR targets a repo named on the command line that need not be the current directory's
-    repo (e.g. `gh pr create -R owner/other` run from an unrelated checkout), so the
-    cwd diff would gate the wrong repo's prose - defer in that case (fail-open) rather than
-    block on files that are not in the PR at all."""
+    The diff runs in the current directory's repo. A `-R`/`--repo` flag lets the PR target a
+    repo named on the command line, which need only differ from the cwd's repo when it names
+    a genuinely other one (e.g. `gh pr create -R owner/other` run from an unrelated checkout) -
+    there the cwd diff would gate the wrong repo's prose, so defer. When the flag names this
+    same repo (the common defensive-habit case of passing the cwd's own repo redundantly), the
+    cwd diff is exactly the PR's diff, so gate it normally."""
     action = find_gh_pr_action(command)
     if not action:
         return None
     _verb, args = action
-    if extract_flag_value(args, "--repo") or extract_flag_value(args, "-R"):
+    if repo_flag_targets_other_repo(args):
         return None
     try:
         base = resolve_pr_base(args)
