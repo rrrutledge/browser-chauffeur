@@ -457,16 +457,29 @@ class TestWorkflow:
 
 class TestEnterWorktree:
     def test_no_path_creates_new_worktree_approves(self):
-        assert classify_enter_worktree({}) is True
+        assert classify_enter_worktree({}) == (True, None)
 
     def test_name_only_creates_new_worktree_approves(self):
-        assert classify_enter_worktree({"name": "some-feature"}) is True
+        assert classify_enter_worktree({"name": "some-feature"}) == (True, None)
 
-    def test_existing_path_approves(self, tmp_path):
-        # The tool itself refuses to relocate into a path that isn't a
-        # registered worktree, so the hook approves unconditionally --
-        # a bad path just makes EnterWorktree error out harmlessly.
-        assert classify_enter_worktree({"path": str(tmp_path / "whatever")}) is True
+    def test_path_under_claude_worktrees_approves(self, tmp_path):
+        path = str(tmp_path / ".claude" / "worktrees" / "some-feature")
+        assert classify_enter_worktree({"path": path}) == (True, None)
+
+    def test_path_under_claude_worktrees_backslash_approves(self, tmp_path):
+        path = str(tmp_path / ".claude" / "worktrees" / "some-feature").replace("/", "\\")
+        assert classify_enter_worktree({"path": path}) == (True, None)
+
+    def test_path_outside_claude_worktrees_blocks_with_redirect(self, tmp_path):
+        # Claude Code enforces its own permission-root confirmation for any
+        # out-of-convention path, and no hook decision can suppress it -- so
+        # approving here would just trade a hook prompt for an unavoidable
+        # harness one. Block with instructions instead.
+        path = str(tmp_path / ".worktrees" / "some-feature")
+        approved, reason = classify_enter_worktree({"path": path})
+        assert approved is False
+        assert "git worktree move" in reason
+        assert ".claude/worktrees" in reason
 
 
 class TestExitWorktree:

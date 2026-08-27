@@ -7,8 +7,11 @@ Decision order (preserved from the original single-file hook):
   mcp__*           -> mcp.classify_mcp_tool
   Workflow         -> workflow.classify_workflow_tool (blanket-approved saved names,
                        or an AI safety verdict on an inline script's agent() prompts)
-  EnterWorktree    -> worktree_tool.classify_enter_worktree (always approved -- the
-                       tool itself refuses to relocate into an unregistered path)
+  EnterWorktree    -> worktree_tool.classify_enter_worktree (approved when creating fresh
+                       or when the path is already under .claude/worktrees/; otherwise
+                       denied with a redirect, since Claude Code's own permission-root
+                       confirmation for out-of-convention paths can't be suppressed by
+                       any hook)
   ExitWorktree     -> worktree_tool.classify_exit_worktree (keep, or a remove the
                        tool itself won't force past unsaved work)
   Bash             -> enforce.enforce_bash (deny), then per-segment trust (allow)
@@ -167,10 +170,12 @@ def dispatch(data):
         defer()
 
     if tool == 'EnterWorktree':
-        if classify_enter_worktree(tool_input):
+        approved, reason = classify_enter_worktree(tool_input)
+        if approved:
             log_debug(f"DECISION: Allow EnterWorktree {tool_input.get('path') or tool_input.get('name')}")
             allow()
-        defer()
+        log_debug(f"DECISION: Deny EnterWorktree (outside .claude/worktrees/): {tool_input.get('path')}")
+        deny(reason)
 
     if tool == 'ExitWorktree':
         if classify_exit_worktree(tool_input):

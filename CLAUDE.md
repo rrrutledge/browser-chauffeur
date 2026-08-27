@@ -131,28 +131,18 @@ reasoning.
 
 #### 7. EnterWorktree / ExitWorktree tool calls (`worktree_tool.py`)
 
-EnterWorktree is always approved by the hook, in both forms. Creating a new worktree (no
-`path` given) is the EnterWorktree equivalent of `git worktree add` under
-`.claude/worktrees/`, already a trusted git subcommand. Switching into an *existing*
-worktree (`path` given) is approved unconditionally too — the tool itself refuses to
-relocate into a path that isn't a real, registered worktree, so a bad path just errors out
-harmlessly instead of relocating anywhere.
+Creating a new worktree (no `path` given) is always approved.
+It's the EnterWorktree equivalent of `git worktree add` under `.claude/worktrees/`, already a trusted git subcommand, so it always lands in the trusted convention.
 
-This hook approval doesn't make the call silent, though. Claude Code enforces its own
-confirmation, independent of any hook decision, whenever the target path falls outside
-`.claude/worktrees/` - moving the session's working directory, write access, and project
-config to that location is treated as a permission-root change. Per Claude Code's docs,
-only `bypassPermissions` mode suppresses that prompt. So entering an out-of-convention
-worktree still needs Russell's one-time click regardless of what this hook decides - that's
-expected.
+Switching into an *existing* worktree (`path` given) is approved only when that path already lives under `.claude/worktrees/`.
+A path outside it is denied instead, with a corrective message - the same pattern used for the PowerShell tool (denied, pointed at Bash).
+Claude Code enforces its own confirmation, independent of any hook decision, whenever EnterWorktree relocates outside `.claude/worktrees/` - moving the session's working directory, write access, and project config to that location counts as a permission-root change, and per Claude Code's docs, only `bypassPermissions` mode suppresses that prompt.
+Approving that case would just trade a hook prompt for an unavoidable harness one, so the denial instead tells the model to bring the worktree into `.claude/worktrees/` first with `git worktree move` (already a trusted git subcommand, preserving the branch and any uncommitted work) and retry EnterWorktree with the new path - which goes through clean, no click needed.
 
-ExitWorktree takes no path — it only ever acts on the one worktree the current session
-entered via EnterWorktree, tracked internally by the harness rather than supplied by the
-model. `action: "keep"` is always approved (nothing is deleted). `action: "remove"` mirrors
-`git branch -d`: the tool itself refuses when the worktree has uncommitted files or commits
-that never landed on the original branch, so a plain remove is approved; only
-`discard_changes: true`, which forces the removal through and knowingly throws away
-unsaved work, falls through to a manual prompt.
+ExitWorktree takes no path - it only ever acts on the one worktree the current session entered via EnterWorktree, tracked internally by the harness rather than supplied by the model.
+`action: "keep"` is always approved (nothing is deleted).
+`action: "remove"` mirrors `git branch -d`: the tool itself refuses when the worktree has uncommitted files or commits that never landed on the original branch, so a plain remove is approved.
+Only `discard_changes: true`, which forces the removal through and knowingly throws away unsaved work, falls through to a manual prompt.
 
 ### Learned → source promotion (`tools/sync_learned.py`)
 
@@ -218,6 +208,6 @@ are promoted back to the plugin source via a GitHub PR on a rolling branch
 | `plugins/safe-compounds/safe_compounds/enforce.py` | Bash form validation + block messages |
 | `plugins/safe-compounds/safe_compounds/learned.py` | Machine-local learned store read/write |
 | `plugins/safe-compounds/safe_compounds/workflow.py` | Classifies Workflow tool calls: `workflow_blanket_names` for saved workflows, AI content check for inline scripts |
-| `plugins/safe-compounds/safe_compounds/worktree_tool.py` | Classifies EnterWorktree (always approved by the hook - see §7 for the separate harness-level confirmation) and ExitWorktree (`keep` and plain `remove` approved, `discard_changes` prompts) tool calls |
+| `plugins/safe-compounds/safe_compounds/worktree_tool.py` | Classifies EnterWorktree (approved when creating fresh or already under `.claude/worktrees/`; denied with a `git worktree move` redirect otherwise - see §7) and ExitWorktree (`keep` and plain `remove` approved, `discard_changes` prompts) tool calls |
 | `plugins/safe-compounds/tools/sync_learned.py` | Promotes learned approvals to a GitHub PR |
 | `plugins/safe-compounds/safe_compounds/config.py` | Config file schema + loader |
