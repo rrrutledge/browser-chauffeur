@@ -1,17 +1,23 @@
 """Classify EnterWorktree and ExitWorktree tool calls as auto-allowable.
 
-EnterWorktree is approved unconditionally, for both its forms. Creating a
-*new* worktree (no `path`, optional `name`) is the EnterWorktree equivalent
-of `git worktree add` under `.claude/worktrees/`, which is already a trusted
-git subcommand. Relocating into an *existing* worktree (`path` given) only
-ever succeeds when that path is already registered in `git worktree list`
-for the repo that owns it -- the tool enforces that itself and refuses
-otherwise -- so a bad or stale path just makes EnterWorktree error out
-harmlessly instead of relocating anywhere; there's no destructive outcome
-for the hook to gate against. That holds regardless of whether the path
-lives under `.claude/worktrees/` or a project's own convention (e.g.
-`.worktrees/`) -- the location doesn't matter, the tool's own bookkeeping is
-the guarantee.
+Creating a *new* worktree (no `path` given) always lands under
+`.claude/worktrees/`, the EnterWorktree equivalent of `git worktree add`
+there -- already a trusted git subcommand -- so this case is approved
+unconditionally.
+
+Switching into an *existing* worktree (`path` given) is approved only when
+that path already lives under `.claude/worktrees/`. A path outside it is
+blocked instead of approved: Claude Code enforces its own confirmation
+whenever EnterWorktree relocates outside `.claude/worktrees/` -- moving the
+session's working directory, write access, and project config counts as a
+permission-root change -- and per Claude Code's own docs, only
+`bypassPermissions` mode can suppress that prompt; no hook decision can.
+Approving unconditionally here would just trade a hook prompt for an
+unavoidable harness one, so instead the block message tells the model to
+bring the worktree into `.claude/worktrees/` first with `git worktree move`
+(which preserves the branch and any uncommitted work) and retry with the new
+path -- the same self-correcting pattern used elsewhere in this hook (e.g.
+the PowerShell-tool block pointing at Bash).
 
 ExitWorktree takes no path at all -- it only ever acts on the one worktree
 this same session entered via EnterWorktree, tracked internally by the
@@ -26,10 +32,38 @@ which knowingly throws work away, needs a human.
 from .log import log_debug
 
 
+def _under_claude_worktrees(path):
+    normalized = path.replace('\\', '/').rstrip('/')
+    return normalized.endswith('/.claude/worktrees') or '/.claude/worktrees/' in normalized + '/'
+
+
 def classify_enter_worktree(tool_input):
-    """Return True to auto-allow an EnterWorktree tool call, False to prompt."""
-    log_debug(f"EnterWorktree: approving (path={tool_input.get('path')!r})")
-    return True
+    """Return (approved, reason) for an EnterWorktree tool call.
+
+    `reason` is a corrective message when `approved` is False, else None.
+    """
+    path = tool_input.get('path')
+    if not path:
+        log_debug("EnterWorktree: no path (creates fresh under .claude/worktrees/), approving")
+        return True, None
+
+    if _under_claude_worktrees(path):
+        log_debug(f"EnterWorktree: path under .claude/worktrees/ ({path!r}), approving")
+        return True, None
+
+    log_debug(f"EnterWorktree: path outside .claude/worktrees/ ({path!r}), blocking with redirect")
+    reason = (
+        'BLOCKED: "{path}" is outside .claude/worktrees/. Claude Code enforces its own '
+        'permission-root confirmation for any EnterWorktree path outside that convention, and '
+        'no hook, permission rule, or "don\'t ask again" choice can suppress it -- only '
+        'bypassPermissions mode can, which doesn\'t apply here.\n\n'
+        'To keep this worktree\'s branch and any uncommitted work while staying in convention, '
+        'move it into place first, then retry EnterWorktree with the new path:\n'
+        '  git worktree move "{path}" "$(git rev-parse --show-toplevel)/.claude/worktrees/<name>"\n\n'
+        'If there\'s nothing to preserve, call EnterWorktree with `name` (or no arguments) '
+        'instead of `path` -- that always creates fresh under .claude/worktrees/.'
+    ).format(path=path)
+    return False, reason
 
 
 def classify_exit_worktree(tool_input):
