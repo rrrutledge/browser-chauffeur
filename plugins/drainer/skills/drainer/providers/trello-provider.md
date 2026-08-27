@@ -92,13 +92,22 @@ now-or-earlier, or no Start at all. A future Start is the only thing that holds 
 by its **Start date** (its go-live), most recent first, and an undated card by its **creation date**
 (decoded from the card's ObjectId).
 
-Rank is `(priority band, level band, date)`, all descending — level breaks ties within a band, date
-breaks ties within a band+level. A card's band comes from a **priority label** named exactly `P1`, `P2`,
-or `P3` (optionally with a 🎯 prefix), written by the job-board poller (personal-ai-pod
-`job-board-poll.js`) on Job Search Outreach cards. Only those labeled cards leave the neutral band, so
-every other board is unaffected and orders purely by date as before. The band each tier maps to — and how
-to change it — is defined in one place, the adapter's `_PRIORITY_BAND`; a priority label is held out of
-the contact parse (it names a fit rank, not a person), the same way ⛔/⏳ status labels are.
+Rank is `(priority band, referral band, level band, date)`, all descending — referral breaks ties within
+a band, level breaks ties within a band+referral, date breaks ties within a band+referral+level. A card's
+band comes from a **priority label** named exactly `P1`, `P2`, or `P3` (optionally with a 🎯 prefix),
+written by the job-board poller (personal-ai-pod `job-board-poll.js`) on Job Search Outreach cards. Only
+those labeled cards leave the neutral band, so every other board is unaffected and orders purely by date
+as before. The band each tier maps to — and how to change it — is defined in one place, the adapter's
+`_PRIORITY_BAND`; a priority label is held out of the contact parse (it names a fit rank, not a person),
+the same way ⛔/⏳ status labels are.
+
+A card's referral band comes from a **`🤝 Referral` label** (personal-ai-pod's `network/referrers.md` is
+the source of truth it's derived from): a card at a company where someone in Russell's network has agreed
+to refer him lifts to referral-1 and leads its priority band — a referral-backed role of either level
+ahead of every cold one, since a referral is the strongest predictor of landing an interview. Zero is the
+shared neutral referral rank email/Slack and every non-referral card carry. The label is held out of the
+contact parse (it names a queue promotion, not a person), the same way the priority and status labels are.
+See the adapter's `_referral_band`.
 
 A card's level band comes from its `desc`: `job-board-poll.js` writes a
 `Priority: P<n> · <category> · Director/VP-level` or `· IC-level` line into every Job Search Outreach
