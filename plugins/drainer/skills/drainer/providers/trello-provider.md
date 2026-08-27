@@ -93,8 +93,11 @@ by its **Start date** (its go-live), most recent first, and an undated card by i
 (decoded from the card's ObjectId).
 
 Rank is `(priority band, level band, referral band, date)`, all descending — level breaks ties within
-a band, referral breaks ties within a band+level, date breaks ties within a band+level+referral. A card's
-band comes from a **priority label** named exactly `P1`, `P2`, or `P3` (optionally with a 🎯 prefix),
+a band, referral breaks ties within a band+level, date breaks ties within a band+level+referral. The
+order of those three bands is defined in exactly one place, `provider_base.band_rank`, which both this
+adapter's enumerate and the poller's cross-source sort call; to reorder the queue (e.g. put referral back
+ahead of level), change the tuple there. A card's band comes from a **priority label** named exactly
+`P1`, `P2`, or `P3` (optionally with a 🎯 prefix),
 written by the job-board poller (personal-ai-pod `job-board-poll.js`) on Job Search Outreach cards. Only
 those labeled cards leave the neutral band, so every other board is unaffected and orders purely by date
 as before. The band each tier maps to — and how to change it — is defined in one place, the adapter's

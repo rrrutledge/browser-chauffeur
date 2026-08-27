@@ -1,7 +1,8 @@
-"""Test for providers/trello-adapter.py's band ranking (_referral_band, _level_band, and the
-(priority_band, level_band, referral_band, date) sort key used by both trello-adapter._enumerate and
-run-poller.py's cross-source needs-you sort). No network/Trello credentials required —
-_priority_band/_referral_band/_level_band are pure functions of a card dict.
+"""Test for providers/trello-adapter.py's band ranking (_referral_band, _level_band, and provider_base's
+band_rank — the (priority_band, level_band, referral_band) queue-order policy that both
+trello-adapter._enumerate and run-poller.py's cross-source needs-you sort read). No network/Trello
+credentials required — _priority_band/_referral_band/_level_band and band_rank are pure functions of a
+card dict.
 Run directly:
     python plugins/drainer/tests/test_trello_adapter_level_band.py
 """
@@ -24,6 +25,8 @@ if SCRIPTS not in sys.path:
 spec = importlib.util.spec_from_file_location("trello_adapter", ADAPTER)
 adapter_mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(adapter_mod)
+
+import provider_base  # noqa: E402 — SCRIPTS is on sys.path above; band_rank is the shared queue-order policy
 
 failures = []
 
@@ -70,7 +73,9 @@ def test_referral_label_held_out_of_contacts():
     check("Referral held out; a real person stays a contact", contacts == ["Zack Koppert"], contacts)
 
 
-SORT_KEY = lambda it: (it["_priority_band"], it["_level_band"], it.get("_referral_band", 0), it["_sort_dt"])
+# The real queue-order policy under test — the shared band_rank tuple, plus the trailing date key the
+# adapter/poller each append. Reads through band_rank so the test can never drift from the live order.
+SORT_KEY = lambda it: (*provider_base.band_rank(it), it["_sort_dt"])
 
 
 def test_sort_key_orders_level_within_band():
@@ -92,6 +97,15 @@ def test_sort_key_orders_level_within_band():
     ranked = sorted([ebay, sentinelone], key=SORT_KEY, reverse=True)
     check("Director/VP-level card dispatches before a same-band, newer-dated IC-level card",
           ranked[0]["name"] == "SentinelOne", [it["name"] for it in ranked])
+
+
+def test_band_rank_is_priority_then_level_then_referral():
+    print("test: band_rank returns (priority, level, referral) — the one place the queue order is defined")
+    it = {"_priority_band": 5, "_level_band": -1, "_referral_band": 1}
+    check("band_rank orders priority, then level, then referral", provider_base.band_rank(it) == (5, -1, 1),
+          provider_base.band_rank(it))
+    check("missing bands fall back to neutral", provider_base.band_rank({}) ==
+          (provider_base.NEUTRAL_PRIORITY_BAND, 0, 0), provider_base.band_rank({}))
 
 
 def test_level_leads_referral_within_band():
@@ -163,6 +177,7 @@ if __name__ == "__main__":
     test_level_band_reads_desc_line()
     test_referral_band_reads_label()
     test_referral_label_held_out_of_contacts()
+    test_band_rank_is_priority_then_level_then_referral()
     test_sort_key_orders_level_within_band()
     test_level_leads_referral_within_band()
     test_startable_gate_start_is_the_only_date()
