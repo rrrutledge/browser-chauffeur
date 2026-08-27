@@ -78,19 +78,18 @@ Slack workspace invite) or by finishing a needs-you item's work and self-closing
 re-tagged `auto-handle` on the way into the queue). The action and the source-clear are **already done**
 — this section is purely so Russell *sees* what happened, never to ask him to act.
 
-Each item carries a `disposition` its worker stamped (`abandoned` | `advanced` | `nudged`) and a one-line
-`dispositionReason`. Present one distinct **"Auto-handled"** section (separate from fyi), split by that
-disposition:
-- **State changed (worth a glance)** - every item whose disposition is anything other than `nudged`:
-  `abandoned` (terminal - a role died, a thread ended), `advanced` (moved a stage, or a standing action
-  ran), and any item that carries no disposition at all. One line each, printed with its
+Each item carries a `disposition` its worker stamped (`abandoned` | `advanced` | `nudged`, defined in
+worker-core step 4) and a one-line `dispositionReason`. Your job here is only to split on that disposition
+and print each item's reason verbatim, so you need the split rule, not the value definitions. Present one
+distinct **"Auto-handled"** section (separate from fyi), split two ways:
+- **State changed (worth a glance)** - every item whose disposition is anything other than `nudged`
+  (`abandoned`, `advanced`, or an item carrying no disposition at all). One line each, printed with its
   `dispositionReason` verbatim, most-notable first - an `abandoned` item leads, since a dead req is a real
   signal: e.g. "Abandoned - req closed (Acme / Staff Eng)", "Advanced to Interested - they replied yes",
   "Approved workspace invite for *jane@acme.com* (requested by Bob)".
-- **Checked, no change** - the `nudged` items (a cadence bump on an unanswered card, an already-handled
-  no-op). Collapse these to a single count with a short by-source breakdown ("Checked, no change: 9
-  outreach cards bumped"), not a line each. Surface an individual nudge only when its reason flags
-  something odd.
+- **Checked, no change** - the `nudged` items. Collapse these to a single count with a short by-source
+  breakdown ("Checked, no change: 9 outreach cards bumped"), not a line each. Surface an individual nudge
+  only when its reason flags something odd.
 
 An item carrying no `disposition` field (an older queue entry, or a worker that didn't stamp one) lands in
 the **state changed** group and prints whatever detail it has - an unlabeled item is never folded into the

@@ -231,6 +231,13 @@ then lists an abandoned or advanced card under its Auto-handled "state changed" 
 folds a nudge into the "checked, no change" count, so a closed-req abandon reads as a real signal, not a
 deferral.
 
+A card reaches the digest as `nudged` only on the **silent-bump** path: the situational check found recent
+activity since the Start date was last set - the contact replied, or Russell already answered on the
+thread - so a follow-up right now would be premature, and the card's Start is bumped out with nothing sent.
+A follow-up Russell actually sends is a needs-you item he already saw, never an auto-handled nudge. So a
+`nudged` card in the digest is always "checked, activity in flight, too early to act," never an unanswered
+card pushed without a follow-up going out.
+
 A ⏳ Waiting card nudges the same way — bump its **Start** (ping-back date) out. Whenever a card is
 **finished** (moved to a terminal/skip list), fire
 `trello_utils.cascade_unblock(board_id, finished_card_id, session)` so any ⛔ Blocked cards waiting on
