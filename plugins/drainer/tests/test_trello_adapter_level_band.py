@@ -53,9 +53,9 @@ def test_level_band_reads_desc_line():
 def test_referral_band_reads_label():
     print("test: _referral_band reads the Referral label - 1 with, 0 without")
     Provider = adapter_mod.Provider
-    check("emoji-prefixed Referral label -> 1", Provider._referral_band(card(labels=[{"name": "🤝 Referral"}])) == 1)
-    check("bare 'Referral' label -> 1", Provider._referral_band(card(labels=[{"name": "Referral"}])) == 1)
-    check("'referral' any case -> 1", Provider._referral_band(card(labels=[{"name": "referral"}])) == 1)
+    check("canonical '🤝 Referral' label -> 1", Provider._referral_band(card(labels=[{"name": "🤝 Referral"}])) == 1)
+    check("bare 'Referral' without the emoji prefix -> 0 (only the canonical form counts)",
+          Provider._referral_band(card(labels=[{"name": "Referral"}])) == 0)
     check("no referral label -> 0", Provider._referral_band(card(labels=[{"name": "🎯 P1"}])) == 0)
     check("contact name containing 'referral' does NOT trip it -> 0",
           Provider._referral_band(card(labels=[{"name": "Referral from Zack"}])) == 0)

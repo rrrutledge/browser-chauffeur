@@ -42,11 +42,11 @@ from provider_base import ProviderBase, ProviderError, slug, NEUTRAL_PRIORITY_BA
 _PRIORITY_RE = re.compile(r"^\s*(?:🎯\s*)?P([1-3])\s*$")
 
 # A referral label marks a Job Search Outreach card at a company where someone in Russell's network has
-# agreed to refer him (formal or informal) — the highest predictor of landing an interview, so within a
-# fit tier a referral-backed role is worked before an equally-ranked cold one. The label's whole text is
-# the referral marker (optionally with a 🤝 prefix); anchored so a contact name containing "referral"
-# never trips it. personal-ai-pod's network/referrers.md is the source of truth the label is derived from.
-_REFERRAL_RE = re.compile(r"^\s*(?:🤝\s*)?Referral\s*$", re.IGNORECASE)
+# agreed to refer him — the highest predictor of landing an interview, so within a fit tier a
+# referral-backed role is worked before an equally-ranked cold one. The label is always written as the
+# exact string "🤝 Referral" by personal-ai-pod's apply-referral-labels.js (the sole writer), so this
+# matches that one canonical form; anchored so a contact name containing "referral" never trips it.
+_REFERRAL_RE = re.compile(r"^\s*🤝 Referral\s*$")
 
 # THE priority policy — the one place it is defined; every other site that mentions a band points here.
 # A card's priority label maps to a queue band, ranked (band, date) descending against every other
