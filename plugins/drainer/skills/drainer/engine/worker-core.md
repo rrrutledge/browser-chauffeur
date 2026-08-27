@@ -45,12 +45,31 @@ Russell decided in advance — do the action without presenting or waiting, then
 3. **Execute the action** autonomously (reversible/safe by definition of the rule — e.g. click the
    approve button). Then **CLEAR the source item** per your provider's CLEAR op (mark read / advance), so
    it doesn't resurface.
-4. **Queue a digest entry** describing what you did, so the daily digest shows it under "Auto-handled":
-   `node <skill>/scripts/seen-state.js queue-add <runtime_dir> <source> <id> <path to items/<id>.json>`
-   (same helper as §2b; `<runtime_dir>` is the parent of the `items/` folder). The captured `items/<id>.json`
-   already carries `triage: "auto-handle"`, which is how the digest files it in the Auto-handled section.
+4. **Stamp the disposition, then queue a digest entry** describing what you did, so the daily digest
+   shows it under "Auto-handled" with the right framing:
+   1. **Record the disposition** on `items/<id>.json` (Edit tool) before queuing - a `disposition` field
+      naming which kind of outcome this was, plus a one-line `dispositionReason` in the terms Russell
+      would want to read. The canonical values are shared across every source:
+      - `abandoned` - terminal: the item is finished and will not recur (a dead/closed job req, a request
+        withdrawn, a thread that ended). A real signal, always worth a glance.
+      - `advanced` - a state change short of terminal: the item moved a stage, or a standing action ran
+        that changed something (an approved workspace invite). Worth a glance.
+      - `nudged` - nothing changed, routine: a cadence bump on an unanswered card, or an action that was
+        already handled. Not notable on its own.
+      Pick the value that matches what you actually did, per your source's AUTO-HANDLE / CLEAR mapping, and
+      set `dispositionReason` to the same one-liner you recorded on the source (the dated Trello comment,
+      e.g.): "req closed - posting expired", "moved to Interested - they replied yes", "awaiting reply,
+      Start -> 2026-09-01". The digest prints `abandoned`/`advanced` items with this reason and collapses
+      `nudged` items to a count, so a closed-req abandon reads as "Abandoned - req closed", never as a
+      deferral.
+   2. **Queue it:**
+      `node <skill>/scripts/seen-state.js queue-add <runtime_dir> <source> <id> <path to items/<id>.json>`
+      (same helper as §2b; `<runtime_dir>` is the parent of the `items/` folder). The captured
+      `items/<id>.json` already carries `triage: "auto-handle"`, which is how the digest files it in the
+      Auto-handled section; queue-add stores the whole file, so the `disposition` you just wrote rides
+      along in the same entry and the digest reads it without re-deriving anything.
    Make the entry self-explanatory on its own - if the action revealed a detail worth recording (the
-   invitee, the requester), put it in the entry text rather than leaving it to the captured body.
+   invitee, the requester), put it in `dispositionReason` rather than leaving it to the captured body.
    There is **no presentation and no wait-for-acknowledgment**, because nothing was put in front of
    Russell - the digest is how he learns it happened.
 5. **Close up as your very last step**, in this order. An auto-handle item has no one to wait for, so
@@ -412,7 +431,12 @@ When that's the case, treat the close-out like `auto-handle`'s (steps 4–5 in t
 though this item was never labeled or triaged that way: log what happened somewhere Russell will find it
 later — a dated comment on the source item (a Trello card, e.g.), or a digest queue-add. **When you queue
 a digest entry, first re-tag the item's `triage` to `"auto-handle"` in `items/<id>.json` (Edit tool)
-before the `queue-add` — the same re-tag §2c makes for an FYI downgrade.** This files the entry under the
+before the `queue-add` — the same re-tag §2c makes for an FYI downgrade.** In the same edit, **stamp the
+`disposition` and `dispositionReason`** the auto-handle branch's step 4 defines, choosing the value that
+matches the CLEAR you just performed: a **stop** (moved to Abandoned) is `abandoned`, an **advance**
+(moved a stage) is `advanced`, and a **nudge** (bumped Start, nothing changed) is `nudged`. Use the same
+one-liner you wrote as the source's dated comment for `dispositionReason`, so the digest reports the real
+outcome ("Abandoned - req closed") instead of guessing at deferral language. This files the entry under the
 digest's **"Auto-handled"** section (already done, dismiss-only), so a finished item is shown as handled
 rather than resurfacing as a live needs-you. Queue it via
 `node <skill>/scripts/seen-state.js queue-add <runtime_dir> <source> <id> <path to items/<id>.json>`,

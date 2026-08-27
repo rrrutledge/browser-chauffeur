@@ -223,6 +223,14 @@ Only **after** the user confirms they sent/handled the message, advance the card
   draft) — an abandoned card means the draft is dead weight, not a reminder to revisit.
 Each advance also posts a dated comment recording what happened, so the board reflects reality.
 
+**The CLEAR op is the item's digest disposition.** When a worker auto-handles a card and self-closes it
+(worker-core §6a), the CLEAR it performed is what the digest reports: **stop → `abandoned`**, **advance →
+`advanced`**, **nudge → `nudged`**. Stamp that value as `disposition` on `items/<id>.json`, with the dated
+comment's one-liner as `dispositionReason`, before the digest `queue-add` (worker-core §6a). The digest
+then lists an abandoned or advanced card under its Auto-handled "state changed" group with that reason, and
+folds a nudge into the "checked, no change" count, so a closed-req abandon reads as a real signal, not a
+deferral.
+
 A ⏳ Waiting card nudges the same way — bump its **Start** (ping-back date) out. Whenever a card is
 **finished** (moved to a terminal/skip list), fire
 `trello_utils.cascade_unblock(board_id, finished_card_id, session)` so any ⛔ Blocked cards waiting on
