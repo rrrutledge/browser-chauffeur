@@ -30,6 +30,21 @@ SW_MINIMIZE = 6
 NEUTRAL_PRIORITY_BAND = 1
 
 
+def band_rank(it):
+    """The cross-source queue order, defined in ONE place: priority band, then level, then referral.
+    Every drained item (email/Slack, ordinary Trello cards, and job-search cards) is ranked by this
+    tuple; only job-search cards carry a non-neutral value in any band (the trello adapter stamps
+    `_priority_band`/`_level_band`/`_referral_band` — see its _PRIORITY_BAND, _level_band, _referral_band
+    for what each value means). To reorder the whole queue — e.g. put referral back ahead of level —
+    change the tuple HERE; both sort sites (trello-adapter._enumerate and run-poller's cross-source
+    needs-you sort) and the band-ranking test read it, so the policy lives at one spot. Each caller
+    appends its own trailing date key (the adapter's `_sort_dt`, the poller's `received`), which breaks
+    the final tie most-recent-first."""
+    return (it.get("_priority_band", NEUTRAL_PRIORITY_BAND),
+            it.get("_level_band", 0),
+            it.get("_referral_band", 0))
+
+
 def _window_class(hwnd):
     """Win32 class name of a window handle, or '' if it can't be read."""
     try:

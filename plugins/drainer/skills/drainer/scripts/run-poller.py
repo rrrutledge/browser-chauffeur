@@ -37,7 +37,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 SKILL_DIR = os.path.dirname(SCRIPT_DIR)
 PROVIDERS_DIR = os.path.join(SKILL_DIR, "providers")
 sys.path.insert(0, SCRIPT_DIR)
-from provider_base import run_node, NO_WINDOW, ProviderError, ProviderBase, spawn_tab, spawn_silent, NEUTRAL_PRIORITY_BAND  # noqa: E402  (subprocess helper + typed provider failure)
+from provider_base import run_node, NO_WINDOW, ProviderError, ProviderBase, spawn_tab, spawn_silent, band_rank  # noqa: E402  (subprocess helper + typed provider failure)
 _LIVE_UNSET = object()  # reconcile_unhandled sentinel: scan for live sessions itself unless one is passed in
 from drainer_config import read_config, find_provider_file, ensure_main_worktree  # noqa: E402  (shared reader + provider resolution + main-pinned config worktree)
 
@@ -1097,15 +1097,14 @@ def main():
         save_health(cfg["runtime_dir"], health)
 
     # --- split: needs-you (globally ordered), auto-handle (own worker, no cap), others (digest) ---
-    # Ordered across ALL sources by (priority band, referral band, level band, date) descending. Only
-    # job-search cards carry a non-neutral priority band, referral band, or level (the trello adapter
-    # stamps `_priority_band`, `_referral_band`, and `_level_band` — see its _PRIORITY_BAND,
-    # _referral_band, and _level_band for the policy). Referral-0 and level-0 are the shared neutral ranks
-    # — email/Slack, ordinary Trello cards, and cold Director/VP-level job cards all default or resolve to
-    # them — so within a priority band those interleave purely by `received` date (an inbox message's
-    # arrival time, a card's Start date, or a Start-less card's creation date). A 🤝 Referral card lifts to
-    # referral-1 and leads its band (a referral role of either level ahead of every cold one); an IC-level
-    # job-search card drops to level -1 and waits behind its band's level-0 items.
+    # Ordered across ALL sources by band_rank (priority, level, referral — the queue policy defined once
+    # in provider_base) then `received` date, descending. Only job-search cards carry a non-neutral value
+    # in any band; email/Slack, ordinary Trello cards, and cold Director/VP-level job cards all sit at the
+    # shared neutral ranks, so within a priority band those interleave purely by `received` date (an inbox
+    # message's arrival time, a card's Start date, or a Start-less card's creation date). Because level
+    # leads referral, an IC-level job card drops below that neutral level and waits (a leadership role
+    # without a referral is worked before an IC role even with one); within a level a 🤝 Referral card
+    # lifts above and leads.
     needs_you_items = [it for it in needs_and_others if it["_bucket"] == "needs-you"]
     # orphan-sessions dispatches FIRST, ahead of every other source, explicitly — not via
     # priority-band/received-timestamp tie-breaking (a coincidentally-recent or high-priority
@@ -1119,8 +1118,7 @@ def main():
     )
     other_needs = sorted(
         (it for it in needs_you_items if it["_source"] != "orphan-sessions"),
-        key=lambda it: (it.get("_priority_band", NEUTRAL_PRIORITY_BAND), it.get("_referral_band", 0),
-                         it.get("_level_band", 0), it.get("received") or ""),
+        key=lambda it: (*band_rank(it), it.get("received") or ""),
         reverse=True,
     )
     needs = orphan_needs + other_needs
@@ -1157,7 +1155,7 @@ def main():
                 model = cfg["worker_model_complex"] if it["_complexity"] == "complex" else cfg["worker_model"]
                 print(f"    [{it['_source']:20}] {it['_id']}  ->  spawn auto-worker [{it['_complexity']} -> {model}]\n"
                       f"        {it.get('received')} | {it.get('from')} | {it.get('subject')}")
-        print("  needs-you (orphan-sessions first, then priority band, then referral band, then level band, then newest-first):")
+        print("  needs-you (orphan-sessions first, then priority band, then level band, then referral band, then newest-first):")
         tabs = live_tabs
         for it in needs:
             corr = prov[it["_source"]].correspondent(it)

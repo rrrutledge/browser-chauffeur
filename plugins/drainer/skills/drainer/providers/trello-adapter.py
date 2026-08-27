@@ -34,7 +34,7 @@ from datetime import datetime, timezone
 _SCRIPTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts")
 if _SCRIPTS not in sys.path:
     sys.path.insert(0, _SCRIPTS)
-from provider_base import ProviderBase, ProviderError, slug, NEUTRAL_PRIORITY_BAND  # noqa: E402
+from provider_base import ProviderBase, ProviderError, slug, NEUTRAL_PRIORITY_BAND, band_rank  # noqa: E402
 
 # A priority label is exactly "P1"/"P2"/"P3" (optionally with a 🎯 prefix), written by the job-board
 # poller (personal-ai-pod job-board-poll.js) to rank a role's fit. Anchored so it matches only a card
@@ -298,11 +298,11 @@ class Provider(ProviderBase):
     @staticmethod
     def _referral_band(card):
         """Return a card's referral rank from its 🤝 Referral label — 1 when a referral is in hand, 0
-        otherwise. Sits between priority and level in the sort key, so within a fit tier a referral-backed
-        role (of either level) is worked ahead of every cold one, and a referral Director/VP-level role
-        ahead of a referral IC-level one (level still breaks the tie among referrals). Zero is the shared
-        neutral referral rank email/Slack and every non-referral card carry, so a referral card promotes
-        above them within its band."""
+        otherwise. Referral is the last band in band_rank (below level), so it only breaks ties among
+        same-level roles: a referral role ahead of a cold one of the SAME level, but a cold leadership
+        role still ahead of a referral IC role (a leadership role without a referral is worked before an
+        IC role even with one). Zero is the shared neutral rank email/Slack and every non-referral card
+        carry."""
         for l in card.get("labels", []):
             if _REFERRAL_RE.match(l.get("name") or ""):
                 return 1
@@ -312,12 +312,12 @@ class Provider(ProviderBase):
     def _level_band(card):
         """Return a card's level rank from its 'Priority: ... · <level>' desc line — 0 for
         Director/VP-level, every non-job-search card, and a job-search card job-board-poll hasn't
-        scored yet; -1 for an IC-level job-search card. Zero is the shared neutral level that
-        email/Slack and ordinary Trello cards also carry by default (see run-poller.py's sort), so a
-        Director/VP-level lead interleaves with today's mail by date within its priority band; only an
-        IC-level posting drops below and waits for that neutral level to clear. Still mirrors
-        job-board-poll's tiers.js PREVIEW_LEVEL_RANK's relative order (lead ahead of ic) — only where
-        the zero point sits has moved."""
+        scored yet; -1 for an IC-level job-search card. Level leads referral in band_rank, so within a
+        fit tier the level decides before referral. Zero is the shared neutral level that email/Slack and
+        ordinary Trello cards also carry by default, so a Director/VP-level lead interleaves with today's
+        mail by date within its priority band; only an IC-level posting drops below and waits for that
+        neutral level to clear. Still mirrors job-board-poll's tiers.js PREVIEW_LEVEL_RANK's relative
+        order (lead ahead of ic)."""
         desc = card.get("desc") or ""
         if "IC-level" in desc:
             return -1
@@ -434,9 +434,10 @@ class Provider(ProviderBase):
                 # Sort rank / go-live: a card ranks by its Start (its resurface day); an undated card by
                 # its creation date (always in the past), so it sorts by age alongside email/Slack.
                 sort_dt = start_dt or self._created_dt(card["id"])
-                priority_band = self._priority_band(card)  # see _PRIORITY_BAND; leads the sort key below
-                referral_band = self._referral_band(card)  # see _referral_band; ranks under band, over level
-                level_band = self._level_band(card)  # see _level_band; breaks ties within a band+referral
+                # The three band values; band_rank (provider_base) defines the order they sort in.
+                priority_band = self._priority_band(card)  # see _PRIORITY_BAND
+                referral_band = self._referral_band(card)  # see _referral_band
+                level_band = self._level_band(card)        # see _level_band
                 channel, feats, contacts, initiative_label = self._classify_labels(card)
                 # A per-card initiative label wins over the board's default initiative. The slug is the
                 # initiative label's name slugified (→ initiatives/<slug>.md); board defaults are already
@@ -468,16 +469,13 @@ class Provider(ProviderBase):
                     "_referral_band": referral_band,
                     "_level_band": level_band,
                 })
-        # Ranked (band, referral, level, date) descending — band leads (see _PRIORITY_BAND), referral
-        # breaks ties within a band (a referral-backed role ahead of a cold one, see _referral_band), level
-        # breaks ties within a band+referral (Director/VP-level ahead of IC-level, see _level_band), date
-        # breaks ties within a band+referral+level (most-recent-first by Start; an undated card by its
-        # creation date, set above, or `now` if even that couldn't be derived).
-        items.sort(key=lambda it: (it["_priority_band"], it["_referral_band"], it["_level_band"],
-                                   it["_sort_dt"] or now),
-                   reverse=True)
+        # Ranked by band_rank (priority, level, referral — the queue policy, defined in provider_base)
+        # then Start date, all descending: a card's Start (most-recent-first) breaks ties within a
+        # band+level+referral; an undated card uses its creation date (set above), or `now` if even that
+        # couldn't be derived.
+        items.sort(key=lambda it: (*band_rank(it), it["_sort_dt"] or now), reverse=True)
         # Return every eligible card, untruncated: get_board_cards() already fetched all of them
-        # regardless, and the poller's cross-source (priority band, referral band, level band, date) sort against
+        # regardless, and the poller's cross-source band_rank sort against
         # target_open_tabs (run-poller.py's `needs` list) is what decides how much actually gets
         # dispatched. Truncating
         # here instead would share one board-local budget across only Trello's own boards: once the OTHER
