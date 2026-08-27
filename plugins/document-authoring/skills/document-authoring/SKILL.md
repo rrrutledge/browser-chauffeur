@@ -253,6 +253,7 @@ The specifics that most often separate a message that reads as Russell's from on
 - **Let the reply itself acknowledge their stated next step or a reported completed action.**
   They've said what they'll do, or that they already did it; restating the specifics back to them, even positively, adds pressure and implies they needed reminding — a generic "thanks for doing it" carries the acknowledgment without the recap.
   Where you do respond to it, affirm in a way that removes the constraint, or hedge the callback so they're free to be where they actually are.
+  **Reopening an old thread days or weeks later with a new, unrelated ask still opens on that acknowledgment** - thank them generically for the favor they came through on last time, rather than reusing the original message's greeting or well-wish verbatim, then move straight to the new ask.
 - **Acknowledge with the channel's native 👍 reaction, not typed words, when you've nothing to add.**
   Use it when everything they said sounds good and any positive line would be over the top — most of all when they've plainly agreed to do something, where added words read as piling on.
   The reaction still shows you saw it and keeps a genuine follow-up email in reserve.
