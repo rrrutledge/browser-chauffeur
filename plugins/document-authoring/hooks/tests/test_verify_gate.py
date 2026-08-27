@@ -345,9 +345,46 @@ def test_pr_merge_not_gated(tmp_path):
     assert decision(r.stdout) == "DEFER"
 
 
-def test_pr_create_with_repo_flag_defers(tmp_path):
-    # A `-R owner/other` PR targets a repo named on the command line, which need not be the
-    # current directory's repo, so the cwd diff would gate the wrong repo's prose - defer.
+def test_pr_create_repo_flag_other_repo_defers(tmp_path):
+    # `-R owner/other` names a DIFFERENT repo than the cwd's own (origin here), so the cwd
+    # diff would gate the wrong repo's prose - defer.
+    receipts = str(tmp_path / "receipts")
+    repo = make_repo(tmp_path)
+    git(str(repo), "remote", "add", "origin", "https://github.com/rrrutledge/mine.git")
+    commit_file(repo, "README.md", "# Readme\n\nUnreviewed shipped prose.\n")
+    r = run([], stdin=bash_payload("gh pr create -R owner/other --base main"),
+            cwd=str(repo), receipt_dir=receipts)
+    assert decision(r.stdout) == "DEFER"
+
+
+def test_pr_create_repo_flag_same_repo_gates(tmp_path):
+    # `-R <cwd's own owner/repo>` (the redundant defensive habit) targets this same repo, so
+    # the cwd diff IS the PR's diff - gate it, denying when the changed prose has no receipt.
+    receipts = str(tmp_path / "receipts")
+    repo = make_repo(tmp_path)
+    git(str(repo), "remote", "add", "origin", "https://github.com/rrrutledge/personal-ai-pod.git")
+    commit_file(repo, "README.md", "# Readme\n\nUnreviewed shipped prose.\n")
+    r = run([], stdin=bash_payload("gh pr create -R rrrutledge/personal-ai-pod --base main"),
+            cwd=str(repo), receipt_dir=receipts)
+    assert decision(r.stdout) == "DENY"
+    assert "README.md" in r.stdout
+
+
+def test_pr_create_repo_flag_same_repo_url_form_gates(tmp_path):
+    # The `--repo` value is a full https URL while origin is an ssh URL for the same repo;
+    # both normalize to the same `owner/repo`, so this still gates.
+    receipts = str(tmp_path / "receipts")
+    repo = make_repo(tmp_path)
+    git(str(repo), "remote", "add", "origin", "git@github.com:rrrutledge/personal-ai-pod.git")
+    commit_file(repo, "README.md", "# Readme\n\nUnreviewed shipped prose.\n")
+    r = run([], stdin=bash_payload("gh pr create --repo https://github.com/rrrutledge/personal-ai-pod --base main"),
+            cwd=str(repo), receipt_dir=receipts)
+    assert decision(r.stdout) == "DENY"
+
+
+def test_pr_create_repo_flag_no_remote_defers(tmp_path):
+    # Flag present but the cwd repo has no remote to resolve, so the target can't be verified
+    # as this same repo - defer (fail-open) rather than gate possibly-wrong prose.
     receipts = str(tmp_path / "receipts")
     repo = make_repo(tmp_path)
     commit_file(repo, "README.md", "# Readme\n\nUnreviewed shipped prose.\n")
