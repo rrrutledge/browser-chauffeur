@@ -131,13 +131,20 @@ reasoning.
 
 #### 7. EnterWorktree / ExitWorktree tool calls (`worktree_tool.py`)
 
-EnterWorktree is always approved, in both forms. Creating a new worktree (no `path`
-given) is the EnterWorktree equivalent of `git worktree add` under `.claude/worktrees/`,
-already a trusted git subcommand. Switching into an *existing* worktree (`path` given)
-is approved unconditionally too — the tool itself refuses to relocate into a path that
-isn't a real, registered worktree, so a bad path just errors out harmlessly instead of
-relocating anywhere, regardless of whether it follows the `.claude/worktrees/` convention
-or a project's own (e.g. a top-level `.worktrees/` directory).
+EnterWorktree is always approved by the hook, in both forms. Creating a new worktree (no
+`path` given) is the EnterWorktree equivalent of `git worktree add` under
+`.claude/worktrees/`, already a trusted git subcommand. Switching into an *existing*
+worktree (`path` given) is approved unconditionally too — the tool itself refuses to
+relocate into a path that isn't a real, registered worktree, so a bad path just errors out
+harmlessly instead of relocating anywhere.
+
+This hook approval doesn't make the call silent, though. Claude Code enforces its own
+confirmation, independent of any hook decision, whenever the target path falls outside
+`.claude/worktrees/` - moving the session's working directory, write access, and project
+config to that location is treated as a permission-root change. Per Claude Code's docs,
+only `bypassPermissions` mode suppresses that prompt. So entering an out-of-convention
+worktree still needs Russell's one-time click regardless of what this hook decides - that's
+expected.
 
 ExitWorktree takes no path — it only ever acts on the one worktree the current session
 entered via EnterWorktree, tracked internally by the harness rather than supplied by the
@@ -211,6 +218,6 @@ are promoted back to the plugin source via a GitHub PR on a rolling branch
 | `plugins/safe-compounds/safe_compounds/enforce.py` | Bash form validation + block messages |
 | `plugins/safe-compounds/safe_compounds/learned.py` | Machine-local learned store read/write |
 | `plugins/safe-compounds/safe_compounds/workflow.py` | Classifies Workflow tool calls: `workflow_blanket_names` for saved workflows, AI content check for inline scripts |
-| `plugins/safe-compounds/safe_compounds/worktree_tool.py` | Classifies EnterWorktree (always approved — the tool itself refuses to relocate into an unregistered path) and ExitWorktree (`keep` and plain `remove` approved, `discard_changes` prompts) tool calls |
+| `plugins/safe-compounds/safe_compounds/worktree_tool.py` | Classifies EnterWorktree (always approved by the hook - see §7 for the separate harness-level confirmation) and ExitWorktree (`keep` and plain `remove` approved, `discard_changes` prompts) tool calls |
 | `plugins/safe-compounds/tools/sync_learned.py` | Promotes learned approvals to a GitHub PR |
 | `plugins/safe-compounds/safe_compounds/config.py` | Config file schema + loader |
