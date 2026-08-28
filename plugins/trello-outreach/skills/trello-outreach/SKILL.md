@@ -56,6 +56,32 @@ instructions: |-
 
   ---
 
+  ## Two card types on the Job Search Outreach board
+
+  The Job Search Outreach board (`phRXnOvf`) holds two kinds of card, and keeping them separate is what
+  keeps each follow-up reliably scheduled - a card carries one Start date, so it tracks exactly one clock.
+
+  - **Application card** - one target role. Its Start tracks the application's own progress (stage the
+    form, submit, then check for an ATS or recruiter response). Created by the job-board poller (always in
+    `Identified`, always wearing a `P1`/`P2`/`P3` fit label) or by the apply-for-job flow. It never wears
+    the `👤 Contact` label.
+  - **Person follow-up card** - one network contact. Its Start tracks the follow-up cadence with that one
+    person (the nudge cadence in the CLEAR guidance). One card per contact, reused across every role they
+    help with - a referrer who spans four applications is one card, not four, the same way the referrers
+    list compounds. It wears the **`👤 Contact`** label and never a `P1`/`P2`/`P3` label.
+
+  **Outreach for a role lives on the contact's person card, linked to the application card.** When a
+  warm intro for a role goes to a contact, open or update that contact's person card (search first, per
+  above), set its Start to the follow-up cadence, and link the two by URL - the application card names the
+  contacts helping it, the person card names the role(s) it's helping. Bundling several contacts' threads
+  onto one application card is what drops follow-ups: four contacts are four clocks, and a card's one Start
+  can hold only one. A genuinely one-shot "does anyone here know someone at X" ask can stay a note on the
+  application card until it turns into a real back-and-forth, at which point it earns its own person card.
+
+  **Person cards lead the queue.** A `👤 Contact` card is worked ahead of the inbox and every application
+  tier, so following up with an existing contact always beats starting or chasing an application. That
+  banding lives in the drainer's `trello-adapter.py _PRIORITY_BAND`, keyed on the `👤 Contact` label.
+
   ## Mechanics live in the `trello` skill
 
   Everything about *carrying out* a Trello change is in the **`trello`** skill: the `trello_utils.py`
