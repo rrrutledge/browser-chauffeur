@@ -75,8 +75,10 @@ instructions: |-
   above), set its Start to the follow-up cadence, and link the two by URL - the application card names the
   contacts helping it, the person card names the role(s) it's helping. Bundling several contacts' threads
   onto one application card is what drops follow-ups: four contacts are four clocks, and a card's one Start
-  can hold only one. A genuinely one-shot "does anyone here know someone at X" ask can stay a note on the
-  application card until it turns into a real back-and-forth, at which point it earns its own person card.
+  can hold only one. Every contact you reach gets their own person card, even a single cold ask you
+  expect nothing back from - reaching out to someone starts their follow-up clock, and a card is where
+  that clock lives so the follow-up can never be dropped. The only case with no person card is when
+  there was no one to reach at all.
 
   **Person cards lead the queue.** A `👤 Contact` card is worked ahead of the inbox and every application
   tier, so following up with an existing contact always beats starting or chasing an application. That
