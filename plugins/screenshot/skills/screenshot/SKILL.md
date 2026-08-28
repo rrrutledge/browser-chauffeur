@@ -18,9 +18,11 @@ instructions: |-
      With no flags it prints the single latest path.
      `--index N` prints the Nth-most-recent path.
      `--count N` prints the N most recent paths, one per line, newest first.
+     `--since N` prints every path modified within the last N minutes, one per line, newest first.
      An ordinal or positional look-back request selects `--index N`, counting N back from the latest.
      A plural quantity request selects `--count N`, where N is the requested quantity.
+     A time-window request selects `--since N`, converting the requested window to minutes.
      Anything else uses the default.
   2. **Load and display the screenshot(s)** at the printed path(s), using the Read tool.
-  3. **Treat extra args as context** - if the user provided additional text in the args beyond a look-back or count request, treat it as a question or context about the screenshot.
+  3. **Treat extra args as context** - if the user provided additional text in the args beyond a look-back, count, or time-window request, treat it as a question or context about the screenshot.
 ---

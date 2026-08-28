@@ -1,6 +1,7 @@
 import argparse
 import glob
 import os
+import time
 
 
 def candidate_folders():
@@ -41,6 +42,7 @@ if __name__ == "__main__":
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--index", type=int, default=1, help="1-based rank by recency; 1 is the latest, 2 the one before that, etc.")
     group.add_argument("--count", type=int, help="print this many of the most recent screenshots, newest first, one per line")
+    group.add_argument("--since", type=float, help="print every screenshot modified within this many minutes of now, newest first, one per line")
     args = parser.parse_args()
 
     ranked = screenshots_by_recency()
@@ -50,6 +52,11 @@ if __name__ == "__main__":
     if args.count is not None:
         for path in ranked[: args.count]:
             print(path)
+    elif args.since is not None:
+        cutoff = time.time() - args.since * 60
+        for path in ranked:
+            if os.path.getmtime(path) >= cutoff:
+                print(path)
     else:
         if args.index < 1 or args.index > len(ranked):
             raise SystemExit(f"Only {len(ranked)} screenshot(s) found; --index {args.index} is out of range")
