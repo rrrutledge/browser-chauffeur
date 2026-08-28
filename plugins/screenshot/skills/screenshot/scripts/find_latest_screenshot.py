@@ -1,3 +1,4 @@
+import argparse
 import glob
 import os
 
@@ -22,7 +23,7 @@ def candidate_folders():
     return existing
 
 
-def latest_screenshot():
+def screenshots_by_recency():
     candidates = []
     for folder in candidate_folders():
         for name in os.listdir(folder):
@@ -31,13 +32,25 @@ def latest_screenshot():
             path = os.path.join(folder, name)
             if os.path.isfile(path):
                 candidates.append(path)
-    if not candidates:
-        return None
-    return max(candidates, key=os.path.getmtime)
+    candidates.sort(key=os.path.getmtime, reverse=True)
+    return candidates
 
 
 if __name__ == "__main__":
-    result = latest_screenshot()
-    if result is None:
+    parser = argparse.ArgumentParser()
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--index", type=int, default=1, help="1-based rank by recency; 1 is the latest, 2 the one before that, etc.")
+    group.add_argument("--count", type=int, help="print this many of the most recent screenshots, newest first, one per line")
+    args = parser.parse_args()
+
+    ranked = screenshots_by_recency()
+    if not ranked:
         raise SystemExit("No screenshots found in any candidate folder")
-    print(result)
+
+    if args.count is not None:
+        for path in ranked[: args.count]:
+            print(path)
+    else:
+        if args.index < 1 or args.index > len(ranked):
+            raise SystemExit(f"Only {len(ranked)} screenshot(s) found; --index {args.index} is out of range")
+        print(ranked[args.index - 1])

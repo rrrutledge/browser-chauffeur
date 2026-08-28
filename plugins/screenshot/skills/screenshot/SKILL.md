@@ -13,8 +13,14 @@ instructions: |-
 
   Steps:
 
-  1. **Run the folder-scan script** to get the latest screenshot's path: `python "<plugin_dir>/skills/screenshot/scripts/find_latest_screenshot.py"` (resolve `<plugin_dir>` to this plugin's install directory).
-     The script scans every candidate folder that exists, collects .png files from all of them (excluding desktop.ini), and prints the path of the single most-recently-modified file across the combined set.
-  2. **Load and display the screenshot** at that path, using the Read tool.
-  3. **Treat extra args as context** - if the user provided additional text in the args, treat it as a question or context about the screenshot.
+  1. **Run the folder-scan script** to get the screenshot path(s): `python "<plugin_dir>/skills/screenshot/scripts/find_latest_screenshot.py"` (resolve `<plugin_dir>` to this plugin's install directory).
+     The script scans every candidate folder that exists and collects .png files from all of them (excluding desktop.ini), ranked newest first across the combined set.
+     With no flags it prints the single latest path.
+     `--index N` prints the Nth-most-recent path.
+     `--count N` prints the N most recent paths, one per line, newest first.
+     An ordinal or positional look-back request selects `--index N`, counting N back from the latest.
+     A plural quantity request selects `--count N`, where N is the requested quantity.
+     Anything else uses the default.
+  2. **Load and display the screenshot(s)** at the printed path(s), using the Read tool.
+  3. **Treat extra args as context** - if the user provided additional text in the args beyond a look-back or count request, treat it as a question or context about the screenshot.
 ---
