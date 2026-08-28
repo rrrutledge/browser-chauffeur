@@ -5,21 +5,21 @@ instructions: |-
   Read and display the most recent screenshot from the Windows Screenshots folder.
   
   Steps:
-  1. Auto-detect the Screenshots folder by checking these locations in order:
-     - ~/OneDrive/Pictures/Screenshots 1 (this machine's actual OneDrive screenshot folder — OneDrive
-       renamed the original "Screenshots" folder to "Screenshots 1" after a sync conflict; this is the
-       one the OS actually writes new screenshots to)
+  1. Check ALL of these candidate Screenshots folders — more than one can exist and hold live
+     screenshots at once on this machine (e.g. OneDrive renamed the original "Screenshots" folder to
+     "Screenshots 1" after a sync conflict, but some apps still write new files into a plain
+     "Screenshots" folder alongside it):
+     - ~/OneDrive/Pictures/Screenshots 1
      - ~/Pictures/Screenshots (standard Windows location, no OneDrive)
-     - ~/OneDrive/Pictures/Screenshots (OneDrive personal, no " 1" suffix — older/other machines)
+     - ~/OneDrive/Pictures/Screenshots
      - ~/OneDrive*/Pictures/Screenshots (OneDrive for Business - use glob to find)
-  2. Find the latest .png file in the Screenshots folder (excluding desktop.ini)
-  3. Use the Read tool to load and display the screenshot
+     - ~/OneDrive*/Pictures/Screenshots* (catches any other numbered/renamed variant)
+  2. Across every folder that exists, find the single most recently modified .png file (excluding
+     desktop.ini) — not just the newest file in the first folder found. Write a small Python script to
+     `.tmp/` that globs all candidates and compares mtimes, since this needs a loop/comparison across
+     multiple directories.
+  3. Use the Read tool to load and display that screenshot
   4. If the user provided additional text in the args, treat it as a question or context about the screenshot
-  
-  Use Bash with glob patterns to find the folder:
-  - First try: test -d "$USERPROFILE/OneDrive/Pictures/Screenshots 1"
-  - Then try: test -d "$USERPROFILE/Pictures/Screenshots"
-  - Then try: ls -d "$USERPROFILE"/OneDrive*/Pictures/Screenshots 2>/dev/null | head -1
   
   Example invocations:
   - /screenshot → just show the latest screenshot
