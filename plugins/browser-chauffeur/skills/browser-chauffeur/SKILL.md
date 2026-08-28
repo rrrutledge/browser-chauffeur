@@ -523,33 +523,6 @@ If another skill runs a script and it fails, that skill should follow this same 
 
 **Framework Tooltip Discovery** — When a control's purpose isn't obvious from its own `title`/`aria-label`, check for the UI framework's dedicated tooltip element by tag name before concluding no such control exists. Vaadin, for instance, renders tooltips as separate `<vaadin-tooltip text="...">` elements that aren't always linked back to their control via a `for`/`id` pair — `[...document.querySelectorAll('vaadin-tooltip')].map(t => t.getAttribute('text'))` surfaces text a plain attribute scan on the button itself will miss.
 
-**Attach an Image to a GitHub PR or Issue (Upload It, Don't Commit It)** —
-A review screenshot belongs on the PR or issue itself, uploaded through GitHub's own attachment flow, never committed into the repository as a file.
-Every GitHub markdown composer wraps its textarea in a `<file-attachment>` element with a paired hidden file input whose id is `fc-<textarea-id>`.
-The bottom "Add a comment" box on any PR or issue is `#new_comment_field`, so its input is `#fc-new_comment_field`.
-Setting a file on that input with Playwright's `setInputFiles` runs the same upload GitHub performs for a drag, drop, or paste, and the asset is permanent the moment its URL appears — the comment is never submitted.
-GitHub writes an `<img … src="https://github.com/user-attachments/assets/<uuid>">` (or `![name](…)`) into the textarea when the upload lands, replacing an `Uploading…` placeholder.
-Poll the textarea's value for `user-attachments/assets/`, capture that URL, clear the textarea, and leave the comment unsent.
-Then set the description with that URL over the `gh` CLI (`gh pr edit <n> --body-file …` or `gh issue edit`) — driving the upload through the browser and the body edit through `gh` keeps each step on the tool that does it reliably.
-
-```js
-const fileInput = page.locator('#fc-new_comment_field');   // paired input of the "Add a comment" box
-await fileInput.waitFor({ state: 'attached' });
-await fileInput.setInputFiles(imagePath);                  // triggers GitHub's real upload flow
-await page.waitForFunction(() => {
-  const t = document.querySelector('#new_comment_field');
-  return t && /user-attachments\/assets\//.test(t.value); // final URL swaps in over the "Uploading…" placeholder
-}, { timeout: 90000 });
-const md = await page.locator('#new_comment_field').inputValue();
-const assetUrl = md.match(/https:\/\/github\.com\/user-attachments\/assets\/[0-9a-f-]+/)[0];
-await page.locator('#new_comment_field').fill('');         // clear the box; never submit the comment
-// then, from the shell: gh pr edit <n> --body-file <body-embedding-assetUrl>
-```
-
-Reach for the composer's file input, not the description's `…` kebab then Edit route.
-GitHub loads that menu's items from an async fragment that can stick at "Please reload this page," which a plain `page.reload()` does not clear, and once the body has been edited programmatically the comment header grows a decoy "edited ▾" caret (`details-menu[src*="show_edit_history_log"]`) that a loosely-scoped kebab selector lands on instead of the real actions menu (`summary.timeline-comment-action`).
-Uploading through the comment box and setting the body over `gh` avoids that menu entirely.
-
 **Common Anti-Patterns** — Most of these failure modes are now prevented by positive rules in **Key Rules** below (Selectors, Strict mode, Selector fallback, Actions vs reads, Visibility-not-presence). `anti-patterns.md` is the symptom-recognition reference for when a failure has already occurred — covers: text-based filter ambiguity, `page.evaluate` clicks not triggering React/Fluent UI synthetic events, diagnosing click failures from screenshots not error text, phantom `display:none` dialogs left in the DOM, role-vs-tag selector gaps (semantic HTML buttons that aren't `[role="button"]`), Fluent UI icon-button exact-match failures (use `:has(span.fui-Button__icon)` instead), and role-less confirmation dialogs (use geometry-based modal detector when `[role="dialog"]` returns nothing).
 
 ---
