@@ -1,10 +1,12 @@
 """zoom poller adapter — Zoom AI Companion meeting summaries (Zoom REST + OAuth), fully self-contained.
 
-Everything generic to Zoom lives HERE — the REST calls, the OAuth token read/refresh, the
-template/instance walk, the next_steps parsing, and the fan-out. Nothing about any particular user or
-project: credentials come from config + environment variables, exactly like the gmail / slack / trello
-adapters. Anyone who has a Zoom account with AI Companion summaries can enable this source by filling in
-`providers.zoom` in their `.claude/drainer.local.md` and setting the Zoom OAuth secret in the environment.
+Everything generic to Zoom lives HERE — the template/instance walk, the next_steps parsing, and the
+fan-out. The OAuth token cache and REST plumbing live in the shared `zoom_client.py` (used by this
+adapter and any machine-local Zoom-based adapter that wants to share a login). Nothing about any
+particular user or project: credentials come from config + environment variables, exactly like the
+gmail / slack / trello adapters. Anyone who has a Zoom account with AI Companion summaries can enable
+this source by filling in `providers.zoom` in their `.claude/drainer.local.md` and setting the Zoom
+OAuth secret in the environment.
 
 **Fan-out without a ProviderBase change.** A Zoom meeting summary is naturally *1 meeting → N action items
 assigned to the user + 1 recap*. The poller loop is one candidate → one stable_id → one worker tab, so the
@@ -12,7 +14,7 @@ fan-out happens in `enumerate`: one candidate per owner-assigned next step (reca
 context) plus one recap candidate for the meeting. Same shape as the trello adapter turning one board into
 many card-items — `capture()` still writes exactly one `<iid>.json`, so no ProviderBase extension is needed.
 
-Auth (Zoom Server-to-Server / OAuth app):
+Auth (Zoom Server-to-Server / OAuth app), via `zoom_client.ZoomClient`:
 - `providers.zoom.client_id` in drainer.local.md (the OAuth app's Client ID — not a secret).
 - `ZOOM_CLIENT_SECRET` in the environment (the secret).
 - A refresh token: bootstrapped from `ZOOM_REFRESH_TOKEN` on first run, then cached (and rotated) in the
@@ -22,24 +24,19 @@ Auth (Zoom Server-to-Server / OAuth app):
 Implements `../engine/provider.md`; classify by `../engine/triage.md`. Prose: `zoom-provider.md`.
 id prefix: `zoom-`; body file: `<id>.zoom.md`.
 """
-import base64
 import hashlib
 import json
 import os
 import re
 import sys
-import urllib.error
-import urllib.parse
-import urllib.request
 from datetime import datetime, timezone
 
 _SCRIPTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts")
 if _SCRIPTS not in sys.path:
     sys.path.insert(0, _SCRIPTS)
 from provider_base import ProviderBase, ProviderError, slug  # noqa: E402
+from zoom_client import ZoomClient  # noqa: E402
 
-ZOOM_API = "https://api.zoom.us"
-ZOOM_OAUTH = "https://zoom.us/oauth/token"
 _STEP_LINK = re.compile(
     r"- ([^\n]+?)\[\]\(https://tasks\.zoom\.us\?meetingId=([^&\s)]+)&stepId=([0-9a-f-]+)\)")
 
@@ -48,22 +45,12 @@ def _hash(text, n=6):
     return hashlib.sha1((text or "").encode("utf-8")).hexdigest()[:n]
 
 
-def _http(method, url, headers=None, data=None, timeout=45):
-    req = urllib.request.Request(url, data=data, headers=headers or {}, method=method)
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
-            return r.status, r.read().decode("utf-8", "replace")
-    except urllib.error.HTTPError as e:
-        return e.code, e.read().decode("utf-8", "replace")
-
-
 class Provider(ProviderBase):
     name = "zoom"
 
     def __init__(self):
         self.runtime_dir = None
-        self.client_id = None
-        self.token_cache = None
+        self._zoom = None
         self.owner_names = []            # display-name tokens whose next_steps are "the user's"
         self.lookback_hours = 48
         self.cooldown_minutes = 30       # a summary is "final" only once unmodified this long
@@ -74,16 +61,19 @@ class Provider(ProviderBase):
     def configure(self, cfg):
         self.runtime_dir = cfg.get("runtime_dir")
         block = self._zoom_block(cfg.get("repo"))
-        self.client_id = self._str_knob(block, "client_id") or os.environ.get("ZOOM_CLIENT_ID")
+        client_id = self._str_knob(block, "client_id") or os.environ.get("ZOOM_CLIENT_ID")
         self.owner_names = self._list_knob(block, "owner_names")
         self.lookback_hours = self._int_knob(block, "lookback_hours", self.lookback_hours)
         self.cooldown_minutes = self._int_knob(block, "cooldown_minutes", self.cooldown_minutes)
         self.poll_interval_minutes = self._int_knob(block, "poll_interval_minutes", self.poll_interval_minutes)
         cache = self._str_knob(block, "token_cache")
         if cache:
-            self.token_cache = os.path.expanduser(os.path.expandvars(cache))
+            token_cache = os.path.expanduser(os.path.expandvars(cache))
         elif self.runtime_dir:
-            self.token_cache = os.path.join(self.runtime_dir, "zoom-tokens.json")
+            token_cache = os.path.join(self.runtime_dir, "zoom-tokens.json")
+        else:
+            token_cache = None
+        self._zoom = ZoomClient(client_id=client_id, token_cache=token_cache, error_prefix=self.name)
 
     @staticmethod
     def _zoom_block(repo):
@@ -122,23 +112,6 @@ class Provider(ProviderBase):
             return []
         return [x.strip().strip('"\'') for x in m.group(1).split(",") if x.strip()]
 
-    # --------------------------------------------------------------- OAuth token
-    def _read_cache(self):
-        try:
-            with open(self.token_cache, encoding="utf-8") as f:
-                return json.load(f)
-        except (OSError, ValueError, TypeError):
-            return {}
-
-    def _write_cache(self, data):
-        if not self.token_cache:
-            return
-        os.makedirs(os.path.dirname(self.token_cache), exist_ok=True)
-        tmp = f"{self.token_cache}.tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
-        os.replace(tmp, self.token_cache)
-
     @staticmethod
     def _age_seconds(obtained_at):
         try:
@@ -147,62 +120,14 @@ class Provider(ProviderBase):
         except (ValueError, TypeError):
             return 1e12
 
-    def _access_token(self):
-        """Return a fresh Zoom access token, refreshing (and rotating the refresh token in the cache)
-        when the cached one is near expiry. Bootstraps from ZOOM_REFRESH_TOKEN if the cache has none."""
-        cache = self._read_cache()
-        if cache.get("access_token") and self._age_seconds(cache.get("obtained_at")) < 3500:
-            return cache["access_token"]
-        return self._refresh(cache.get("refresh_token") or os.environ.get("ZOOM_REFRESH_TOKEN"))
-
-    def _refresh(self, refresh_token):
-        if not refresh_token:
-            raise ProviderError(
-                "zoom: no refresh token — set ZOOM_REFRESH_TOKEN (first run) or point token_cache at an "
-                "existing Zoom token file.", kind="config")
-        secret = os.environ.get("ZOOM_CLIENT_SECRET")
-        if not self.client_id or not secret:
-            raise ProviderError(
-                "zoom: set providers.zoom.client_id in drainer.local.md and ZOOM_CLIENT_SECRET in the "
-                "environment.", kind="config")
-        auth = base64.b64encode(f"{self.client_id}:{secret}".encode()).decode()
-        body = urllib.parse.urlencode({"grant_type": "refresh_token", "refresh_token": refresh_token}).encode()
-        status, text = _http("POST", ZOOM_OAUTH, {
-            "Authorization": "Basic " + auth,
-            "Content-Type": "application/x-www-form-urlencoded",
-        }, body)
-        data = json.loads(text) if text else {}
-        if status != 200 or data.get("error"):
-            raise ProviderError(
-                f"zoom token refresh failed: {data.get('error') or status} {data.get('reason', '')}".strip(),
-                kind="auth")
-        self._write_cache({
-            "access_token": data.get("access_token"),
-            "refresh_token": data.get("refresh_token") or refresh_token,  # rotates each refresh
-            "token_type": data.get("token_type"),
-            "expires_in": data.get("expires_in"),
-            "scope": data.get("scope"),
-            "obtained_at": datetime.now(timezone.utc).isoformat(),
-        })
-        return data.get("access_token")
-
-    # --------------------------------------------------------------- Zoom REST
-    def _get(self, token, path):
-        status, text = _http("GET", ZOOM_API + path, {
-            "Authorization": "Bearer " + token, "Content-Type": "application/json"})
-        try:
-            return status, json.loads(text)
-        except ValueError:
-            return status, text
-
-    def _owner_tokens(self, token):
+    def _owner_tokens(self):
         """Whose next_steps count as the user's: the configured owner_names, else the authed account's
         own name from /users/me (first name + display name), so a fresh install works with no name config."""
         if self.owner_names:
             return self.owner_names
         if self._me_names is None:
             self._me_names = []
-            status, me = self._get(token, "/v2/users/me")
+            status, me = self._zoom.get("/v2/users/me")
             if status == 200 and isinstance(me, dict):
                 for key in ("first_name", "display_name"):
                     v = (me.get(key) or "").strip()
@@ -210,13 +135,13 @@ class Provider(ProviderBase):
                         self._me_names.append(v.split()[0] if key == "display_name" else v)
         return self._me_names
 
-    def _collect_instances(self, token, from_ts, to_ts):
+    def _collect_instances(self, from_ts, to_ts):
         """Every previousMeetings template + its past instances whose start_time is in [from_ts, to_ts]
         (ISO UTC strings compare lexically), de-duped by occurrence uuid."""
         templates, page_token = [], ""
         while True:
             qs = f"type=previousMeetings&page_size=300{('&next_page_token=' + page_token) if page_token else ''}"
-            status, body = self._get(token, f"/v2/users/me/meetings?{qs}")
+            status, body = self._zoom.get(f"/v2/users/me/meetings?{qs}")
             if status != 200:
                 raise ProviderError(f"zoom list-meetings failed: HTTP {status} {str(body)[:150]}", kind="auth")
             templates.extend(body.get("meetings", []) or [])
@@ -232,7 +157,7 @@ class Provider(ProviderBase):
             # occurrence uuid. So resolve via past_meetings/instances for every meeting, regardless of
             # type, and only fall back to the listed uuid if that call finds nothing in-window.
             found = False
-            status, body = self._get(token, f"/v2/past_meetings/{m.get('id')}/instances")
+            status, body = self._zoom.get(f"/v2/past_meetings/{m.get('id')}/instances")
             if status == 200:
                 for inst in body.get("meetings", []) or []:
                     ist = inst.get("start_time")
@@ -341,8 +266,7 @@ class Provider(ProviderBase):
     def enumerate(self, limit):
         if self._throttled():
             return []
-        token = self._access_token()
-        owner_tokens = self._owner_tokens(token)
+        owner_tokens = self._owner_tokens()
         now = datetime.now(timezone.utc)
         from_ts = (now.timestamp() - self.lookback_hours * 3600)
         from_iso = datetime.fromtimestamp(from_ts, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -350,7 +274,7 @@ class Provider(ProviderBase):
 
         cache = self._load_summary_cache()
         items, in_window = [], set()
-        for inst in self._collect_instances(token, from_iso, to_iso):
+        for inst in self._collect_instances(from_iso, to_iso):
             uuid = inst["uuid"]
             in_window.add(uuid)
             s = (cache.get(uuid) or {}).get("summary")
@@ -360,8 +284,8 @@ class Provider(ProviderBase):
             if s is not None and not (s.get("summary_overview") or s.get("next_steps")):
                 s = None
             if s is None:  # not cached (or cached-empty) — fetch it
-                enc = urllib.parse.quote(urllib.parse.quote(uuid, safe=""), safe="")
-                status, fetched = self._get(token, f"/v2/meetings/{enc}/meeting_summary")
+                enc = self._zoom.double_encode(uuid)
+                status, fetched = self._zoom.get(f"/v2/meetings/{enc}/meeting_summary")
                 if status != 200 or not isinstance(fetched, dict):
                     continue  # 404 = no AI summary; other non-200 = transient, retry next cycle
                 # Content gate: for the first tens of minutes after a meeting ends, this endpoint returns a
