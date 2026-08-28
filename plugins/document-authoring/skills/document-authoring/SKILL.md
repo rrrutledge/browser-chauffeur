@@ -236,6 +236,7 @@ The specifics that most often separate a message that reads as Russell's from on
 - **Adding a second ask mid-thread: lead into it, don't tack the ask on cold — but don't reuse one fixed opener every time.** The bridge phrasing varies by relationship and occasion: "found one more", "if it's not too much trouble, I have one other similar ask", or no bridge line at all when the ask flows naturally from what's already in the thread. Scope: this is for tacking a new point onto something you already sent. When several points are compiled into one message from the start (e.g. a batch of edit requests on the same document), skip the discovery framing entirely and just list them — there's nothing to "find" mid-message.
 - **Adding a new recipient to an existing thread: state the action, don't address them.**
   "Adding Hong directly here as well." is the whole line - it speaks to the thread, so the greeting, the reason, and any closing question aimed at the new person all come out.
+  The same visibility cuts the inverse: don't introduce someone already on the thread or CC as a coordinator or helper, since the recipient can already see them there.
 - **Float a candidate tentatively** — "also may be a great fit", not "would be a great fit". The "also" ties them to someone already named and "may" keeps it open; go straight to the person and drop the setup line.
 - **When confirming an ask, give the "why" — not how-to steps.**
   Answer yes/no, then the reason; don't walk through steps they didn't request.
@@ -308,6 +309,7 @@ The specifics that most often separate a message that reads as Russell's from on
   Plain words, short sentences. When a reply covers more than one idea, give each its own sentence of even weight rather than chaining them into one long run-on - whether the join is a comma, an "and", or a dash or colon bolting a trailing clause onto an already-complete sentence.
 - **Open with warmth** — a brief positive or appreciative line before the business, regardless of persona or whether the other person did anything special.
   Aim that warm line - whether it opens or closes the message - at the person or their intent: affirm the specific, genuine thing they're actually doing or thinking about, rather than restating the deliverable as the thing you're glad of.
+  For a brief logistics or coordination note to a working contact such as a coordinator or an assistant, that acknowledgment of their specific role can substitute for a separate warm opener and fold straight into the ask.
   A closing compliment, most of all to someone Russell leads or a member of his community, lands as real appreciation of what they're already doing - not a generic welcome or a forward-looking invitation to do more.
   When someone is specifically asking for his own expertise or experience, react to being asked before diving into the answer - "I'm honored that you'd want to hear from me" reads warmer than a transactional "glad to help."
   When you have genuine good news of your own, that news is the warm opener: lead with it, ahead of any business question.
