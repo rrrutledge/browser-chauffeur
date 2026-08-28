@@ -2,27 +2,27 @@
 skill: screenshot
 description: Auto-invoke when the user mentions taking a screenshot, sharing a screenshot, or references "this screenshot" without providing a file path. Loads the most recent screenshot from the Windows Screenshots folder.
 instructions: |-
-  Read and display the most recent screenshot from the Windows Screenshots folder.
-  
+  Read and display the most recent screenshot across all candidate Screenshots folders.
+
+  Candidate folders (a machine can have more than one actively receiving screenshots at once):
+
+  - ~/OneDrive/Pictures/Screenshots 1
+  - ~/Pictures/Screenshots
+  - ~/OneDrive/Pictures/Screenshots
+  - ~/OneDrive*/Pictures/Screenshots (OneDrive for Business - use glob to find)
+
   Steps:
-  1. Auto-detect the Screenshots folder by checking these locations in order:
-     - ~/OneDrive/Pictures/Screenshots 1 (this machine's actual OneDrive screenshot folder — OneDrive
-       renamed the original "Screenshots" folder to "Screenshots 1" after a sync conflict; this is the
-       one the OS actually writes new screenshots to)
-     - ~/Pictures/Screenshots (standard Windows location, no OneDrive)
-     - ~/OneDrive/Pictures/Screenshots (OneDrive personal, no " 1" suffix — older/other machines)
-     - ~/OneDrive*/Pictures/Screenshots (OneDrive for Business - use glob to find)
-  2. Find the latest .png file in the Screenshots folder (excluding desktop.ini)
-  3. Use the Read tool to load and display the screenshot
-  4. If the user provided additional text in the args, treat it as a question or context about the screenshot
-  
-  Use Bash with glob patterns to find the folder:
-  - First try: test -d "$USERPROFILE/OneDrive/Pictures/Screenshots 1"
-  - Then try: test -d "$USERPROFILE/Pictures/Screenshots"
-  - Then try: ls -d "$USERPROFILE"/OneDrive*/Pictures/Screenshots 2>/dev/null | head -1
-  
-  Example invocations:
-  - /screenshot → just show the latest screenshot
-  - /screenshot what's this error? → show screenshot and answer the question
-  - /screenshot help me fix this bug → show screenshot and help with the bug
+
+  1. **Run the folder-scan script** to get the screenshot path(s): `python "<plugin_dir>/skills/screenshot/scripts/find_latest_screenshot.py"` (resolve `<plugin_dir>` to this plugin's install directory).
+     The script scans every candidate folder that exists and collects .png files from all of them (excluding desktop.ini), ranked newest first across the combined set.
+     With no flags it prints the single latest path.
+     `--index N` prints the Nth-most-recent path.
+     `--count N` prints the N most recent paths, one per line, newest first.
+     `--since N` prints every path modified within the last N minutes, one per line, newest first.
+     An ordinal or positional look-back request selects `--index N`, counting N back from the latest.
+     A plural quantity request selects `--count N`, where N is the requested quantity.
+     A time-window request selects `--since N`, converting the requested window to minutes.
+     Anything else uses the default.
+  2. **Load and display the screenshot(s)** at the printed path(s), using the Read tool.
+  3. **Treat extra args as context** - if the user provided additional text in the args beyond a look-back, count, or time-window request, treat it as a question or context about the screenshot.
 ---
