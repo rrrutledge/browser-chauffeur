@@ -97,12 +97,15 @@ class Provider(ProviderBase):
 
     @staticmethod
     def _int_knob(block, key, default):
-        m = re.search(rf"^\s*{re.escape(key)}\s*:\s*(\d+)\s*$", block, re.MULTILINE)
+        m = re.search(rf"^\s*{re.escape(key)}\s*:\s*(\d+)\s*(?:#.*)?$", block, re.MULTILINE)
         return int(m.group(1)) if m else default
 
     @staticmethod
     def _str_knob(block, key):
-        m = re.search(rf"^\s*{re.escape(key)}\s*:\s*(.+?)\s*$", block, re.MULTILINE)
+        # The lazy `.+?` stops at the first point that lets the rest of the pattern match, which is
+        # right before a trailing ` # comment` - so an inline comment on a config line (every knob line
+        # in drainer.local.md's zoom block carries one) is never captured as part of the value.
+        m = re.search(rf"^\s*{re.escape(key)}\s*:\s*(.+?)\s*(?:#.*)?$", block, re.MULTILINE)
         return m.group(1).strip().strip('"\'') if m else None
 
     @staticmethod
