@@ -2,25 +2,23 @@
 skill: screenshot
 description: Auto-invoke when the user mentions taking a screenshot, sharing a screenshot, or references "this screenshot" without providing a file path. Loads the most recent screenshot from the Windows Screenshots folder.
 instructions: |-
-  Read and display the most recent screenshot from the Windows Screenshots folder.
-  
+  Read and display the most recent screenshot across all candidate Screenshots folders.
+
+  Candidate folders (a machine can have more than one actively receiving screenshots at once,
+  e.g. after a OneDrive sync conflict renames one to "Screenshots 1" - never assume only one is live):
+  - ~/OneDrive/Pictures/Screenshots 1
+  - ~/Pictures/Screenshots
+  - ~/OneDrive/Pictures/Screenshots
+  - ~/OneDrive*/Pictures/Screenshots (OneDrive for Business - use glob to find)
+
   Steps:
-  1. Auto-detect the Screenshots folder by checking these locations in order:
-     - ~/OneDrive/Pictures/Screenshots 1 (this machine's actual OneDrive screenshot folder — OneDrive
-       renamed the original "Screenshots" folder to "Screenshots 1" after a sync conflict; this is the
-       one the OS actually writes new screenshots to)
-     - ~/Pictures/Screenshots (standard Windows location, no OneDrive)
-     - ~/OneDrive/Pictures/Screenshots (OneDrive personal, no " 1" suffix — older/other machines)
-     - ~/OneDrive*/Pictures/Screenshots (OneDrive for Business - use glob to find)
-  2. Find the latest .png file in the Screenshots folder (excluding desktop.ini)
-  3. Use the Read tool to load and display the screenshot
-  4. If the user provided additional text in the args, treat it as a question or context about the screenshot
-  
-  Use Bash with glob patterns to find the folder:
-  - First try: test -d "$USERPROFILE/OneDrive/Pictures/Screenshots 1"
-  - Then try: test -d "$USERPROFILE/Pictures/Screenshots"
-  - Then try: ls -d "$USERPROFILE"/OneDrive*/Pictures/Screenshots 2>/dev/null | head -1
-  
+  1. Run `python "<plugin_dir>/skills/screenshot/scripts/find_latest_screenshot.py"` (resolve
+     `<plugin_dir>` to this plugin's install directory). The script scans every candidate folder
+     that exists, collects .png files from all of them (excluding desktop.ini), and prints the
+     path of the single most-recently-modified file across the combined set.
+  2. Use the Read tool to load and display the screenshot at that path.
+  3. If the user provided additional text in the args, treat it as a question or context about the screenshot.
+
   Example invocations:
   - /screenshot → just show the latest screenshot
   - /screenshot what's this error? → show screenshot and answer the question
