@@ -205,12 +205,18 @@ fetch is never grounds to restate the pointer and move on.
 
 A newsletter whose real content is a **hosted PDF or a body-referenced attachment** (a Finalsite
 "Attachments: X.pdf" line whose file is a hosted/reference attachment, not a true inline one) is the same
-kind of pointer: retrieve that file and read it. When the mail API's attachment endpoint does not return
-the file inline - a Finalsite reference attachment reads as "No attachments" and the plaintext body has
-dropped the download link - the browser-chauffeur fallback is how you get it: open the message in the mail
-web UI and open or download the linked file, the same fallback used for a JS-rendered link. The story
-lives in that PDF, so "No attachments" from the API is never grounds to treat the newsletter as
-whole-story fyi without reading it.
+kind of pointer: retrieve that file and read it.
+The download link lives in the HTML body, which the plaintext view strips, so recover it the way your
+source's RESOLVE-A-POINTER note specifies - for a mail source, by emitting the raw HTML body and scanning
+the whole thing for the link, since these bodies are tiny.
+Fetch the file with a plain fetch first - these hosted files are usually public (a direct object-storage
+or CDN URL) and return the PDF directly; decode a Safe Links wrapper
+(`safelinks.protection.outlook.com/?url=<encoded real URL>`) back to the underlying URL before fetching.
+Fall back to browser-chauffeur - open the message in the mail web UI and open or download the linked file -
+only when the plain fetch returns a login wall, a JS shell, or non-PDF bytes, the same fallback used for a
+JS-rendered link.
+The story lives in that PDF, so a bare "Attachments:" line - or an attachment endpoint that reports "No
+attachments" - is never grounds to treat the newsletter as whole-story fyi without reading it.
 
 **Process the resolved content like meeting notes** - pull out who and what it is about, every date it
 names, and any action items, then summarize that as if the newsletter (or DM, or notes) body had arrived

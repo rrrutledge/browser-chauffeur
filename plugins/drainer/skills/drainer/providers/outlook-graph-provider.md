@@ -36,6 +36,17 @@ both directions and **paginating each fully** (older items cleared before this b
 sit in Deleted Items). Use `node mail.js --search="<subject>"` — verify it covers Archive and Deleted
 Items and do not stop at the first page.
 
+## RESOLVE-A-POINTER (hosted-PDF / body-link newsletter)
+The shared open-the-pointer mechanic lives in `../engine/worker-core.md` § 2b - a worker uses it for a needs-you pointer, the digest for an fyi one (`../engine/digest-core.md` step 2).
+This is the Graph-specific way to get the content.
+
+A Finalsite/NEISD-style newsletter (e.g. the weekly "Lopez Loop") delivers its real content as a hosted link in the HTML body, not a real attachment: `mail.js --get-attachments` reports "No attachments," and the plaintext `mail.js --show` strips the body's tags and links.
+Emit the raw HTML body with `node mail.js --show=<messageId> --html`.
+These bodies are tiny (a sentence or two plus a footer), so scan the whole HTML: find the hosted-PDF `<a href>`, decode its Safe Links wrapper (`safelinks.protection.outlook.com/?url=<encoded real URL>`) back to the underlying URL, and fetch it with a plain fetch - these files are usually public (Google Cloud Storage / myschoolcdn) and return the PDF directly.
+When the newsletter's story is inline or on a "view in browser" page rather than a PDF, read that content straight from the HTML instead.
+Fall back to browser-chauffeur (open the message's `webLink` and download the file) only when the plain fetch returns a login wall or non-PDF bytes.
+Read the resolved content, then summarize it and pull its action items exactly as for any pointer.
+
 ## CAPTURE
 See `email-base.md` for the shared two-file shape. Graph-specific: `messageId` is the opaque Graph
 message id.
