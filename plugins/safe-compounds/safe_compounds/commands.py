@@ -214,11 +214,18 @@ def _git_reset_ok(args):
     return bool(non_flag_args) and non_flag_args[0].startswith('origin/')
 
 
+def _git_apply_ok(args):
+    # --unsafe-paths lifts git's own guard against a patch writing outside the
+    # working tree; everything else a patch touches is a tracked-file edit
+    # recoverable via `git apply -R` or `git checkout`/`git restore`.
+    return '--unsafe-paths' not in args
+
+
 GIT_SPEC = {
     'command': 'git',
     'trusted': GIT_TRUSTED_SUBCOMMANDS,
     'conditional': GIT_CONDITIONAL_SUBCOMMANDS,
-    'specials': {'checkout': _git_checkout_ok, 'clean': _git_clean_ok, 'reset': _git_reset_ok},
+    'specials': {'checkout': _git_checkout_ok, 'clean': _git_clean_ok, 'reset': _git_reset_ok, 'apply': _git_apply_ok},
     'global_opts': GIT_GLOBAL_OPTS_WITH_ARG,
     'allow_empty': True,
     'category': None,  # no AI fallback: unknown git subcommands prompt
