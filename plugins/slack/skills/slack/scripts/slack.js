@@ -40,6 +40,13 @@
 //                (users.list filtered on profile.email ending in @<domain> — surfaces an existing
 //                 member who already works at a company, a warm path into a cold outreach target
 //                 instead of a generic company inbox)
+// Search:        node slack.js --search=<query> [--count=20] [--sort=timestamp|score] [--json]
+//                (search.messages — full-text search across every channel/DM/group-DM the signed-in
+//                 user can see, unlike --history which only reads one already-known conversation. Use
+//                 this to find which conversation(s) contain a phrase/link before reading any of them,
+//                 e.g. locating every DM where a specific ask was sent. Defaults to newest-first
+//                 (--sort=timestamp); pass --sort=score for Slack's relevance ranking instead. Requires
+//                 a personal user token — a plain bot token typically lacks search scope.)
 
 const TOKEN = process.env.SLACK_BOT_TOKEN;
 const COOKIE = process.env.SLACK_COOKIE_D;
@@ -437,6 +444,42 @@ async function findByDomain() {
   for (const m of matches) console.log(`${m.name} (${m.id}) <${m.email}>${m.title ? ' - ' + m.title : ''}`);
 }
 
+// Full-text search across every conversation the signed-in user can see (search.messages) — the only
+// command here that looks beyond one already-known channel/DM, so use it to locate which conversation(s)
+// hold a phrase/link before reading any of them with --history.
+async function search() {
+  const query = String(args.search || '').trim();
+  if (!query) throw new Error('--search requires a query, e.g. --search="ISSummit26tix"');
+  const count = String(args.count || '20');
+  const sort = args.sort === 'score' ? 'score' : 'timestamp';
+  const r = await call('search.messages', { query, count, sort, sort_dir: 'desc' });
+  const matches = (r.messages && r.messages.matches) || [];
+  const out = [];
+  for (const m of matches) {
+    const ch = m.channel || {};
+    const channelType = ch.is_im ? 'im' : ch.is_mpim ? 'mpim' : 'channel';
+    const channelName = channelType === 'im'
+      ? `@${m.username || ch.name || ch.id}`
+      : (ch.name ? `#${ch.name}` : ch.id);
+    out.push({
+      channel: ch.id, channelName, channelType,
+      ts: m.ts, threadTs: m.thread_ts || '',
+      from: m.username || await userName(m.user), fromId: m.user,
+      received: tsToIso(m.ts), text: await renderText(m.text),
+      permalink: m.permalink || '',
+    });
+  }
+  if (args.json) { console.log(JSON.stringify(out, null, 2)); return; }
+  if (!out.length) { console.log(`No messages matching "${query}".`); return; }
+  console.log(`${out.length} match(es) for "${query}":`);
+  for (const o of out) {
+    console.log(`\n--- ${o.received.slice(0, 16)} | ${o.from} (${o.channelName}, ts=${o.ts}` +
+      `${o.threadTs ? `, thread=${o.threadTs}` : ''})`);
+    console.log(o.text || '(no text)');
+    if (o.permalink) console.log(`Link: ${o.permalink}`);
+  }
+}
+
 (async () => {
   requireAuth();
   if (args.check) return await check();
@@ -448,5 +491,6 @@ async function findByDomain() {
   if (args.send) return await send();
   if (args['find-dm']) return await findDm();
   if (args['find-by-domain']) return await findByDomain();
-  throw new Error('Specify --check, --list-unread, --show, --history, --react, --mark, --send, --find-dm, or --find-by-domain');
+  if (args.search) return await search();
+  throw new Error('Specify --check, --list-unread, --show, --history, --react, --mark, --send, --find-dm, --find-by-domain, or --search');
 })().catch(e => { console.error('Error:', e.message); process.exit(1); });

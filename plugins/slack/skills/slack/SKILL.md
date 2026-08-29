@@ -69,6 +69,13 @@ Under `scripts/` (run with `node`):
     a mention is `<@U…>`. `--body-file` (never an inline body) is what lets the writing-review gate read
     and receipt the exact bytes that go out. See **Sending** below - this runs only on Russ's explicit
     per-message say-so.
+  - Search: `node slack.js --search=<query> [--count=20] [--sort=timestamp|score] [--json]` —
+    `search.messages`, full-text across every channel/DM/group-DM the signed-in user can see. This is the
+    only command that looks beyond one already-known conversation, so reach for it to find which
+    conversation(s) contain a phrase or link (e.g. "which DM did I send this ask in?") before reading any
+    of them with `--history`. Defaults to newest-first; `--sort=score` uses Slack's relevance ranking
+    instead. `--json` emits `{channel,channelName,channelType,ts,threadTs,from,fromId,received,text,
+    permalink}` per match. Needs a personal user token — a plain bot token typically lacks search scope.
 
 ## How it works (Web API endpoints)
 
@@ -86,6 +93,7 @@ Under `scripts/` (run with `node`):
   prints for the message it just posted).
 - `chat.postMessage` - post one reviewed message as the signed-in user (`--send`; needs the `d` cookie).
 - `conversations.mark` / `subscriptions.thread.mark` — advance the conversation / thread read cursor (CLEAR).
+- `search.messages` — full-text search across every conversation the signed-in user can see (`--search`).
 
 ## Sending
 
