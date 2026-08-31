@@ -1,7 +1,7 @@
 {
   "name": "session-mgr",
-  "version": "1.5.5",
-  "description": "Session management utilities — find and resume Claude Code sessions that ended without an explicit exit command.",
+  "version": "1.6.0",
+  "description": "Session management utilities: find and resume Claude Code sessions that ended without an explicit exit command, and recognize the shape a working session is taking so its mechanical stretches move to isolated agents instead of bloating the main context.",
   "author": {
     "name": "Russell Rutledge"
   },

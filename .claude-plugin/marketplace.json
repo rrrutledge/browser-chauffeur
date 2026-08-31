@@ -93,7 +93,7 @@
     {
       "name": "session-mgr",
       "source": "./plugins/session-mgr",
-      "description": "Find and resume Claude Code sessions that ended abruptly — after a restart, crash, or unplanned shutdown. Scans all sessions across every working directory and opens each one in a new Windows Terminal tab."
+      "description": "Find and resume Claude Code sessions that ended abruptly - after a restart, crash, or unplanned shutdown - and recognize the shape a working session is taking so its mechanical stretches move to isolated agents instead of bloating the main context. Scans all sessions across every working directory and opens each one in a new Windows Terminal tab."
     }
   ]
 }
