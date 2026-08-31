@@ -61,10 +61,12 @@ instructions: |-
   The Job Search Outreach board (`phRXnOvf`) holds two kinds of card, and keeping them separate is what
   keeps each follow-up reliably scheduled - a card carries one Start date, so it tracks exactly one clock.
 
-  - **Application card** - one target role. Its Start tracks the application's own progress (stage the
-    form, submit, then check for an ATS or recruiter response). Created by the job-board poller (always in
-    `Identified`, always wearing a `P1`/`P2`/`P3` fit label) or by the apply-for-job flow. It never wears
-    the `👤 Contact` label.
+  - **Application card** - one target role. It carries no future Start: it stays startable-now until the
+    application is in, is finished in a single session, then moves to Finished / Abandoned and rests. Every
+    wait a role seems to need - a referrer's name, a recruiter who has gone quiet - is really a wait on a
+    person, so that clock lives on the person's card, never the role card. Created by the job-board poller
+    (always in `Identified`, always wearing a `P1`/`P2`/`P3` fit label) or by the apply-for-job flow. It
+    never wears the `👤 Contact` label.
   - **Person follow-up card** - one network contact. Its Start tracks the follow-up cadence with that one
     person (the nudge cadence in the CLEAR guidance). One card per contact, reused across every role they
     help with - a referrer who spans four applications is one card, not four, the same way the referrers
