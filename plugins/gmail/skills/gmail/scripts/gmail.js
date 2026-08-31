@@ -261,9 +261,10 @@ async function listDrafts(c) {
     const out = [];
     for await (const m of c.fetch(`${start}:*`, { envelope: true })) {
       const e = m.envelope || {};
-      out.push({ subject: e.subject || '(no subject)', to: fromList(e.to), date: e.date });
+      out.push({ subject: e.subject || '(no subject)', to: fromList(e.to), date: e.date, id: e.messageId || null });
     }
     out.reverse();
+    if (args.json) { console.log(JSON.stringify(out, null, 2)); return; }
     console.log(`${out.length} draft(s):`);
     for (const m of out) console.log(`\n--- ${m.subject}\n    to: ${m.to}`);
   } finally { lock.release(); }
