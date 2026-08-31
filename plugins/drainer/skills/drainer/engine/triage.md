@@ -145,7 +145,17 @@ it, at digest time, to the provider's **report-phishing** action (report the mes
 so its filter learns, then move it out of the inbox) instead of an ordinary archive, rule, or unsubscribe:
 a stronger disposition that is still reversible (the message stays recoverable from Junk/Spam). Reserve the
 mark for mail built to trick: when a message is only low-quality marketing rather than deceptive, leave it
-plain junk. The provider capability and the digest's report-on-approval handling live in
+plain junk.
+
+**Check where the message actually points before marking it phishing** - a genuine account step and a lure
+share the same "verify your email" wording, so the wording alone never decides it.
+A "verify your email", "confirm your account", or "finish setting up" notice whose sender and links are the
+brand's own genuine domain (`stripe.com`, `dashboard.stripe.com`, and the like) is a real account step
+someone set in motion - **needs-you** (go verify it), per the started-and-left-unfinished case above.
+The domain the message resolves to is the tell; reserve the phishing mark for the lookalike or throwaway
+domain dressed up as that brand.
+
+The provider capability and the digest's report-on-approval handling live in
 `providers/<source>-provider.md` → REPORT-PHISHING and `engine/digest-core.md` step 3.
 
 ## Tie-breakers
