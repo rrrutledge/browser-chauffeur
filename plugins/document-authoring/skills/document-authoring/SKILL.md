@@ -211,6 +211,8 @@ A single clear sentence ending in a question is usually the whole message — re
   Converting your free slots to their local time isn't enough — a slot that's open for you can still be very late or very early for them. Before offering a window, check it against a normal work day (roughly 8am-6pm) in *their* timezone and drop anything outside it, even if it's technically free on your end.
 - **Naming a recurring US-anchored meeting time to a recipient who may be based elsewhere: spell out "US Central" rather than bare "Central."**
   "Central" alone collides with Central European Time for a recipient likely based there, so name the country to remove the ambiguity.
+- **Proposing a concrete date to someone who's already agreed to the underlying ask: ask about their availability for it, not their desire again.**
+  "Want to bring it then?" re-asks something they already answered; "are you available to bring it then?" asks the one thing still genuinely open.
 - **Accepting someone else's offer to schedule, when the exact time genuinely doesn't matter to you: hand the invite back to them instead of naming a slot.**
   State plainly that you have no commitments that day and ask them to send an invite for whatever works on their end - reserve proposing a specific time for when the time actually matters (it's adjacent to something else, or you have a real preference); indifference is what licenses handing it back, not merely having the day open.
 
