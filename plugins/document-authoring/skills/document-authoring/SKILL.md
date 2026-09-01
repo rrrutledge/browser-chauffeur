@@ -359,7 +359,7 @@ The specifics that most often separate a message that reads as Russell's from on
   **Exception — when their reply also volunteers something beyond what you asked** (a genuine extra contribution they weren't prompted for, not just a passing pleasantry): that part still gets its own named reaction, per **Answer the question first**.
 - **Hedge politely** — "There might be a way.", "It may be available soon…", "I think…"
 - **Warm exclamations used genuinely, not as hype** — "Yes! Very important!", "Great!", "Oh no! Sure.", "Awesome!"
-- **Two spaces after a period** — a real typing habit.
+- **Single space after a period, not two.**
 
 ### Emoji
 
