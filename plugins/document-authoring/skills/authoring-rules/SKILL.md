@@ -82,7 +82,7 @@ Write "see the [incident report](URL)", never a bare `https://…` in prose.
 **Check:** can you point at what each noun refers to without reading around it?
 
 **Say it plainly.**
-**Check:** "it's not just X, it's Y" constructions; rule-of-three flourishes; vivid metaphors and set-phrase idioms; "great" as an amplifier on a noun where "good" would do (reserve "great" for a standalone exclamation or genuine singular praise).
+**Check:** "it's not just X, it's Y" constructions; rule-of-three flourishes; vivid metaphors and set-phrase idioms; an amplifier stacked on a noun where the plain noun would do ("great", "such an important") - reserve "great" for a standalone exclamation or genuine singular praise.
 Sentence length and rhythm are drafting judgment rather than a decidable check, so they stay in `document-authoring`.
 
 **State facts without editorializing.**
