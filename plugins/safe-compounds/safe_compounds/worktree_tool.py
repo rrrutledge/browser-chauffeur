@@ -5,24 +5,28 @@ Creating a *new* worktree (no `path` given) always lands under
 there -- already a trusted git subcommand -- so this case is approved
 unconditionally.
 
-Switching into an *existing* worktree (`path` given) is approved only when
-that path already lives under `.claude/worktrees/`. A path outside it is
-blocked instead of approved, with a message that tells the model to bring
-the worktree into `.claude/worktrees/` first with `git worktree move` (which
-preserves the branch and any uncommitted work) and retry with the new path --
-the same self-correcting pattern used elsewhere in this hook (e.g. the
+Switching into an *existing* worktree (`path` given) is always blocked
+instead of approved, no matter where that path lives. Claude Code enforces
+its own permission-root confirmation on any explicit-`path` EnterWorktree
+call -- moving the session's working directory, write access, and project
+config counts as a permission-root change, and per Claude Code's own docs
+only `bypassPermissions` mode can suppress that prompt; no hook decision
+can. So approving the call buys nothing -- the harness still asks -- while
+blocking it lets the redirect message steer the model to a genuinely
+prompt-free alternative: work the existing worktree without relocating into
+it, via `git -C <path> <cmd>` for git operations and absolute paths under it
+for Read/Write/Edit and other file tools. Neither of those touches the
+permission root, so neither prompts. A path outside `.claude/worktrees/`
+gets an extra first step in the same message: move it into convention with
+`git worktree move` (already a trusted git subcommand, preserving the
+branch and any uncommitted work) before working on it directly -- the same
+self-correcting pattern used elsewhere in this hook (e.g. the
 PowerShell-tool block pointing at Bash).
 
-Claude Code enforces its own permission-root confirmation on top of this --
-moving the session's working directory, write access, and project config
-counts as a permission-root change, and per Claude Code's own docs only
-`bypassPermissions` mode can suppress that prompt; no hook decision can. That
-confirmation fires for *any* explicit-`path` EnterWorktree call, including
-ones already inside `.claude/worktrees/`, so approving the in-convention
-case does not buy a click-free path -- the harness still asks. It's still
-the right call: it keeps the operation itself correct (no stray worktree
-outside the convention) and skips a redundant hook-issued block on top of
-the harness's own prompt.
+The one gap in that redirect: a command that genuinely needs its own
+working directory to *be* the worktree (e.g. an `npm` script that relies on
+relative paths) can't be expressed as `-C <path> <cmd>` or an absolute path,
+and still needs a real relocation -- which still costs the one click.
 
 ExitWorktree takes no path at all -- it only ever acts on the one worktree
 this same session entered via EnterWorktree, tracked internally by the
@@ -53,17 +57,33 @@ def classify_enter_worktree(tool_input):
         return True, None
 
     if _under_claude_worktrees(path):
-        log_debug(f"EnterWorktree: path under .claude/worktrees/ ({path!r}), approving")
-        return True, None
+        log_debug(f"EnterWorktree: path under .claude/worktrees/ ({path!r}), blocking with redirect")
+        reason = (
+            'BLOCKED: relocating into "{path}" would trigger Claude Code\'s own permission-root '
+            'confirmation no matter what this hook decides -- only bypassPermissions mode can '
+            'suppress it, and no hook decision can.\n\n'
+            'To work in this worktree without that prompt, don\'t relocate into it -- operate on '
+            'it directly instead:\n'
+            '  git -C "{path}" <command>            # for git operations\n'
+            '  (absolute paths under "{path}")       # for Read/Write/Edit and other file tools\n\n'
+            'Only call EnterWorktree with no path (or `name`) when you actually want to create a '
+            'brand new worktree.'
+        ).format(path=path)
+        return False, reason
 
     log_debug(f"EnterWorktree: path outside .claude/worktrees/ ({path!r}), blocking with redirect")
     reason = (
-        'BLOCKED: "{path}" is outside .claude/worktrees/.\n\n'
-        'To keep this worktree\'s branch and any uncommitted work while staying in convention, '
-        'move it into place first, then retry EnterWorktree with the new path:\n'
+        'BLOCKED: "{path}" is outside .claude/worktrees/, and relocating into it would also '
+        'trigger Claude Code\'s own permission-root confirmation no matter what this hook decides '
+        '-- only bypassPermissions mode can suppress it, and no hook decision can.\n\n'
+        'To keep this worktree\'s branch and any uncommitted work while staying in convention and '
+        'avoiding that prompt, move it into place first:\n'
         '  git worktree move "{path}" "$(git rev-parse --show-toplevel)/.claude/worktrees/<name>"\n\n'
+        'Then work in it directly, without calling EnterWorktree again:\n'
+        '  git -C "<new path>" <command>            # for git operations\n'
+        '  (absolute paths under "<new path>")       # for Read/Write/Edit and other file tools\n\n'
         'If there\'s nothing to preserve, call EnterWorktree with `name` (or no arguments) '
-        'instead of `path` -- that always creates fresh under .claude/worktrees/.'
+        'instead of `path` -- that always creates fresh under .claude/worktrees/ with no prompt.'
     ).format(path=path)
     return False, reason
 
