@@ -7,17 +7,22 @@ unconditionally.
 
 Switching into an *existing* worktree (`path` given) is approved only when
 that path already lives under `.claude/worktrees/`. A path outside it is
-blocked instead of approved: Claude Code enforces its own confirmation
-whenever EnterWorktree relocates outside `.claude/worktrees/` -- moving the
-session's working directory, write access, and project config counts as a
-permission-root change -- and per Claude Code's own docs, only
-`bypassPermissions` mode can suppress that prompt; no hook decision can.
-Approving unconditionally here would just trade a hook prompt for an
-unavoidable harness one, so instead the block message tells the model to
-bring the worktree into `.claude/worktrees/` first with `git worktree move`
-(which preserves the branch and any uncommitted work) and retry with the new
-path -- the same self-correcting pattern used elsewhere in this hook (e.g.
-the PowerShell-tool block pointing at Bash).
+blocked instead of approved, with a message that tells the model to bring
+the worktree into `.claude/worktrees/` first with `git worktree move` (which
+preserves the branch and any uncommitted work) and retry with the new path --
+the same self-correcting pattern used elsewhere in this hook (e.g. the
+PowerShell-tool block pointing at Bash).
+
+Claude Code enforces its own permission-root confirmation on top of this --
+moving the session's working directory, write access, and project config
+counts as a permission-root change, and per Claude Code's own docs only
+`bypassPermissions` mode can suppress that prompt; no hook decision can. That
+confirmation fires for *any* explicit-`path` EnterWorktree call, including
+ones already inside `.claude/worktrees/`, so approving the in-convention
+case does not buy a click-free path -- the harness still asks. It's still
+the right call: it keeps the operation itself correct (no stray worktree
+outside the convention) and skips a redundant hook-issued block on top of
+the harness's own prompt.
 
 ExitWorktree takes no path at all -- it only ever acts on the one worktree
 this same session entered via EnterWorktree, tracked internally by the
@@ -53,10 +58,7 @@ def classify_enter_worktree(tool_input):
 
     log_debug(f"EnterWorktree: path outside .claude/worktrees/ ({path!r}), blocking with redirect")
     reason = (
-        'BLOCKED: "{path}" is outside .claude/worktrees/. Claude Code enforces its own '
-        'permission-root confirmation for any EnterWorktree path outside that convention, and '
-        'no hook, permission rule, or "don\'t ask again" choice can suppress it -- only '
-        'bypassPermissions mode can, which doesn\'t apply here.\n\n'
+        'BLOCKED: "{path}" is outside .claude/worktrees/.\n\n'
         'To keep this worktree\'s branch and any uncommitted work while staying in convention, '
         'move it into place first, then retry EnterWorktree with the new path:\n'
         '  git worktree move "{path}" "$(git rev-parse --show-toplevel)/.claude/worktrees/<name>"\n\n'

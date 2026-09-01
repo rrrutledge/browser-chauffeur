@@ -135,9 +135,10 @@ Creating a new worktree (no `path` given) is always approved.
 It's the EnterWorktree equivalent of `git worktree add` under `.claude/worktrees/`, already a trusted git subcommand, so it always lands in the trusted convention.
 
 Switching into an *existing* worktree (`path` given) is approved only when that path already lives under `.claude/worktrees/`.
-A path outside it is denied instead, with a corrective message - the same pattern used for the PowerShell tool (denied, pointed at Bash).
-Claude Code enforces its own confirmation, independent of any hook decision, whenever EnterWorktree relocates outside `.claude/worktrees/` - moving the session's working directory, write access, and project config to that location counts as a permission-root change, and per Claude Code's docs, only `bypassPermissions` mode suppresses that prompt.
-Approving that case would just trade a hook prompt for an unavoidable harness one, so the denial instead tells the model to bring the worktree into `.claude/worktrees/` first with `git worktree move` (already a trusted git subcommand, preserving the branch and any uncommitted work) and retry EnterWorktree with the new path - which goes through clean, no click needed.
+A path outside it is denied instead, with a corrective message - the same pattern used for the PowerShell tool (denied, pointed at Bash) - that tells the model to bring the worktree into `.claude/worktrees/` first with `git worktree move` (already a trusted git subcommand, preserving the branch and any uncommitted work) and retry EnterWorktree with the new path.
+
+Claude Code enforces its own permission-root confirmation on top of this, independent of any hook decision: moving the session's working directory, write access, and project config counts as a permission-root change, and per Claude Code's docs only `bypassPermissions` mode suppresses that prompt.
+That confirmation fires for any explicit-`path` EnterWorktree call, including ones already inside `.claude/worktrees/` - so approving the in-convention case doesn't avoid the click, it just keeps the destination correct and skips a redundant hook-issued block on top of the harness's own prompt.
 
 ExitWorktree takes no path - it only ever acts on the one worktree the current session entered via EnterWorktree, tracked internally by the harness rather than supplied by the model.
 `action: "keep"` is always approved (nothing is deleted).
