@@ -134,10 +134,11 @@ reasoning.
 Creating a new worktree (no `path` given) is always approved.
 It's the EnterWorktree equivalent of `git worktree add` under `.claude/worktrees/`, already a trusted git subcommand, so it always lands in the trusted convention.
 
-Switching into an *existing* worktree (`path` given) is approved only when that path already lives under `.claude/worktrees/`.
-A path outside it is denied instead, with a corrective message - the same pattern used for the PowerShell tool (denied, pointed at Bash).
-Claude Code enforces its own confirmation, independent of any hook decision, whenever EnterWorktree relocates outside `.claude/worktrees/` - moving the session's working directory, write access, and project config to that location counts as a permission-root change, and per Claude Code's docs, only `bypassPermissions` mode suppresses that prompt.
-Approving that case would just trade a hook prompt for an unavoidable harness one, so the denial instead tells the model to bring the worktree into `.claude/worktrees/` first with `git worktree move` (already a trusted git subcommand, preserving the branch and any uncommitted work) and retry EnterWorktree with the new path - which goes through clean, no click needed.
+Switching into an *existing* worktree (`path` given) is always denied instead of approved, no matter where that path lives.
+Claude Code enforces its own permission-root confirmation on any explicit-`path` EnterWorktree call, independent of any hook decision: moving the session's working directory, write access, and project config counts as a permission-root change, and per Claude Code's docs only `bypassPermissions` mode suppresses that prompt - approving the call would buy nothing, since the harness asks regardless.
+So the denial redirects the model to work the existing worktree without relocating into it - `git -C <path> <command>` for git operations, absolute paths under it for Read/Write/Edit and other file tools - neither of which touches the permission root, so neither prompts.
+A path outside `.claude/worktrees/` gets an extra first step in that same message: move it into convention with `git worktree move` (already a trusted git subcommand, preserving the branch and any uncommitted work), then work on it directly the same way, rather than retrying EnterWorktree.
+The one gap: a command that needs its own working directory to actually *be* the worktree (e.g. an `npm` script relying on relative paths) can't be expressed as `-C` or an absolute path, and still needs a real relocation - which still costs the one click.
 
 ExitWorktree takes no path - it only ever acts on the one worktree the current session entered via EnterWorktree, tracked internally by the harness rather than supplied by the model.
 `action: "keep"` is always approved (nothing is deleted).
@@ -208,6 +209,6 @@ are promoted back to the plugin source via a GitHub PR on a rolling branch
 | `plugins/safe-compounds/safe_compounds/enforce.py` | Bash form validation + block messages |
 | `plugins/safe-compounds/safe_compounds/learned.py` | Machine-local learned store read/write |
 | `plugins/safe-compounds/safe_compounds/workflow.py` | Classifies Workflow tool calls: `workflow_blanket_names` for saved workflows, AI content check for inline scripts |
-| `plugins/safe-compounds/safe_compounds/worktree_tool.py` | Classifies EnterWorktree (approved when creating fresh or already under `.claude/worktrees/`; denied with a `git worktree move` redirect otherwise - see §7) and ExitWorktree (`keep` and plain `remove` approved, `discard_changes` prompts) tool calls |
+| `plugins/safe-compounds/safe_compounds/worktree_tool.py` | Classifies EnterWorktree (approved only when creating fresh with no path; any explicit path is denied with a redirect to work the worktree directly via `git -C`/absolute paths instead - see §7) and ExitWorktree (`keep` and plain `remove` approved, `discard_changes` prompts) tool calls |
 | `plugins/safe-compounds/tools/sync_learned.py` | Promotes learned approvals to a GitHub PR |
 | `plugins/safe-compounds/safe_compounds/config.py` | Config file schema + loader |
