@@ -19,6 +19,13 @@
 // Reschedule one occurrence of a recurring series (same day, different time):
 //                   node calendar.js --reschedule-occurrence --subject="Drive Ryan" \
 //                     --date=2026-08-31 --start=06:35 --end=06:55
+// Update one occurrence's subject/body (recurring series, same day and time):
+//                   node calendar.js --update-occurrence --subject="Youth Activities" \
+//                     --date=2026-09-09 --new-subject="Youth Activities - Fun & Fitness: Line Dancing" \
+//                     [--body="..."] [--calendar="Family Commitments"]
+// --delete-occurrence / --reschedule-occurrence / --update-occurrence all take an optional
+// --calendar=<name> to scope the series lookup to a secondary calendar (default: primary
+// "Calendar") - needed when the recurring series lives somewhere other than the default calendar.
 // Delete a plain (non-recurring) event by subject + date:
 //                   node calendar.js --delete-event --subject="Dentist" --date=2026-06-20
 // Update reminder: node calendar.js --update --subject="Dentist" --reminder=off
@@ -123,9 +130,10 @@ async function createRecurringEvent(client) {
 // candidate's /instances rather than taking the first match is what makes --delete-occurrence and
 // --reschedule-occurrence safe to point at a subject without knowing in advance which series (if
 // any) is the live one.
-async function resolveOccurrenceForDate(client, subject, date) {
+async function resolveOccurrenceForDate(client, subject, date, calendarId) {
   const escaped = String(subject).replace(/'/g, "''");
-  const found = await client.api('/me/events')
+  const base = calendarId ? `/me/calendars/${calendarId}/events` : '/me/events';
+  const found = await client.api(base)
     .filter(`subject eq '${escaped}' and type eq 'seriesMaster'`)
     .select('id,subject').top(10).get();
   const candidates = found.value || [];
@@ -147,11 +155,12 @@ async function resolveOccurrenceForDate(client, subject, date) {
 // occurrence id is not itself deletable.
 async function deleteOccurrence(client) {
   if (!args.subject || !args.date) {
-    throw new Error('--delete-occurrence requires --subject and --date=YYYY-MM-DD');
+    throw new Error('--delete-occurrence requires --subject and --date=YYYY-MM-DD [--calendar=<name>]');
   }
-  const { master, occurrences, candidateCount } = await resolveOccurrenceForDate(client, args.subject, args.date);
+  const calendarId = args.calendar ? await resolveCalendarId(client, args.calendar) : null;
+  const { master, occurrences, candidateCount } = await resolveOccurrenceForDate(client, args.subject, args.date, calendarId);
   if (!candidateCount) {
-    throw new Error(`No recurring series found with subject "${args.subject}" (a non-recurring event with that exact subject doesn't count)`);
+    throw new Error(`No recurring series found with subject "${args.subject}"${args.calendar ? ` on calendar "${args.calendar}"` : ''} (a non-recurring event with that exact subject doesn't count)`);
   }
   if (!master) {
     console.log(`No occurrence of "${args.subject}" on ${args.date} across ${candidateCount} matching series (already removed, or none scheduled that day).`);
@@ -169,11 +178,12 @@ async function deleteOccurrence(client) {
 // separately-created event competing for the same drive.
 async function rescheduleOccurrence(client) {
   if (!args.subject || !args.date || !args.start || !args.end) {
-    throw new Error('--reschedule-occurrence requires --subject, --date=YYYY-MM-DD, --start=HH:MM, --end=HH:MM');
+    throw new Error('--reschedule-occurrence requires --subject, --date=YYYY-MM-DD, --start=HH:MM, --end=HH:MM [--calendar=<name>]');
   }
-  const { master, occurrences, candidateCount } = await resolveOccurrenceForDate(client, args.subject, args.date);
+  const calendarId = args.calendar ? await resolveCalendarId(client, args.calendar) : null;
+  const { master, occurrences, candidateCount } = await resolveOccurrenceForDate(client, args.subject, args.date, calendarId);
   if (!candidateCount) {
-    throw new Error(`No recurring series found with subject "${args.subject}" (a non-recurring event with that exact subject doesn't count)`);
+    throw new Error(`No recurring series found with subject "${args.subject}"${args.calendar ? ` on calendar "${args.calendar}"` : ''} (a non-recurring event with that exact subject doesn't count)`);
   }
   if (!master) {
     throw new Error(`No occurrence of "${args.subject}" on ${args.date} across ${candidateCount} matching series to reschedule`);
@@ -184,6 +194,30 @@ async function rescheduleOccurrence(client) {
       end: { dateTime: `${args.date}T${args.end}:00`, timeZone: TZ },
     });
     console.log(`Rescheduled "${master.subject}" on ${args.date} to ${args.start}-${args.end}`);
+  }
+}
+
+// Updates one occurrence's subject and/or body without touching its time - e.g. tagging a
+// recurring "Youth Activities" placeholder with that week's actual activity once it's known,
+// without creating a competing one-off event or renaming the whole series.
+async function updateOccurrence(client) {
+  if (!args.subject || !args.date || (!args['new-subject'] && !args.body)) {
+    throw new Error('--update-occurrence requires --subject, --date=YYYY-MM-DD, and --new-subject and/or --body [--calendar=<name>]');
+  }
+  const calendarId = args.calendar ? await resolveCalendarId(client, args.calendar) : null;
+  const { master, occurrences, candidateCount } = await resolveOccurrenceForDate(client, args.subject, args.date, calendarId);
+  if (!candidateCount) {
+    throw new Error(`No recurring series found with subject "${args.subject}"${args.calendar ? ` on calendar "${args.calendar}"` : ''} (a non-recurring event with that exact subject doesn't count)`);
+  }
+  if (!master) {
+    throw new Error(`No occurrence of "${args.subject}" on ${args.date} across ${candidateCount} matching series to update`);
+  }
+  const patch = {};
+  if (args['new-subject']) patch.subject = args['new-subject'];
+  if (args.body) patch.body = { contentType: 'text', content: args.body };
+  for (const occ of occurrences) {
+    await client.api(`/me/events/${occ.id}`).patch(patch);
+    console.log(`Updated occurrence of "${master.subject}" on ${args.date}${args['new-subject'] ? ` -> "${args['new-subject']}"` : ''}`);
   }
 }
 
@@ -315,6 +349,7 @@ if (require.main === module) {
     if (args['create-recurring']) return createRecurringEvent(client);
     if (args['delete-occurrence']) return deleteOccurrence(client);
     if (args['reschedule-occurrence']) return rescheduleOccurrence(client);
+    if (args['update-occurrence']) return updateOccurrence(client);
     if (args['delete-event']) return deleteEvent(client);
     if (args.create) return createEvent(client);
     if (args.update) return updateReminder(client);

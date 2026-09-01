@@ -462,24 +462,34 @@ class TestEnterWorktree:
     def test_name_only_creates_new_worktree_approves(self):
         assert classify_enter_worktree({"name": "some-feature"}) == (True, None)
 
-    def test_path_under_claude_worktrees_approves(self, tmp_path):
-        path = str(tmp_path / ".claude" / "worktrees" / "some-feature")
-        assert classify_enter_worktree({"path": path}) == (True, None)
-
-    def test_path_under_claude_worktrees_backslash_approves(self, tmp_path):
-        path = str(tmp_path / ".claude" / "worktrees" / "some-feature").replace("/", "\\")
-        assert classify_enter_worktree({"path": path}) == (True, None)
-
-    def test_path_outside_claude_worktrees_blocks_with_redirect(self, tmp_path):
+    def test_path_under_claude_worktrees_blocks_with_direct_access_redirect(self, tmp_path):
         # Claude Code enforces its own permission-root confirmation for any
-        # out-of-convention path, and no hook decision can suppress it -- so
-        # approving here would just trade a hook prompt for an unavoidable
-        # harness one. Block with instructions instead.
+        # explicit-path EnterWorktree call, in-convention paths included, and
+        # no hook decision can suppress it -- so approving here would buy
+        # nothing. Block with a redirect to operate on the worktree directly
+        # (git -C / absolute paths) instead of relocating into it.
+        path = str(tmp_path / ".claude" / "worktrees" / "some-feature")
+        approved, reason = classify_enter_worktree({"path": path})
+        assert approved is False
+        assert f'git -C "{path}"' in reason
+        assert "git worktree move" not in reason
+
+    def test_path_under_claude_worktrees_backslash_blocks(self, tmp_path):
+        path = str(tmp_path / ".claude" / "worktrees" / "some-feature").replace("/", "\\")
+        approved, reason = classify_enter_worktree({"path": path})
+        assert approved is False
+        assert "git -C" in reason
+
+    def test_path_outside_claude_worktrees_blocks_with_move_redirect(self, tmp_path):
+        # Same unavoidable-harness-prompt reasoning, plus this path isn't even
+        # in convention yet -- redirect via `git worktree move` first, then
+        # direct access.
         path = str(tmp_path / ".worktrees" / "some-feature")
         approved, reason = classify_enter_worktree({"path": path})
         assert approved is False
         assert "git worktree move" in reason
         assert ".claude/worktrees" in reason
+        assert "git -C" in reason
 
 
 class TestExitWorktree:
