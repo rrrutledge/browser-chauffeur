@@ -87,6 +87,7 @@ Don't present a menu of options or stack a numbered list of questions.
   When their job is to route you to a third party (find a volunteer, recommend a speaker), make the asks conditional on that handoff rather than personal requests to them — and don't narrate the follow-up's timing.
   On a repeat ask to someone with standing local knowledge, lean on that ("you have much more insight than me here") rather than citing a specific thing they said they'd do — the former trusts their judgment, the latter reads as holding them to an obligation.
 - **When a contact declines or gives a discouraging read, accept it humbly and stop** — don't tack on a new ask.
+  This covers someone who already tried the favor and hit repeated friction or failure, e.g. a bug reported after two failed attempts, not just an explicit no. Asking them to try yet again piles on instead of telling them the problem is understood.
   Genuine warmth (a plain thanks, a "no worries") is fine to keep.
   What isn't warmth, however warmly it's phrased, is reminding them of something they haven't agreed to yet — a standing invitation or open ask still sitting unanswered — since restating it puts them in the position of having to say no again, which is uncomfortable for them and, over time, habituates them to saying no to you. The same line would read as genuine warmth once they'd actually agreed to it.
   Defer to their judgment and end.
@@ -258,6 +259,7 @@ The specifics that most often separate a message that reads as Russell's from on
 - **Let the reply itself acknowledge their stated next step or a reported completed action.**
   They've said what they'll do, or that they already did it; restating the specifics back to them, even positively, adds pressure and implies they needed reminding — a generic "thanks for doing it" carries the acknowledgment without the recap.
   Where you do respond to it, affirm in a way that removes the constraint, or hedge the callback so they're free to be where they actually are.
+  **The same overreach rules out a closing "let me know"/"no rush" tail too** - once they've stated they'll circle back, appending a reminder to do so implies the same doubt as restating their specifics; close on plain appreciation instead ("Really appreciate your help here.").
   **Reopening an old thread days or weeks later with a new, unrelated ask still opens on that acknowledgment** - thank them generically for the favor they came through on last time, rather than reusing the original message's greeting or well-wish verbatim, then move straight to the new ask.
 - **Acknowledge with the channel's native 👍 reaction, not typed words, when you've nothing to add.**
   Use it when everything they said sounds good and any positive line would be over the top — most of all when they've plainly agreed to do something, where added words read as piling on.
