@@ -420,6 +420,7 @@ A fourth exception is a light-touch, personal nudge in a congregation-membership
   With nothing new to react to, a business note to a long-standing warm contact still closes on a genuine personal check-in ("Let me know how you're doing.") rather than a transactional "let me know if you have any questions" - and never on an outcome they haven't confirmed yet.
 - **Frame a proactive, unsolicited update - something new you're sending because you thought of the person, not the check-in-with-nothing-to-report just above - as a no-obligation share:** open on genuine personal warmth ("I was thinking of you today"), and close by naming it as just an update with a plain well-wish ("Anyway, thought I'd send the update. Hope you're doing well.") that asks nothing back, rather than pitching the update's usefulness up front or ending on a question that expects a reply.
 - **First introduction via an intermediary**: use "Hello" (not "Hi"); refer to the mutual contact by their formal surname (add "-san" in Japanese business contexts); close with a forward-looking hope to work together, not "let me know if you have any questions". **Name the topic you want to discuss, not the specific angle it might fit** (a prospective event slot, a program tie-in) - save that detail for once the conversation's underway. Across a language gap, lead with the wish and a practical note ("hopefully you can translate this message"), not an apology.
+  **Exception - a transactional business referral** (a sponsorship or partnership lead passed along by a mutual contact, not a personal relationship-building intro): refer to the intermediary by their full name, not bare surname; state the concrete fit rationale (the audience/topic overlap) right away rather than saving it for later; and close with an ordinary "let me know what you think" - the forward-looking-hope close and the saved-for-later angle are for a warmer, more personal introduction than a cold business lead.
 - Short, conversational, considerate of their time and life.
 - Logistics + warmth; apologize if rescheduling.
 - *Samples:*
@@ -436,6 +437,7 @@ A fourth exception is a light-touch, personal nudge in a congregation-membership
 - Plain framing over clever phrasing — drop quoted catchphrases, and state what a commitment costs plainly rather than selling how small or easy it is.
 - **Don't pitch why someone or their org is a good fit when asking them to participate.**
   Trust the context; the ask stands on its own — cut the "your experience in A, B, C is exactly what we need" list.
+  This is about praising the recipient's personal qualifications, not about naming a factual audience/topic overlap between two orgs when introducing a partnership or sponsorship ask - see the `1on1` persona's transactional-business-referral exception above for that case.
 - **Cold outreach for a commitment: open with the soft ask, not the hard one.**
   Gauge interest and invite a conversation ("is this of interest?", "can we talk?"); name the commitment lightly and later, after they've engaged.
   Ask one thing, not a menu of next steps.
