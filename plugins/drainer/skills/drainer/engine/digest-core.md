@@ -59,10 +59,11 @@ never to pull freshly-arrived items into the current pass. A digest ends when th
 with is handled, not when the live queue happens to read empty.
 
 - **The digest queue:** `node <seen-state.js> queue-list <runtime_dir>` → a JSON array of
-  `{ id, source, item }`. Each `item` carries at least `triage` (`fyi` | `junk` | `auto-handle`), `from`,
-  `subject`, and `snippet`, plus whatever else that provider's capture recorded (e.g. a `url` and the ids
-  its CLEAR needs). Split it by `item.triage` into **fyi**, **junk**, and **auto-handle** (the last is
-  what a worker already did on its own — see step 2b).
+  `{ id, source, item }`. Each `item` carries at least `triage` (`fyi` | `junk` | `auto-handle` |
+  `help-needed`), `from`, `subject`, and `snippet`, plus whatever else that provider's capture recorded
+  (e.g. a `url` and the ids its CLEAR needs). Split it by `item.triage` into **fyi**, **junk**,
+  **auto-handle** (what a worker already did on its own - see step 2b), and **help-needed** (a browser
+  gate only Russell can clear - see step 2a).
 - For richer fyi summaries, read each item's captured body when the provider wrote one (its capture
   writes the body alongside `items/<id>.json`) — don't summarize from the snippet alone when the full
   body is right there.
@@ -70,6 +71,23 @@ with is handled, not when the live queue happens to read empty.
 If the queue is empty AND no provider is stuck (step 0), tell Russell there's nothing to digest and
 stop. A stuck provider alone is still worth reporting - surface it even when the queue is otherwise
 empty.
+
+## 2a. Needs your sign-in - a browser gate only Russell can clear
+
+A worker that hits a browser gate only Russell can clear reports it here instead of stalling silently -
+see `worker-core.md` §2e for what counts as a gate and what it records.
+These items carry `triage: "help-needed"` in `items/<id>.json`.
+
+Present each as its own line, distinct from fyi and auto-handled, leading with the same restated-item
+briefing worker-core §1 uses (who/what this item is).
+Name the gate from `helpNeeded.reason`, the `helpNeeded.url`, and that the worker's own session and
+browser tab are still open, waiting.
+Russell needs to go there and clear the gate himself, then tell that session to continue.
+
+**These don't finish clearing on Russell's review the way fyi/auto-handled items do.**
+Reading the digest doesn't resolve the gate; only Russell acting in the worker's own open tab does.
+On his OK here, only the digest queue entry is removed, per step 4's clearing rule for these items -
+the worker's session, tab, and source item stay exactly as the worker left them.
 
 ## 2b. Auto-handled — report what Claude already did, split by disposition (no decision needed)
 
@@ -175,11 +193,18 @@ in, and the action, and create only on his explicit OK of that shown text.
 ## 4. Present, then clear ONLY on Russell's review
 
 Present the whole digest in the terminal — any stuck-provider health alerts (step 0) at the very top,
-then the **Auto-handled** section (step 2b), fyi summaries, and grouped junk with stop-proposals - in
-one readable pass. Then **wait for Russell's go-ahead.** Nothing is disposed of silently.
+then **Needs your sign-in** (step 2a), the **Auto-handled** section (step 2b), fyi summaries, and grouped
+junk with stop-proposals - in one readable pass. Then **wait for Russell's go-ahead.** Nothing is
+disposed of silently.
 
 For **each auto-handled item** (already actioned + source-cleared by its worker), on his OK just remove
 it from the queue: `node <seen-state.js> queue-clear <runtime_dir> <id>` — no provider CLEAR.
+
+For **each help-needed item** Russell acknowledges (he's gone to clear the gate, or plans to), remove it
+from the queue the same way: `node <seen-state.js> queue-clear <runtime_dir> <id>` - no provider CLEAR,
+since the task isn't done.
+If he hasn't gotten to a gate yet, leave it in the queue; it rides to the next digest exactly like a
+deferred fyi/junk item.
 
 On his OK, for **each fyi/junk item he approves clearing**:
 1. Read the item's `source` and ids from its `items/<id>.json` (or the queue entry).

@@ -45,6 +45,7 @@ Russell decided in advance — do the action without presenting or waiting, then
 3. **Execute the action** autonomously (reversible/safe by definition of the rule — e.g. click the
    approve button). Then **CLEAR the source item** per your provider's CLEAR op (mark read / advance), so
    it doesn't resurface.
+   If executing the action hits a gate only Russell can clear, stop there and follow §2e instead of steps 4-5 below - a browser gate means this item now needs Russell, so treat it as needs-you rather than closing up as if the rule ran clean.
 4. **Stamp the disposition, then queue a digest entry** describing what you did, so the daily digest
    shows it under "Auto-handled" with the right framing:
    1. **Record the disposition** on `items/<id>.json` (Edit tool) before queuing - a `disposition` field
@@ -308,6 +309,38 @@ cleared.
 Once you've cleared under this section, step 6 is a no-op for this item — nothing left to clear there,
 just present the result once the work and any draft are done.
 
+## 2e. A browser gate only Russell can clear: report HELP_NEEDED, not a silent stall
+Any browser-chauffeur work this session drives - resolving a pointer's real content (§2b), doing the item's work (step 3), staging a draft via message-draft (step 4), or a provider's browser-driven CLEAR - can hit a gate browser-chauffeur's own contract already defines (see browser-chauffeur's SKILL.md, **User Intervention** and **Running in a subagent → The return contract**).
+
+Report that gate as `HELP_NEEDED` to the digest instead of following browser-chauffeur's `AskUserQuestion` step or waiting on a `HELP_NEEDED` result from a subagent you spawned (message-draft's teams/slack modes run one, per step 4 below).
+Both of those assume someone is watching this session live to answer.
+A drainer worker runs unattended, so nobody sees the prompt, the session parks on a question nobody will ever answer, and the item sits stuck with no signal Russell can find.
+That's the stall this section closes.
+
+Report the gate up to the one channel that reaches Russell without anyone watching live, the digest:
+
+1. **Leave the tab open** on the gate page.
+   Don't retry past it.
+   If a subagent you spawned already returned `HELP_NEEDED` with a `findTab` locator, that locator is what re-finds the tab later, so record it rather than losing it.
+2. **Record the gate on the item.**
+   Edit `items/<id>.json` (Edit tool) and add a `helpNeeded` object: `reason` (login / CAPTCHA / MFA-to-phone / in-page action needing a human), `url`, the `findTab` predicate description that re-finds the tab, and `progress`, one line on how far the run got before the gate stopped it.
+3. **Queue a digest entry.**
+   Set `triage` to `"help-needed"` in `items/<id>.json` (the same after-the-fact re-tag §2c and §6a already use for fyi and auto-handle), then run
+   `node <skill>/scripts/seen-state.js queue-add <runtime_dir> <source> <id> <path to items/<id>.json>`
+   so Russell actually sees it.
+   The digest reads `triage: "help-needed"` as its own class (see `digest-core.md` §2a), distinct from fyi, junk, and auto-handled.
+4. **Leave the source item uncleared.**
+   The task isn't done, and clearing it here would drop it the way §2d warns against.
+5. **Keep this session's tab open.**
+   A staged gate is squarely the "waiting on an answer from him" case the tab-closing guidance at the end of §6 already carves out: nothing else will reliably bring this item back to Russell besides him going to this exact tab and clearing the gate.
+   Closing the session tab now would also cost you the browser tab you just left open: a launched session like this one owns its tabs by its own PID (see browser-chauffeur's **Tying tab ownership to a session**), and the sweep reaps an owned tab the moment its owning session ends.
+   End your turn here instead of closing up.
+
+Russell resumes this the same way he'd continue any open session.
+The digest points him to this item and names its worker's session as the one waiting, so he goes to this session's tab and tells it he's cleared the gate.
+From there, resume exactly like message-draft's own `HELP_NEEDED` flow describes: re-find the tab with the `findTab` predicate, re-orient with a fresh read to confirm you're past the gate, and continue the flow from where you stopped.
+Then finish normally: complete the remaining work, draft any reply, clear the item per §6, and close up per §6's closing rules once your part and his are both done.
+
 ## 3. Do the action (you do the work WITH the user)
 Figure out what the item needs and **DO THE WORK in this session**. You are the implementer, not a
 task manager. Opening a PR? You open it. Filing a ticket? You file it. Completing a form? You fill it
@@ -320,6 +353,8 @@ complete.
 
 Anything irreversible / outbound-to-others waits for the user's explicit OK; safe, reversible work
 proceeds immediately.
+
+**If browser-chauffeur work here hits a gate only Russell can clear, follow §2e.**
 
 **A Trello card you adopt from §2's check needs no claiming — leave its Start date alone.**
 When §2's lookup finds an existing Trello card for this item, do the work above without touching the
@@ -336,6 +371,9 @@ mechanics, leaving the draft un-sent. Show the draft text in the terminal, then 
 it and either send it themselves or tell you to send it. Don't send on your own initiative — only on
 Russell's explicit per-message instruction this turn, reviewing this exact draft (per the send exception
 in §0's framing above); silence or a generic go-ahead earlier in the conversation doesn't count.
+
+Teams and Slack staging runs inside message-draft's own browser subagent (its **`teams` and `slack` stage
+in a browser subagent** section). If that subagent returns `HELP_NEEDED` instead of `DONE`, follow §2e.
 
 If no message is needed (automated reminder, pure action item), skip to step 6.
 
