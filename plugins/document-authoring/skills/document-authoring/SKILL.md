@@ -277,6 +277,7 @@ The specifics that most often separate a message that reads as Russell's from on
 
 - **Let the thread carry the context.**
   Ask the shortest open question that covers what you need; don't re-name the deliverable or prior exchange already visible.
+  **When the original message is auto-quoted in full below the reply (a threaded email) and it holds more than one ask, point at it generically** ("what did you think about the below?") **rather than restating each ask as its own question.** The quote already carries every specific, so this overrides the "nudge on all of them" pattern below once the quote itself makes every ask visible.
 - **Put the actual question in the first sentence.**
   Lead a follow-up with the direct ask ("can you suggest any contacts at X or Y?"), not a status/context line that delays it to a later sentence.
 - **Don't re-paste something you already shared upthread** — a link, file, or detail the recipient already has.
