@@ -33,15 +33,26 @@
 // Create calendar: node calendar.js --create-calendar="Physical Tasks"
 //                    (idempotent — reports the existing id if a calendar with that name is already there)
 // List due tasks:  node calendar.js --list-due-tasks --calendar="Physical Tasks" [--json] [--tz=]
-//                    (every non-all-day event on that calendar whose start date is today-or-earlier —
-//                     "due" — with its duration in minutes; a task's own placement IS its due date, and
-//                     nothing here ever moves it, so an undone task just keeps showing up until deleted.
-//                     A recurring series collapses to ONE row — id = the series master's id — even
-//                     when several of its occurrences are overdue; see --catch-up-series to clear all
-//                     of them at once)
-// Catch up a series: node calendar.js --catch-up-series=<seriesMasterId> [--tz=]
-//                    (deletes every overdue occurrence of that series through today — "done, series
-//                     continues" — WITHOUT touching the series master or any future occurrence)
+//                    (every non-all-day event on that calendar that's still QUEUED — start date
+//                     today-or-earlier AND time-of-day in the 00:00-02:59 parking window — with its
+//                     duration in minutes; nothing here ever moves a task, so an undone one just
+//                     keeps showing up until it's moved out of that window (see --start-now). A
+//                     recurring series collapses to ONE row — id = its most recent queued occurrence,
+//                     seriesMasterId alongside it — even when several occurrences are overdue; see
+//                     --catch-up-series to clean up the rest once one's been started)
+// Start a task now:  node calendar.js --start-now=<eventId> [--tz=]
+//                    (moves start to right now, keeping the task's own duration — pulls it out of the
+//                     00:00-02:59 window, which is what "no longer due" means here; no delete, no
+//                     second calendar. A recurring occurrence detaches from its series, same as
+//                     dragging it in the Outlook UI)
+// Finish a task now: node calendar.js --finish-now=<eventId> [--tz=]
+//                    (stamps just the end time to now, leaving start where --start-now put it, so the
+//                     event's real elapsed span sits on the calendar afterward)
+// Catch up a series: node calendar.js --catch-up-series=<seriesMasterId> [--except-id=<eventId>] [--tz=]
+//                    (deletes every OTHER overdue occurrence of that series through today — the
+//                     backlog is just recurrence-expansion noise once one occurrence has actually
+//                     been started via --start-now, which is what --except-id preserves — WITHOUT
+//                     touching the series master or any future occurrence)
 // Gap to next commitment: node calendar.js --gap-minutes [--json] [--tz=] [--lookahead-hours=2]
 //                    [--exclude="Name,Name"]
 //                    (minutes from now until the next REAL commitment — a non-all-day event with
@@ -398,20 +409,29 @@ async function getEvents({ calendar, start, end, tz = 'America/Chicago', client 
   return out;
 }
 
-// Every non-all-day event on a dedicated task calendar (e.g. "Physical Tasks") whose start date is
-// today-or-earlier — "due". A task's own placement on the calendar IS its due date; nothing here
-// ever moves it, so an undone one just keeps coming back until it's deleted (done) or explicitly
-// moved to a later day. Every event on this calendar counts as a task (it's a dedicated calendar —
-// no organizer/attendee heuristic needed, unlike a real commitment calendar).
+// Every non-all-day event on a dedicated task calendar (e.g. "Physical Tasks") that is still
+// QUEUED — start date today-or-earlier AND its time-of-day still sits in the overnight parking
+// window (00:00-02:59, `isQueuedHour` below). A task's own placement on the calendar IS its due
+// date; nothing here ever moves it while it's still queued, so an undone one just keeps coming back
+// until something explicitly takes it out of the window (see startTaskNow/finishTaskNow below —
+// moving an event's start out of that window IS what "cleared"/"started" means here, mirroring the
+// pre-drainer habit of dragging a to-do out of its staging hour once you actually picked it up).
+// Every event on this calendar counts as a task (it's a dedicated calendar — no organizer/attendee
+// heuristic needed, unlike a real commitment calendar).
 //
-// A recurring series can rack up MANY due-but-undone occurrences (Graph expands every date the
+// A recurring series can rack up MANY queued-but-undone occurrences (Graph expands every date the
 // pattern ever produced between its start and today, not just "the next one") — one per missed
-// day/week/month, not one per series. Those collapse to a SINGLE row per series here, `id` set to
-// the series master's id rather than one instance's, so CLEAR can catch the whole backlog up in one
-// action (see catchUpSeries) instead of needing one delete per missed occurrence. `date` is the most
-// recent due occurrence, so a badly stale series still reads as "due," not as ancient history.
+// day/week/month, not one per series. Those collapse to a SINGLE row per series here: `id` is the
+// MOST RECENT queued occurrence's own instance id (what startTaskNow/finishTaskNow act on directly),
+// with `seriesMasterId` alongside it so the older, uninteresting backlog occurrences can be swept
+// separately (see catchUpSeries) without touching the one actually being worked.
 //
-// Returns [{ id, subject, date, minutes, isRecurring, webLink }], oldest-due first.
+// Returns [{ id, seriesMasterId (recurring only), subject, date, minutes, isRecurring, webLink }],
+// oldest-due first.
+function isQueuedHour(dateTimeStr) {
+  const h = parseInt((dateTimeStr || 'T99').slice(11, 13), 10);
+  return h >= 0 && h <= 2;
+}
 async function listDueTasks({ calendar, tz = 'America/Chicago', lookbackDays = 730, today, client } = {}) {
   if (!calendar) throw new Error('listDueTasks requires { calendar }');
   client = client || await getGraphClient();
@@ -421,7 +441,7 @@ async function listDueTasks({ calendar, tz = 'America/Chicago', lookbackDays = 7
   const pad = n => String(n).padStart(2, '0');
   const rangeStartStr = `${rangeStart.getFullYear()}-${pad(rangeStart.getMonth() + 1)}-${pad(rangeStart.getDate())}`;
   const oneOffs = [];
-  const bySeries = new Map(); // seriesMasterId -> { subject, date (latest), minutes, webLink }
+  const bySeries = new Map(); // seriesMasterId -> { id (latest occurrence), subject, date (latest), minutes, webLink }
   let page = await client.api(`/me/calendars/${calId}/calendarView`)
     .query({ startDateTime: `${rangeStartStr}T00:00:00`, endDateTime: `${todayStr}T23:59:59` })
     .header('Prefer', `outlook.timezone="${tz}"`)
@@ -430,14 +450,16 @@ async function listDueTasks({ calendar, tz = 'America/Chicago', lookbackDays = 7
     .get();
   while (page) {
     for (const e of page.value || []) {
-      if (e.isAllDay) continue;
+      if (e.isAllDay || !isQueuedHour(e.start.dateTime)) continue;
       const date = (e.start.dateTime || '').slice(0, 10);
       if (date > todayStr) continue; // calendarView can hand back a same-day-boundary next occurrence
       const minutes = Math.round((new Date(e.end.dateTime) - new Date(e.start.dateTime)) / 60000);
       if (e.type === 'occurrence' || e.type === 'exception') {
         const existing = bySeries.get(e.seriesMasterId);
         if (!existing || date > existing.date) {
-          bySeries.set(e.seriesMasterId, { subject: e.subject || '(no title)', date, minutes, webLink: e.webLink });
+          bySeries.set(e.seriesMasterId, {
+            id: e.id, subject: e.subject || '(no title)', date, minutes, webLink: e.webLink,
+          });
         }
       } else {
         oneOffs.push({
@@ -450,7 +472,7 @@ async function listDueTasks({ calendar, tz = 'America/Chicago', lookbackDays = 7
     page = next ? await client.api(next).get() : null;
   }
   const recurring = [...bySeries.entries()].map(([seriesMasterId, v]) => ({
-    id: seriesMasterId, subject: v.subject, date: v.date, minutes: v.minutes,
+    id: v.id, seriesMasterId, subject: v.subject, date: v.date, minutes: v.minutes,
     isRecurring: true, webLink: v.webLink,
   }));
   const out = [...oneOffs, ...recurring];
@@ -458,12 +480,50 @@ async function listDueTasks({ calendar, tz = 'America/Chicago', lookbackDays = 7
   return out;
 }
 
-// Deletes every occurrence of a recurring series that is due-or-earlier (date <= today), leaving
-// future occurrences untouched — the "done, series continues" catch-up for a series that racked up
-// backlog while nobody cleared it. NEVER deletes the series master itself (that would kill every
-// future occurrence too); it only removes the individual overdue instances, the same operation
-// `deleteOccurrence` above uses for one day at a time, just swept across the whole backlog at once.
-async function catchUpSeries({ seriesMasterId, tz = 'America/Chicago', today, client } = {}) {
+// The "started" move: pulls one event out of the queued window by setting its start to right now,
+// keeping its original duration (so end = now + that duration) — the automated version of dragging a
+// to-do out of its staging hour the moment you actually pick it up. Once moved, it no longer matches
+// isQueuedHour, so it stops being due, permanently, with no delete and no second calendar. A
+// recurring occurrence detaches from its series here (same as the Outlook UI), which is correct —
+// only this one instance was started, the series' future occurrences are untouched. Returns the
+// duration (minutes) preserved, for the caller to sanity-check.
+async function startTaskNow({ eventId, tz = 'America/Chicago', client } = {}) {
+  if (!eventId) throw new Error('startTaskNow requires { eventId }');
+  client = client || await getGraphClient();
+  const current = await client.api(`/me/events/${eventId}`)
+    .header('Prefer', `outlook.timezone="${tz}"`).select('start,end').get();
+  const durMs = new Date(current.end.dateTime.replace(' ', 'T')) - new Date(current.start.dateTime.replace(' ', 'T'));
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const nowStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  const end = new Date(now.getTime() + durMs);
+  const endStr = `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}T${pad(end.getHours())}:${pad(end.getMinutes())}:${pad(end.getSeconds())}`;
+  await client.api(`/me/events/${eventId}`).patch({
+    start: { dateTime: nowStr, timeZone: tz }, end: { dateTime: endStr, timeZone: tz },
+  });
+  return Math.round(durMs / 60000);
+}
+
+// The "finished" stamp: patches ONLY the end time to right now, leaving start exactly where
+// startTaskNow put it — so the event's real elapsed span (start = when picked up, end = when
+// actually finished) sits on the calendar afterward, the same record Russell used to leave by hand.
+async function finishTaskNow({ eventId, tz = 'America/Chicago', client } = {}) {
+  if (!eventId) throw new Error('finishTaskNow requires { eventId }');
+  client = client || await getGraphClient();
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const nowStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  await client.api(`/me/events/${eventId}`).patch({ end: { dateTime: nowStr, timeZone: tz } });
+}
+
+// Deletes every QUEUED occurrence of a recurring series that is due-or-earlier (date <= today)
+// EXCEPT `exceptId` — the backlog cleanup for a series that racked up several missed occurrences
+// while nobody cleared it. Those older occurrences are just Graph's recurrence-expansion noise, not
+// independently meaningful (nobody actually worked "Call Mom" on every missed day), so they're
+// removed outright; `exceptId` is the one occurrence startTaskNow/finishTaskNow already turned into
+// a real record and must be left alone. NEVER deletes the series master itself (that would kill
+// every future occurrence too) — only the individual overdue instances.
+async function catchUpSeries({ seriesMasterId, exceptId, tz = 'America/Chicago', today, client } = {}) {
   if (!seriesMasterId) throw new Error('catchUpSeries requires { seriesMasterId }');
   client = client || await getGraphClient();
   const todayStr = today || new Date().toLocaleDateString('en-CA', { timeZone: tz });
@@ -476,6 +536,7 @@ async function catchUpSeries({ seriesMasterId, tz = 'America/Chicago', today, cl
     .select('id,start').top(500).get();
   let deleted = 0;
   for (const occ of instances.value || []) {
+    if (occ.id === exceptId) continue;
     if ((occ.start.dateTime || '').slice(0, 10) > todayStr) continue;
     await client.api(`/me/events/${occ.id}`).delete();
     deleted++;
@@ -527,7 +588,8 @@ async function getGapUntilNextCommitment({ tz = 'America/Chicago', lookaheadHour
 }
 
 module.exports = {
-  getCalendars, resolveCalendarId, getEvents, listDueTasks, getGapUntilNextCommitment, catchUpSeries,
+  getCalendars, resolveCalendarId, getEvents, listDueTasks, getGapUntilNextCommitment,
+  startTaskNow, finishTaskNow, catchUpSeries,
 };
 
 // --- CLI (only when run directly, so `require` of this file is side-effect-free) ---
@@ -566,8 +628,20 @@ if (require.main === module) {
     if (args['delete-event-id']) return deleteEventById(client);
     if (args['move-event-id']) return moveEventById(client);
     if (args['catch-up-series']) {
-      const deleted = await catchUpSeries({ seriesMasterId: args['catch-up-series'], tz: TZ });
-      console.log(`Caught up: deleted ${deleted} overdue occurrence(s) of series ${args['catch-up-series']}.`);
+      const deleted = await catchUpSeries({
+        seriesMasterId: args['catch-up-series'], exceptId: args['except-id'], tz: TZ,
+      });
+      console.log(`Caught up: deleted ${deleted} overdue occurrence(s) of series ${args['catch-up-series']}${args['except-id'] ? ` (kept ${args['except-id']})` : ''}.`);
+      return;
+    }
+    if (args['start-now']) {
+      const minutes = await startTaskNow({ eventId: args['start-now'], tz: TZ });
+      console.log(`Started "${args['start-now']}" now, keeping its ${minutes}m duration.`);
+      return;
+    }
+    if (args['finish-now']) {
+      await finishTaskNow({ eventId: args['finish-now'], tz: TZ });
+      console.log(`Finished "${args['finish-now']}" — end stamped to now.`);
       return;
     }
     if (args['create-recurring']) return createRecurringEvent(client);

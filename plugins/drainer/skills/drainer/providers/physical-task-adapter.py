@@ -2,17 +2,20 @@
 through the Microsoft Graph API via the ms-graph skill's calendar.js.
 
 All physical-task mechanics live HERE, alongside the prose contract in
-`physical-task-provider.md`: locating calendar.js, the due/gap ENUMERATE, the id scheme (the raw
-Graph event/occurrence id — stable until CLEAR deletes it), and the captured item shape. The poller
+`physical-task-provider.md`: locating calendar.js, the queued/gap ENUMERATE, the id scheme (the raw
+Graph event/occurrence id, stable while a task stays queued), and the captured item shape. The poller
 (`scripts/run-poller.py`) loads this adapter dynamically and drives it through the `ProviderBase`
 interface.
 
-The model: a task's placement on the dedicated calendar IS its due date (mirrors Trello's Start —
-"now-or-earlier is startable"), and nothing here ever moves it, so an undone task just keeps coming
-back until CLEAR deletes it (done) or moves it to a later day (deferred). What's unique to this
-source is a SECOND gate on top of "due": a physical task also needs a live free gap — computed fresh
-every cycle — of at least its own duration before Russell's next real (non-solo) calendar commitment,
-because unlike every other source, nobody but Russell can do the actual work.
+The model: a task is QUEUED while it sits on the dedicated calendar with a start date today-or-earlier
+AND a start time-of-day still inside the 00:00-02:59 parking window (mirrors the old pre-drainer habit
+of staging a to-do in an overnight band and dragging it out once picked up) — nothing here ever moves
+a queued task, so an undone one just keeps coming back. CLEAR's "started" step (see the provider doc)
+moves the event's start to right now, which is what takes it out of the window for good; there is no
+delete and no second archive calendar. What's unique to this source is a SECOND gate on top of
+"queued": a physical task also needs a live free gap — computed fresh every cycle — of at least its
+own duration (plus a buffer) before Russell's next real (non-solo) calendar commitment, because unlike
+every other source, nobody but Russell can do the actual work.
 """
 import glob
 import json
@@ -148,20 +151,22 @@ class Provider(ProviderBase):
         return eligible[:limit]
 
     def still_in_inbox_ids(self):
-        """Reconcile's analog of "still in the inbox": every currently-due task, gap or no gap. A
-        task the poller dispatched whose tab later closed without a CLEAR is still due (its event
-        wasn't deleted) — dropping its seen key here lets it dispatch again next time a real gap
-        opens, instead of being silently forgotten for good."""
+        """Reconcile's analog of "still in the inbox": every currently-queued task's id, gap or no
+        gap. A task the poller dispatched whose tab later closed without being started (still sitting
+        in the 00:00-02:59 window — see CLEAR) is still queued — dropping its seen key here lets it
+        dispatch again next time a real gap opens, instead of being silently forgotten for good."""
         try:
             return {t["id"] for t in self._due_tasks()}
         except ProviderError:
             return None
 
     def stable_id(self, item):
-        # Keyed on the underlying Graph event/occurrence id, which stays constant for this task's
-        # whole undone lifetime (it is never recreated or re-stamped) — unlike email or Trello, no
-        # date needs to be baked into the id: CLEAR deletes the id itself, which is what stops it
-        # from ever being enumerated again.
+        # Keyed on the underlying Graph event/occurrence id. For a one-off this is stable for the
+        # task's whole queued lifetime (nothing here ever recreates or re-stamps it). For a recurring
+        # series it's the most recent queued occurrence's own id (see the adapter's _due_tasks/
+        # listDueTasks), which legitimately changes as a fresh occurrence becomes the representative
+        # one — exactly like Trello's Start-stamped id scheme, just keyed on Graph's own instance id
+        # instead of a date string.
         return f"{self.name}-{slug(item['subject'])}-{item['id'][-10:]}"
 
     def capture(self, item, iid, runtime_dir):
@@ -171,7 +176,8 @@ class Provider(ProviderBase):
             "id": iid, "source": self.name, "triage": item["_bucket"], "kind": item.get("_kind"),
             "subject": item["subject"], "date": item["date"], "minutes": item["minutes"],
             "isRecurring": item["isRecurring"], "calendar": self.calendar,
-            "eventId": item["id"], "url": item.get("webLink"),
+            "eventId": item["id"], "seriesMasterId": item.get("seriesMasterId"),
+            "url": item.get("webLink"),
             "ts": datetime.now(timezone.utc).isoformat(),
         }
         json_file = os.path.join(items_dir, f"{iid}.json")

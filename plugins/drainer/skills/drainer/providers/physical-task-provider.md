@@ -17,22 +17,27 @@ not by the AI triage call). id prefix: `physical-task-`.
 > doesn't need to say: what "do the item" even means when the work is physical.
 
 ## The model
-A task's placement on the dedicated calendar (default name **"Physical Tasks"**, configurable) IS its
-due date — the same "Start now-or-earlier is startable" idea Trello uses, just expressed as a calendar
-day instead of a field. Nothing here ever moves a task to keep it visible; an undone one simply keeps
-coming back every cycle until CLEAR deletes it (done) or moves it to a later day (deferred). The event's
-own duration (end minus start) is Russell's own estimate of how long the task takes — carried over
-unchanged from the old habit of sizing a to-do to a calendar block, just no longer tied to a specific
-clock hour.
+A task is **queued** while it sits on the dedicated calendar (default name **"Physical Tasks"**,
+configurable) with a start date today-or-earlier AND a start time-of-day still inside the
+**00:00-02:59 parking window**. This mirrors Russell's pre-drainer habit almost exactly: he used to
+stage a to-do in an overnight band and drag it out to the real time once he actually picked it up —
+the window here plays the same role, just for one purpose (queued vs. started) instead of also
+encoding size. Nothing here ever moves a queued task to keep it visible; an undone one simply keeps
+coming back every cycle until it's moved out of the window (started — see WORKER/CLEAR). **There is no
+delete and no separate archive calendar** — the same event just keeps living on Physical Tasks,
+eventually parked at the real time it was actually worked, as an ordinary calendar record.
+
+The event's own duration (end minus start, while still queued) is Russell's own estimate of how long
+the task takes.
 
 **A recurring series is one task, not one-per-missed-occurrence.** Outlook's recurrence engine expands
 every date the pattern ever produced between its start and today, so a daily or weekly task left
-uncleared for a while genuinely has several individually-overdue occurrences sitting in Graph — but
-Russell only ever sees ONE drainable item for it (`enumerate` collapses them by series, see the
-adapter), and doing it once catches up the whole backlog rather than requiring one CLEAR per missed
-occurrence (see CLEAR).
+unstarted for a while genuinely has several individually-queued occurrences sitting in Graph — but
+Russell only ever sees ONE drainable item for it (`enumerate` collapses them to the most recent queued
+occurrence, see the adapter), and starting it catches the backlog up rather than requiring one CLEAR
+per missed occurrence (see CLEAR).
 
-**The second gate, unique to this source:** even once a task is due, the adapter's `enumerate` only
+**The second gate, unique to this source:** even once a task is queued, the adapter's `enumerate` only
 returns it when a live free gap of at least that duration **plus a buffer** currently exists before
 Russell's next REAL commitment (a calendar event with someone else on it, or one he didn't organize — a
 solo self-owned event, on any calendar, never counts as blocking). The buffer covers the lag between the
@@ -70,24 +75,27 @@ browser-chauffeur), then retry — never surface the token error to Russell.
 ## CAPTURE
 `items/<id>.json`:
 `{ "id","source":"physical-task","triage":"needs-you","kind":"work","subject","date","minutes",`
-`"isRecurring","calendar","eventId","url","ts":"<ISO now>" }`
+`"isRecurring","calendar","eventId","seriesMasterId","url","ts":"<ISO now>" }`
 - `subject` — the task itself, in Russell's own words (however he named the calendar event).
-- `date` — the day it became due (YYYY-MM-DD); may be well in the past for something that's sat undone.
-- `minutes` — the duration Russell estimated (the event's own length) — also the size of the free gap
-  that made this item eligible to dispatch right now.
+- `date` — the day it became queued (YYYY-MM-DD); may be well in the past for something that's sat unstarted.
+- `minutes` — the duration Russell estimated (the event's own length while queued) — also the size of
+  the free gap that made this item eligible to dispatch right now.
 - `isRecurring` — whether this is a recurring series rather than a one-off. When true, `date` is the
-  most recent overdue occurrence, not necessarily today — a series left uncleared can accumulate
-  several missed occurrences (see CLEAR's catch-up behavior).
-- `eventId` — the raw Graph id CLEAR acts on: the event's own id for a one-off, or the **series
-  master's** id for a recurring one (never a single occurrence's instance id — see CLEAR for why).
+  most recent queued occurrence, not necessarily today — a series left unstarted can accumulate several
+  missed occurrences (see CLEAR's catch-up behavior).
+- `eventId` — the raw Graph id `startTaskNow`/`finishTaskNow` act on directly: the event's own id for a
+  one-off, or the **most recent queued occurrence's own instance id** for a recurring one (never the
+  series master — starting one occurrence must never touch the others).
+- `seriesMasterId` — present only when `isRecurring` is true; the series master's id, needed only for
+  the backlog cleanup (`--catch-up-series`) after `eventId` has been started.
 - `url` — the event's Outlook `webLink`, so Russell can open the actual calendar item if he wants to.
 
 ## Why this item bypassed the usual triage judgment
 `run-poller.py` routes every `physical-task` item straight to `needs-you`/`work`, the same deterministic
 shortcut it uses for a started Trello card or an orphaned session — never through the AI triage call.
-There's nothing to judge: the adapter's `enumerate` already established the task is due AND a real gap
-for it exists right now, and that combination is definitionally "go do this." A physical task is never
-`fyi` or `junk` — there's no inbound noise to distinguish it from, only Russell's own to-dos.
+There's nothing to judge: the adapter's `enumerate` already established the task is queued AND a real
+gap for it exists right now, and that combination is definitionally "go do this." A physical task is
+never `fyi` or `junk` — there's no inbound noise to distinguish it from, only Russell's own to-dos.
 
 ## WORKER — what "do the item" means for physical work
 Every other source's step 3 ("do the action") means Claude does the work. Here it doesn't — the task is
@@ -98,43 +106,44 @@ physical, so **Russell** does it, and your job is the surrounding logistics:
 2. **Do any prep work that IS digital** before handing it over — look up an address, print or open a
    form, pull up an account number, draft a note that needs to go with him. Anything you can genuinely
    do to make the physical step faster, do it now, the same as step 3 in the generic worker flow.
-3. **Note the time, then wait for him to actually do it.** This is interactive — stay with him rather
-   than firing a reminder and moving on. Record the current wall-clock time when he says he's starting.
-4. **When he confirms done (or it's already handled), log the estimate against the actual time before
-   CLEARing** — append one line to `<runtime_dir>/physical-task-log.jsonl` (Edit/Write tool; create the
-   file if it doesn't exist yet) with `{"date","subject","estimatedMinutes","actualMinutes","ts"}`,
-   `actualMinutes` computed from the start time you noted in step 3 to now. This replaces Russell's old
-   habit of dragging the calendar event's start/end times to match reality after the fact — same
-   estimate-vs-actual signal, but durable instead of overwritten the moment the event that carried it is
-   deleted, so it can actually be reviewed for a pattern over time instead of glanced at once. If he says
-   now isn't actually a good moment after all (interrupted, the gap turned out to be needed for something
-   else), skip the log entry and CLEAR as deferred instead — don't leave the item dangling unaddressed.
+3. **When he confirms he's actually starting now, CLEAR the "started" step right away** (see CLEAR) —
+   don't wait for completion to do this part. This is what takes the task out of the queued window for
+   good, so it never risks a second dispatch and the calendar starts carrying the real record.
+4. **Wait for him to actually do it, then ask.** Stay with him rather than firing a reminder and moving
+   on — this is interactive. When he confirms done (or it's already handled), CLEAR the "finished" step.
+   If he says now isn't actually a good moment after all before step 3 ever ran (interrupted, the gap
+   turned out to be needed for something else), don't CLEAR anything — leave the event exactly as it
+   is, still queued, so it naturally comes back the next time a real gap opens. If step 3 already ran
+   and then something interrupted him, still finish it (CLEAR "finished" now) rather than leaving a
+   started-but-never-finished record sitting on the calendar.
 5. **Close out per the standard rules** (`../engine/worker-core.md` §6's close conditions) — this tab
    stays open exactly as long as any other needs-you tab would: until his part is genuinely done.
 
 ## CLEAR
-What CLEAR means depends on `isRecurring` in the captured item — a one-off event and a recurring
-series behave differently under the hood, so don't use the same command for both:
+Two ordinary-flow steps plus a recurring-only backlog sweep — everything acts on `eventId` from
+CAPTURE, and **nothing here ever deletes or archives the task itself**:
 
-- **One-off, done** — `node calendar.js --delete-event-id=<eventId>`.
-- **One-off, deferred** — not a good moment after all, try again another day: `node calendar.js
-  --move-event-id=<eventId> --date=YYYY-MM-DD`, picking the day Russell names (or, absent a better
-  signal, tomorrow). Keeps the same time-of-day and duration.
-- **Recurring, done** — `eventId` is the series master's id (see CAPTURE): `node calendar.js
-  --catch-up-series=<eventId>`. A series left uncleared for a while can rack up several overdue
-  occurrences (Graph expands every date the pattern ever produced, not just the next one) — this
-  deletes ALL of them through today in one shot ("done, series continues"), never the series master
-  itself, so every future occurrence is untouched and keeps arriving on its own schedule.
-- **Recurring, deferred (today's occurrence only, series unaffected)** — genuinely rare (the whole
-  point of the gap check is that this only dispatches when there's room), but if it comes up:
-  `node calendar.js --delete-occurrence --subject="<subject>" --date=<dueDate> --calendar="<calendar>"`
-  removes just today's instance without touching the series or any earlier backlog. Most of the time,
-  simply doing nothing is correct instead — an unfinished recurring item just stays due and dispatches
-  again whenever a gap next opens, same as before you looked at it.
+- **Started** (step 3 above, the moment he confirms he's beginning): `node calendar.js
+  --start-now=<eventId>`. Moves the event's start to right now, keeping its own duration — this is what
+  takes it out of the 00:00-02:59 window, so it stops being queued, permanently, with no further action
+  needed. A recurring occurrence detaches from its series here (expected, same as the Outlook UI) —
+  only this one instance was started, every future occurrence is untouched.
+- **Finished** (step 4, once he confirms done): `node calendar.js --finish-now=<eventId>`. Stamps just
+  the end time to now, leaving start exactly where "started" put it — so the event's real elapsed span
+  (start = when he picked it up, end = when he actually finished) sits on the calendar afterward, same
+  as his old habit of dragging both times to match reality by hand.
+- **Recurring backlog cleanup** (only after Finished, only when `isRecurring` is true and the item's
+  `date` in CAPTURE was well in the past): `node calendar.js --catch-up-series=<seriesMasterId>
+  --except-id=<eventId>`. A series left unstarted for a while can rack up several individually-queued
+  occurrences (Graph expands every date the pattern ever produced, not just the next one) — those older
+  ones are just recurrence-expansion noise, not independently meaningful records, so this deletes all of
+  them through today EXCEPT the one `eventId` just turned into a real started/finished record. Never
+  touches the series master, so every future occurrence keeps arriving on its own schedule.
 
-Never CLEAR before Russell has actually confirmed one of the outcomes above — unlike a source whose
-scope is knowable up front (see `../engine/worker-core.md` §2d), a physical task's completion can only be
-observed by asking him.
+**Never run Started before Russell has actually said he's beginning, and never run Finished before he's
+confirmed done** — unlike a source whose scope is knowable up front (see `../engine/worker-core.md`
+§2d), a physical task's progress can only be observed by asking him. If he defers before Started ever
+ran, do nothing at all: the event is untouched and simply stays queued.
 
 ## JUNK-LEARNING
 N/A — every item here is a task Russell put on his own calendar, never inbound noise.
