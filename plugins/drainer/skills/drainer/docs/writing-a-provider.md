@@ -78,6 +78,11 @@ Each is a complete implementation to copy from:
 - **`trello-provider.md`** — a config-driven provider that delegates all reads/mutations to the
   `trello-outreach` skill (Start-date source: returns cards whose Start is now-or-earlier, plus cards
   with no Start; usually little).
+- **`physical-task-provider.md`** + **`physical-task-adapter.py`** — a **second-gate example**: a
+  source whose ENUMERATE isn't just "is this due" (like Trello's Start) but ALSO "is there a live
+  window for it right now" (a free calendar gap ahead of the next real commitment, recomputed every
+  cycle). Copy this when a source needs eligibility to depend on live external state, not just a
+  stored date.
 
 Copy whichever is closest, change the mechanics for your source, and a machine enables it in
 `.claude/drainer.local.md` → `providers` (the entry key is the source name; its value holds any config

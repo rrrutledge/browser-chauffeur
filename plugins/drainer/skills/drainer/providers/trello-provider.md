@@ -255,6 +255,24 @@ A ⏳ Waiting card nudges the same way — bump its **Start** (ping-back date) o
 `trello_utils.cascade_unblock(board_id, finished_card_id, session)` so any ⛔ Blocked cards waiting on
 it are freed (⛔ stripped, Start set to today) on the spot.
 
+### Recurring tasks — one card, bumped forward, never archived
+A card whose description carries a **`Recurs: <cadence>`** line (e.g. `Recurs: weekly`, `Recurs:
+monthly`, `Recurs: every Thursday`) is a standing task, not a one-off — `weekly-job-board-sweep` on the
+Job Search Outreach board is a live example, resurfacing every week under a fresh Start date rather than
+ever reaching a terminal list. This applies to any board, not just outreach: a personal to-do that
+repeats ("call the bank every Thursday," "back up photos monthly") gets exactly the same treatment.
+
+On CLEAR, once the work for this occurrence is done, **do not** move a `Recurs:` card to Abandoned or
+Finished. Instead **bump its Start date forward by the stated cadence** (same mechanism as the ordinary
+**nudge** op above, just driven by the card's own marker instead of a reply-cadence tier) and post the
+usual dated comment. The card goes quiet until that new Start arrives, then resurfaces as a fresh
+drainable item — the id scheme already stamps the Start date into the card's id for exactly this
+reason (see ENUMERATE), so this occurrence and the next one are never confused in seen-state.
+
+A `Recurs:` card is never `stop`ped for being "done" — completing one occurrence isn't the end of the
+task, only this cycle of it. `stop` still applies if Russell explicitly says to abandon the recurring
+task altogether (clear the `Recurs:` line too, so it can't come back by mistake).
+
 ### Nudge cadence
 
 **A stated timeframe beats the fixed tiers below.** When the counterparty already gave a concrete

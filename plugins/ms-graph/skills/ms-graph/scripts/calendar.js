@@ -30,13 +30,30 @@
 //                   node calendar.js --delete-event --subject="Dentist" --date=2026-06-20
 // Update reminder: node calendar.js --update --subject="Dentist" --reminder=off
 //                    [--date=YYYY-MM-DD]  (narrows to one day when the subject isn't unique)
+// Create calendar: node calendar.js --create-calendar="Physical Tasks"
+//                    (idempotent — reports the existing id if a calendar with that name is already there)
+// List due tasks:  node calendar.js --list-due-tasks --calendar="Physical Tasks" [--json] [--tz=]
+//                    (every non-all-day event on that calendar whose start date is today-or-earlier —
+//                     "due" — with its duration in minutes; a task's own placement IS its due date, and
+//                     nothing here ever moves it, so an undone task just keeps showing up until deleted)
+// Gap to next commitment: node calendar.js --gap-minutes [--json] [--tz=] [--lookahead-hours=48]
+//                    [--exclude="Name,Name"]
+//                    (minutes from now until the next REAL commitment — a non-all-day event with
+//                     someone other than Russell on it, or one he didn't organize — across every
+//                     writable calendar; 0 if one is in progress right now; caps at the lookahead
+//                     window when nothing is found that soon)
+// Delete event by id (works for a one-off OR a single recurring occurrence's instance id):
+//                   node calendar.js --delete-event-id=<id>
+// Move event by id to a different day, same time-of-day and duration (works for a one-off OR a single
+// recurring occurrence's instance id — the occurrence detaches from its series, same as the Outlook UI):
+//                   node calendar.js --move-event-id=<id> --date=YYYY-MM-DD
 //
 // Times are interpreted in --tz (default America/Chicago). Events have NO reminder by
 // default; --reminder=N turns on a pop-up N minutes before start (0 = at start), --reminder=off
 // turns it back off.
 //
 // Reusable from other scripts (require.main-guarded, so requiring this file does not run the CLI):
-//   const { getEvents, getCalendars } = require('<ms-graph>/scripts/calendar.js');
+//   const { getEvents, getCalendars, listDueTasks, getGapUntilNextCommitment } = require('<ms-graph>/scripts/calendar.js');
 //   const events = await getEvents({ calendar: 'InnerSource Commons', start: '2026-05-01', end: '2026-05-31' });
 
 const { getGraphClient } = require('./graph-client');
@@ -277,6 +294,51 @@ async function updateReminder(client) {
   }
 }
 
+// Creates a calendar if none by that name exists yet (idempotent — safe to call every time a
+// script wants to make sure e.g. "Physical Tasks" is there).
+async function createCalendar(client) {
+  if (!args['create-calendar']) throw new Error('--create-calendar requires a name');
+  const name = args['create-calendar'];
+  const existing = (await getCalendars(client)).find(c => c.name.toLowerCase() === name.toLowerCase());
+  if (existing) { console.log(`Calendar "${name}" already exists (${existing.id.slice(0, 16)}...)`); return; }
+  const created = await client.api('/me/calendars').post({ name });
+  console.log(`Created calendar "${created.name}" (${created.id.slice(0, 16)}...)`);
+}
+
+// Deletes one event by its raw Graph id — a one-off event's own id, or a single recurring
+// occurrence's instance id (from calendarView/--list-due-tasks). Either way this removes just
+// that one event/occurrence; a recurring series' other occurrences are untouched.
+async function deleteEventById(client) {
+  if (!args['delete-event-id']) throw new Error('--delete-event-id requires an event id');
+  await client.api(`/me/events/${args['delete-event-id']}`).delete();
+  console.log(`Deleted event ${args['delete-event-id']}`);
+}
+
+// Moves one event to a different day, keeping the same time-of-day and duration — the "not today,
+// try again later" move for a due task that didn't get done. Works on a one-off id or a single
+// occurrence's instance id (Graph detaches the occurrence from its series, same as dragging it in
+// the Outlook UI).
+async function moveEventById(client) {
+  if (!args['move-event-id'] || !args.date) {
+    throw new Error('--move-event-id requires an event id and --date=YYYY-MM-DD');
+  }
+  const id = args['move-event-id'];
+  const current = await client.api(`/me/events/${id}`)
+    .header('Prefer', `outlook.timezone="${TZ}"`).select('start,end').get();
+  const oldStart = current.start.dateTime, oldEnd = current.end.dateTime;
+  const timePart = oldStart.slice(11, 19);
+  const durMs = new Date(oldEnd.replace(' ', 'T')) - new Date(oldStart.replace(' ', 'T'));
+  const newStart = `${args.date}T${timePart}`;
+  const newEnd = new Date(new Date(`${newStart}`).getTime() + durMs);
+  const pad = n => String(n).padStart(2, '0');
+  const newEndStr = `${newEnd.getFullYear()}-${pad(newEnd.getMonth() + 1)}-${pad(newEnd.getDate())}T`
+    + `${pad(newEnd.getHours())}:${pad(newEnd.getMinutes())}:${pad(newEnd.getSeconds())}`;
+  await client.api(`/me/events/${id}`).patch({
+    start: { dateTime: newStart, timeZone: TZ }, end: { dateTime: newEndStr, timeZone: TZ },
+  });
+  console.log(`Moved event ${id} -> ${args.date} ${timePart.slice(0, 5)}`);
+}
+
 // --- Reusable library functions (param-driven; each builds its own client) ---
 
 // All calendars on the account, as [{ id, name }].
@@ -329,7 +391,90 @@ async function getEvents({ calendar, start, end, tz = 'America/Chicago', client 
   return out;
 }
 
-module.exports = { getCalendars, resolveCalendarId, getEvents };
+// Every non-all-day event on a dedicated task calendar (e.g. "Physical Tasks") whose start date is
+// today-or-earlier — "due". A task's own placement on the calendar IS its due date; nothing here
+// ever moves it, so an undone one just keeps coming back until it's deleted (done) or explicitly
+// moved to a later day. Every event on this calendar counts as a task (it's a dedicated calendar —
+// no organizer/attendee heuristic needed, unlike a real commitment calendar). Returns
+// [{ id, subject, date, minutes, isRecurring, webLink }], oldest-due first.
+async function listDueTasks({ calendar, tz = 'America/Chicago', lookbackDays = 730, today, client } = {}) {
+  if (!calendar) throw new Error('listDueTasks requires { calendar }');
+  client = client || await getGraphClient();
+  const calId = await resolveCalendarId(client, calendar);
+  const todayStr = today || new Date().toLocaleDateString('en-CA', { timeZone: tz });
+  const rangeStart = new Date(new Date(`${todayStr}T00:00:00`).getTime() - lookbackDays * 86400000);
+  const pad = n => String(n).padStart(2, '0');
+  const rangeStartStr = `${rangeStart.getFullYear()}-${pad(rangeStart.getMonth() + 1)}-${pad(rangeStart.getDate())}`;
+  const out = [];
+  let page = await client.api(`/me/calendars/${calId}/calendarView`)
+    .query({ startDateTime: `${rangeStartStr}T00:00:00`, endDateTime: `${todayStr}T23:59:59` })
+    .header('Prefer', `outlook.timezone="${tz}"`)
+    .top(200).orderby('start/dateTime')
+    .select('subject,start,end,isAllDay,type,webLink,id')
+    .get();
+  while (page) {
+    for (const e of page.value || []) {
+      if (e.isAllDay) continue;
+      const date = (e.start.dateTime || '').slice(0, 10);
+      if (date > todayStr) continue; // calendarView can hand back a same-day-boundary next occurrence
+      out.push({
+        id: e.id, subject: e.subject || '(no title)', date,
+        minutes: Math.round((new Date(e.end.dateTime) - new Date(e.start.dateTime)) / 60000),
+        isRecurring: e.type === 'occurrence' || e.type === 'exception',
+        webLink: e.webLink,
+      });
+    }
+    const next = page['@odata.nextLink'];
+    page = next ? await client.api(next).get() : null;
+  }
+  out.sort((a, b) => a.date.localeCompare(b.date));
+  return out;
+}
+
+// Minutes from now until the next REAL commitment across every writable calendar — a non-all-day
+// event with an attendee other than Russell, or one he didn't organize. Excludes solo self-owned
+// events (task placeholders, on the Physical Tasks calendar or anywhere else) and all-day events,
+// since neither blocks him from starting something. Returns 0 when a real commitment is in
+// progress right now; caps at `lookaheadHours` (default 48) when nothing real is found that soon —
+// there's no practical ceiling on "how much free time," so the cap just bounds the query.
+async function getGapUntilNextCommitment({ tz = 'America/Chicago', lookaheadHours = 48, exclude = [], client } = {}) {
+  client = client || await getGraphClient();
+  const ME = 'russell.rutledge@outlook.com';
+  const now = new Date();
+  const end = new Date(now.getTime() + lookaheadHours * 3600000);
+  const excludeSet = new Set(exclude.map(s => s.trim().toLowerCase()));
+  const cals = (await client.api('/me/calendars').select('id,name,canEdit').top(100).get()).value || [];
+  const targets = cals.filter(c => c.canEdit && !excludeSet.has(c.name.toLowerCase()));
+  const isSoloTask = e => {
+    if (e.isAllDay || !e.isOrganizer) return false;
+    return (e.attendees || []).every(a => (a.emailAddress?.address || '').toLowerCase() === ME);
+  };
+  let earliest = null;
+  for (const cal of targets) {
+    let page = await client.api(`/me/calendars/${cal.id}/calendarView`)
+      .query({ startDateTime: now.toISOString(), endDateTime: end.toISOString() })
+      .header('Prefer', `outlook.timezone="${tz}"`)
+      .top(200).orderby('start/dateTime')
+      .select('start,end,isAllDay,isOrganizer,attendees')
+      .get();
+    while (page) {
+      for (const e of page.value || []) {
+        if (isSoloTask(e)) continue;
+        const start = new Date(e.start.dateTime);
+        const finish = new Date(e.end.dateTime);
+        if (finish <= now) continue; // already over
+        if (start <= now) return 0;  // in progress right now
+        if (!earliest || start < earliest) earliest = start;
+      }
+      const next = page['@odata.nextLink'];
+      page = next ? await client.api(next).get() : null;
+    }
+  }
+  if (!earliest) return lookaheadHours * 60;
+  return Math.max(0, Math.round((earliest - now) / 60000));
+}
+
+module.exports = { getCalendars, resolveCalendarId, getEvents, listDueTasks, getGapUntilNextCommitment };
 
 // --- CLI (only when run directly, so `require` of this file is side-effect-free) ---
 if (require.main === module) {
@@ -345,7 +490,27 @@ if (require.main === module) {
       for (const e of events) console.log(`  ${e.date}  ${String(e.minutes).padStart(4)}m  ${e.subject}`);
       return;
     }
+    if (args['list-due-tasks']) {
+      if (!args.calendar) throw new Error('--list-due-tasks requires --calendar=<name>');
+      const tasks = await listDueTasks({ calendar: args.calendar, tz: TZ });
+      if (args.json) { console.log(JSON.stringify(tasks, null, 2)); return; }
+      if (!tasks.length) { console.log(`No due tasks on "${args.calendar}".`); return; }
+      console.log(`${tasks.length} due task(s) on "${args.calendar}":`);
+      for (const t of tasks) console.log(`  ${t.date}  ${String(t.minutes).padStart(4)}m  ${t.subject}  (${t.id.slice(0, 16)}...)`);
+      return;
+    }
+    if (args['gap-minutes']) {
+      const exclude = args.exclude ? String(args.exclude).split(',') : [];
+      const lookaheadHours = args['lookahead-hours'] ? parseInt(args['lookahead-hours'], 10) : 48;
+      const minutes = await getGapUntilNextCommitment({ tz: TZ, lookaheadHours, exclude });
+      if (args.json) { console.log(JSON.stringify({ minutes })); return; }
+      console.log(`${minutes} minute(s) until the next real commitment.`);
+      return;
+    }
     const client = await getGraphClient();
+    if (args['create-calendar']) return createCalendar(client);
+    if (args['delete-event-id']) return deleteEventById(client);
+    if (args['move-event-id']) return moveEventById(client);
     if (args['create-recurring']) return createRecurringEvent(client);
     if (args['delete-occurrence']) return deleteOccurrence(client);
     if (args['reschedule-occurrence']) return rescheduleOccurrence(client);
