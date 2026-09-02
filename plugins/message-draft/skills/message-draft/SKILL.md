@@ -28,15 +28,61 @@ lives (Teams/Slack: the composer; Outlook: `ms-rest get <draftId>`) and re-apply
 Conversational writing rules as a review pass. If anything was trimmed, re-stage the gated version
 (Teams/Slack: re-type it; Outlook: re-create the draft from the gated body). Report `voice-gate=passed` in
 the done-criteria once it has run.
+For Teams and Slack this read-back runs inside the browser subagent (it holds the composer), and the subagent reports `voice-gate=passed` back in its `DONE` result.
 
 **Review gate (mint a receipt for the reviewed body):** every mode is harness-enforced through
 `writing-review`'s stage gate. Compose the final body into a file, run the Verify loop against that file,
 then mint its receipt (see `writing-review`'s **The stage gate** for the `verify_gate.py mint` command).
 For **Outlook**, that file is the `--json` payload the create-draft / create-reply command already uses.
-For **Teams** and **Slack**, write the body to a `.tmp` file and drive the composer from it: have
-browser-chauffeur read the body out of that file and invoke its run with `--body-file=<that file>`
-alongside the usual `--cdp-port`, so the gate sees the body on the command line and blocks a composer run
-whose body has no receipt. Report the receipt hash in the done-criteria.
+For **Teams** and **Slack**, the orchestrator writes the reviewed body to a `.tmp` file and mints its receipt there, then hands that `--body-file` path to the browser subagent (below).
+The subagent invokes every browser-chauffeur run with `--body-file=<that file>` alongside the usual `--cdp-port`, so the gate sees the body on the command line and blocks a composer run whose body has no receipt.
+Report the receipt hash in the done-criteria.
+
+## `teams` and `slack` stage in a browser subagent
+
+The `teams` and `slack` modes drive browser-chauffeur through a long open-tab then find-target then identity-gate then compose then verify flow.
+Run that whole flow inside a browser subagent, per browser-chauffeur's **"Running in a subagent"** section - one in-process subagent for the single coherent task of staging this one message.
+The driving turns stay entirely in the subagent's isolated context, and the orchestrator (the session that invoked message-draft) gets back only the result.
+The `outlook` mode has no browser flow to isolate - run it inline as its mode steps describe.
+
+**The split - what stays in the orchestrator, what goes into the subagent:**
+
+- **Orchestrator, before it spawns the subagent:** author the body in Russell's voice (the **Voice** step), run the `document-authoring` pass, and complete the **Review gate** step (above).
+  That is the human-facing writing, and it stays on the main thread.
+  The receipt the Review gate mints must exist before the composer runs, so finish it before spawning the subagent.
+- **Browser subagent:** the composer staging - every step of **Mode: `teams`** or **Mode: `slack`** below.
+  It opens its own tab, finds and identity-gates the target, types the reviewed body read from `--body-file`, inserts links, runs the stage-time voice read-back, saves and verifies the draft, and leaves it staged.
+
+**Every load-bearing invariant below still holds inside the subagent** - identity-gate before and during typing, never a bare Enter, preserve an existing draft rather than typing over it, content-is-ground-truth read-back.
+The subagent boundary moves where the flow runs, not what it must guarantee.
+
+**The subagent returns one of two results** (browser-chauffeur's return contract):
+
+- **`DONE`** - the draft is staged.
+  Return the recipient, the conversation the draft sits in, a screenshot of the staged composer, and the done-criteria line.
+  The subagent never presses Send - message-draft stages and stops, so a `teams`/`slack` task's endpoint is a staged draft with nothing sent.
+- **`HELP_NEEDED`** - a Teams or Slack sign-in wall (or other human-only gate) blocked the run.
+  Return the reason and a `findTab` locator so the orchestrator can resume the same tab, and leave the tab open on the correct page.
+
+**On `HELP_NEEDED`, the orchestrator surfaces the gate through `AskUserQuestion`** - naming the site and that the browser is open on the right tab - waits for Russell to sign in, then resumes the subagent via SendMessage.
+The subagent re-finds its tab with the `findTab` locator it returned and continues from where it paused.
+
+**Spawn brief (copy into the Agent call):**
+
+```
+Invoke the message-draft skill's <teams|slack> mode and browser-chauffeur, and stage this one message inside your own context.
+Target: <recipient / conversation>.
+Body: read it from <path to the reviewed --body-file>, and pass --body-file=<that file> on every browser-chauffeur run so the composer run is gated.
+Links: <display text + URL, or none>.
+Run the full mode flow yourself - open your own tab, find and identity-gate the target, type the reviewed body (Shift+Enter line breaks, never a bare Enter), insert links, run the stage-time voice read-back, save and verify the draft, and leave it staged.
+Hold every load-bearing invariant: identity-gate before and during typing, never type over an existing draft, content-is-ground-truth read-back.
+Return one of two results:
+  DONE - recipient, the conversation the draft is staged in, a screenshot of the staged composer, and the done-criteria line.
+    Never press Send.
+  HELP_NEEDED - the gate (a Teams/Slack sign-in wall), the URL, a findTab predicate that re-finds the tab, and how far you got.
+    Leave the tab open on the correct page.
+Never send, and never prompt Russell directly - hand a gate back to me.
+```
 
 ## Behavioral preferences
 
@@ -77,6 +123,9 @@ whose body has no receipt. Report the receipt hash in the done-criteria.
 
 ## Mode: `teams`
 
+**These steps run inside the browser subagent** (see **`teams` and `slack` stage in a browser subagent**).
+The orchestrator has already minted the reviewed body's receipt into the `--body-file` it hands over.
+
 Addresses either a **1:1 chat** (recipient name + email) or a **group/meeting chat** (chat name).
 Inputs: the address, message body, optional hyperlinks (display text + URL), optional @mentions.
 
@@ -116,6 +165,9 @@ Inputs: the address, message body, optional hyperlinks (display text + URL), opt
    conversation (persists within the live browser session). Verify content, then stop.
 
 ## Mode: `slack`
+
+**These steps run inside the browser subagent** (see **`teams` and `slack` stage in a browser subagent**).
+The orchestrator has already minted the reviewed body's receipt into the `--body-file` it hands over.
 
 Stages a draft in the **Slack composer** (web) for a DM, group DM, channel message, or threaded reply.
 Slack has no draft API — typing into the composer and stopping leaves Slack's own per-conversation
@@ -199,5 +251,7 @@ through the cache glob (run the newest if several are cached) from the repo root
 `mode=<teams|slack|outlook> recipient=<who> drafted=true sent=false voice-gate=passed links=<n>` plus a
 one-line note of where the draft lives (Outlook: the `webLink`/draftId; Teams/Slack: the conversation the
 draft is staged in). If identity-gate failed or sign-in was needed, say so and that nothing was staged.
+For **Teams** and **Slack**, this line is what the browser subagent returns in its `DONE` result.
+The orchestrator relays it.
 For a LinkedIn reply, report `mode=linkedin drafted=true staged_for_manual_send=true` and give the user
 the composed text to paste in himself.
