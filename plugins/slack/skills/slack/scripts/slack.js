@@ -236,7 +236,7 @@ async function listUnread() {
       const channel = root.channel;
       if (!channel || muted.has(channel)) continue;
       if (!newer(root.latest_reply, root.last_read)) continue;  // no unread replies
-      const unread = (t.latest_replies || [])
+      const unread = (t.unread_replies || [])
         .filter(m => m.ts && newer(m.ts, root.last_read) && m.user && m.user !== me)
         .sort((a, b) => parseFloat(b.ts) - parseFloat(a.ts));
       if (!unread.length) continue;
