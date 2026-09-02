@@ -1056,6 +1056,13 @@ def main():
             it["_bucket"], it["_kind"] = "needs-you", "resume"
             it["_complexity"] = "simple"
             pre_triaged.append(it)
+        elif it["_source"] == "physical-task":
+            # enumerate() only returns a task that's both due and has a real free gap in front of it
+            # right now — by construction that's always "go do this," so there's nothing for the AI
+            # triage call to judge (same tautology as trello/orphan-sessions above).
+            it["_bucket"], it["_kind"] = "needs-you", "work"
+            it["_complexity"] = "simple"
+            pre_triaged.append(it)
         else:
             ai_triage.append(it)
 
