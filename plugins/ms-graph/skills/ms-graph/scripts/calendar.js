@@ -35,13 +35,20 @@
 // List due tasks:  node calendar.js --list-due-tasks --calendar="Physical Tasks" [--json] [--tz=]
 //                    (every non-all-day event on that calendar whose start date is today-or-earlier —
 //                     "due" — with its duration in minutes; a task's own placement IS its due date, and
-//                     nothing here ever moves it, so an undone task just keeps showing up until deleted)
-// Gap to next commitment: node calendar.js --gap-minutes [--json] [--tz=] [--lookahead-hours=48]
+//                     nothing here ever moves it, so an undone task just keeps showing up until deleted.
+//                     A recurring series collapses to ONE row — id = the series master's id — even
+//                     when several of its occurrences are overdue; see --catch-up-series to clear all
+//                     of them at once)
+// Catch up a series: node calendar.js --catch-up-series=<seriesMasterId> [--tz=]
+//                    (deletes every overdue occurrence of that series through today — "done, series
+//                     continues" — WITHOUT touching the series master or any future occurrence)
+// Gap to next commitment: node calendar.js --gap-minutes [--json] [--tz=] [--lookahead-hours=2]
 //                    [--exclude="Name,Name"]
 //                    (minutes from now until the next REAL commitment — a non-all-day event with
 //                     someone other than Russell on it, or one he didn't organize — across every
 //                     writable calendar; 0 if one is in progress right now; caps at the lookahead
-//                     window when nothing is found that soon)
+//                     window when nothing is found that soon — the default is short because no
+//                     physical task needs to see further than its own longest possible size + buffer)
 // Delete event by id (works for a one-off OR a single recurring occurrence's instance id):
 //                   node calendar.js --delete-event-id=<id>
 // Move event by id to a different day, same time-of-day and duration (works for a one-off OR a single
@@ -395,8 +402,16 @@ async function getEvents({ calendar, start, end, tz = 'America/Chicago', client 
 // today-or-earlier — "due". A task's own placement on the calendar IS its due date; nothing here
 // ever moves it, so an undone one just keeps coming back until it's deleted (done) or explicitly
 // moved to a later day. Every event on this calendar counts as a task (it's a dedicated calendar —
-// no organizer/attendee heuristic needed, unlike a real commitment calendar). Returns
-// [{ id, subject, date, minutes, isRecurring, webLink }], oldest-due first.
+// no organizer/attendee heuristic needed, unlike a real commitment calendar).
+//
+// A recurring series can rack up MANY due-but-undone occurrences (Graph expands every date the
+// pattern ever produced between its start and today, not just "the next one") — one per missed
+// day/week/month, not one per series. Those collapse to a SINGLE row per series here, `id` set to
+// the series master's id rather than one instance's, so CLEAR can catch the whole backlog up in one
+// action (see catchUpSeries) instead of needing one delete per missed occurrence. `date` is the most
+// recent due occurrence, so a badly stale series still reads as "due," not as ancient history.
+//
+// Returns [{ id, subject, date, minutes, isRecurring, webLink }], oldest-due first.
 async function listDueTasks({ calendar, tz = 'America/Chicago', lookbackDays = 730, today, client } = {}) {
   if (!calendar) throw new Error('listDueTasks requires { calendar }');
   client = client || await getGraphClient();
@@ -405,30 +420,67 @@ async function listDueTasks({ calendar, tz = 'America/Chicago', lookbackDays = 7
   const rangeStart = new Date(new Date(`${todayStr}T00:00:00`).getTime() - lookbackDays * 86400000);
   const pad = n => String(n).padStart(2, '0');
   const rangeStartStr = `${rangeStart.getFullYear()}-${pad(rangeStart.getMonth() + 1)}-${pad(rangeStart.getDate())}`;
-  const out = [];
+  const oneOffs = [];
+  const bySeries = new Map(); // seriesMasterId -> { subject, date (latest), minutes, webLink }
   let page = await client.api(`/me/calendars/${calId}/calendarView`)
     .query({ startDateTime: `${rangeStartStr}T00:00:00`, endDateTime: `${todayStr}T23:59:59` })
     .header('Prefer', `outlook.timezone="${tz}"`)
     .top(200).orderby('start/dateTime')
-    .select('subject,start,end,isAllDay,type,webLink,id')
+    .select('subject,start,end,isAllDay,type,seriesMasterId,webLink,id')
     .get();
   while (page) {
     for (const e of page.value || []) {
       if (e.isAllDay) continue;
       const date = (e.start.dateTime || '').slice(0, 10);
       if (date > todayStr) continue; // calendarView can hand back a same-day-boundary next occurrence
-      out.push({
-        id: e.id, subject: e.subject || '(no title)', date,
-        minutes: Math.round((new Date(e.end.dateTime) - new Date(e.start.dateTime)) / 60000),
-        isRecurring: e.type === 'occurrence' || e.type === 'exception',
-        webLink: e.webLink,
-      });
+      const minutes = Math.round((new Date(e.end.dateTime) - new Date(e.start.dateTime)) / 60000);
+      if (e.type === 'occurrence' || e.type === 'exception') {
+        const existing = bySeries.get(e.seriesMasterId);
+        if (!existing || date > existing.date) {
+          bySeries.set(e.seriesMasterId, { subject: e.subject || '(no title)', date, minutes, webLink: e.webLink });
+        }
+      } else {
+        oneOffs.push({
+          id: e.id, subject: e.subject || '(no title)', date, minutes,
+          isRecurring: false, webLink: e.webLink,
+        });
+      }
     }
     const next = page['@odata.nextLink'];
     page = next ? await client.api(next).get() : null;
   }
+  const recurring = [...bySeries.entries()].map(([seriesMasterId, v]) => ({
+    id: seriesMasterId, subject: v.subject, date: v.date, minutes: v.minutes,
+    isRecurring: true, webLink: v.webLink,
+  }));
+  const out = [...oneOffs, ...recurring];
   out.sort((a, b) => a.date.localeCompare(b.date));
   return out;
+}
+
+// Deletes every occurrence of a recurring series that is due-or-earlier (date <= today), leaving
+// future occurrences untouched — the "done, series continues" catch-up for a series that racked up
+// backlog while nobody cleared it. NEVER deletes the series master itself (that would kill every
+// future occurrence too); it only removes the individual overdue instances, the same operation
+// `deleteOccurrence` above uses for one day at a time, just swept across the whole backlog at once.
+async function catchUpSeries({ seriesMasterId, tz = 'America/Chicago', today, client } = {}) {
+  if (!seriesMasterId) throw new Error('catchUpSeries requires { seriesMasterId }');
+  client = client || await getGraphClient();
+  const todayStr = today || new Date().toLocaleDateString('en-CA', { timeZone: tz });
+  const master = await client.api(`/me/events/${seriesMasterId}`)
+    .select('recurrence').get();
+  const rangeStart = master.recurrence?.range?.startDate || '2000-01-01';
+  const instances = await client.api(`/me/events/${seriesMasterId}/instances`)
+    .query({ startDateTime: `${rangeStart}T00:00:00`, endDateTime: `${todayStr}T23:59:59` })
+    .header('Prefer', `outlook.timezone="${tz}"`)
+    .select('id,start').top(500).get();
+  let deleted = 0;
+  for (const occ of instances.value || []) {
+    if ((occ.start.dateTime || '').slice(0, 10) > todayStr) continue;
+    await client.api(`/me/events/${occ.id}`).delete();
+    deleted++;
+  }
+  return deleted;
 }
 
 // Minutes from now until the next REAL commitment across every writable calendar — a non-all-day
@@ -437,7 +489,7 @@ async function listDueTasks({ calendar, tz = 'America/Chicago', lookbackDays = 7
 // since neither blocks him from starting something. Returns 0 when a real commitment is in
 // progress right now; caps at `lookaheadHours` (default 48) when nothing real is found that soon —
 // there's no practical ceiling on "how much free time," so the cap just bounds the query.
-async function getGapUntilNextCommitment({ tz = 'America/Chicago', lookaheadHours = 48, exclude = [], client } = {}) {
+async function getGapUntilNextCommitment({ tz = 'America/Chicago', lookaheadHours = 2, exclude = [], client } = {}) {
   client = client || await getGraphClient();
   const ME = 'russell.rutledge@outlook.com';
   const now = new Date();
@@ -474,7 +526,9 @@ async function getGapUntilNextCommitment({ tz = 'America/Chicago', lookaheadHour
   return Math.max(0, Math.round((earliest - now) / 60000));
 }
 
-module.exports = { getCalendars, resolveCalendarId, getEvents, listDueTasks, getGapUntilNextCommitment };
+module.exports = {
+  getCalendars, resolveCalendarId, getEvents, listDueTasks, getGapUntilNextCommitment, catchUpSeries,
+};
 
 // --- CLI (only when run directly, so `require` of this file is side-effect-free) ---
 if (require.main === module) {
@@ -501,7 +555,7 @@ if (require.main === module) {
     }
     if (args['gap-minutes']) {
       const exclude = args.exclude ? String(args.exclude).split(',') : [];
-      const lookaheadHours = args['lookahead-hours'] ? parseInt(args['lookahead-hours'], 10) : 48;
+      const lookaheadHours = args['lookahead-hours'] ? parseInt(args['lookahead-hours'], 10) : 2;
       const minutes = await getGapUntilNextCommitment({ tz: TZ, lookaheadHours, exclude });
       if (args.json) { console.log(JSON.stringify({ minutes })); return; }
       console.log(`${minutes} minute(s) until the next real commitment.`);
@@ -511,6 +565,11 @@ if (require.main === module) {
     if (args['create-calendar']) return createCalendar(client);
     if (args['delete-event-id']) return deleteEventById(client);
     if (args['move-event-id']) return moveEventById(client);
+    if (args['catch-up-series']) {
+      const deleted = await catchUpSeries({ seriesMasterId: args['catch-up-series'], tz: TZ });
+      console.log(`Caught up: deleted ${deleted} overdue occurrence(s) of series ${args['catch-up-series']}.`);
+      return;
+    }
     if (args['create-recurring']) return createRecurringEvent(client);
     if (args['delete-occurrence']) return deleteOccurrence(client);
     if (args['reschedule-occurrence']) return rescheduleOccurrence(client);

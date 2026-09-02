@@ -25,15 +25,39 @@ own duration (end minus start) is Russell's own estimate of how long the task ta
 unchanged from the old habit of sizing a to-do to a calendar block, just no longer tied to a specific
 clock hour.
 
+**A recurring series is one task, not one-per-missed-occurrence.** Outlook's recurrence engine expands
+every date the pattern ever produced between its start and today, so a daily or weekly task left
+uncleared for a while genuinely has several individually-overdue occurrences sitting in Graph — but
+Russell only ever sees ONE drainable item for it (`enumerate` collapses them by series, see the
+adapter), and doing it once catches up the whole backlog rather than requiring one CLEAR per missed
+occurrence (see CLEAR).
+
 **The second gate, unique to this source:** even once a task is due, the adapter's `enumerate` only
-returns it when a live free gap of at least that duration currently exists before Russell's next REAL
-commitment (a calendar event with someone else on it, or one he didn't organize — a solo self-owned
-event, on any calendar, never counts as blocking). That gap is recomputed fresh every poll cycle, so a
-task becomes eligible the moment enough room opens up and simply waits, unenumerated, until then.
+returns it when a live free gap of at least that duration **plus a buffer** currently exists before
+Russell's next REAL commitment (a calendar event with someone else on it, or one he didn't organize — a
+solo self-owned event, on any calendar, never counts as blocking). The buffer covers the lag between the
+gap being detected and Russell actually opening the tab — waiting on tab budget, or just being deep in a
+different one when this one pops — so a task's own duration alone isn't the bar; duration + buffer is.
+That gap is recomputed fresh every poll cycle, so a task becomes eligible the moment enough room opens up
+and simply waits, unenumerated, until then.
+
+**Prefer the longest task that fits.** When several tasks are eligible at once, a long gap shouldn't get
+spent on a short task while a longer one could have used it — `enumerate` returns eligible tasks sorted
+longest-duration-first, so the cross-source dispatch order (which otherwise ties on priority band and
+falls back to arrival order) picks the task that best uses the room available.
+
+No task should ever be sized past about an hour — even a task that might genuinely take two or three
+hours gets estimated at one hour, since Russell can always make an hour of progress on it and doesn't
+need to wait for a rarer multi-hour gap. That's *why* `lookahead_hours` defaults short (see Config): the
+gap check never needs to see further ahead than the longest task plus its buffer.
 
 ## Config (`.claude/drainer.local.md` → `providers.physical-task`)
 - `calendar` — the dedicated calendar's name (default `Physical Tasks`).
-- `lookahead_hours` — how far ahead the gap check looks for the next real commitment (default `48`).
+- `lookahead_hours` — how far ahead the gap check looks for the next real commitment (default `2`).
+  Kept short on purpose (see "The model" above) — raise it only if a task genuinely needs more than
+  about an hour plus its buffer, which shouldn't normally happen.
+- `buffer_minutes` — minutes added on top of a task's own duration before it counts as eligible
+  (default `20`), covering the gap-detection-to-tab-opened lag described above.
 - `exclude` — calendar names to leave out of the gap check (e.g. a read-only subscription that
   shouldn't count as blocking).
 No credentials here — sign in once via `ms-graph`; the MSAL token cache is machine-local.
@@ -51,9 +75,11 @@ browser-chauffeur), then retry — never surface the token error to Russell.
 - `date` — the day it became due (YYYY-MM-DD); may be well in the past for something that's sat undone.
 - `minutes` — the duration Russell estimated (the event's own length) — also the size of the free gap
   that made this item eligible to dispatch right now.
-- `isRecurring` — whether this is one occurrence of a recurring series (Outlook's own recurrence
-  handles the next occurrence automatically; you're only ever looking at today's).
-- `eventId` — the raw Graph event/occurrence id CLEAR acts on.
+- `isRecurring` — whether this is a recurring series rather than a one-off. When true, `date` is the
+  most recent overdue occurrence, not necessarily today — a series left uncleared can accumulate
+  several missed occurrences (see CLEAR's catch-up behavior).
+- `eventId` — the raw Graph id CLEAR acts on: the event's own id for a one-off, or the **series
+  master's** id for a recurring one (never a single occurrence's instance id — see CLEAR for why).
 - `url` — the event's Outlook `webLink`, so Russell can open the actual calendar item if he wants to.
 
 ## Why this item bypassed the usual triage judgment
@@ -72,27 +98,41 @@ physical, so **Russell** does it, and your job is the surrounding logistics:
 2. **Do any prep work that IS digital** before handing it over — look up an address, print or open a
    form, pull up an account number, draft a note that needs to go with him. Anything you can genuinely
    do to make the physical step faster, do it now, the same as step 3 in the generic worker flow.
-3. **Wait for him to actually do it, then ask.** This is interactive — stay with him rather than firing
-   a reminder and moving on. When he confirms he's done (or that circumstances changed and it's already
-   handled), CLEAR as done. If he says now isn't actually a good moment after all (interrupted, the gap
-   turned out to be needed for something else), CLEAR as deferred instead — don't leave the item
-   dangling unaddressed.
-4. **Close out per the standard rules** (`../engine/worker-core.md` §6's close conditions) — this tab
+3. **Note the time, then wait for him to actually do it.** This is interactive — stay with him rather
+   than firing a reminder and moving on. Record the current wall-clock time when he says he's starting.
+4. **When he confirms done (or it's already handled), log the estimate against the actual time before
+   CLEARing** — append one line to `<runtime_dir>/physical-task-log.jsonl` (Edit/Write tool; create the
+   file if it doesn't exist yet) with `{"date","subject","estimatedMinutes","actualMinutes","ts"}`,
+   `actualMinutes` computed from the start time you noted in step 3 to now. This replaces Russell's old
+   habit of dragging the calendar event's start/end times to match reality after the fact — same
+   estimate-vs-actual signal, but durable instead of overwritten the moment the event that carried it is
+   deleted, so it can actually be reviewed for a pattern over time instead of glanced at once. If he says
+   now isn't actually a good moment after all (interrupted, the gap turned out to be needed for something
+   else), skip the log entry and CLEAR as deferred instead — don't leave the item dangling unaddressed.
+5. **Close out per the standard rules** (`../engine/worker-core.md` §6's close conditions) — this tab
    stays open exactly as long as any other needs-you tab would: until his part is genuinely done.
 
 ## CLEAR
-Two outcomes, both via `calendar.js`, acting on the captured `eventId`:
-- **Done** — Russell confirms he actually did it (or it's already handled): `node calendar.js
-  --delete-event-id=<eventId>`. Works identically for a one-off event or a single recurring
-  occurrence's instance id — a recurring series' other occurrences are untouched, and Outlook's own
-  recurrence pattern brings the next one due on its own schedule; nothing here has to re-create it.
-- **Deferred** — not a good moment after all, try again another day: `node calendar.js
-  --move-event-id=<eventId> --date=YYYY-MM-DD`, picking the day Russell names (or, absent a better
-  signal, tomorrow). Keeps the same time-of-day and duration; a recurring occurrence detaches from its
-  series the same way dragging it in the Outlook UI would, exactly like the old carry-forward script's
-  crossing-boundary case — expected, not an error.
+What CLEAR means depends on `isRecurring` in the captured item — a one-off event and a recurring
+series behave differently under the hood, so don't use the same command for both:
 
-Never CLEAR before Russell has actually confirmed one of the two outcomes above — unlike a source whose
+- **One-off, done** — `node calendar.js --delete-event-id=<eventId>`.
+- **One-off, deferred** — not a good moment after all, try again another day: `node calendar.js
+  --move-event-id=<eventId> --date=YYYY-MM-DD`, picking the day Russell names (or, absent a better
+  signal, tomorrow). Keeps the same time-of-day and duration.
+- **Recurring, done** — `eventId` is the series master's id (see CAPTURE): `node calendar.js
+  --catch-up-series=<eventId>`. A series left uncleared for a while can rack up several overdue
+  occurrences (Graph expands every date the pattern ever produced, not just the next one) — this
+  deletes ALL of them through today in one shot ("done, series continues"), never the series master
+  itself, so every future occurrence is untouched and keeps arriving on its own schedule.
+- **Recurring, deferred (today's occurrence only, series unaffected)** — genuinely rare (the whole
+  point of the gap check is that this only dispatches when there's room), but if it comes up:
+  `node calendar.js --delete-occurrence --subject="<subject>" --date=<dueDate> --calendar="<calendar>"`
+  removes just today's instance without touching the series or any earlier backlog. Most of the time,
+  simply doing nothing is correct instead — an unfinished recurring item just stays due and dispatches
+  again whenever a gap next opens, same as before you looked at it.
+
+Never CLEAR before Russell has actually confirmed one of the outcomes above — unlike a source whose
 scope is knowable up front (see `../engine/worker-core.md` §2d), a physical task's completion can only be
 observed by asking him.
 

@@ -33,7 +33,8 @@ class Provider(ProviderBase):
     def __init__(self):
         self.calendarjs = self._find_calendar_js()
         self.calendar = "Physical Tasks"
-        self.lookahead_hours = 48
+        self.lookahead_hours = 2
+        self.buffer_minutes = 20
         self.exclude = []
 
     @staticmethod
@@ -60,12 +61,17 @@ class Provider(ProviderBase):
     # --------------------------------------------------------------- config
     def configure(self, cfg):
         """`providers.physical-task` in drainer.local.md: `calendar` (default "Physical Tasks"),
-        `lookahead_hours` (default 48 — how far ahead the gap check looks for the next real
-        commitment), `exclude` (calendar names to leave out of the gap check, e.g. a read-only
-        subscription). Called by the poller after construction; harmless with no block at all."""
+        `lookahead_hours` (default 2 — how far ahead the gap check looks for the next real
+        commitment; short on purpose, since no task should ever be sized past an hour — see
+        CAPTURE's duration note), `buffer_minutes` (default 20 — added on top of a task's own
+        duration before it counts as eligible, covering the lag between a gap being detected and
+        Russell actually opening the worker tab), `exclude` (calendar names to leave out of the gap
+        check, e.g. a read-only subscription). Called by the poller after construction; harmless
+        with no block at all."""
         block = self._block(cfg.get("repo"))
         self.calendar = self._str_knob(block, "calendar") or self.calendar
         self.lookahead_hours = self._int_knob(block, "lookahead_hours", self.lookahead_hours)
+        self.buffer_minutes = self._int_knob(block, "buffer_minutes", self.buffer_minutes)
         self.exclude = self._list_knob(block, "exclude")
 
     @staticmethod
@@ -129,7 +135,16 @@ class Provider(ProviderBase):
         if not due:
             return []
         gap = self._gap_minutes()
-        eligible = [t for t in due if t["minutes"] <= gap]
+        # `buffer_minutes` covers the lag between a gap being detected here and Russell actually
+        # opening the worker tab (a tab budget it has to wait for, or just not being the tab he's
+        # on right now) — a task only counts as fitting once its own duration PLUS that buffer is
+        # covered, not just its bare duration.
+        eligible = [t for t in due if t["minutes"] + self.buffer_minutes <= gap]
+        # Longest-fitting-task first: a big gap is wasted on a short task when a longer one also
+        # fits, so sort descending by duration before the poller's cross-source dispatch order
+        # (which otherwise ties same-priority-band items and falls back to insertion order) picks
+        # one. See `still_in_inbox_ids` — nothing here depends on this order beyond that tie-break.
+        eligible.sort(key=lambda t: -t["minutes"])
         return eligible[:limit]
 
     def still_in_inbox_ids(self):
