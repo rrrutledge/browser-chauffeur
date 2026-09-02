@@ -42,6 +42,66 @@ Every task uses the same flow: ensure a persistent Edge or Chrome browser is run
 
 **Recurring automation** — Create an instruction-driven spec: a SKILL.md file that documents the business rules, invariants, selectors (as last-known-good hints), and safety rails. Each time the skill is invoked, browser-chauffeur generates a fresh ad-hoc script in `.tmp/` from those instructions. This is more resilient than a committed script because selectors that drift get fixed in the spec, not by patching a brittle committed file. See `teams-message` as an example. **Do not commit browser automation scripts** — commit the spec (SKILL.md), not the generated scripts.
 
+## Running in a subagent (keep the driving turns out of the main thread)
+
+A browser run is long: dozens to hundreds of screenshot then decide then click turns.
+Every one of those turns re-reads the whole growing conversation, and each screenshot or DOM read is used once to pick the next click and never referenced again.
+So when a live session (an orchestrator working with the user, a skill like message-draft or apply-for-job) needs browser work, run that work inside a subagent.
+The subagent's isolated context absorbs the whole driving conversation, and the orchestrator gets back only the result.
+
+**Spawn one subagent per coherent browser task, and let it run the entire Phase 0-5 loop inside its own context.**
+A "task" is a whole flow (stage this message, submit this application, extract this value), not a single step.
+Splitting one flow across several subagents buys almost nothing (a screenshot bills about 1,600 tokens regardless of size) and costs real re-orientation, since each fresh subagent has to re-read the page to learn where it is.
+Keep the loop together; split only at the seams below.
+
+**Default to an in-process subagent (the Agent tool), not a launched session.**
+It runs in the orchestrator's own process with a separate context window, executes in the background, and can be continued later via SendMessage with its context intact.
+Because it shares the orchestrator's owner PID, any tab it opens stays owned by the still-alive orchestrator session, so the tab survives a pause at a human gate (see the help-channel below).
+Reserve a launched session (a separate terminal tab) for fan-out: many independent browser tasks with no shared login and no mid-run gate, the way the drainer runs one headless worker per inbox item.
+
+### The return contract
+
+A browser subagent ends by returning one of two structured results, and it never prompts the user itself.
+
+- **`DONE`** - the task finished.
+  Return the outcome (pass/fail), any values quoted from the page, a final screenshot path, and, when the task's endpoint is an irreversible action, the flow staged up to but not including the Send/Submit/Pay/Confirm button, with a screenshot of that staged state.
+- **`HELP_NEEDED`** - the run reached a gate only the user can clear: a login wall, a CAPTCHA, MFA to a phone or authenticator app, an unresolvable consent wall, or an in-page action that cannot be done headless.
+  Return the reason, the URL and a stable tab locator (the `findTab` predicate, so the same tab is re-findable), exactly what the user must do, and how far the run got.
+  Leave the tab open on the correct page.
+
+The subagent handles an email-delivered MFA code itself: it fetches the code from the connected mailbox and continues, exactly as **User Intervention** below prescribes.
+
+### The help-channel
+
+On `HELP_NEEDED`, the orchestrator (the live thread with the user) surfaces the request through `AskUserQuestion`, the same visible, blocking prompt this skill already uses, naming the site, the gate, and that the browser window is open on the right tab.
+The user acts directly in the persistent browser.
+When they confirm, the orchestrator continues the subagent via SendMessage; the subagent re-finds its tab with the `findTab` predicate it returned, re-orients with a fresh read to confirm it is past the gate, and resumes from Phase 2.
+If the subagent cannot be continued, the orchestrator spawns a fresh continuation subagent seeded with "the login is done; resume the flow at step N on the tab matching <predicate>", and the persistent tab makes either path work.
+
+**The subagent stages up to the final button and hands the staged state back; it never presses Send/Submit/Pay/Confirm.**
+The orchestrator surfaces the staged result, and the user presses it.
+The irreversible final act stays on the user's desk, whether or not the driving conversation runs in a subagent.
+
+### When one task runs very long
+
+If a single task's own context grows large (a genuinely hundreds-of-turns flow), the subagent re-hands-off to a continuation subagent at a clean page boundary, the same way a long session re-hands-off at a phase boundary.
+Human gates are already natural seams, since the run pauses there anyway.
+
+### Spawn brief (copy this into the Agent call)
+
+```
+Invoke the browser-chauffeur skill and run this one browser task inside your own context: <task>.
+Run the full Phase 0-5 loop yourself - launch/reuse the browser, orient, execute, verify, recover.
+Return one of two results:
+  DONE - outcome, any values quoted from the page, a final screenshot path, and (if the endpoint is irreversible) the flow staged up to but NOT pressing the Send/Submit/Pay/Confirm button, with a screenshot of that staged state.
+  HELP_NEEDED - reason (login / CAPTCHA / MFA-to-phone / in-page action that can't be done headless), the URL, a findTab predicate that re-finds the tab, what the user must do, and how far you got. Leave the tab open on the correct page.
+Never press an irreversible button, and never prompt the user directly - hand the gate or the staged step back to me.
+```
+
+### When to run inline instead
+
+Run browser-chauffeur directly in the current context for a quick, bounded check (a single screenshot, one status read) where spawning a subagent costs more than it saves, and when you are already inside a subagent (do not nest another).
+
 ## Prerequisite Check
 
 Verify Node.js is available and run the setup script to ensure `playwright-core` and the helpers shim are installed:
