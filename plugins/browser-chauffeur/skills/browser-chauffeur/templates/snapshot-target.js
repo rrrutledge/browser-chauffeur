@@ -22,6 +22,10 @@ const { chromium } = (() => {
   try { return require('playwright-core'); }
   catch { return require(require('path').join(require('os').homedir(), '.claude', 'browser-chauffeur', 'node_modules', 'playwright-core')); }
 })();
+const { registerTab, touchTab } = (() => {
+  try { return require('browser-chauffeur-helpers'); }
+  catch { return require(require('path').join(require('os').homedir(), '.claude', 'browser-chauffeur', 'node_modules', 'browser-chauffeur-helpers')); }
+})();
 
 // Splits only on the FIRST "=" — a bare .split('=')[1] truncates any value that
 // itself contains "=" (a URL query string like ?jl=123, a CSS attribute selector
@@ -70,6 +74,12 @@ async function snapshot() {
     ? (contexts.find(ctx => ctx.pages().some(p => p.url().startsWith('http'))) ?? contexts[0])
     : (contexts[0] ?? await browser.newContext());
   const page = await context.newPage();
+  // Register the tab under this session before anything else can throw, so a
+  // caller that later needs to re-find this exact tab (findTab) - a gate hit
+  // right here at orientation, before any task-specific openTab call - gets a
+  // tab that's actually owned and re-findable, not an orphan only the age/count
+  // sweep backstop will ever touch.
+  await registerTab(context, page);
 
   try {
     const navStart = Date.now();
@@ -105,6 +115,9 @@ async function snapshot() {
 
     const finalUrl = page.url();
     const elapsedMs = Date.now() - navStart;
+    // Refresh the recorded URL now that navigation has settled - it was
+    // registered above against the pre-navigation about:blank.
+    await touchTab(context, page);
 
     console.log('SNAPSHOT_READY');
     console.log(`SCREENSHOT: ${screenshotPath}`);
@@ -113,8 +126,10 @@ async function snapshot() {
     console.log('');
     console.log('Read the screenshot with the Read tool to see what is on the page.');
   } finally {
-    // Leave the tab open. The caller may want to interact with the page
-    // next, hand it to the user (e.g. to complete a sign-in), or close it.
+    // Leave the tab open - it's registered above, so the caller can find it
+    // again later via findTab even after this script's own process has exited.
+    // The caller may want to interact with the page next, hand it to the user
+    // (e.g. to complete a sign-in), or close it.
     await browser.close().catch(() => {});
   }
 }
