@@ -147,11 +147,12 @@ class Provider(ProviderBase):
         # on right now) — a task only counts as fitting once its own duration PLUS that buffer is
         # covered, not just its bare duration.
         eligible = [t for t in due if t["minutes"] + self.buffer_minutes <= gap]
-        # Longest-fitting-task first: a big gap is wasted on a short task when a longer one also
-        # fits, so sort descending by duration before the poller's cross-source dispatch order
-        # (which otherwise ties same-priority-band items and falls back to insertion order) picks
-        # one. See `still_in_inbox_ids` — nothing here depends on this order beyond that tie-break.
-        eligible.sort(key=lambda t: -t["minutes"])
+        # Newest-due first, same as email (drain today's backlog before working backwards into
+        # older stale items) — then, among tasks that became due on the same day, the longest one
+        # that fits so a big gap isn't wasted on a short task. This is what the poller's cross-source
+        # dispatch order actually follows (it otherwise ties same-priority-band items and falls back
+        # to insertion order) — see `still_in_inbox_ids`, unaffected by this order.
+        eligible.sort(key=lambda t: (t["date"], t["minutes"]), reverse=True)
         return eligible[:limit]
 
     def still_in_inbox_ids(self):

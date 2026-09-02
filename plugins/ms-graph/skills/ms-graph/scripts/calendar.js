@@ -33,8 +33,10 @@
 // Create calendar: node calendar.js --create-calendar="Physical Tasks"
 //                    (idempotent — reports the existing id if a calendar with that name is already there)
 // List due tasks:  node calendar.js --list-due-tasks --calendar="Physical Tasks" [--json] [--tz=]
+//                    [--lookback-days=30]
 //                    (every non-all-day event on that calendar that's still QUEUED — start date
-//                     today-or-earlier AND start time EXACTLY on the overnight parking grid: :00 at
+//                     within the last `lookback-days` (default 30) through today, AND start time
+//                     EXACTLY on the overnight parking grid: :00 at
 //                     midnight, :00/:15/:30/:45 at 1 AM, :00/:30 at 2 AM (not just somewhere in that
 //                     hour — real wall-clock "now" essentially never lands exactly on a slot, so
 //                     exact alignment is what tells "still sitting untouched" from "moved") — with
@@ -450,7 +452,7 @@ function isQueuedSlot(dateTimeStr) {
   const slots = QUEUED_SLOTS[h];
   return !!slots && slots.includes(m) && sec === 0;
 }
-async function listDueTasks({ calendar, tz = 'America/Chicago', lookbackDays = 730, today, client } = {}) {
+async function listDueTasks({ calendar, tz = 'America/Chicago', lookbackDays = 30, today, client } = {}) {
   if (!calendar) throw new Error('listDueTasks requires { calendar }');
   client = client || await getGraphClient();
   const calId = await resolveCalendarId(client, calendar);
@@ -627,7 +629,8 @@ if (require.main === module) {
     }
     if (args['list-due-tasks']) {
       if (!args.calendar) throw new Error('--list-due-tasks requires --calendar=<name>');
-      const tasks = await listDueTasks({ calendar: args.calendar, tz: TZ });
+      const lookbackDays = args['lookback-days'] ? parseInt(args['lookback-days'], 10) : 30;
+      const tasks = await listDueTasks({ calendar: args.calendar, tz: TZ, lookbackDays });
       if (args.json) { console.log(JSON.stringify(tasks, null, 2)); return; }
       if (!tasks.length) { console.log(`No due tasks on "${args.calendar}".`); return; }
       console.log(`${tasks.length} due task(s) on "${args.calendar}":`);
