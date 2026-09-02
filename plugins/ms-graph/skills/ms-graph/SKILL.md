@@ -47,8 +47,8 @@ All under `scripts/`:
 - **`mail.js`**
   - List unread: `node mail.js --list-unread [--top=30]` (inbox unread, newest-first; one block per message with id + webLink)
   - List inbox (read+unread): `node mail.js --list-inbox [--top=50] [--json]` (inbox items regardless of read state, newest-first, count-capped by `--top`; `--json` emits a structured array for scripts)
-  - Search: `node mail.js --search="Griffiths" [--top=10]`
-  - Show one: `node mail.js --show=<messageId>`
+  - Search: `node mail.js --search="Griffiths" [--top=10]` (flags any hit still sitting in Drafts with `[DRAFT — NOT SENT]`)
+  - Show one: `node mail.js --show=<messageId>` (prints a `*** DRAFT — NOT SENT ***` banner up top if the message is still a draft)
   - Draft reply-all (never sends): `node mail.js --reply --message-id=<id> --body-file=reply.html`
   - Draft new to recipients (never sends): `node mail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.html [--cc=c@z] [--attach=file1.pdf,file2.png] [--replace] [--text]` (`--attach` adds file attachments; `--replace` deletes any existing drafts with the same subject first, so re-runs don't pile up duplicates; `--text` treats the body-file as plain text instead of HTML)
   - Send to self: `node mail.js --send-self --subject="..." --body-file=note.txt`
@@ -76,4 +76,5 @@ Access tokens auto-refresh via MSAL. If a call fails with "Not signed in" or an 
 
 - `$search` and `$orderby` can't be combined on `/me/messages` — search returns relevance order; don't add `orderby`.
 - Draft replies (`--reply`) land in **Drafts** and are never sent automatically — the user reviews and sends, or gives an explicit per-message "send it" that triggers `--send-draft` on that exact reviewed draft.
+- `--search` and `--show` both select `isDraft` and tag a still-drafted message, so a session checking on an exchange can't mistake an unsent draft for a message that actually went out.
 - `--send-self` is the reliable "transfer text to my phone" path (arrives in Outlook mobile) when a self-chat isn't available.

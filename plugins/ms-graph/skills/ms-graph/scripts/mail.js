@@ -10,10 +10,13 @@
 // List drafts:   node mail.js --list-drafts [--top=30]
 //                (drafts folder, most-recently-edited first; same block format with id)
 // Search:        node mail.js --search="Griffiths" [--top=10]
+//                (flags any result still sitting in Drafts with a "[DRAFT — NOT SENT]" tag,
+//                 so a drafted-but-unsent reply is never mistaken for a sent message)
 // Show one:      node mail.js --show=<messageId> [--html]
 //                (default emits the body as plain text. --html emits the raw HTML body.content instead
 //                 — the way to recover a newsletter's hosted-PDF link, or its inline/"view in browser"
-//                 content, that the plaintext view strips out.)
+//                 content, that the plaintext view strips out. Prints a "*** DRAFT — NOT SENT ***"
+//                 banner up top when the message is still sitting in Drafts.)
 // Draft a reply: node mail.js --reply --message-id=<id> --body-file=reply.md [--attach=file1.pdf,file2.png]
 //                (creates a DRAFT reply-all in the thread; never sends. --body-file is Markdown —
 //                 blank-line paragraphs, lists, **bold**, and links all render as HTML; raw HTML
@@ -305,12 +308,13 @@ async function search(client) {
   const data = await client.api('/me/messages')
     .search(`"${args.search}"`)
     .top(parseInt(args.top || '10', 10))
-    .select('id,conversationId,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview')
+    .select('id,conversationId,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,isDraft')
     .get();
   const msgs = data.value || [];
   if (!msgs.length) { console.log('No messages found.'); return; }
   for (const m of msgs) {
-    console.log(`\n--- ${m.receivedDateTime?.slice(0, 16)}  |  ${m.subject}`);
+    const draftTag = m.isDraft ? '[DRAFT — NOT SENT] ' : '';
+    console.log(`\n--- ${draftTag}${m.receivedDateTime?.slice(0, 16)}  |  ${m.subject}`);
     console.log(`    from: ${addr(m.from)}`);
     console.log(`    to:   ${(m.toRecipients || []).map(addr).join(', ')}`);
     if ((m.ccRecipients || []).length) console.log(`    cc:   ${m.ccRecipients.map(addr).join(', ')}`);
@@ -321,7 +325,8 @@ async function search(client) {
 
 async function show(client) {
   const m = await client.api(`/me/messages/${args.show}`)
-    .select('subject,from,toRecipients,ccRecipients,receivedDateTime,body').get();
+    .select('subject,from,toRecipients,ccRecipients,receivedDateTime,body,isDraft').get();
+  if (m.isDraft) console.log('*** DRAFT — NOT SENT ***');
   console.log(`Subject: ${m.subject}`);
   console.log(`From: ${addr(m.from)}`);
   console.log(`To: ${(m.toRecipients || []).map(addr).join(', ')}`);
