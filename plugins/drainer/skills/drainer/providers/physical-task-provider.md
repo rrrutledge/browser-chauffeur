@@ -18,14 +18,23 @@ not by the AI triage call). id prefix: `physical-task-`.
 
 ## The model
 A task is **queued** while it sits on the dedicated calendar (default name **"Physical Tasks"**,
-configurable) with a start date today-or-earlier AND a start time-of-day still inside the
-**00:00-02:59 parking window**. This mirrors Russell's pre-drainer habit almost exactly: he used to
-stage a to-do in an overnight band and drag it out to the real time once he actually picked it up —
-the window here plays the same role, just for one purpose (queued vs. started) instead of also
-encoding size. Nothing here ever moves a queued task to keep it visible; an undone one simply keeps
-coming back every cycle until it's moved out of the window (started — see WORKER/CLEAR). **There is no
-delete and no separate archive calendar** — the same event just keeps living on Physical Tasks,
-eventually parked at the real time it was actually worked, as an ordinary calendar record.
+configurable) with a start date today-or-earlier AND a start time landing EXACTLY on the overnight
+parking grid — `:00` at midnight, `:00`/`:15`/`:30`/`:45` at 1 AM, `:00`/`:30` at 2 AM (the same grid
+the old staging bands used). This mirrors Russell's pre-drainer habit almost exactly: he used to stage
+a to-do in an overnight band and drag it out to the real time once he actually picked it up — the grid
+here plays the same role, just for one purpose (queued vs. started) instead of also encoding size.
+
+**Exact alignment, not just "sometime in that hour," is what makes this safe.** "Started" (see
+WORKER/CLEAR) moves a task's start to the real wall-clock now — and if Russell is up working past
+midnight, that "now" can itself fall inside 00:00-02:59. A real timestamp essentially never lands
+exactly on a grid slot (down to zero seconds), so exact-slot matching is what actually tells "still
+sitting untouched since it was placed" from "just started a moment ago" — a same-hour-only check would
+wrongly read a task he just began at 12:04 AM as still queued.
+
+Nothing here ever moves a queued task to keep it visible; an undone one simply keeps coming back every
+cycle until it's moved off-grid (started — see WORKER/CLEAR). **There is no delete and no separate
+archive calendar** — the same event just keeps living on Physical Tasks, eventually parked at the real
+time it was actually worked, as an ordinary calendar record.
 
 The event's own duration (end minus start, while still queued) is Russell's own estimate of how long
 the task takes.
@@ -125,7 +134,7 @@ CAPTURE, and **nothing here ever deletes or archives the task itself**:
 
 - **Started** (step 3 above, the moment he confirms he's beginning): `node calendar.js
   --start-now=<eventId>`. Moves the event's start to right now, keeping its own duration — this is what
-  takes it out of the 00:00-02:59 window, so it stops being queued, permanently, with no further action
+  takes it off the parking grid, so it stops being queued, permanently, with no further action
   needed. A recurring occurrence detaches from its series here (expected, same as the Outlook UI) —
   only this one instance was started, every future occurrence is untouched.
 - **Finished** (step 4, once he confirms done): `node calendar.js --finish-now=<eventId>`. Stamps just

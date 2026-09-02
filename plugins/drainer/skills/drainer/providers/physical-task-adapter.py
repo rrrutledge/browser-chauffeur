@@ -8,14 +8,18 @@ Graph event/occurrence id, stable while a task stays queued), and the captured i
 interface.
 
 The model: a task is QUEUED while it sits on the dedicated calendar with a start date today-or-earlier
-AND a start time-of-day still inside the 00:00-02:59 parking window (mirrors the old pre-drainer habit
-of staging a to-do in an overnight band and dragging it out once picked up) — nothing here ever moves
-a queued task, so an undone one just keeps coming back. CLEAR's "started" step (see the provider doc)
-moves the event's start to right now, which is what takes it out of the window for good; there is no
-delete and no second archive calendar. What's unique to this source is a SECOND gate on top of
-"queued": a physical task also needs a live free gap — computed fresh every cycle — of at least its
-own duration (plus a buffer) before Russell's next real (non-solo) calendar commitment, because unlike
-every other source, nobody but Russell can do the actual work.
+AND a start time landing EXACTLY on the overnight parking grid (`:00` at midnight, `:00/:15/:30/:45`
+at 1 AM, `:00/:30` at 2 AM — see calendar.js's isQueuedSlot) — mirrors the old pre-drainer habit of
+staging a to-do in an overnight band and dragging it out once picked up. Exact-slot matching (not just
+"somewhere in that hour") matters because CLEAR's "started" step moves start to the real wall-clock
+now, which can itself fall inside 00:00-02:59 if Russell's up working late — a real timestamp
+essentially never lands exactly on a slot, so alignment is what actually distinguishes "still sitting
+untouched" from "just started." Nothing here ever moves a queued task on its own, so an undone one just
+keeps coming back until it's started; there is no delete and no second archive calendar. What's unique
+to this source is a SECOND gate on top of "queued": a physical task also needs a live free gap —
+computed fresh every cycle — of at least its own duration (plus a buffer) before Russell's next real
+(non-solo) calendar commitment, because unlike every other source, nobody but Russell can do the
+actual work.
 """
 import glob
 import json
@@ -153,7 +157,7 @@ class Provider(ProviderBase):
     def still_in_inbox_ids(self):
         """Reconcile's analog of "still in the inbox": every currently-queued task's id, gap or no
         gap. A task the poller dispatched whose tab later closed without being started (still sitting
-        in the 00:00-02:59 window — see CLEAR) is still queued — dropping its seen key here lets it
+        exactly on the parking grid — see CLEAR) is still queued — dropping its seen key here lets it
         dispatch again next time a real gap opens, instead of being silently forgotten for good."""
         try:
             return {t["id"] for t in self._due_tasks()}

@@ -34,17 +34,20 @@
 //                    (idempotent — reports the existing id if a calendar with that name is already there)
 // List due tasks:  node calendar.js --list-due-tasks --calendar="Physical Tasks" [--json] [--tz=]
 //                    (every non-all-day event on that calendar that's still QUEUED — start date
-//                     today-or-earlier AND time-of-day in the 00:00-02:59 parking window — with its
-//                     duration in minutes; nothing here ever moves a task, so an undone one just
-//                     keeps showing up until it's moved out of that window (see --start-now). A
-//                     recurring series collapses to ONE row — id = its most recent queued occurrence,
+//                     today-or-earlier AND start time EXACTLY on the overnight parking grid: :00 at
+//                     midnight, :00/:15/:30/:45 at 1 AM, :00/:30 at 2 AM (not just somewhere in that
+//                     hour — real wall-clock "now" essentially never lands exactly on a slot, so
+//                     exact alignment is what tells "still sitting untouched" from "moved") — with
+//                     its duration in minutes; nothing here ever moves a task, so an undone one just
+//                     keeps showing up until it's moved off-grid (see --start-now). A recurring
+//                     series collapses to ONE row — id = its most recent queued occurrence,
 //                     seriesMasterId alongside it — even when several occurrences are overdue; see
 //                     --catch-up-series to clean up the rest once one's been started)
 // Start a task now:  node calendar.js --start-now=<eventId> [--tz=]
-//                    (moves start to right now, keeping the task's own duration — pulls it out of the
-//                     00:00-02:59 window, which is what "no longer due" means here; no delete, no
-//                     second calendar. A recurring occurrence detaches from its series, same as
-//                     dragging it in the Outlook UI)
+//                    (moves start to right now, keeping the task's own duration — pulls it off the
+//                     parking grid, which is what "no longer due" means here; no delete, no second
+//                     calendar. A recurring occurrence detaches from its series, same as dragging it
+//                     in the Outlook UI)
 // Finish a task now: node calendar.js --finish-now=<eventId> [--tz=]
 //                    (stamps just the end time to now, leaving start where --start-now put it, so the
 //                     event's real elapsed span sits on the calendar afterward)
@@ -410,12 +413,19 @@ async function getEvents({ calendar, start, end, tz = 'America/Chicago', client 
 }
 
 // Every non-all-day event on a dedicated task calendar (e.g. "Physical Tasks") that is still
-// QUEUED — start date today-or-earlier AND its time-of-day still sits in the overnight parking
-// window (00:00-02:59, `isQueuedHour` below). A task's own placement on the calendar IS its due
-// date; nothing here ever moves it while it's still queued, so an undone one just keeps coming back
-// until something explicitly takes it out of the window (see startTaskNow/finishTaskNow below —
-// moving an event's start out of that window IS what "cleared"/"started" means here, mirroring the
-// pre-drainer habit of dragging a to-do out of its staging hour once you actually picked it up).
+// QUEUED — start date today-or-earlier AND its start time sits EXACTLY on one of the overnight
+// parking grid's slots (`isQueuedSlot` below), not just somewhere in the 00:00-02:59 hour range. A
+// task's own placement on the calendar IS its due date; nothing here ever moves it while it's still
+// queued, so an undone one just keeps coming back until something explicitly takes it out of the
+// window (see startTaskNow/finishTaskNow below — moving an event's start out of grid alignment IS
+// what "cleared"/"started" means here, mirroring the pre-drainer habit of dragging a to-do out of its
+// staging hour once you actually picked it up).
+//
+// The exact-slot requirement (not just "any time in that hour") matters because startTaskNow sets
+// start to the real wall-clock now — if Russell is up working past midnight, "now" can itself land
+// inside 00:00-02:59, and a same-hour-only check would wrongly still read a just-started task as
+// queued. A real "now" essentially never lands exactly on a grid slot (down to zero seconds), so
+// exact alignment is what actually distinguishes "still sitting where it was placed" from "moved."
 // Every event on this calendar counts as a task (it's a dedicated calendar — no organizer/attendee
 // heuristic needed, unlike a real commitment calendar).
 //
@@ -428,9 +438,17 @@ async function getEvents({ calendar, start, end, tz = 'America/Chicago', client 
 //
 // Returns [{ id, seriesMasterId (recurring only), subject, date, minutes, isRecurring, webLink }],
 // oldest-due first.
-function isQueuedHour(dateTimeStr) {
-  const h = parseInt((dateTimeStr || 'T99').slice(11, 13), 10);
-  return h >= 0 && h <= 2;
+// The old staging grid, kept verbatim: :00 only at midnight, quarter-hours at 1 AM, half-hours at
+// 2 AM. Nothing here still ties a slot to a task's SIZE (duration is just the event's own length
+// now) — the grid is purely a "still sitting untouched" position check.
+const QUEUED_SLOTS = { 0: [0], 1: [0, 15, 30, 45], 2: [0, 30] };
+function isQueuedSlot(dateTimeStr) {
+  const s = dateTimeStr || '';
+  const h = parseInt(s.slice(11, 13), 10);
+  const m = parseInt(s.slice(14, 16), 10);
+  const sec = parseInt(s.slice(17, 19), 10) || 0;
+  const slots = QUEUED_SLOTS[h];
+  return !!slots && slots.includes(m) && sec === 0;
 }
 async function listDueTasks({ calendar, tz = 'America/Chicago', lookbackDays = 730, today, client } = {}) {
   if (!calendar) throw new Error('listDueTasks requires { calendar }');
@@ -450,7 +468,7 @@ async function listDueTasks({ calendar, tz = 'America/Chicago', lookbackDays = 7
     .get();
   while (page) {
     for (const e of page.value || []) {
-      if (e.isAllDay || !isQueuedHour(e.start.dateTime)) continue;
+      if (e.isAllDay || !isQueuedSlot(e.start.dateTime)) continue;
       const date = (e.start.dateTime || '').slice(0, 10);
       if (date > todayStr) continue; // calendarView can hand back a same-day-boundary next occurrence
       const minutes = Math.round((new Date(e.end.dateTime) - new Date(e.start.dateTime)) / 60000);
@@ -482,11 +500,12 @@ async function listDueTasks({ calendar, tz = 'America/Chicago', lookbackDays = 7
 
 // The "started" move: pulls one event out of the queued window by setting its start to right now,
 // keeping its original duration (so end = now + that duration) — the automated version of dragging a
-// to-do out of its staging hour the moment you actually pick it up. Once moved, it no longer matches
-// isQueuedHour, so it stops being due, permanently, with no delete and no second calendar. A
-// recurring occurrence detaches from its series here (same as the Outlook UI), which is correct —
-// only this one instance was started, the series' future occurrences are untouched. Returns the
-// duration (minutes) preserved, for the caller to sanity-check.
+// to-do out of its staging hour the moment you actually pick it up. A real "now" essentially never
+// lands exactly on a grid slot (see isQueuedSlot), so it stops matching immediately and stops being
+// due, permanently, with no delete and no second calendar. A recurring occurrence detaches from its
+// series here (same as the Outlook UI), which is correct — only this one instance was started, the
+// series' future occurrences are untouched. Returns the duration (minutes) preserved, for the caller
+// to sanity-check.
 async function startTaskNow({ eventId, tz = 'America/Chicago', client } = {}) {
   if (!eventId) throw new Error('startTaskNow requires { eventId }');
   client = client || await getGraphClient();
