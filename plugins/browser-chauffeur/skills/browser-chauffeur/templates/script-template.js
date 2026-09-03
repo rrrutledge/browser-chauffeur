@@ -13,9 +13,8 @@ const { chromium } = (() => {
   try { return require('playwright-core'); }
   catch { return require(require('path').join(require('os').homedir(), '.claude', 'browser-chauffeur', 'node_modules', 'playwright-core')); }
 })();
-const fs = require('fs');
 
-const { dismissOverlays, openTab, closeTab } = (() => {
+const { dismissOverlays, openTab, closeTab, screenshotOnFailure } = (() => {
   try { return require('browser-chauffeur-helpers'); }
   catch { return require(require('path').join(require('os').homedir(), '.claude', 'browser-chauffeur', 'node_modules', 'browser-chauffeur-helpers')); }
 })();
@@ -58,16 +57,6 @@ async function connectBrowser() {
   } finally {
     clearTimeout(timer);
   }
-}
-
-// --- screenshotOnFailure helper ---
-async function screenshotOnFailure(context, label) {
-  const diagPage = context.pages()[0];
-  if (!diagPage) return;
-  fs.mkdirSync('.tmp', { recursive: true });
-  const screenshotPath = `.tmp/diag-${label}-${Date.now()}.png`;
-  await diagPage.screenshot({ path: screenshotPath }).catch(() => {});
-  console.log(`  Diagnostic screenshot: ${screenshotPath}`);
 }
 
 async function run() {
