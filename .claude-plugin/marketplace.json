@@ -61,6 +61,11 @@
       "description": "Read/write Google Docs content (table rows, paragraphs, hyperlinks) via the Docs API — no browser. Append or delete table rows, and set a cell to plain text, a bulleted list, or a short clickable hyperlink. Reuses the gmail plugin's OAuth client with a separate token scoped to the documents API."
     },
     {
+      "name": "google-sheets",
+      "source": "./plugins/google-sheets",
+      "description": "Append rows to a Google Sheet, or read a range's values, via the Sheets API — no browser. Reuses the gmail plugin's OAuth client with a separate token scoped to the spreadsheets API."
+    },
+    {
       "name": "mail-filters",
       "source": "./plugins/mail-filters",
       "description": "Russell's calibrated strategy for mail filters/rules that auto-archive never-process mail at the server before it reaches the drainer. Teaches the phrase-selection craft (broad enough to recur across senders, strict enough to never bury wanted mail) and the create/delete mechanics for Gmail filters and Outlook rules."
