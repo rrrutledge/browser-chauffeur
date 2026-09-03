@@ -75,18 +75,6 @@ function Register-SessionReceipt {
   return $SessionId
 }
 
-# A short existence retry before declaring a caller-supplied file genuinely missing — guards a rare
-# write/visibility race (this file is always written synchronously by the caller before invoking this
-# script, but disk/AV visibility can lag a beat) without meaningfully delaying a real launch.
-function Test-FileWithRetry {
-  param([Parameter(Mandatory)][string]$Path)
-  for ($i = 0; $i -lt 5; $i++) {
-    if (Test-Path -LiteralPath $Path) { return $true }
-    Start-Sleep -Milliseconds 200
-  }
-  return $false
-}
-
 # This script never leaves anything running once it prints an error below — no Claude session starts,
 # and the caller's `powershell -NoExit` then leaves a bare, unexplained prompt sitting in the new tab.
 # So every "can't launch" path prints not just what failed but what it means (nothing was started) and
@@ -106,7 +94,7 @@ function Show-LaunchFailureHelp {
 $seed = $null
 $summaryName = ''   # drainer's one-line item summary, reused as this session's name when set
 if ($PromptFile) {
-  if (-not (Test-FileWithRetry -Path $PromptFile)) {
+  if (-not (Test-Path -LiteralPath $PromptFile)) {
     Show-LaunchFailureHelp -Detail "launch-session: prompt file not found: $PromptFile"
     return
   }
@@ -132,7 +120,7 @@ if ($PromptFile) {
   $seed = $lead + "Your task instructions are in '$PromptFile' - open it and begin immediately without waiting for further input."
 }
 elseif ($SeedFile) {
-  if (-not (Test-FileWithRetry -Path $SeedFile)) {
+  if (-not (Test-Path -LiteralPath $SeedFile)) {
     Show-LaunchFailureHelp -Detail "launch-session: seed file not found: $SeedFile"
     return
   }
