@@ -289,6 +289,7 @@ The specifics that most often separate a message that reads as Russell's from on
 - **Don't re-paste something you already shared upthread** — a link, file, or detail the recipient already has.
   Just ask plainly.
   Exception: the first nudge that directly addresses someone previously only cc'd should restate the concrete ask, since they may not have engaged.
+  Exception: a deadline nudge whose ask is to click through and act on a specific link (a submission form, a registration page) re-includes that link directly, since a last-chance reminder should remove friction to the click.
 - **A repeat nudge on an already-unanswered ask shrinks further than the first** — drop the warm-up context line and any separate reassurance clause, and ask one direct binary question with the release folded into the question itself rather than tacked on after.
   When the unanswered message sits visibly elsewhere in the same thread, pair a brief soft verbal frame ("wanted to ask again if you can let me know about this") with the emoji gesture matching its actual position: 👆 for a Slack/Teams thread, where the earlier message sits above; 👇 for an email reply, where the quoted original sits below the new text.
   **When the repeat also carries genuine new content** (a lower-commitment alternative, fresh information), lengthen that same frame to name the new material alongside the gesture.
