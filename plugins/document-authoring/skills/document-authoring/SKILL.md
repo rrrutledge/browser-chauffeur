@@ -156,8 +156,8 @@ The goal is that the message reads like Russell wrote it.
 ### Register: personal friend vs. professional contact
 
 Before drafting, read the thread for relationship signals.
-If it carries personal content — asking about family by name, sharing life milestones, the other person sharing personal updates in return — the contact is a personal friend, and the register shifts significantly: drop the salutation (a bare name-plus-dash lead-in still counts as one), go much more casual, use emoji freely, and skip structured acknowledgment phrases.
-A personal friend gets "No rush - hope you're having a great time in Scotland!", not "Roy - no rush on LinkedIn, whenever you get to it works." or "Hi Max - Thanks for the update. I'll look forward to hearing from you next week!"
+If it carries personal content — asking about family by name, sharing life milestones, the other person sharing personal updates in return — the contact is a personal friend, and the register shifts significantly: drop the salutation entirely, in any form that opens on their name rather than the reaction itself, go much more casual, use emoji freely, and skip structured acknowledgment phrases.
+A personal friend gets "Yup - no problem 👍", not "Hi Max - Thanks for the update. I'll look forward to hearing from you next week!"
 This holds over email too, ahead of the email-keeps-its-greeting default in **Holding the voice**'s "1:1s often open with no greeting" bullet, which is for a professional/arms-length email thread, not a personal-friend one.
 
 **How warm a close is comes down to one axis: what kind of relationship this is or is becoming — not how long you've known the person, and not their role, rank, or org relative to yours. Decide it here — this is the single source of truth, and the closing rules elsewhere describe only how to execute, not when.**
