@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.15.2] - 2026-09-03
+
+### Fixed
+- **`chauffeur.py`'s tab-registry and state-file reads/writes now open every JSON file with `encoding="utf-8"`, instead of Python's platform-default text encoding.** On Windows that default is the system codepage (commonly cp1252), so a registered tab whose title or URL carries a non-ASCII character (e.g. an ellipsis in a "Redirecting…" page title) could crash `TabRecord.content()` with a `UnicodeDecodeError` reading its own state back — surfacing as `--close-owned` and the orphan sweep failing outright. Every JSON `open()` in `chauffeur.py` and `cleanup-browser.py` is now explicit about UTF-8, and the two read paths that already caught `JSONDecodeError` also catch `UnicodeDecodeError` so a still-malformed file degrades to "no state" instead of crashing the caller.
+
 ## [1.14.0] - 2026-07-25
 
 Stops a hung or failed automation script from lingering as an orphaned process.
