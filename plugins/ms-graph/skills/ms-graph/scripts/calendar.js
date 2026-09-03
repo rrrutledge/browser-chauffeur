@@ -9,11 +9,13 @@
 // Create event:    node calendar.js --create --subject="Dentist" \
 //                    --start="2026-06-20T15:00:00" --end="2026-06-20T16:00:00" \
 //                    [--location="..."] [--body="..."] [--attendees=a@x,b@y] [--reminder=N]
+//                    [--calendar="..."]  (default: primary calendar)
 // Create recurring: node calendar.js --create-recurring --subject="Drop off Ryan" \
 //                    --start=06:35 --end=06:55 --days=MO,TU,TH \
 //                    --range-start=2026-08-31 --range-end=2026-10-31 \
-//                    [--location="..."] [--reminder=N]
-//                    (weekly recurrence; --days from MO,TU,WE,TH,FR,SA,SU; --range-end is inclusive)
+//                    [--location="..."] [--reminder=N] [--calendar="..."]
+//                    (weekly recurrence; --days from MO,TU,WE,TH,FR,SA,SU; --range-end is inclusive;
+//                     --calendar defaults to the primary calendar)
 // Delete one occurrence of a recurring series:
 //                   node calendar.js --delete-occurrence --subject="Drop off Ryan" --date=2026-09-14
 // Reschedule one occurrence of a recurring series (same day, different time):
@@ -131,7 +133,9 @@ async function createEvent(client) {
     event.isReminderOn = true;
     event.reminderMinutesBeforeStart = parseInt(args.reminder, 10) || 0;
   }
-  const created = await client.api('/me/events').post(event);
+  const calendarId = args.calendar ? await resolveCalendarId(client, args.calendar) : null;
+  const base = calendarId ? `/me/calendars/${calendarId}/events` : '/me/events';
+  const created = await client.api(base).post(event);
   console.log(`Created: "${created.subject}" on ${created.start.dateTime} (${created.id.slice(0, 16)}...)`);
 }
 
@@ -161,7 +165,9 @@ async function createRecurringEvent(client) {
     event.isReminderOn = true;
     event.reminderMinutesBeforeStart = parseInt(args.reminder, 10) || 0;
   }
-  const created = await client.api('/me/events').post(event);
+  const calendarId = args.calendar ? await resolveCalendarId(client, args.calendar) : null;
+  const base = calendarId ? `/me/calendars/${calendarId}/events` : '/me/events';
+  const created = await client.api(base).post(event);
   console.log(`Created recurring: "${created.subject}" ${args.days} ${args.start}-${args.end} ${rangeStart}..${args['range-end']} (${created.id.slice(0, 16)}...)`);
 }
 
