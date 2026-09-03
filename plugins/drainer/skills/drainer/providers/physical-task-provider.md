@@ -60,6 +60,13 @@ spent on a short task while a longer one could have used it — `enumerate` retu
 longest-duration-first, so the cross-source dispatch order (which otherwise ties on priority band and
 falls back to arrival order) picks the task that best uses the room available.
 
+**Only one physical task is ever open at a time.** Russell can only be doing one physical-world thing
+at once, so even when several tasks are simultaneously eligible, the adapter's `correspondent` returns
+the same constant identity for every one of them — the poller's ordinary same-correspondent hold (built
+for "don't dispatch two items from the same person at once") then keeps every task but the first-picked
+out of dispatch until that one's worker tab closes. A held task simply re-enumerates next cycle, same
+as one still waiting on its gap.
+
 No task should ever be sized past about an hour — even a task that might genuinely take two or three
 hours gets estimated at one hour, since Russell can always make an hour of progress on it and doesn't
 need to wait for a rarer multi-hour gap. That's *why* `lookahead_hours` defaults short (see Config): the

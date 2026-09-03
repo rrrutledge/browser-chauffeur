@@ -172,7 +172,27 @@ class Provider(ProviderBase):
         # listDueTasks), which legitimately changes as a fresh occurrence becomes the representative
         # one — exactly like Trello's Start-stamped id scheme, just keyed on Graph's own instance id
         # instead of a date string.
-        return f"{self.name}-{slug(item['subject'])}-{item['id'][-10:]}"
+        #
+        # This id becomes part of the worker's prompt-file NAME (run-poller.py's spawn_worker), which
+        # has to survive as a path argument through the poller -> wt.exe -> PowerShell relay that opens
+        # the worker tab. Graph's event ids on this (consumer) tenant always end in "="/"==" base64
+        # padding, and that "=" reliably breaks that relay partway through — launch-session.ps1 then
+        # reports the resulting (silently truncated, extension-less) path as not found, every single
+        # time, for every physical task. Stripping to bare alphanumerics before taking the last 10
+        # characters keeps the id segment just as distinguishing (verified against a live batch of
+        # tasks) while never putting a relay-breaking character in the path.
+        safe_tail = re.sub(r"[^A-Za-z0-9]", "", item["id"])[-10:]
+        return f"{self.name}-{slug(item['subject'])}-{safe_tail}"
+
+    def correspondent(self, item):
+        # Every physical task shares ONE identity, not a per-item one: Russell can only physically do
+        # one task at a time, so a second eligible task must wait behind whichever one already has an
+        # open worker tab — the same hold the poller uses to keep two messages from the same person out
+        # of dispatch together (see provider_base.ProviderBase.correspondent / run-poller.py's
+        # held_for_correspondent). Returning a constant here reuses that existing mechanism instead of
+        # needing a bespoke single-flight lock: once the open task's tab closes (started, finished, or
+        # deferred — see CLEAR), the hold releases and the next-longest eligible task dispatches.
+        return "physical-task"
 
     def capture(self, item, iid, runtime_dir):
         items_dir = os.path.join(runtime_dir, "items")
@@ -182,7 +202,7 @@ class Provider(ProviderBase):
             "subject": item["subject"], "date": item["date"], "minutes": item["minutes"],
             "isRecurring": item["isRecurring"], "calendar": self.calendar,
             "eventId": item["id"], "seriesMasterId": item.get("seriesMasterId"),
-            "url": item.get("webLink"),
+            "url": item.get("webLink"), "correspondent": item.get("_correspondent"),
             "ts": datetime.now(timezone.utc).isoformat(),
         }
         json_file = os.path.join(items_dir, f"{iid}.json")
