@@ -174,6 +174,16 @@ class Provider(ProviderBase):
         # instead of a date string.
         return f"{self.name}-{slug(item['subject'])}-{item['id'][-10:]}"
 
+    def correspondent(self, item):
+        # Every physical task shares ONE identity, not a per-item one: Russell can only physically do
+        # one task at a time, so a second eligible task must wait behind whichever one already has an
+        # open worker tab — the same hold the poller uses to keep two messages from the same person out
+        # of dispatch together (see provider_base.ProviderBase.correspondent / run-poller.py's
+        # held_for_correspondent). Returning a constant here reuses that existing mechanism instead of
+        # needing a bespoke single-flight lock: once the open task's tab closes (started, finished, or
+        # deferred — see CLEAR), the hold releases and the next-longest eligible task dispatches.
+        return "physical-task"
+
     def capture(self, item, iid, runtime_dir):
         items_dir = os.path.join(runtime_dir, "items")
         os.makedirs(items_dir, exist_ok=True)
@@ -182,7 +192,7 @@ class Provider(ProviderBase):
             "subject": item["subject"], "date": item["date"], "minutes": item["minutes"],
             "isRecurring": item["isRecurring"], "calendar": self.calendar,
             "eventId": item["id"], "seriesMasterId": item.get("seriesMasterId"),
-            "url": item.get("webLink"),
+            "url": item.get("webLink"), "correspondent": item.get("_correspondent"),
             "ts": datetime.now(timezone.utc).isoformat(),
         }
         json_file = os.path.join(items_dir, f"{iid}.json")

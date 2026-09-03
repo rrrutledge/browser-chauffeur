@@ -75,11 +75,39 @@ function Register-SessionReceipt {
   return $SessionId
 }
 
+# A short existence retry before declaring a caller-supplied file genuinely missing — guards a rare
+# write/visibility race (this file is always written synchronously by the caller before invoking this
+# script, but disk/AV visibility can lag a beat) without meaningfully delaying a real launch.
+function Test-FileWithRetry {
+  param([Parameter(Mandatory)][string]$Path)
+  for ($i = 0; $i -lt 5; $i++) {
+    if (Test-Path -LiteralPath $Path) { return $true }
+    Start-Sleep -Milliseconds 200
+  }
+  return $false
+}
+
+# This script never leaves anything running once it prints an error below — no Claude session starts,
+# and the caller's `powershell -NoExit` then leaves a bare, unexplained prompt sitting in the new tab.
+# So every "can't launch" path prints not just what failed but what it means (nothing was started) and
+# what to do about it, instead of a one-line error with no context.
+function Show-LaunchFailureHelp {
+  param([Parameter(Mandatory)][string]$Detail)
+  Write-Host $Detail -ForegroundColor Red
+  Write-Host ""
+  Write-Host "No Claude session was started in this tab - it's safe to close." -ForegroundColor Yellow
+  Write-Host "If a drainer worker dispatched this tab, the file it expected is gone or never landed;" -ForegroundColor Yellow
+  Write-Host "the item isn't lost - the next poller cycle (run-poller.py) re-enumerates it from source" -ForegroundColor Yellow
+  Write-Host "and, if it's still eligible, dispatches it again with a fresh file." -ForegroundColor Yellow
+  Write-Host "More info: plugins/session-mgr/skills/resume-sessions/scripts/launch-session.ps1 (this script)" -ForegroundColor Yellow
+  Write-Host "        and plugins/drainer/skills/drainer/engine/worker-core.md (what a worker tab normally does)." -ForegroundColor Yellow
+}
+
 $seed = $null
 $summaryName = ''   # drainer's one-line item summary, reused as this session's name when set
 if ($PromptFile) {
-  if (-not (Test-Path -LiteralPath $PromptFile)) {
-    Write-Host "launch-session: prompt file not found: $PromptFile" -ForegroundColor Red
+  if (-not (Test-FileWithRetry -Path $PromptFile)) {
+    Show-LaunchFailureHelp -Detail "launch-session: prompt file not found: $PromptFile"
     return
   }
   # Run with a fixed session id so the orchestrator can find this tab's full JSONL transcript later.
@@ -104,8 +132,8 @@ if ($PromptFile) {
   $seed = $lead + "Your task instructions are in '$PromptFile' - open it and begin immediately without waiting for further input."
 }
 elseif ($SeedFile) {
-  if (-not (Test-Path -LiteralPath $SeedFile)) {
-    Write-Host "launch-session: seed file not found: $SeedFile" -ForegroundColor Red
+  if (-not (Test-FileWithRetry -Path $SeedFile)) {
+    Show-LaunchFailureHelp -Detail "launch-session: seed file not found: $SeedFile"
     return
   }
   # Same receipt as the -PromptFile branch above, so a handoff can be peeked at too — this previously
