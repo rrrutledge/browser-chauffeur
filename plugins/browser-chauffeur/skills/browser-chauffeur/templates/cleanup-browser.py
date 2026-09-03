@@ -63,14 +63,14 @@ def reset_persistent_browser() -> None:
     # Kill the browser if running
     if STATE_FILE.exists():
         try:
-            with open(STATE_FILE) as f:
+            with open(STATE_FILE, encoding="utf-8") as f:
                 state = json.load(f)
                 pid = state.get("pid")
                 if pid and is_pid_running(pid):
                     print(f"  Killing browser process (PID {pid})...")
                     subprocess.run(["taskkill", "/F", "/PID", str(pid)],
                                    capture_output=True)
-        except (json.JSONDecodeError, KeyError, OSError):
+        except (json.JSONDecodeError, KeyError, OSError, UnicodeDecodeError):
             pass
 
         STATE_FILE.unlink()

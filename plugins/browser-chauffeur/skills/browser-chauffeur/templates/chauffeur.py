@@ -221,10 +221,10 @@ class TabRecord:
 
     def content(self) -> dict:
         try:
-            with open(self.path) as f:
+            with open(self.path, encoding="utf-8") as f:
                 data = json.load(f)
             return data if isinstance(data, dict) else {}
-        except (OSError, json.JSONDecodeError):
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
             return {}
 
     @property
@@ -255,7 +255,7 @@ class TabRecord:
             return
         tmp = self.path.with_name(self.path.name + f".{os.getpid()}.tmp")
         try:
-            with open(tmp, "w") as f:
+            with open(tmp, "w", encoding="utf-8") as f:
                 json.dump(data, f)
             replace_atomically(tmp, self.path)
         except OSError:
@@ -467,15 +467,15 @@ def sweep_tabs(port: int) -> None:
 
 def load_state() -> dict | None:
     try:
-        with open(STATE_FILE) as f:
+        with open(STATE_FILE, encoding="utf-8") as f:
             return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
+    except (FileNotFoundError, json.JSONDecodeError, UnicodeDecodeError):
         return None
 
 
 def save_state(pid: int, port: int, profile_dir: str) -> None:
     Path(STATE_FILE).parent.mkdir(parents=True, exist_ok=True)
-    with open(STATE_FILE, "w") as f:
+    with open(STATE_FILE, "w", encoding="utf-8") as f:
         json.dump({"pid": pid, "port": port, "profile_dir": profile_dir}, f)
 
 
