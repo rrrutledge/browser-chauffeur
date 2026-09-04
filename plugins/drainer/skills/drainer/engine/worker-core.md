@@ -82,7 +82,9 @@ Russell decided in advance — do the action without presenting or waiting, then
       them: invoke browser-chauffeur to run `chauffeur.py --close-owned`, which closes only the
       tabs your session opened (never the user's, never another session's). Cleaning up your own tabs
       here means they never reach the browser sweep.
-   2. **Your session tab** — via the Bash tool, run `python <skill>/scripts/close-session.py`.
+   2. **Your session tab** — first **emit the HITL signal (§8)** — for an auto-handle action that
+      is `self-closed` with `load_bearing` `false` — then, via the Bash tool, run
+      `python <skill>/scripts/close-session.py`.
       It ends the session the way a clean exit would: it fires the SessionEnd hook event first
       (so the live-session registry drops this session instead of listing it as crash-interrupted
       for resume-sessions to resurrect), then kills this tab's process tree (the hosting PID from
@@ -123,6 +125,17 @@ one (`url` in `items/<id>.json` — a Slack permalink, Teams deep link, email `w
 `shortUrl`). Surfacing it costs nothing and means the user can click straight to the source and act
 there himself instead of waiting on you — exactly what he'll often prefer for something he can answer
 in a line or two. Put it right next to the paraphrase, not buried at the end.
+
+**A decision that's genuinely Russell's to make gets ONE complete brief up front, not one question per
+turn.** When the item comes down to a call only he can make (which option, whether to proceed, how to
+weigh a tradeoff), do all the legwork *before* you ask, and put it in a single message: lay out the real
+options, run the numbers **both ways** so he isn't left computing them, state every deadline, and
+pre-answer the obvious follow-ons ("if you pick A, the enrollment window closes the 15th; if B, there's a
+$40/mo difference"). Then ask **the single real question** and stop. The decision stays his — you are
+only removing the round-trips. The failure mode this replaces is dribbling the decision out as a
+sequence of one-line questions, each of which forces another of his turns to answer something you could
+have resolved or bundled. If a fact you'd need for the brief is itself only knowable from him, ask for
+that and the decision together in one message, not as two separate turns.
 
 ## 2. Situational-check first
 Has it already moved or been handled? (PR merged? request done? they replied and the user already
@@ -273,7 +286,8 @@ to see, close the tab silently:
    the digest categorizes it correctly (not as needs-you).
 3. **Queue a digest entry**:
    `node <skill>/scripts/seen-state.js queue-add <runtime_dir> <source> <id> <path to items/<id>.json>`
-4. **Close this tab** - via the Bash tool, run `python <skill>/scripts/close-session.py`
+4. **Emit the HITL signal (§8)** — `self-closed`, `load_bearing` `false` — then **close this tab**
+   via the Bash tool: `python <skill>/scripts/close-session.py`
    (fires the SessionEnd event, then kills the tab — see the auto-handle branch's close-up step).
    If it reports `CLAUDE_HOST_PID` unset, stop normally.
 
@@ -329,6 +343,9 @@ Report the gate up to the one channel that reaches Russell without anyone watchi
    `node <skill>/scripts/seen-state.js queue-add <runtime_dir> <source> <id> <path to items/<id>.json>`
    so Russell actually sees it.
    The digest reads `triage: "help-needed"` as its own class (see `digest-core.md` §2a), distinct from fyi, junk, and auto-handled.
+   Then **emit the HITL signal (§8)** — `help-needed`, `load_bearing` `true` — now, at the park, since
+   this branch leaves the tab open rather than closing it:
+   `node <skill>/scripts/hitl-log.js <runtime_dir> <source> <id> help-needed true ""`
 4. **Leave the source item uncleared.**
    The task isn't done, and clearing it here would drop it the way §2d warns against.
 5. **Keep this session's tab open.**
@@ -487,7 +504,8 @@ at deferral language. This files the entry under the
 digest's **"Auto-handled"** section (already done, dismiss-only), so a finished item is shown as handled
 rather than resurfacing as a live needs-you. Queue it via
 `node <skill>/scripts/seen-state.js queue-add <runtime_dir> <source> <id> <path to items/<id>.json>`,
-then close the tab (`python <skill>/scripts/close-session.py`) instead of presenting-and-waiting.
+then **emit the HITL signal (§8)** — `self-closed`, `load_bearing` `false` — and close the tab
+(`python <skill>/scripts/close-session.py`) instead of presenting-and-waiting.
 
 **This is judgment, not a checklist — hold the same bar the other silent-resolution cases in this file
 already use: unsure → stay needs-you and present as normal (§1).** Self-close here only when ALL of
@@ -543,7 +561,12 @@ explicitly told you - in this session - he'll handle later and doesn't need the 
 **The close condition is symmetric: your part done, and his part done - not just yours.** Once the human
 step is done (Russell told you he sent/submitted/confirmed it, or explicitly said to close) and any
 follow-up you owed is finished (§5's learn-from-send, a tracker card, advancing the source item) —
-close this tab yourself as your very last act, by invoking the **`session-mgr:close`** skill. Don't ask
+**emit the HITL signal (§8)** as the step just before closing: pick the `<outcome>` that fits how this
+item actually ended (`self-closed` for a clean run or a single by-design approval, `corrected` if Russell
+had to steer you across several turns, `parked` if you filed a tracker card and are waiting on a third
+party), and set `<load_bearing>` `true` only when his turns were approvals/decisions his own rules
+reserve for him. Then close this tab yourself as your very last act, by invoking the
+**`session-mgr:close`** skill. Don't ask
 "anything else?" and don't wait for him to type `/close` — those two extra round-trips are exactly what
 this rule removes. But stay open whenever a draft you staged hasn't been sent yet, whenever work that's
 his to do is still undone, or whenever you're waiting on an answer from him.
@@ -554,3 +577,36 @@ should have come from* and improve THAT source so it's findable next time: a sys
 internal knowledge source. Only when the shared brain is genuinely the right long-term home does it go
 in the local `context.md`; voice feedback goes to the document-authoring skill. The goal is fewer
 questions over time because sources got better, not a growing notes pile.
+
+## 8. Emit the HITL signal — one line, at every close
+The weekly pod-review miner reconstructs how each worker ended by reading its transcript, but a
+transcript can't reliably tell a **by-design approval** (Russell pressing send on outbound to a real
+person, or choosing between options only he can decide) from an **avoidable rescue** (the automation was
+incomplete and had to reach back to him). Only *you* know which it was. So as the step **immediately
+before you close this tab** — or, for a needs-you item you keep open, **when you finally close it per
+§6** — append one line recording your own read:
+
+```
+node <skill>/scripts/hitl-log.js <runtime_dir> <source> <id> <outcome> <load_bearing> "<reason>"
+```
+
+- `<runtime_dir>` is the parent of the `items/` folder (same arg as `seen-state.js`); `<source>` and
+  `<id>` are your item's `source` and id.
+- `<outcome>` is one of:
+  - `self-closed` — you finished and closed with nothing left for Russell: a fully autonomous run, an
+    auto-handle action, a re-triage to fyi (§2c), a §6a self-close, or a needs-you item that ended in a
+    single by-design approval he gave.
+  - `parked` — done on your side, now waiting on a third party (you filed a tracker card per §6's
+    "waiting on someone else").
+  - `help-needed` — a browser gate only Russell can clear (§2e); emit this when you park on the gate,
+    since that branch leaves the tab open rather than closing.
+  - `corrected` — Russell had to steer or rescue you across several turns for the work to land.
+- `<load_bearing>` is `true` when this item's human turns were ones Russell's own rules reserve for
+  him — pressing send on outbound to a real person, or a decision only he can make — and `false`
+  otherwise. A fully hands-off run has no turns, so `false`; a `corrected` run is `false` by definition
+  (a rescue is not by design).
+- `<reason>` is one line in Russell's terms. If you already stamped a `dispositionReason` (auto-handle,
+  §6a) or a `helpNeeded.reason` (§2e), you may pass an empty `""` and the helper reads it from the item.
+
+This is bookkeeping, never a gate: **if the call fails, close anyway** — the miner still has its
+transcript heuristic to fall back on. One line per worker; that is the whole step.
