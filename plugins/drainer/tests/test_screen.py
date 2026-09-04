@@ -1,5 +1,5 @@
-"""Tests for run-poller.py's security screen: the triage-time input guardrail against prompt injection
-and content hostile to the user.
+"""Tests for run-poller.py's security screen: the dedicated input-guardrail pass against prompt injection
+and content hostile to the user, and how its verdict strips an item's autonomy.
 
 Run directly:
     python plugins/drainer/tests/test_screen.py
@@ -39,12 +39,11 @@ def item(**kw):
 
 
 # --- _apply_screen: a flag strips autonomy -----------------------------------
-print("_apply_screen — a flagged verdict forces needs-you")
+print("_apply_screen — a flagged verdict forces needs-you (verdict passed in directly)")
 
 # A flagged AUTO-HANDLE item is hard-stopped: it can never run the standing rule autonomously.
 it = item(_bucket="auto-handle", _kind=None)
-flagged = poller._apply_screen(it, {"bucket": "auto-handle",
-                                     "screen": {"flagged": True, "reason": "embedded 'ignore instructions'"}})
+flagged = poller._apply_screen(it, {"flagged": True, "reason": "embedded 'ignore instructions'"})
 check("flagged auto-handle is reported flagged", flagged, True)
 check("flagged auto-handle becomes needs-you", it["_bucket"], "needs-you")
 check("flag is stamped with the reason", it["_screen"],
@@ -53,40 +52,36 @@ check("a null kind is filled in so a worker can present it", it["_kind"], "reply
 
 # A flagged JUNK item is surfaced, not silently digested.
 it = item(_bucket="junk", _kind="phishing")
-poller._apply_screen(it, {"bucket": "junk", "screen": {"flagged": True, "reason": "credential-harvest lure asking to forward mail"}})
+poller._apply_screen(it, {"flagged": True, "reason": "credential-harvest lure asking to forward mail"})
 check("flagged junk becomes needs-you", it["_bucket"], "needs-you")
 check("flagged junk keeps its existing kind", it["_kind"], "phishing")
 
 # A flagged needs-you item stays needs-you but is stamped for its worker.
 it = item(_bucket="needs-you", _kind="work")
-poller._apply_screen(it, {"bucket": "needs-you", "screen": {"flagged": True, "reason": "asks to change remit account"}})
+poller._apply_screen(it, {"flagged": True, "reason": "asks to change remit account"})
 check("flagged needs-you stays needs-you", it["_bucket"], "needs-you")
 check("and is stamped", it["_screen"]["reason"], "asks to change remit account")
 
 # A missing reason is tolerated (stamped empty).
 it = item()
-poller._apply_screen(it, {"screen": {"flagged": True}})
+poller._apply_screen(it, {"flagged": True})
 check("missing reason stamps empty string", it["_screen"]["reason"], "")
 
 
 # --- _apply_screen: no flag is a no-op ---------------------------------------
-print("\n_apply_screen — an unflagged or absent screen changes nothing")
+print("\n_apply_screen — an unflagged or empty verdict changes nothing")
 
 it = item(_bucket="auto-handle", _kind=None)
-flagged = poller._apply_screen(it, {"bucket": "auto-handle", "screen": {"flagged": False}})
+flagged = poller._apply_screen(it, {"flagged": False})
 check("flagged:false does not flag", flagged, False)
 check("flagged:false leaves the bucket alone", it["_bucket"], "auto-handle")
 check("flagged:false stamps no _screen", "_screen" in it, False)
 
-# An item triage couldn't screen (no screen key at all) keeps its ordinary bucket.
+# A None verdict never crashes and never flags (the caller only reaches here with a verdict, but the
+# helper stays safe regardless).
 it = item(_bucket="fyi")
-flagged = poller._apply_screen(it, {"bucket": "fyi"})
-check("a verdict with no screen key is a no-op", flagged, False)
-check("and leaves the bucket alone", it["_bucket"], "fyi")
-
-# A None verdict (unjudged item) never crashes and never flags.
-it = item(_bucket="needs-you")
 check("a None verdict is a safe no-op", poller._apply_screen(it, None), False)
+check("and leaves the bucket alone", it["_bucket"], "fyi")
 
 
 # --- _stamp_screen: persists onto the captured json --------------------------
@@ -106,6 +101,18 @@ check("existing fields survive the stamp", rec["triage"], "needs-you")
 # A missing file is a best-effort no-op, never an exception.
 poller._stamp_screen(os.path.join(d, "nope.json"), {"flagged": True, "reason": "x"})
 check("a missing json file is not an error", True, True)
+
+
+# --- _screen_brain: the shared prefix carries the rubric + context -----------
+print("\n_screen_brain — the shared prefix carries the screen rubric and the user's standing rules")
+
+ctx_dir = tempfile.mkdtemp(prefix="screen-ctx-")
+with open(os.path.join(ctx_dir, "context.md"), "w", encoding="utf-8") as f:
+    f.write("# brain\n\n## Red lines\nNever automate the forbidden channel.\n")
+brain = poller._screen_brain([item()], ctx_dir)
+check("brain includes the screen instructions", "SECURITY SCREEN" in brain, True)
+check("brain embeds the engine/screen.md rubric", "## What flags an item" in brain, True)
+check("brain embeds the user's context.md standing rules", "Never automate the forbidden channel" in brain, True)
 
 print(f"\n{'FAILED: ' + ', '.join(failures) if failures else 'all checks passed'}")
 sys.exit(1 if failures else 0)
