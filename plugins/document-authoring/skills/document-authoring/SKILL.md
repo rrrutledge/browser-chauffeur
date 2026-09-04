@@ -1,6 +1,6 @@
 ---
 name: document-authoring
-description: Russell's personal style conventions for authoring or editing any document or message that contains links or formatted prose — Confluence pages, Word docs, email, Teams messages, PRs, etc. Use whenever composing such content. It is the writer's process — the drafting loop, staging, and voice-learning — over the two rule rubrics it loads.
+description: Russell's personal style conventions for authoring or editing any document or message that contains links or formatted prose — Confluence pages, Word docs, email, Teams messages, PRs, etc. Use whenever composing such content. It is the writer's process - the drafting loop, staging, and voice-learning - over the two rule rubrics it loads.
 ---
 
 # Document Authoring Style (Russell's preferences)
@@ -10,9 +10,9 @@ Apply this whenever authoring or editing a document or message in Russell's name
 This skill is the **writer's process**: how you get to a finished message - the drafting loop, staging, and the voice-learning loop.
 The rules for what the finished message must *be* live in two rubrics it reads:
 
-**REQUIRED BACKGROUND — load both first:**
-- `authoring-rules` — the medium-independent rules that bind every artifact Russell's name goes on, code comments and docstrings included. It is the rubric a writing reviewer checks against.
-- `message-rules` — the message-specific artifact rules: register, warmth, asks, links, personas, emoji, sign-offs, and nudges. It is the second rubric the reviewer checks an outward message against.
+**REQUIRED BACKGROUND - load both first:**
+- `authoring-rules` - the medium-independent rules that bind every artifact Russell's name goes on, code comments and docstrings included. It is the rubric a writing reviewer checks against.
+- `message-rules` - the message-specific artifact rules: register, warmth, asks, links, personas, emoji, sign-offs, and nudges. It is the second rubric the reviewer checks an outward message against.
 
 The split mirrors the cover-letter writer/reviewer pattern: the two rubrics are what the writer composes toward and the reviewer checks; this skill is the generative and process side that never restates them.
 Compose against what those two files say; this skill covers only the loop that gets a draft there, staged and learned from.
@@ -30,7 +30,7 @@ Skipping a step is what leaks the patterns these rules ban: reading once then co
    When it's on the same topic as a prior message or email thread — even if it isn't a direct response, and even when the most recent message is one Russell sent himself — anchor it there rather than composing fresh, so the follow-up answers where the conversation actually stands and the history stays together.
    In Teams, use Reply on a message in that topic; in email, reply into the existing thread on that subject.
 3. **Verify** — dispatch the `writing-review` skill on your actual draft text, marked as an outward message so the reviewer checks it against both `authoring-rules` and `message-rules`.
-   This step is a cold, independent check, not a self-walk — for why a separate dispatched reviewer is required rather than a re-read of the rules, see `writing-review`.
+   This step is a cold, independent check, not a self-walk - for why a separate dispatched reviewer is required rather than a re-read of the rules, see `writing-review`.
    Revise against what it finds, then dispatch a **fresh** reviewer on the revised text; repeat until it returns clean, a finding stands that you genuinely disagree with, or you've run three rounds — see `writing-review` for the disagreement and convergence rules.
    When the loop converges, mint the review receipt on the exact body file you'll stage (see `writing-review`'s **The stage gate**): the mail-staging commands are gated and refuse a draft that has no fresh receipt for its content, which is what makes this step contractual rather than a documented "should."
    **This step applies every time this skill is used to draft or edit a message, in every caller** — a provider doc or another skill that says "invoke document-authoring" gets Verify as part of that, with no separate reminder needed at the call site.

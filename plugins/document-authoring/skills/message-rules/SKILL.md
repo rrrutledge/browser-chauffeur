@@ -5,9 +5,8 @@ description: Russell's outward-message artifact rules - register, warmth, asks, 
 
 # Outward-message rules (shared rubric)
 
-Every rule here is an **artifact rule**: you can tell whether it was followed by reading the finished message alone.
-That is what makes this set shared - the writer loads it to compose against, and a reviewer loads the same file to check against, so the two can never drift.
 This is the message-specific companion to `authoring-rules`, which holds the medium-independent rules that bind every artifact Russell's name goes on (code comments and docstrings included).
+Like that file, every rule here is an **artifact rule** - checkable from the finished message alone (see `authoring-rules` for why that is what lets a writer and a reviewer share one rubric without drifting).
 
 **REQUIRED BACKGROUND:** Load `authoring-rules` first.
 Everything in it applies to an outward message too; this file adds only what is specific to a message: register, warmth, asks, links, personas, emoji, sign-offs, and nudges.
@@ -25,7 +24,7 @@ The **Formal writing** and **Conversational writing** sections describe **regist
 
 ## Links
 
-`authoring-rules`' **Anchor every link on descriptive text** rule is the canonical one - embed every link as a hyperlink on descriptive text within the sentence, never a bare `https://…` URL in prose.
+`authoring-rules`' **Anchor every link on descriptive text** rule is the canonical one.
 This section adds the message-specific mechanics on top of it.
 
 Anchor by format:
