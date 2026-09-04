@@ -793,30 +793,95 @@ def held_for_correspondent(corr, active):
     return bool(corr) and corr in active
 
 
-def total_claude_tabs():
-    """Count of every running claude.exe process system-wide — drainer worker tabs, the drainer
-    itself, and any tab Russell opened by hand. The real constraint on dispatch speed is total open
-    Claude Code tabs competing for his attention, not how many the drainer itself has dispatched, so
-    target_open_tabs is checked against this instead of the drainer's own seen-state bookkeeping.
+def _process_snapshot():
+    """{pid: (imagename_lower, parent_pid)} for every running process, from a single
+    Toolhelp32 snapshot. Returns None if the snapshot can't be taken.
 
-    Returns None if the scan can't be run/parsed — the caller then treats this cycle as AT the cap
+    A Toolhelp32 snapshot reads the kernel process table directly, so it stays fast under the exact
+    load (many concurrent tabs, high CPU/memory pressure) where PowerShell's Get-Process stalls
+    resolving each match's file-version info. It also carries the parent pid, which flat tasklist
+    output does not — total_claude_tabs() needs the parent link to tell a real tab apart from the
+    poller's own headless subprocesses."""
+    try:
+        import ctypes
+        from ctypes import wintypes
+    except Exception:
+        return None
+    TH32CS_SNAPPROCESS = 0x00000002
+
+    class _PROCESSENTRY32(ctypes.Structure):
+        _fields_ = [("dwSize", wintypes.DWORD), ("cntUsage", wintypes.DWORD),
+                    ("th32ProcessID", wintypes.DWORD),
+                    ("th32DefaultHeapID", ctypes.POINTER(ctypes.c_ulong)),
+                    ("th32ModuleID", wintypes.DWORD), ("cntThreads", wintypes.DWORD),
+                    ("th32ParentProcessID", wintypes.DWORD), ("pcPriClassBase", ctypes.c_long),
+                    ("dwFlags", wintypes.DWORD), ("szExeFile", ctypes.c_char * 260)]
+    try:
+        k32 = ctypes.windll.kernel32
+        k32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+        snap = k32.CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)
+        if not snap or snap == wintypes.HANDLE(-1).value:
+            return None
+        try:
+            entry = _PROCESSENTRY32()
+            entry.dwSize = ctypes.sizeof(_PROCESSENTRY32)
+            if not k32.Process32First(snap, ctypes.byref(entry)):
+                return None
+            procs = {}
+            ok = True
+            while ok:
+                procs[entry.th32ProcessID] = (
+                    entry.szExeFile.decode("ascii", "ignore").lower(),
+                    entry.th32ParentProcessID,
+                )
+                ok = k32.Process32Next(snap, ctypes.byref(entry))
+            return procs
+        finally:
+            k32.CloseHandle(snap)
+    except Exception:
+        return None
+
+
+def total_claude_tabs():
+    """Count of the real Claude Code tabs open right now — drainer worker tabs and any tab Russell
+    opened by hand. The real constraint on dispatch speed is total open Claude Code tabs competing
+    for his attention, not how many the drainer itself has dispatched, so target_open_tabs is checked
+    against this instead of the drainer's own seen-state bookkeeping.
+
+    A real tab is launched through Windows Terminal + PowerShell (a spawned worker via spawn-tab.cmd,
+    or one Russell opens himself), so its claude.exe has no Python process anywhere in its ancestry.
+    The poller's own two kinds of headless claude.exe DO have a Python ancestor — the per-item triage
+    calls (`claude -p`, up to TRIAGE_PARALLEL_CALLS of them running at once) and the launcher's
+    `claude plugin update` — because both are spawned directly by the poller/launcher Python process.
+    Those are transient and unrelated to how many tabs are parked for Russell, and a burst of them in
+    flight when this count is read would inflate it past target and wrongly hold back a cycle's
+    dispatch, so any claude.exe with a Python ancestor is excluded. The count then reflects the parked
+    tabs alone.
+
+    Returns None if the snapshot can't be taken — the caller then treats this cycle as AT the cap
     (fail CLOSED: hold every needs-you item rather than dispatch unbounded), since a scan failure is
     exactly the condition — a bogged-down machine — most likely to coincide with a large eligible
     backlog, and skipping the throttle there is how a cycle dispatches everything eligible at once
     instead of nothing. A single blip retries silently next cycle; SCAN_FAILURE_ALERT_THRESHOLD
-    consecutive failures spawns one visible diagnostic tab.
-
-    Uses tasklist rather than PowerShell's Get-Process: Get-Process resolves each match's file
-    version info, which under load (many concurrent tabs, high CPU/memory pressure) can stall well
-    past this function's timeout; tasklist reads the process table directly and stays fast under the
-    same load."""
-    try:
-        out = subprocess.run(["tasklist", "/FI", "IMAGENAME eq claude.exe", "/NH", "/FO", "CSV"],
-                             capture_output=True, text=True, timeout=10,
-                             creationflags=NO_WINDOW).stdout
-        return sum(1 for line in out.splitlines() if line.lower().startswith('"claude.exe"'))
-    except (OSError, subprocess.SubprocessError, ValueError):
+    consecutive failures spawns one visible diagnostic tab."""
+    procs = _process_snapshot()
+    if not procs:
         return None
+    python_images = ("python.exe", "pythonw.exe")
+
+    def has_python_ancestor(pid):
+        seen = set()
+        parent = procs.get(pid, (None, 0))[1]
+        while parent and parent in procs and parent not in seen and len(seen) < 64:
+            seen.add(parent)
+            name, grandparent = procs[parent]
+            if name in python_images:
+                return True
+            parent = grandparent
+        return False
+
+    return sum(1 for pid, (name, _) in procs.items()
+               if name == "claude.exe" and not has_python_ancestor(pid))
 
 
 def _session_guid(runtime_dir, iid):
