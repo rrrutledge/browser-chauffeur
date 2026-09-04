@@ -848,15 +848,15 @@ def total_claude_tabs():
     for his attention, not how many the drainer itself has dispatched, so target_open_tabs is checked
     against this instead of the drainer's own seen-state bookkeeping.
 
-    A real tab is launched through Windows Terminal + PowerShell (a spawned worker via spawn-tab.cmd,
-    or one Russell opens himself), so its claude.exe has no Python process anywhere in its ancestry.
-    The poller's own two kinds of headless claude.exe DO have a Python ancestor — the per-item triage
-    calls (`claude -p`, up to TRIAGE_PARALLEL_CALLS of them running at once) and the launcher's
-    `claude plugin update` — because both are spawned directly by the poller/launcher Python process.
-    Those are transient and unrelated to how many tabs are parked for Russell, and a burst of them in
-    flight when this count is read would inflate it past target and wrongly hold back a cycle's
-    dispatch, so any claude.exe with a Python ancestor is excluded. The count then reflects the parked
-    tabs alone.
+    An attention-competing tab is one open in Windows Terminal. A spawned worker (spawn-tab.cmd hands
+    the tab to Windows Terminal via `wt`) and a tab Russell opens himself both run as
+    claude.exe -> powershell.exe under the WindowsTerminal.exe window process, so a claude.exe counts
+    exactly when WindowsTerminal.exe is somewhere in its ancestry. The poller's own headless claude.exe
+    — the per-item triage calls (`claude -p`, up to TRIAGE_PARALLEL_CALLS of them running at once) and
+    the launcher's `claude plugin update` — are spawned directly by the poller/launcher Python process,
+    with no terminal in between, so they have no WindowsTerminal ancestor and don't count. That is what
+    keeps a mid-cycle burst of triage calls from inflating the count past target and wrongly holding
+    back a cycle's dispatch. The count reflects the tabs competing for Russell's attention alone.
 
     Returns None if the snapshot can't be taken — the caller then treats this cycle as AT the cap
     (fail CLOSED: hold every needs-you item rather than dispatch unbounded), since a scan failure is
@@ -867,21 +867,20 @@ def total_claude_tabs():
     procs = _process_snapshot()
     if not procs:
         return None
-    python_images = ("python.exe", "pythonw.exe")
 
-    def has_python_ancestor(pid):
+    def descends_from_terminal(pid):
         seen = set()
         parent = procs.get(pid, (None, 0))[1]
         while parent and parent in procs and parent not in seen and len(seen) < 64:
             seen.add(parent)
             name, grandparent = procs[parent]
-            if name in python_images:
+            if name == "windowsterminal.exe":
                 return True
             parent = grandparent
         return False
 
     return sum(1 for pid, (name, _) in procs.items()
-               if name == "claude.exe" and not has_python_ancestor(pid))
+               if name == "claude.exe" and descends_from_terminal(pid))
 
 
 def _session_guid(runtime_dir, iid):
