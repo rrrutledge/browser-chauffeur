@@ -76,6 +76,7 @@ const os = require('os');
 const path = require('path');
 
 const TABS_DIR = path.join(os.homedir(), '.claude', 'browser-chauffeur', 'tabs');
+const STATE_FILE = path.join(os.homedir(), '.claude', 'browser-chauffeur', 'state.json');
 
 // A CDP targetId is hex, so it is always a safe filename component.
 const NAME_RE = /^(unowned|\d+)-([0-9A-Fa-f]+)\.json$/;
@@ -214,8 +215,17 @@ async function targetIdOf(context, page) {
 async function registerTab(context, page) {
   try {
     const targetId = await targetIdOf(context, page);
-    const { ownerPid } = ownerInfo();
-    writeTab(ownerPid, targetId, { url: page.url() });
+    const { ownerPid, ownerStart } = ownerInfo();
+    // Record ownerStart alongside the PID. It is what lets the sweep tell this
+    // session's tabs from those of a later process that inherits the same PID:
+    // Windows recycles PIDs fast, so once the owning session ends and its number
+    // is reissued to a live process, the sweep sees "owned by something alive"
+    // and — without the start time to prove the recycle — never reaps the tab.
+    // Omitting it here silently disables that guard and leaks every ended
+    // session's tabs until the idle-TTL or the count cap catches them.
+    const updates = { url: page.url() };
+    if (ownerStart != null) updates.ownerStart = ownerStart;
+    writeTab(ownerPid, targetId, updates);
     return targetId;
   } catch {
     return null;
@@ -231,7 +241,7 @@ async function registerTab(context, page) {
 async function touchTab(context, page) {
   try {
     const targetId = await targetIdOf(context, page);
-    const { ownerPid } = ownerInfo();
+    const { ownerPid, ownerStart } = ownerInfo();
     const file = tabFile(ownerPid, targetId);
     let recorded = null;
     try {
@@ -240,10 +250,17 @@ async function touchTab(context, page) {
       return targetId;  // not ours (or gone) — nothing to mark
     }
     const url = page.url();
-    // Rewrite only when the recorded URL has gone stale; otherwise the activity
-    // bump alone is enough and costs no content write.
-    if (recorded.url !== url) writeTab(ownerPid, targetId, { url });
-    else bumpMtime(file);
+    // Rewrite when the recorded URL has gone stale, or to backfill a missing
+    // ownerStart onto a tab this session recorded before start times were saved
+    // — otherwise the activity bump alone is enough and costs no content write.
+    const needStart = ownerStart != null && recorded.ownerStart !== ownerStart;
+    if (recorded.url !== url || needStart) {
+      const updates = { url };
+      if (ownerStart != null) updates.ownerStart = ownerStart;
+      writeTab(ownerPid, targetId, updates);
+    } else {
+      bumpMtime(file);
+    }
     return targetId;
   } catch {
     return null;
@@ -367,4 +384,36 @@ async function closeTab(page) {
   }
 }
 
-module.exports = { openTab, closeTab, findTab, touchTab, registerTab, unregisterTab, TABS_DIR };
+// Run the tab reap now, synchronously, as the emergency lever when a connect
+// wedges (see connectBrowser in script-template.js). The reap that reclaims
+// ended-session tabs must judge process liveness through the Win32 API, which
+// only chauffeur.py has, so this triggers that one implementation rather than
+// reimplementing it here — a JS copy would drift and lose the recycled-PID
+// guard. chauffeur.py sits next to this file (both are plugin templates), so it
+// is found by __dirname regardless of where the calling script runs from; the
+// CDP port comes from the shared state file when the caller doesn't pass one.
+// Best-effort: any failure returns false so the caller still retries the
+// connect. Returns true only when the reap process exits cleanly.
+function reapTabs(cdpPort) {
+  try {
+    const cp = require('child_process');
+    const chauffeur = path.join(__dirname, 'chauffeur.py');
+    if (!fs.existsSync(chauffeur)) return false;
+    let port = cdpPort;
+    if (!port) {
+      try { port = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')).port; } catch { /* no state yet */ }
+    }
+    const args = [chauffeur, '--reap'];
+    if (port) args.push('--port', String(port));
+    const result = cp.spawnSync('python', args, {
+      timeout: 30000,
+      shell: process.platform === 'win32',
+      stdio: 'ignore',
+    });
+    return result.status === 0;
+  } catch {
+    return false;
+  }
+}
+
+module.exports = { openTab, closeTab, findTab, touchTab, registerTab, unregisterTab, reapTabs, TABS_DIR };

@@ -2,8 +2,9 @@
 
 The entry point for the dedicated Edge/Chrome automation instance. Its default
 mode launches or reuses the browser (and sweeps stale tabs on reuse); other
-modes act on an already-running one (e.g. `--close-owned` closes this session's
-tabs). A noun-named multitool, so every mode reads sensibly — not just launch.
+modes act on an already-running one (`--close-owned` closes this session's tabs;
+`--reap` sweeps the browser's tabs on demand as the emergency unwedge lever). A
+noun-named multitool, so every mode reads sensibly — not just launch.
 
 Default (persistent) mode — launch or reuse:
     python chauffeur.py
@@ -74,10 +75,12 @@ TABS_DIR = CHAUFFEUR_DIR / "tabs"
 # time (default 12h — comfortably past a browser login and any lunch/afk gap, so
 # it only catches genuinely abandoned tabs); MAX_TABS is a hard ceiling that
 # closes the least-recently-active until back under it, so the browser can never
-# accumulate enough tabs to crash (default 15 — well under the ~20 where the
-# browser starts to struggle). Both are env-overridable without a code change.
+# accumulate enough tabs to crash (default 10 — only a handful of sessions drive
+# the browser at once and each keeps roughly one active tab, so ten leaves ample
+# headroom while staying well under the ~20 where the browser starts to
+# struggle). Both are env-overridable without a code change.
 TAB_TTL_SECONDS = int(os.environ.get("BROWSER_CHAUFFEUR_TAB_TTL", 12 * 60 * 60))
-MAX_TABS = int(os.environ.get("BROWSER_CHAUFFEUR_MAX_TABS", 15))
+MAX_TABS = int(os.environ.get("BROWSER_CHAUFFEUR_MAX_TABS", 10))
 
 
 def is_port_available(port: int) -> bool:
@@ -533,6 +536,27 @@ def close_owned_tabs() -> int:
     return 0
 
 
+def reap_now(port: int | None) -> int:
+    """Sweep the running browser's tabs on demand — the emergency unwedge lever.
+
+    The same reap that runs on every reuse (owner reap → idle age-out → count
+    cap), but callable directly so a script whose `connectOverCDP` just wedged
+    can reclaim orphaned and over-the-cap tabs and retry the attach itself,
+    instead of surfacing the wedge for a human to clear by hand (see
+    script-template.js `connectBrowser`). Uses the given port, or the shared
+    state file's when none is passed. A no-op when no browser is live — there is
+    nothing to sweep, and the caller's retry will fail with its own clear error.
+    """
+    if port is None:
+        state = load_state()
+        port = state.get("port") if state else None
+    if port is None or not is_cdp_alive(port):
+        print("No live browser to reap.")
+        return 0
+    sweep_tabs(port)
+    return 0
+
+
 def launch_browser(port: int, url: str, profile_dir: str) -> tuple[str, int]:
     Path(profile_dir).mkdir(parents=True, exist_ok=True)
 
@@ -635,10 +659,15 @@ def main() -> int:
                    help="Profile directory (--fresh only; auto-generated if omitted)")
     p.add_argument("--close-owned", action="store_true",
                    help="Close all tabs owned by this session (BROWSER_CHAUFFEUR_OWNER_PID) and exit")
+    p.add_argument("--reap", action="store_true",
+                   help="Sweep the running browser's tabs now and exit (emergency unwedge; uses --port or the state file's port)")
     args = p.parse_args()
 
     if args.close_owned:
         return close_owned_tabs()
+
+    if args.reap:
+        return reap_now(args.port)
 
     if args.fresh:
         if args.port is None:

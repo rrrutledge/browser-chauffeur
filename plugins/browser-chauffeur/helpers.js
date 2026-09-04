@@ -15,7 +15,7 @@ const { dismissOverlays } = require('./skills/browser-chauffeur/templates/overla
 const { screenshotOnFailure } = require('./skills/browser-chauffeur/templates/screenshot-on-failure');
 const { cleanupStaleState } = require('./skills/browser-chauffeur/templates/cleanup-stale-state');
 const { verifyAfterMutation } = require('./skills/browser-chauffeur/templates/verify-after-mutation');
-const { openTab, closeTab, findTab, touchTab, registerTab, unregisterTab } = require('./skills/browser-chauffeur/templates/tab-registry');
+const { openTab, closeTab, findTab, touchTab, registerTab, unregisterTab, reapTabs } = require('./skills/browser-chauffeur/templates/tab-registry');
 
 // --- Process guard (installed on require) ---
 // A chauffeur script connects to the browser over a live CDP WebSocket, and that
@@ -86,5 +86,6 @@ module.exports = {
   touchTab,
   registerTab,
   unregisterTab,
+  reapTabs,
   cancelScriptWatchdog,
 };

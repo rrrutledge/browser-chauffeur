@@ -14,7 +14,7 @@ const { chromium } = (() => {
   catch { return require(require('path').join(require('os').homedir(), '.claude', 'browser-chauffeur', 'node_modules', 'playwright-core')); }
 })();
 
-const { dismissOverlays, openTab, closeTab, screenshotOnFailure } = (() => {
+const { dismissOverlays, openTab, closeTab, screenshotOnFailure, reapTabs } = (() => {
   try { return require('browser-chauffeur-helpers'); }
   catch { return require(require('path').join(require('os').homedir(), '.claude', 'browser-chauffeur', 'node_modules', 'browser-chauffeur-helpers')); }
 })();
@@ -36,26 +36,46 @@ const cdpPort = argValue('cdp-port') || '9222';
 // persistent profile that has accumulated many tabs — or has a single wedged
 // renderer — that enumeration can hang indefinitely (Playwright's own `timeout`
 // option only bounds the socket connect, not post-connect target enumeration).
-// Race it against a hard timeout so a wedged browser fails fast with an
-// actionable error instead of hanging forever.
+// Race it against a hard timeout so a wedged browser fails fast instead of
+// hanging forever.
 const CONNECT_TIMEOUT_MS = 30000;
 
-async function connectBrowser() {
+function attachOnce() {
   let timer;
   const timeout = new Promise((_, reject) => {
     timer = setTimeout(
       () => reject(new Error(
         `connectOverCDP did not complete within ${CONNECT_TIMEOUT_MS}ms on port ${cdpPort}. ` +
-        `The persistent profile likely has too many open tabs or a wedged renderer. ` +
-        `Reset the profile with cleanup-browser.py --reset (then re-launch and log in again), or retry.`
+        `The persistent profile likely has too many open tabs or a wedged renderer.`
       )),
       CONNECT_TIMEOUT_MS,
     );
   });
+  return Promise.race([chromium.connectOverCDP(`http://localhost:${cdpPort}`), timeout])
+    .finally(() => clearTimeout(timer));
+}
+
+// Attach, and on a wedge, self-heal: reap orphaned and over-the-cap tabs, then
+// retry the attach once. The wedge is almost always an accumulation of tabs left
+// open by ended sessions, so clearing them is exactly what unblocks the connect —
+// and doing it here means a wedge heals on its own instead of stopping the run
+// for a human to close tabs by hand. reapTabs is best-effort; a genuinely
+// unrecoverable browser (a wedged renderer no reap can free) still surfaces the
+// actionable error on the second failure.
+async function connectBrowser() {
   try {
-    return await Promise.race([chromium.connectOverCDP(`http://localhost:${cdpPort}`), timeout]);
-  } finally {
-    clearTimeout(timer);
+    return await attachOnce();
+  } catch (first) {
+    console.error(`${first.message} Reaping stale tabs and retrying the attach once...`);
+    reapTabs(cdpPort);
+    try {
+      return await attachOnce();
+    } catch (second) {
+      throw new Error(
+        `${second.message} Auto-reap did not free it — a renderer may be wedged. ` +
+        `Reset the profile with cleanup-browser.py --reset (then re-launch and log in again), or retry.`
+      );
+    }
   }
 }
 

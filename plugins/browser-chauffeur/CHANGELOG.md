@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.16.0] - 2026-09-04
+
+Reclaims the ended-session tabs that were quietly piling up and wedging the browser, and lets a wedge heal itself instead of stopping for a human to close tabs by hand.
+The owner reap — the primary cleanup that closes a tab as soon as its owning session ends — was reclaiming almost nothing: a session's tabs stayed open until the 12h idle age-out or the hard tab-count ceiling, and between those the accumulation grew until a new attach couldn't get into the profile.
+
+### Fixed
+- **A tab now records its owning session's start time, so the recycled-PID guard actually works.** The guard that tells a session's tabs from those of a later process that reused its PID was added earlier but never had anything to check against: the start time was read from the environment yet never written into the tab's own record, so every record read back as having none. With no recorded start, an ended session whose PID Windows had already reissued to a live process read as "owned by something alive," and its tabs were never reaped — the exact leak that accumulated tabs until the browser wedged. The start time is now saved when a tab is registered, and backfilled onto an older record the next time its session touches the tab, so the reap can prove the recycle and reclaim the tab promptly.
+
+### Added
+- **A wedged connection now heals itself.** When a script's attach to the browser can't complete within its timeout — almost always because ended sessions left too many tabs open — it reaps orphaned and over-the-cap tabs and retries the attach once, on its own, so the run continues instead of surfacing a wedge for the user to clear by closing tabs. Only a browser no reap can free (a wedged renderer) still surfaces, now with an actionable message. The same on-demand sweep is available directly as `chauffeur.py --reap` for scripts and tooling that need to trigger it.
+
+### Changed
+- **The hard tab-count ceiling defaults to 10, down from 15** (still overridable with `BROWSER_CHAUFFEUR_MAX_TABS`). Only a handful of sessions drive the browser at once and each keeps roughly one active tab, so ten leaves ample headroom while giving less room for tabs to pile up before the ceiling closes the least-recently-active ones — and, with the owner reap now actually reclaiming ended-session tabs, the ceiling is the rare backstop it was meant to be rather than the thing holding the line.
+
 ## [1.15.2] - 2026-09-03
 
 ### Fixed
