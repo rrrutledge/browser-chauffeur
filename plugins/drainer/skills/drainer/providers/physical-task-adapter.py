@@ -21,7 +21,6 @@ computed fresh every cycle — of at least its own duration (plus a buffer) befo
 (non-solo) calendar commitment, because unlike every other source, nobody but Russell can do the
 actual work.
 """
-import glob
 import json
 import os
 import re
@@ -31,7 +30,7 @@ from datetime import datetime, timezone
 _SCRIPTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts")
 if _SCRIPTS not in sys.path:
     sys.path.insert(0, _SCRIPTS)
-from provider_base import ProviderBase, ProviderError, run_node, slug  # noqa: E402
+from provider_base import ProviderBase, ProviderError, run_node, slug, find_skill_script  # noqa: E402
 
 
 class Provider(ProviderBase):
@@ -46,24 +45,11 @@ class Provider(ProviderBase):
 
     @staticmethod
     def _find_calendar_js():
-        """Locate ms-graph's calendar.js across both the dev-repo and installed-plugin-cache layouts
-        — same search shape as outlook-graph-adapter's `_find_mail_js`."""
-        d = os.path.dirname(os.path.abspath(__file__))
-        while d and os.path.basename(d) != "plugins":
-            parent = os.path.dirname(d)
-            if parent == d:
-                d = None
-                break
-            d = parent
-        if d:
-            sibling = os.path.join(d, "ms-graph", "skills", "ms-graph", "scripts", "calendar.js")
-            if os.path.exists(sibling):
-                return sibling
-            matches = glob.glob(os.path.join(d, "**", "ms-graph", "**", "scripts", "calendar.js"),
-                                recursive=True)
-            if matches:
-                return sorted(matches)[-1]
-        raise ProviderError("Could not locate ms-graph calendar.js for physical-task.", kind="config")
+        """Locate ms-graph's calendar.js — same search shape as outlook-graph-adapter's `_find_mail_js`."""
+        path = find_skill_script(__file__, "ms-graph", os.path.join("scripts", "calendar.js"))
+        if not path:
+            raise ProviderError("Could not locate ms-graph calendar.js for physical-task.", kind="config")
+        return path
 
     # --------------------------------------------------------------- config
     def configure(self, cfg):
