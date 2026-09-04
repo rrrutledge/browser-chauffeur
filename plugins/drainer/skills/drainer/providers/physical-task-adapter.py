@@ -11,8 +11,8 @@ The model: a task is QUEUED while it sits on the dedicated calendar with a start
 AND a start time landing EXACTLY on the overnight parking grid (`:00` at midnight, `:00/:15/:30/:45`
 at 1 AM, `:00/:30` at 2 AM — see calendar.js's isQueuedSlot) — mirrors the old pre-drainer habit of
 staging a to-do in an overnight band and dragging it out once picked up. Exact-slot matching (not just
-"somewhere in that hour") matters because CLEAR's "started" step moves start to the real wall-clock
-now, which can itself fall inside 00:00-02:59 if Russell's up working late — a real timestamp
+"somewhere in that hour") matters because CLEAR's "started" step moves start to the moment the worker
+tab launched, which can itself fall inside 00:00-02:59 if Russell's up working late — a real timestamp
 essentially never lands exactly on a slot, so alignment is what actually distinguishes "still sitting
 untouched" from "just started." Nothing here ever moves a queued task on its own, so an undone one just
 keeps coming back until it's started; there is no delete and no second archive calendar. What's unique
