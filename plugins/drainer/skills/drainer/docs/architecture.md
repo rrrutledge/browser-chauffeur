@@ -100,7 +100,12 @@ The plugin never contains anything that identifies the user or their organizatio
 Each contract is owned by exactly one file — this doc only points to them:
 
 - **Triage** — the one rubric, *"is there something for the user to do?"* sorted into needs-you /
-  auto-handle / fyi / junk → `engine/triage.md`.
+  auto-handle / fyi / junk → `engine/triage.md`. It also carries the **security screen**: an input
+  guardrail that runs on every item, judging whether the content is trying to manipulate the agent
+  (prompt injection) or induce an action against the user's interests, and on a hit strips the item's
+  autonomy (never auto-handled, never silently digested) and routes it to the user. `worker-core.md`
+  re-applies the same screen to content a worker resolves later (a pointer's real body) that triage
+  never saw.
 - **Poller contract** - enumerate / cap / dispatch / record, seen-state, the source-state reconcile ->
   `engine/poller-core.md`.
 - **Worker procedure** — read brain → situational-check → do → draft → advance → `engine/worker-core.md`.
