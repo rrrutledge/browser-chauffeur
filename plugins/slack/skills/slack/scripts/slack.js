@@ -14,7 +14,10 @@
 //                 cursor, oldest-first, each with from/received/text — so a conversation that accreted
 //                 several distinct asks between reads exposes every one, not only its newest message)
 // Show one:      node slack.js --show --channel=<C> --ts=<ts> [--thread-ts=<tts>] [--json]
-//                (the message text + a chat.getPermalink url; pass --thread-ts for a threaded reply)
+//                (the message text + a chat.getPermalink url; pass --thread-ts for a threaded reply.
+//                 An app/bot post - GitHub, CI, a release bot - whose content lives in attachments or
+//                 Block Kit blocks rather than the top-level text is read from there too, so it never
+//                 comes through blank; the same holds for --list-unread's `unread` span and --history)
 // History:       node slack.js --history --channel=<C> [--thread-ts=<tts>] [--limit=50] [--json]
 //                (recent messages, oldest first — a whole thread when --thread-ts is given, else the
 //                 channel/DM/group-DM timeline; use this before deciding a move so you see anything
@@ -130,9 +133,53 @@ async function renderText(text) {
   return clean(out);
 }
 
+// The readable content of one attachment card: its pretext, author, title, body text, and any
+// title/value field pairs, in that order. `fallback` (the app's own plain-text rendering) is used only
+// when the card exposes none of those, so a card with structure never doubles up with its fallback.
+function attachmentText(m) {
+  const parts = [];
+  for (const a of m.attachments || []) {
+    const bits = [];
+    for (const f of [a.pretext, a.author_name, a.title, a.text]) if (f) bits.push(f);
+    for (const fld of a.fields || []) {
+      const kv = [fld.title, fld.value].filter(Boolean).join(': ');
+      if (kv) bits.push(kv);
+    }
+    if (bits.length) parts.push(bits.join('\n'));
+    else if (a.fallback) parts.push(a.fallback);
+  }
+  return parts.join('\n');
+}
+
+// Every human-readable string a Block Kit block tree carries: a node's own `text` (a bare string, or a
+// {text} object as section/header blocks nest it), its `fields[].text`, and its nested `elements`
+// (rich_text sections and context blocks). Walks recursively; ignores the non-text structural keys.
+function harvestBlockText(node, out) {
+  if (!node || typeof node !== 'object') return;
+  if (typeof node.text === 'string') out.push(node.text);
+  else if (node.text && typeof node.text === 'object') harvestBlockText(node.text, out);
+  for (const f of node.fields || []) harvestBlockText(f, out);
+  for (const el of node.elements || []) harvestBlockText(el, out);
+}
+
+// A message's readable content, drawn from wherever Slack put it. An app/bot post (GitHub, CI, a
+// release bot) routinely leaves the top-level `text` empty and carries its real content in `attachments`
+// or Block Kit `blocks`; pull from those so such a message is never captured blank. When `text` is
+// present it IS the body - Slack copies it into `blocks` only for rich rendering, so harvesting those
+// too would just repeat it - while an attachment card, being separate content, is still appended.
+function extractText(m) {
+  const top = (m.text || '').trim();
+  const attach = attachmentText(m).trim();
+  if (top) return attach ? `${top}\n${attach}` : top;
+  if (attach) return attach;
+  const blocks = [];
+  for (const b of m.blocks || []) harvestBlockText(b, blocks);
+  return blocks.join('\n').trim();
+}
+
 // Build a short joined preview from up to 5 messages (oldest-first), rendered and trimmed.
 async function previewText(msgs) {
-  return clean((await Promise.all(msgs.slice(0, 5).reverse().map(m => renderText(m.text)))).join(' / ')).slice(0, 600);
+  return clean((await Promise.all(msgs.slice(0, 5).reverse().map(m => renderText(extractText(m))))).join(' / ')).slice(0, 600);
 }
 
 // Build the full unread span (oldest-first) for an item body: every unread message kept whole, with its
@@ -142,7 +189,7 @@ async function previewText(msgs) {
 async function unreadSpan(msgs) {
   const out = [];
   for (const m of msgs.slice().reverse()) {
-    out.push({ ts: m.ts, from: await userName(m.user), received: tsToIso(m.ts), text: await renderText(m.text) });
+    out.push({ ts: m.ts, from: await userName(m.user), received: tsToIso(m.ts), text: await renderText(extractText(m)) });
   }
   return out;
 }
@@ -287,7 +334,7 @@ async function show() {
   const m = await fetchOne(args.channel, args.ts, args['thread-ts']);
   if (!m) { console.log('Message not found.'); return; }
   const from = await userName(m.user);
-  const text = await renderText(m.text);
+  const text = await renderText(extractText(m));
   let permalink = '';
   try { permalink = (await call('chat.getPermalink', { channel: args.channel, message_ts: args.ts })).permalink || ''; }
   catch { /* permalink optional */ }
@@ -322,7 +369,7 @@ async function history() {
     out.push({
       ts: m.ts, threadTs: m.thread_ts || '', replyCount: m.reply_count || 0,
       from: await userName(m.user), fromId: m.user,
-      received: tsToIso(m.ts), text: await renderText(m.text),
+      received: tsToIso(m.ts), text: await renderText(extractText(m)),
     });
   }
   if (args.json) { console.log(JSON.stringify(out, null, 2)); return; }

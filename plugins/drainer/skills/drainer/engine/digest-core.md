@@ -123,12 +123,19 @@ If an auto-handled item is itself outreach-related, apply the Trello check from 
 
 Group related fyi items (same thread, same sender, same topic — e.g. a run of GitHub PR
 notifications on one PR collapses to one line). For each group write a **rich enough summary that
-Russell never needs to open the item itself**: who/what, the substance (not just the subject), and any
-date or number that matters. For a content-carrying bulletin — a school/HOA/church newsletter or a class
-welcome — also pull the to-dos out of the body into a short **action items for you** list, the way a
-meeting recap surfaces its owner-assigned next steps: every form to sign and return, supply list,
-deadline, RSVP, or link he's meant to open. Link the source with descriptive text per the
-`document-authoring` voice, never a bare URL. Order by what's most worth knowing first.
+Russell never needs to open the item itself**: who/what, the substance, and any date or number that
+matters. **Draw that substance from the captured body, not from the subject.** A great many
+notifications carry a subject that only announces *that* something was posted - "Kevin Richards posted
+in 8th Grade Boys Athletics 26-27", "New message in <group>", "<person> commented on <thread>" - while
+the real content sits in the body the provider captured (an email item's `emailFile`, a Slack item's
+`bodyFile`). Read that body and say what it actually tells him - the Friday practice that's cancelled,
+the game ticket he has to buy, the deadline that moved - the same way you'd summarize a newsletter's
+body, never the announcement line restated. For a content-carrying bulletin - a school/HOA/church
+newsletter, a class welcome, or a group/team-app post like the one above - also pull the to-dos out of
+the body into a short **action items for you** list, the way a meeting recap surfaces its owner-assigned
+next steps: every form to sign and return, supply list, deadline, RSVP, or link he's meant to open. Link
+the source with descriptive text per the `document-authoring` voice, never a bare URL. Order by what's
+most worth knowing first.
 
 **Resolve pointers, don't restate them.** An fyi item can be a **pointer** (a stub whose real content is
 behind a link - see `triage.md`): a school newsletter Smore link, a hosted "view in browser" bulletin, or
