@@ -70,6 +70,9 @@ Under `scripts/` (run with `node`):
     concluding a thread is unresponded.)
   - Show one: `node gmail.js --show=<message-id>` (`<message-id>` is the Message-ID header, with the
     angle brackets, e.g. `<abc@mail.gmail.com>`)
+  - Envelope-auth headers: `node gmail.js --auth=<message-id>` (JSON with the message's
+    `Authentication-Results` and `Received-SPF` values — the SPF/DKIM/DMARC provenance Gmail stamped on
+    arrival, which the `From:` line can't give; read by the drainer's security screen)
   - List drafts: `node gmail.js --list-drafts [--top=30]`
   - Draft reply (never sends): `node gmail.js --reply --message-id=<id> --body-file=reply.md`
     (appends a threaded draft to `[Gmail]/Drafts` with In-Reply-To/References set + the quoted original).
