@@ -16,8 +16,8 @@ The forms are evidence, not the rule: one appearing is not automatically a viola
 Rules that constrain *how you get there* rather than what lands (draft then revisit, verify line by line, run the overlap search before adding a bullet) are writer-only and live in `document-authoring`.
 A reviewer holding only the output cannot evaluate them.
 
-Medium-specific rules - register, warmth, personas, emoji, sign-offs, asks, nudges - also live in `document-authoring`.
-They are reviewable, but only for outward messages.
+Medium-specific rules - register, warmth, asks, links, personas, emoji, sign-offs, nudges - live in `message-rules`, the companion rubric.
+They are reviewable, but only for outward messages, so a reviewer loads `message-rules` alongside this file for a message and this file alone for anything else that ships.
 
 ---
 
