@@ -127,7 +127,11 @@ elseif ($SeedFile) {
   # Same receipt as the -PromptFile branch above, so a handoff can be peeked at too — this previously
   # only fired when a caller happened to pass -SessionId explicitly, which none do.
   $SessionId = Register-SessionReceipt -AnchorFile $SeedFile -SessionId $SessionId
-  $seed = (Get-Content -Raw -LiteralPath $SeedFile).Trim()
+  # Hand claude a short pointer to the seed file rather than the seed's own text. PowerShell 5.1 mangles a
+  # long, multi-line, or backtick-containing native-command argument, silently truncating it mid-content, so
+  # inlining a full seed loses the tail of it. The seed already lives on disk, so point claude at the file and
+  # let it open the file itself — the same tactic the -PromptFile branch above uses for exactly this reason.
+  $seed = "Your task instructions are in '$SeedFile' - open it and begin immediately without waiting for further input."
 }
 elseif (-not $Resume) {
   Write-Host "launch-session: supply -PromptFile, -SeedFile, or -Resume <session-id>" -ForegroundColor Red
