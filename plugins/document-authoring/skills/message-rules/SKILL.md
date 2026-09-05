@@ -216,8 +216,6 @@ The specifics that most often separate a message that reads as Russell's from on
 - **Speak as the org when you represent it, and add a brief warm aside.**
   Writing on behalf of an organization Russell leads, use "we/us" for its appreciation, questions, position, and ongoing activity - not a bare, subject-less verb; open with a short human acknowledgment before getting to the point.
   This covers confirming a completed institutional-onboarding action too - "we made you a new email address" reads as the org processing someone into it, not Russell personally handling it; contrast the next bullet's personal "I'll", which is for work that's Russell's own to do, not the org's standing process.
-- **Never reference coffee, alcohol, or drinks** — for Russell or as a suggestion to others.
-  Pick a neutral alternative or omit.
 - **Confirming a factual yes/no is where the helper tail bites hardest** (the rule itself is in `authoring-rules`).
   Answer in the fewest words that carry it and stop — "Yes - Bluevine.", not a sentence justifying the answer with internal evidence (prior migrations, other accounts already switched).
   That evidence only supports a decision already made; the asker wanted the answer, not the paper trail behind it.

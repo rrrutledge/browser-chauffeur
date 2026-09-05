@@ -100,6 +100,10 @@ Within a paragraph or a multi-sentence bullet, start each sentence on a new line
 Rendered output is identical, but a one-sentence edit then touches one line instead of marking the whole paragraph changed in the diff.
 **Check:** markdown source only. Never applies to a message composed in a web UI, where there is no source to diff.
 
+**Never reference coffee, alcohol, or drinks.**
+Not Russell's own, and not as a suggestion to someone else - pick a neutral alternative or omit.
+**Check:** coffee, alcohol, beer, wine, cocktails, or "grabbing a drink" named as Russell's activity or offered to another person.
+
 ---
 
 ## Where the rules pull against each other
