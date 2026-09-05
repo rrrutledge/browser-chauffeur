@@ -6,6 +6,8 @@ Each source the poller drives ships a `providers/<name>-adapter.py` next to its 
 poller itself. This module is the small shared surface (subprocess + slug helpers + the interface).
 """
 import ctypes
+import glob
+import os
 import re
 import subprocess
 import threading
@@ -152,6 +154,49 @@ def run_node(args, **kw):
 def slug(s, maxlen=18):
     s = re.sub(r"[^a-z0-9]+", "-", (s or "").lower()).strip("-")
     return s[:maxlen].strip("-")
+
+
+def find_skill_script(start_file, skill, rel_path):
+    """Locate a sibling skill's script/module across the two layouts a plugin actually runs from.
+
+    Dev repo:   <plugins>/<skill>/skills/<skill>/<rel_path>                    (sibling of drainer)
+    Installed:  <plugins>/cache/<marketplace>/<skill>/<ver>/skills/<skill>/<rel_path>
+    Walks up from `start_file` to the first ancestor directory literally named `plugins`, tries the
+    dev-repo sibling path, and otherwise globs the installed-cache layout specifically, returning the
+    highest real version (parsed as a digit tuple, so `1.10.1` correctly beats `1.9.0`) among the
+    matches.
+
+    Deliberately never falls back to a bare recursive glob under `<plugins>/`: that would also match
+    `<plugins>/marketplaces/<marketplace>/plugins/<skill>/...` — a raw git checkout of the plugin
+    source kept in sync for `claude plugin update` to read, never `npm install`-ed, so a script found
+    there can't actually run (e.g. a missing `node_modules` dependency). Only the two layouts a plugin
+    is actually installed/run from are searched.
+
+    Returns None if nothing resolves; the caller raises its own ProviderError with a source-specific
+    message.
+    """
+    d = os.path.dirname(os.path.abspath(start_file))
+    while d and os.path.basename(d) != "plugins":
+        parent = os.path.dirname(d)
+        if parent == d:
+            d = None
+            break
+        d = parent
+    if not d:
+        return None
+    sibling = os.path.join(d, skill, "skills", skill, rel_path)
+    if os.path.exists(sibling):
+        return sibling
+    suffix = os.path.join("skills", skill, rel_path)
+    matches = glob.glob(os.path.join(d, "cache", "*", skill, "*", suffix))
+    if not matches:
+        return None
+
+    def version_tuple(path):
+        ver = path[:-(len(suffix) + 1)].rsplit(os.sep, 1)[-1]
+        return tuple(int(n) for n in re.findall(r"\d+", ver))
+
+    return max(matches, key=version_tuple)
 
 
 # ---------------------------------------------------------------------------- correspondent identity
