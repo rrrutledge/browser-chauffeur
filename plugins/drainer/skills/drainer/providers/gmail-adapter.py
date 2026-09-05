@@ -8,7 +8,6 @@ interface — it contains no Gmail specifics.
 This is the IMAP sibling of `outlook-graph-adapter.py` (Graph). Same operations, different transport:
 gmail.js talks IMAP to imap.gmail.com with GMAIL_ADDRESS / GMAIL_APP_PASSWORD from the environment.
 """
-import glob
 import json
 import os
 import re
@@ -20,7 +19,7 @@ from datetime import datetime, timezone
 _SCRIPTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts")
 if _SCRIPTS not in sys.path:
     sys.path.insert(0, _SCRIPTS)
-from provider_base import ProviderBase, ProviderError, run_node, slug  # noqa: E402
+from provider_base import ProviderBase, ProviderError, run_node, slug, find_skill_script  # noqa: E402
 
 
 class Provider(ProviderBase):
@@ -31,30 +30,11 @@ class Provider(ProviderBase):
 
     @staticmethod
     def _find_gmail_js():
-        """Locate the gmail skill's gmail.js across both the dev-repo and installed-plugin-cache layouts.
-
-        Dev repo:   <plugins>/gmail/skills/gmail/scripts/gmail.js          (sibling of drainer)
-        Installed:  <plugins>/cache/<marketplace>/gmail/<ver>/skills/gmail/scripts/gmail.js
-        Walk up to the first `plugins` dir, then try the sibling path, else glob for any gmail
-        gmail.js beneath it and take the highest-versioned (lexically greatest) path.
-        """
-        d = os.path.dirname(os.path.abspath(__file__))
-        while d and os.path.basename(d) != "plugins":
-            parent = os.path.dirname(d)
-            if parent == d:
-                d = None
-                break
-            d = parent
-        if d:
-            sibling = os.path.join(d, "gmail", "skills", "gmail", "scripts", "gmail.js")
-            if os.path.exists(sibling):
-                return sibling
-            matches = glob.glob(os.path.join(d, "**", "gmail", "**", "scripts", "gmail.js"),
-                                recursive=True)
-            if matches:
-                return sorted(matches)[-1]  # highest version / latest path
-        raise ProviderError("Could not locate the gmail skill's gmail.js for the gmail provider.",
-                            kind="config")
+        path = find_skill_script(__file__, "gmail", os.path.join("scripts", "gmail.js"))
+        if not path:
+            raise ProviderError("Could not locate the gmail skill's gmail.js for the gmail provider.",
+                                kind="config")
+        return path
 
     @staticmethod
     def _web_link(message_id):

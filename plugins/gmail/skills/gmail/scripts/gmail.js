@@ -120,6 +120,29 @@ function withSignature(html) {
   return sig ? `${html}<br><br>${sig}` : html;
 }
 
+// nodemailer's MailComposer auto-generates a plain-text alternative when a mail object carries only
+// `html`, and that auto-generated part has been observed to silently drop whole paragraphs on a body
+// containing a deeply nested quoted history (the common Outlook-style "From:/Date:/To:" chain embedded
+// as literal HTML inside a <blockquote>) - the HTML part staged and sent correctly, but `--show` and any
+// other reader of `parsed.text` saw a truncated message. Deriving text explicitly from the same html
+// string this function already built removes the mismatch: both MIME parts trace back to one source.
+function htmlToPlainText(html) {
+  return (html || '')
+    .replace(/<(script|style)[\s\S]*?<\/\1>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|blockquote|li|h[1-6])>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 const addr = (a) => a ? `${a.name || ''} <${a.address}>`.trim() : '?';
 const fromList = (arr) => (arr || []).map(addr).join(', ');
 const stripId = (id) => String(id || '').replace(/^<|>$/g, '');
@@ -301,9 +324,11 @@ function attachments() {
 }
 
 async function buildMime({ to, cc, subject, html, inReplyTo, references }) {
+  const styledHtml = withDefaultFont(html);
   const mail = {
     from: USER, to, cc, subject,
-    html: withDefaultFont(html),
+    html: styledHtml,
+    text: htmlToPlainText(styledHtml),
     attachments: attachments(),
     inReplyTo: inReplyTo ? `<${stripId(inReplyTo)}>` : undefined,
     references: references,
