@@ -20,6 +20,11 @@
 // Show one:      node gmail.js --show=<message-id>
 //                (<message-id> is the RFC822 Message-ID header, e.g. <abc@mail.gmail.com>; looked up
 //                 in All Mail, so it shows regardless of whether the message is still in the inbox)
+// Auth headers:  node gmail.js --auth=<message-id>
+//                (emits a JSON object with the message's envelope-authentication headers as Gmail
+//                 stamped them — the raw Authentication-Results value(s) and any Received-SPF value(s),
+//                 plus the From. This is the SPF/DKIM/DMARC provenance the spoofable From: line can't
+//                 give; the drainer's security screen reads it per item. Looked up in All Mail like --show.)
 // List drafts:   node gmail.js --list-drafts [--top=30]
 // Save attachments: node gmail.js --save-attachments=<message-id> [--out-dir=<dir>]
 //                (downloads every attachment on a message to <dir> (default: cwd); looked up in the
@@ -247,6 +252,33 @@ async function show(c) {
   if (parsed.cc) console.log(`Cc: ${parsed.cc.text}`);
   console.log(`Date: ${parsed.date ? parsed.date.toISOString() : ''}`);
   console.log('\n' + (parsed.text || clean(parsed.html) || '(no body)'));
+}
+
+async function auth(c) {
+  // The envelope-authentication headers Gmail stamped onto the message, as JSON for the drainer's
+  // security screen. Authentication-Results carries the SPF/DKIM/DMARC verdicts (and the domains that
+  // actually authenticated); Received-SPF carries the SPF check on its own. Both can appear more than
+  // once (each relay adds its own), so headerLines is read directly to keep every instance — the value
+  // is the header line with its "Name:" prefix stripped. Interpretation lives in the drainer's Python
+  // adapters, so this just exposes the raw values. Looked up in All Mail like --show.
+  const lock = await c.getMailboxLock(ALLMAIL);
+  let msg;
+  try {
+    const uid = await findUid(c, args.auth);
+    if (uid) msg = await c.fetchOne(String(uid), { source: true }, { uid: true });
+  } finally { lock.release(); }
+  if (!msg) { console.log('{}'); return; }
+  const parsed = await simpleParser(msg.source);
+  const headerValues = (name) => (parsed.headerLines || [])
+    .filter(h => h.key === name)
+    .map(h => h.line.replace(/^[^:]*:\s*/, '').trim())
+    .filter(Boolean);
+  console.log(JSON.stringify({
+    from: parsed.from ? parsed.from.text : '',
+    fromAddress: parsed.from && parsed.from.value && parsed.from.value[0] ? parsed.from.value[0].address : '',
+    authenticationResults: headerValues('authentication-results'),
+    receivedSpf: headerValues('received-spf'),
+  }, null, 2));
 }
 
 async function saveAttachments(c) {
@@ -519,6 +551,7 @@ async function check(c) {
     if (args['list-drafts']) return await listDrafts(c);
     if (args['save-attachments']) return await saveAttachments(c);
     if (args.show) return await show(c);
+    if (args.auth) return await auth(c);
     if (args.reply) return await reply(c);
     if (args['draft-new']) return await draftNew(c);
     if (args['send-draft']) return await sendDraft(c);
@@ -527,6 +560,6 @@ async function check(c) {
     if (args['list-sent']) return await listFolder(c, '[Gmail]/Sent Mail');
     if (args.search) return await search(c);
     if (args.check) return await check(c);
-    throw new Error('Specify --list-inbox, --list-sent, --search, --list-drafts, --save-attachments, --show, --reply, --draft-new, --send-draft, --delete-draft, --archive, or --check');
+    throw new Error('Specify --list-inbox, --list-sent, --search, --list-drafts, --save-attachments, --show, --auth, --reply, --draft-new, --send-draft, --delete-draft, --archive, or --check');
   } finally { await c.logout(); }
 })().catch(e => { console.error('Error:', e.message); process.exit(1); });

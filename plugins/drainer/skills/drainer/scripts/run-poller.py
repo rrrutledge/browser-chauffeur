@@ -535,6 +535,12 @@ def _screen_one(item, brain, repo, model, providers_by_name, bg_config_dir=None)
     preview = p.triage_text(item) if p else (item.get("preview") or "")
     payload = {"id": item["_id"], "source": item["_source"], "from": item.get("from"),
                "subject": item.get("subject"), "preview": preview}
+    # An email adapter surfaces the envelope-authentication verdict (SPF/DKIM/DMARC + true sending domain)
+    # here so the screen weighs provenance the spoofable From: line can't give (engine/screen.md's
+    # email-only section). None for a source with no envelope (Slack/Teams/Trello) or on a fetch miss.
+    auth = p.screen_signal(item) if p else None
+    if auth:
+        payload["auth"] = auth
     prompt = f"{brain}## Item to screen (JSON)\n{json.dumps(payload, indent=2)}\n"
     # Same background-account threading as triage (env-only, never process-wide) — see _triage_one.
     env = {**os.environ, "CLAUDE_CONFIG_DIR": bg_config_dir} if bg_config_dir else None
