@@ -169,6 +169,8 @@ A single clear sentence ending in a question is usually the whole message — re
   When you counter their objection with a fix, acknowledge their point in a clause and give the proposal in one plain sentence, then a short open check ("Sound OK?") - cut the full restatement of their concern, the justification for why the fix works, the list of problems it sidesteps, and any call offer; the expert sees all that already.
   The same short close applies when you're the one surfacing a discrepancy you found in their setup, not answering an objection of theirs: name the finding, then close on your own tentative lean as a plain question ("I'm thinking we should have something more narrow?") rather than a two-part "was that intentional, or should we match the usual pattern because it's Y" that makes them account for it - they'll supply the reasoning themselves if they disagree.
   Hedge with "that I know of" when not fully certain.
+- **When someone else owns a topic, loop them into the thread rather than answering on Russell's own authority — even when he's confident of the answer.**
+  Bringing in the real owner means they field the follow-up questions from then on, not Russell — less work for him over time than staying the sole point of contact on something that isn't his to own.
 - **Keep asks open and tentative — don't pre-commit.**
   Write as though the outcome is still open and give room to say no: hedge with "may"/"wondering", include alternatives, and avoid pinning the person to a specific action.
   When the primary ask is a harder commitment (money, sponsorship), pair it with an explicit lower-commitment fallback framed as a floor — "at the very least, X" — so declining the main ask still leaves an easy yes on the table.
