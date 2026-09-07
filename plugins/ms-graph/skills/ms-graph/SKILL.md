@@ -20,9 +20,10 @@ Read and write a **personal** Outlook.com mailbox, calendar, and contacts direct
 
 ## Setup (per machine)
 
-1. **Install deps** (idempotent, one-time): `node <skill>/scripts/setup.js` — installs the two libraries to `~/.claude/ms-graph/node_modules`.
-2. **Set secrets as env vars** (never in a file): `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET` from the Entra app registration.
-3. **Sign in once** via browser-chauffeur: run `node <skill>/scripts/auth.js`, which prints `AUTH_URL: <url>` and serves `http://localhost:8080/callback`. Have browser-chauffeur navigate to the URL and approve consent. MSAL caches tokens to `~/.claude/ms-graph/token-cache.json` (machine-local, not synced). Re-run if the cache is lost or ~90 days elapse.
+Claude Code installs the script dependencies automatically from the plugin-root `package.json` and lockfile whenever it installs or updates the plugin.
+
+1. **Set secrets as env vars** (never in a file): `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET` from the Entra app registration.
+2. **Sign in once** via browser-chauffeur: run `node <skill>/scripts/auth.js`, which prints `AUTH_URL: <url>` and serves `http://localhost:8080/callback`. Have browser-chauffeur navigate to the URL and approve consent. MSAL caches tokens to `~/.claude/ms-graph/token-cache.json` (machine-local, not synced). Re-run if the cache is lost or ~90 days elapse.
 
 **Secrets & data stay machine-local.** This plugin (the code) is shared across machines via the marketplace; the account credentials (env vars) and token cache are per-machine, so the personal mailbox is only reachable where you've set them up.
 

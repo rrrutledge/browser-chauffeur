@@ -38,7 +38,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 SKILL_DIR = os.path.dirname(SCRIPT_DIR)
 PROVIDERS_DIR = os.path.join(SKILL_DIR, "providers")
 sys.path.insert(0, SCRIPT_DIR)
-from provider_base import run_node, NO_WINDOW, ProviderError, ProviderBase, spawn_tab, spawn_silent, band_rank  # noqa: E402  (subprocess helper + typed provider failure)
+from provider_base import run_node, NO_WINDOW, ProviderError, ProviderBase, spawn_tab, spawn_silent, band_rank, slug  # noqa: E402  (subprocess helper + typed provider failure)
 _LIVE_UNSET = object()  # reconcile_unhandled sentinel: scan for live sessions itself unless one is passed in
 from drainer_config import read_config, find_provider_file, ensure_main_worktree  # noqa: E402  (shared reader + provider resolution + main-pinned config worktree)
 
@@ -838,6 +838,65 @@ def _spawn_scan_diagnostic(repo, runtime_dir, worker_model):
     )
 
 
+# A provider whose enumerate fails with kind="config" (a broken deploy — a missing helper .js or, most
+# often, a missing npm dependency in the skill's shared node_modules store) will fail identically every
+# cycle until a human fixes it, so the whole source stays dark. Left to the once-a-day digest, that is a
+# provider down for up to a day; a missing `imapflow` did exactly that. So a config failure gets the same
+# immediate visible-tab treatment a failed tab-scan does — one diagnostic tab to fix it now, not tomorrow.
+CONFIG_FAILURE_ALERT_THRESHOLD = 2       # consecutive config failures before the first diagnostic tab —
+                                         # a single blip mid-`claude plugin update` self-clears next cycle
+CONFIG_FAILURE_ALERT_COOLDOWN_SECONDS = 3600  # once alerted, don't spawn another for this provider hourly
+
+
+def _config_alert_due(health, name):
+    """Whether enough time has passed since this provider's last config-failure diagnostic tab to spawn
+    another. Keyed per provider (not the shared poller entry) so two providers breaking at once each get
+    their own tab, and a persistently-broken one doesn't get a fresh tab every 5-minute cycle."""
+    last = health.get(name, {}).get("last_config_alert_ts")
+    if not last:
+        return True
+    try:
+        last_dt = datetime.fromisoformat(last)
+    except ValueError:
+        return True
+    return (datetime.now(timezone.utc) - last_dt).total_seconds() >= CONFIG_FAILURE_ALERT_COOLDOWN_SECONDS
+
+
+def _spawn_provider_config_diagnostic(name, error, repo, runtime_dir, worker_model):
+    """Spawn a single visible worker tab to fix a provider whose enumerate failed with a deploy/config
+    error, so a dead source is repaired within a cycle instead of sitting dark until the daily digest."""
+    seeds = os.path.join(runtime_dir, "seeds")
+    os.makedirs(seeds, exist_ok=True)
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    prompt_file = os.path.join(seeds, f"provider-config-failure-{slug(name)}-{ts}.prompt.txt")
+    with open(prompt_file, "w", encoding="utf-8") as f:
+        f.write(
+            "You are a drainer diagnostic worker. Read `~/.claude/CLAUDE.md` first.\n\n"
+            f"The drainer poller's `{name}` provider has failed to enumerate with a deploy/config error "
+            "(kind=config) — a broken install that will NOT self-heal and fails every cycle, so that "
+            "whole source is dark until it's fixed. The most common cause is a missing npm dependency in "
+            "the skill's shared per-user dependency store (`~/.claude/<skill>/node_modules`, seeded by "
+            "that skill's `scripts/setup.js`): a script `require()`s a package that isn't installed "
+            "there, e.g. after a version bump added a new dependency, or another copy of the skill "
+            "re-seeded that shared store to a different dependency set.\n\n"
+            f"The recorded error was:\n{(error or '').strip()[:600]}\n\n"
+            "Diagnose and fix it: identify the skill behind this provider, run its `setup.js` (or "
+            "`npm install` in `~/.claude/<skill>`) to restore the shared node_modules, then re-run the "
+            "provider's own check (e.g. `node <skill>/scripts/<helper>.js --check` or `--list-inbox "
+            "--json --top=1`) to confirm it enumerates. If the cause is something other than a missing "
+            "dependency, find and fix it. Either way, tell Russell plainly what was wrong and whether "
+            "it's fixed.\n"
+        )
+    summary_file = os.path.join(seeds, f"provider-config-failure-{slug(name)}-{ts}.summary.txt")
+    with open(summary_file, "w", encoding="utf-8") as f:
+        f.write(f"Fix: drainer {name} provider deploy error")
+    spawn_cmd = os.path.join(SCRIPT_DIR, "spawn-tab.cmd")
+    spawn_tab(
+        [spawn_cmd, f"drainer: {name} deploy error - fix", repo, prompt_file, worker_model, summary_file],
+        cwd=repo,
+    )
+
+
 def spawn_worker(iid, json_file, repo, runtime_dir, worker_model, local_dir, config_repo):
     seeds = os.path.join(runtime_dir, "seeds")
     os.makedirs(seeds, exist_ok=True)
@@ -1232,7 +1291,8 @@ def main():
     # --- enumerate ALL providers first, accumulate into one global list ---
     # Each provider's enumerate is isolated: a failure (expired creds, network/API blip) is caught,
     # recorded to provider-health.json, and the loop continues so the OTHER providers still drain this
-    # cycle. The daily digest reads that health file and surfaces a stuck provider for Russell to fix.
+    # cycle. A transient auth failure waits for the daily digest to surface it; a config-kind failure (a
+    # broken deploy that won't self-heal, e.g. a missing dependency) gets an immediate diagnostic tab.
     all_new, seen_by_source, totals = [], {}, {}
     for provider in providers:
         try:
@@ -1240,6 +1300,16 @@ def main():
         except ProviderError as e:
             record_health_failure(health, provider.name, str(e), e.kind)
             print(f"{provider.name}: enumerate FAILED [{e.kind}] — {e}. Skipping; other providers continue.")
+            # A config-kind failure (broken deploy, e.g. a missing npm dependency) will fail every cycle
+            # until a human fixes it, so surface it with an immediate diagnostic tab rather than leaving a
+            # dark source for the once-a-day digest to notice. Gated by a small consecutive-failure
+            # threshold (a single blip mid-update self-clears) and an hourly per-provider cooldown.
+            if (e.kind == "config" and not args.dry_run
+                    and health[provider.name]["consecutive_failures"] >= CONFIG_FAILURE_ALERT_THRESHOLD
+                    and _config_alert_due(health, provider.name)):
+                _spawn_provider_config_diagnostic(provider.name, str(e), repo,
+                                                  cfg["runtime_dir"], cfg["worker_model"])
+                health[provider.name]["last_config_alert_ts"] = datetime.now(timezone.utc).isoformat()
             continue
         except Exception as e:  # unexpected adapter fault — still isolate it, never abort the cycle
             record_health_failure(health, provider.name, str(e), "unknown")
