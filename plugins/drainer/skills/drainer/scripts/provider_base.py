@@ -137,8 +137,10 @@ class ProviderError(Exception):
     differently:
       - "auth"   — a transient credential / network failure (expired token, IMAP blip). Expected
                    occasionally; self-heals once the credential is refreshed.
-      - "config" — a deploy/config error (a helper .js or utility couldn't be located). Rare and
-                   loud; it won't self-heal, so the digest flags it distinctly.
+      - "config" — a deploy/config error: a helper .js couldn't be located, or a helper ran but
+                   crashed on a missing npm dependency (its skill's shared node_modules store lacks a
+                   required package). Rare and loud; it won't self-heal until a human reinstalls, so the
+                   poller escalates it immediately and the digest flags it distinctly.
     """
 
     def __init__(self, message, kind="auth"):
@@ -149,6 +151,20 @@ class ProviderError(Exception):
 def run_node(args, **kw):
     return subprocess.run(["node", *args], capture_output=True, text=True,
                           encoding="utf-8", errors="replace", creationflags=NO_WINDOW, **kw)
+
+
+# A Node helper that dies on `Error: Cannot find module 'x'` failed because a required npm package is
+# absent from its skill's shared node_modules store — a broken deploy, not a credential problem. It will
+# fail identically every cycle until someone reinstalls the dependency, so it must be classified "config"
+# (loud, won't self-heal, escalated at once), never lumped into the transient "auth" bucket. An adapter
+# routes its enumerate's nonzero-exit stderr through here to pick the right kind for the ProviderError.
+_NODE_DEP_MISSING_RE = re.compile(r"Cannot find module|MODULE_NOT_FOUND|ERR_MODULE_NOT_FOUND")
+
+
+def node_failure_kind(stderr):
+    """Classify a node helper's nonzero-exit stderr: "config" for a missing-dependency crash (a broken
+    deploy), else the default transient "auth" bucket."""
+    return "config" if _NODE_DEP_MISSING_RE.search(stderr or "") else "auth"
 
 
 def slug(s, maxlen=18):

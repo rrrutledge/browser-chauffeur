@@ -20,7 +20,7 @@ _SCRIPTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scrip
 if _SCRIPTS not in sys.path:
     sys.path.insert(0, _SCRIPTS)
 from provider_base import (ProviderBase, ProviderError, run_node, slug, find_skill_script,  # noqa: E402
-                           parse_email_auth)
+                           node_failure_kind, parse_email_auth)
 
 
 class Provider(ProviderBase):
@@ -46,8 +46,8 @@ class Provider(ProviderBase):
     def enumerate(self, limit):
         res = run_node([self.gmailjs, "--list-inbox", "--json", f"--top={limit}"])
         if res.returncode != 0:
-            raise ProviderError(f"gmail enumerate failed (auth/IMAP?): {res.stderr.strip()[:300]}",
-                                kind="auth")
+            raise ProviderError(f"gmail enumerate failed: {res.stderr.strip()[:300]}",
+                                kind=node_failure_kind(res.stderr))
         msgs = json.loads(res.stdout or "[]")
         return [m for m in msgs if not self._own_outbound_reply(m)]
 
