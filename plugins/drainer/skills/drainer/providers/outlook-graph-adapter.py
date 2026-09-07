@@ -14,7 +14,8 @@ from datetime import datetime, timezone
 _SCRIPTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts")
 if _SCRIPTS not in sys.path:
     sys.path.insert(0, _SCRIPTS)
-from provider_base import ProviderBase, ProviderError, run_node, slug, find_skill_script  # noqa: E402
+from provider_base import (ProviderBase, ProviderError, run_node, slug, find_skill_script,  # noqa: E402
+                           parse_email_auth)
 
 
 class Provider(ProviderBase):
@@ -56,6 +57,26 @@ class Provider(ProviderBase):
         except ValueError:
             return None
         return {m["id"] for m in msgs if m.get("id")}
+
+    def screen_signal(self, item):
+        """Surface this message's envelope-authentication verdict into the security screen payload. Runs
+        `mail.js --auth` for the message (the SPF/DKIM/DMARC headers the receiving system stamped on
+        arrival, from the same internetMessageHeaders --unsubscribe reads), then parse_email_auth turns
+        the raw Authentication-Results / Received-SPF values into the compact summary the screen weighs.
+        Returns None on any fetch/parse miss so a missing signal never blocks screening (the screen still
+        judges the content)."""
+        message_id = item.get("id")
+        if not message_id:
+            return None
+        res = run_node([self.mailjs, f"--auth={message_id}"])
+        if res.returncode != 0:
+            return None
+        try:
+            data = json.loads(res.stdout or "{}")
+        except ValueError:
+            return None
+        return parse_email_auth(data.get("fromAddress") or item.get("fromAddress"),
+                                data.get("authenticationResults"), data.get("receivedSpf"))
 
     def _fetch_body(self, item):
         """The message body, for relay-correspondent extraction when a relay's name isn't already in the

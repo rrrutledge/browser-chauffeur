@@ -49,6 +49,7 @@ All under `scripts/`:
   - List inbox (read+unread): `node mail.js --list-inbox [--top=50] [--json]` (inbox items regardless of read state, newest-first, count-capped by `--top`; `--json` emits a structured array for scripts)
   - Search: `node mail.js --search="Griffiths" [--top=10]` (flags any hit still sitting in Drafts with `[DRAFT — NOT SENT]`)
   - Show one: `node mail.js --show=<messageId>` (prints a `*** DRAFT — NOT SENT ***` banner up top if the message is still a draft)
+  - Envelope-auth headers: `node mail.js --auth=<messageId>` (JSON with the message's `Authentication-Results` and `Received-SPF` values — the SPF/DKIM/DMARC provenance the receiving system stamped on arrival, which the `From:` line can't give; read by the drainer's security screen)
   - Draft reply-all (never sends): `node mail.js --reply --message-id=<id> --body-file=reply.html`
   - Draft new to recipients (never sends): `node mail.js --draft-new --to="a@x,b@y" --subject="..." --body-file=msg.html [--cc=c@z] [--attach=file1.pdf,file2.png] [--replace] [--text]` (`--attach` adds file attachments; `--replace` deletes any existing drafts with the same subject first, so re-runs don't pile up duplicates; `--text` treats the body-file as plain text instead of HTML)
   - Send to self: `node mail.js --send-self --subject="..." --body-file=note.txt`
