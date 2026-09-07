@@ -27,9 +27,11 @@ the guaranteed-visible channel that closes that gap. Before anything else:
   - Name the provider, when it last drained (`last_ok_ts`) and how many cycles it's been failing.
   - Quote `last_error` and read it as the action to take, keyed off `last_error_kind`:
     - **`auth`** (transient — self-heals once creds are refreshed): name the likely credential and how
-      to refresh it. gmail → `GMAIL_APP_PASSWORD`; slack → `SLACK_BOT_TOKEN` / `SLACK_COOKIE_D`;
+      to refresh it. gmail → re-run the gmail skill's one-time OAuth sign-in (`node gmail-auth.js` via
+      browser-chauffeur) to refresh its cached token; slack → `SLACK_BOT_TOKEN` / `SLACK_COOKIE_D`;
       outlook-graph → re-auth the ms-graph token cache; trello → `TRELLO_API_KEY` / `TRELLO_TOKEN`.
-      All are User-scope env vars — refresh, and the next poller cycle recovers on its own.
+      Where it's a User-scope env var, refresh it; where it's a cached OAuth token, re-run the sign-in —
+      either way the next poller cycle recovers on its own.
     - **`config`** (a helper script/util couldn't be located — won't self-heal): flag it distinctly as a
       deploy problem, not an expired credential — the adapter can't find its `*.js`/util, likely a
       missing or mis-pointed plugin install.
@@ -39,8 +41,8 @@ the guaranteed-visible channel that closes that gap. Before anything else:
       present it as a token to refresh. It's worth a closer look only if it persists across cycles the
       machine was actually awake and online for.
   - Example: *"⚠️ **gmail** hasn't drained since 2026-06-19 14:05 — 38 cycles failing: `gmail enumerate
-    failed (auth/IMAP?): …`. Likely an expired GMAIL_APP_PASSWORD (User-scope env var) — refresh it and
-    the next cycle recovers."*
+    failed (auth?): …`. Likely the gmail OAuth token lost its scopes or was revoked — re-run the gmail
+    skill's sign-in (`node gmail-auth.js` via browser-chauffeur) and the next cycle recovers."*
 - **Heartbeat** — the `_poller` entry (`{ last_run_ts, last_drained_ts }`) is the poller's own liveness,
   stamped every cycle. Flag it ONLY when it's many hours stale and the machine wasn't just asleep — that
   means DrainerKeeper stopped firing or a poller instance hung (check `schtasks /query /tn DrainerKeeper

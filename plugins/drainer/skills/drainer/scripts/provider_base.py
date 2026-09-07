@@ -135,7 +135,7 @@ class ProviderError(Exception):
     others; it records the failure to provider-health.json so the daily digest can surface a stuck
     provider for Russell to fix. `kind` distinguishes the two failure modes the digest reports
     differently:
-      - "auth"   — a transient credential / network failure (expired token, IMAP blip). Expected
+      - "auth"   — a transient credential / network failure (expired token, network blip). Expected
                    occasionally; self-heals once the credential is refreshed.
       - "config" — a deploy/config error (a helper .js or utility couldn't be located). Rare and
                    loud; it won't self-heal, so the digest flags it distinctly.
@@ -414,7 +414,7 @@ class ProviderBase:
     def triage_text(self, item):
         """The body text the triage step shows the model for this item. Default: the light `preview`
         that `enumerate` already attached. Adapters whose `enumerate` returns no usable body (e.g. the
-        gmail adapter, where the IMAP envelope listing carries no preview) override this to fetch a
+        gmail adapter, where the envelope listing carries no preview) override this to fetch a
         quote-stripped excerpt of the new message — so triage classifies on real content, not just the
         subject line. Called only for the NEW items being triaged, so a per-item fetch here stays cheap."""
         return item.get("preview") or ""

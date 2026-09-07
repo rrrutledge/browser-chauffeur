@@ -136,7 +136,7 @@ own source's terms. A source with an inbox deeper than the 500-message listing h
 from the check, which costs a missed catch and never causes a wrong re-queue.
 
 **Per-provider isolation + health.** Each provider's enumerate is wrapped: a failure (expired creds,
-IMAP/API blip, or a missing helper at adapter-load) raises a typed `ProviderError` that the poller
+network/API blip, or a missing helper at adapter-load) raises a typed `ProviderError` that the poller
 catches, so one dead source never aborts the cycle — the others still drain. Every cycle records each
 provider's outcome to `<runtime_dir>/provider-health.json` (`consecutive_failures`, `last_error`,
 `last_error_kind` [`auth` = transient/self-heals, `config` = deploy error], `last_error_ts`,

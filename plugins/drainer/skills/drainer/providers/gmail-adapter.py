@@ -1,12 +1,13 @@
-"""gmail poller adapter — Gmail/Workspace mail via the gmail skill's gmail.js (IMAP + app password).
+"""gmail poller adapter — Gmail/Workspace mail via the gmail skill's gmail.js (Gmail REST API over OAuth).
 
 All gmail mechanics live HERE, alongside the prose contract in `gmail-provider.md`: locating gmail.js,
 the `--list-inbox --json` enumerate, the Message-ID id scheme, and the captured item shape. The poller
 (`scripts/run-poller.py`) loads this adapter dynamically and drives it through the `ProviderBase`
 interface — it contains no Gmail specifics.
 
-This is the IMAP sibling of `outlook-graph-adapter.py` (Graph). Same operations, different transport:
-gmail.js talks IMAP to imap.gmail.com with GMAIL_ADDRESS / GMAIL_APP_PASSWORD from the environment.
+This is the Gmail-REST sibling of `outlook-graph-adapter.py` (Graph). Same operations, both REST: gmail.js
+authorizes through the gmail skill's cached OAuth token (GMAIL_OAUTH_CLIENT_ID / GMAIL_OAUTH_CLIENT_SECRET),
+so no per-item credential lives in this adapter's environment.
 """
 import json
 import os
@@ -46,7 +47,7 @@ class Provider(ProviderBase):
     def enumerate(self, limit):
         res = run_node([self.gmailjs, "--list-inbox", "--json", f"--top={limit}"])
         if res.returncode != 0:
-            raise ProviderError(f"gmail enumerate failed (auth/IMAP?): {res.stderr.strip()[:300]}",
+            raise ProviderError(f"gmail enumerate failed (auth?): {res.stderr.strip()[:300]}",
                                 kind="auth")
         msgs = json.loads(res.stdout or "[]")
         return [m for m in msgs if not self._own_outbound_reply(m)]
@@ -63,8 +64,8 @@ class Provider(ProviderBase):
 
     def triage_text(self, item):
         """Fetch the message body and return just the NEW content (quoted reply chain stripped), so the
-        triage step sees what the message actually says instead of only its subject line. The IMAP
-        envelope listing carries no preview, so without this triage would classify a Gmail thread purely
+        triage step sees what the message actually says instead of only its subject line. The enumerate
+        listing carries no preview, so without this triage would classify a Gmail thread purely
         on sender + subject. Falls back to the (usually empty) preview if the body can't be fetched."""
         message_id = item.get("id")
         if not message_id:
@@ -96,7 +97,7 @@ class Provider(ProviderBase):
     def _fetch_body(self, item):
         """The new-message text, for relay-correspondent extraction when a relay's name isn't already in
         the subject/preview. Only reached for a recognized relay sender whose cheap fields missed, so this
-        per-item IMAP fetch stays rare; reuses the same quote-stripped excerpt triage sees."""
+        per-item body fetch stays rare; reuses the same quote-stripped excerpt triage sees."""
         message_id = item.get("id")
         if not message_id:
             return ""

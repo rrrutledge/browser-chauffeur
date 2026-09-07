@@ -1230,7 +1230,7 @@ def main():
         print(f"DRY-RUN - reconcile would re-queue {unhandled} unhandled item(s).")
 
     # --- enumerate ALL providers first, accumulate into one global list ---
-    # Each provider's enumerate is isolated: a failure (expired creds, IMAP/API blip) is caught,
+    # Each provider's enumerate is isolated: a failure (expired creds, network/API blip) is caught,
     # recorded to provider-health.json, and the loop continues so the OTHER providers still drain this
     # cycle. The daily digest reads that health file and surfaces a stuck provider for Russell to fix.
     all_new, seen_by_source, totals = [], {}, {}
