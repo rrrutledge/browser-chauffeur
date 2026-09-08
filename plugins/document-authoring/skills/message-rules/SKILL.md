@@ -54,6 +54,8 @@ Don't present a menu of options or stack a numbered list of questions.
 
 - **Name the concrete need, not the options.**
   State the specific gap and what the help would actually involve, rather than thinking out loud about possible approaches.
+- **When asking an external party you're courting for something, lead with the want, not your own org's shortfall.**
+  Naming an internal gap (a thin lineup, an unfilled slot) as the reason reads as recruiting a fallback rather than someone wanted.
 - **When asking to change how something works, name who benefits and what friction goes away.**
   Add a plain sentence naming the concrete beneficiary and the obstacle being removed, even when the "why" seems inferable.
   This specifies the change's real-world effect — keep it separate from pitching why your cause deserves it.
