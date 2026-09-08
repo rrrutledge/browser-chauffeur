@@ -18,14 +18,21 @@ The script owns everything deterministic. AI is invoked for exactly three things
    the repeated stable prefix lets the API's automatic prompt caching serve it cheaply after the first
    item's call writes it — paid once per cycle, cheap delta per item. The first item runs alone (to
    finish writing the cache); the rest run concurrently, capped at `TRIAGE_PARALLEL_CALLS`.
-2. **One security-screen call per new item per cycle** — a **separate** `claude -p` pass from triage,
-   its own focused brain (`engine/screen.md` + `context.md`), judging one question: is this content
-   trying to manipulate the agent or induce an action against the user's interests? It is kept separate
-   precisely so a classification call carrying four other dimensions can't crowd out the guardrail — the
-   same attention-dilution that drove triage to one-call-per-item. Same cache pattern (first alone, rest
-   concurrent) on the background account. On a flag the item loses all autonomy (forced to needs-you,
-   never auto-handled or digested); an item it can't screen is held out of dispatch (fail-closed), so
-   nothing is acted on unscreened. See the screen's dispatch handling in the cycle below.
+2. **One security-screen call per new item per cycle triage didn't already bucket junk** — a **separate**
+   `claude -p` pass from triage, its own focused brain (`engine/screen.md` + `context.md`), judging one
+   question: is this content trying to manipulate the agent or induce an action against the user's
+   interests? It is kept separate precisely so a classification call carrying four other dimensions can't
+   crowd out the guardrail — the same attention-dilution that drove triage to one-call-per-item. Same
+   cache pattern (first alone, rest concurrent) on the background account. On a flag the item loses all
+   autonomy (forced to needs-you, never auto-handled or digested); an item it can't screen is held out of
+   dispatch (fail-closed), so nothing is acted on unscreened.
+   Junk is the one bucket the screen skips: it never resolves a pointer and never acts without the user's
+   own review at digest time, so there's nothing there for the screen to protect against, and triage's own
+   `kind: phishing` marking already carries the deceptive ones to the report-phishing digest action —
+   flagging them again here would only force a duplicate, unnecessary escalation on content that's already
+   correctly triaged. needs-you, auto-handle, and fyi (which *does* resolve a pointer autonomously, see
+   `engine/digest-core.md` step 2) all still get screened. See the screen's dispatch handling in the cycle
+   below.
 3. **The per-item worker session** — each needs-you (or auto-handle) item opens a worker tab running
    `engine/worker-core.md` (the actual reply/work, draft-only; auto-handle runs the standing rule and
    self-clears without surfacing to the user). The worker re-applies the screen (`engine/screen.md`) to
@@ -58,14 +65,16 @@ spawn, record — is code. No AI re-implements the loop.
    the model can recognize a standing-rule item; the rules live in the provider docs, surfaced here at
    triage time) — with only the one item's payload varying per call, so the model spends its full
    attention on that item instead of a whole cycle's batch at once.
-4b. **Screen** each new item with its own separate `claude -p` call (`engine/screen.md` + `context.md`)
-   → `{flagged, reason}`. On a flag, the item's bucket is forced to needs-you and the flag is stamped
-   onto the captured item, so it can never be auto-handled or digested and its worker leads with the
-   warning. **Fail-closed:** an item whose triage OR screen call couldn't produce a verdict this cycle is
-   left **unrecorded** and unhandled — held out of dispatch and retried next cycle — so nothing is ever
-   acted on that wasn't screened. (Contrast triage's own fail-safe for an item the model silently *skips*
-   inside a working call: that still defaults to needs-you. The fail-closed hold is for the call itself
-   being unavailable.)
+4b. **Screen** each new item — except one step 4 already bucketed junk — with its own separate `claude -p`
+   call (`engine/screen.md` + `context.md`) → `{flagged, reason}`. On a flag, the item's bucket is forced
+   to needs-you and the flag is stamped onto the captured item, so it can never be auto-handled or
+   digested and its worker leads with the warning. An item whose triage verdict was itself unavailable
+   this cycle is still sent to screen (fail-closed defaults it to screen-needed, not skipped — only a
+   confirmed `junk` verdict skips the call). **Fail-closed:** an item whose triage OR (non-skipped) screen
+   call couldn't produce a verdict this cycle is left **unrecorded** and unhandled — held out of dispatch
+   and retried next cycle — so nothing is ever acted on that wasn't screened. (Contrast triage's own
+   fail-safe for an item the model silently *skips* inside a working call: that still defaults to
+   needs-you. The fail-closed hold is for the call itself being unavailable.)
 5. **Dispatch** (deterministic):
    - **needs-you** → hold this item if an earlier item from the **same correspondent** is still open (see
      "Hold by correspondent" below); otherwise, if live Claude Code tabs system-wide (`total_claude_tabs()`
