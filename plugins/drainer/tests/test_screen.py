@@ -84,6 +84,29 @@ check("a None verdict is a safe no-op", poller._apply_screen(it, None), False)
 check("and leaves the bucket alone", it["_bucket"], "fyi")
 
 
+# --- _items_needing_screen: junk is skipped, everything else (incl. unjudged) is screened -----
+print("\n_items_needing_screen — a confirmed junk verdict is the only thing that skips the screen")
+
+items = [item(_id="a"), item(_id="b"), item(_id="c"), item(_id="d"), item(_id="e")]
+verdicts = {
+    "a": {"bucket": "junk"},
+    "b": {"bucket": "needs-you"},
+    "c": {"bucket": "auto-handle"},
+    "d": {"bucket": "fyi"},
+    # "e" absent -> triage couldn't judge it this cycle
+}
+to_screen = [it["_id"] for it in poller._items_needing_screen(items, verdicts)]
+check("junk is skipped", "a" in to_screen, False)
+check("needs-you is screened", "b" in to_screen, True)
+check("auto-handle is screened", "c" in to_screen, True)
+check("fyi is screened (it resolves pointers autonomously)", "d" in to_screen, True)
+check("an item triage couldn't judge is still screened (fail-closed)", "e" in to_screen, True)
+check("only the junk item is dropped", len(to_screen), 4)
+
+check("empty verdicts screens everything (fail-closed default)",
+      [it["_id"] for it in poller._items_needing_screen(items, {})], [it["_id"] for it in items])
+
+
 # --- _stamp_screen: persists onto the captured json --------------------------
 print("\n_stamp_screen — writes the flag onto items/<id>.json for the worker")
 
