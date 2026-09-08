@@ -132,16 +132,14 @@ meeting recap surfaces its owner-assigned next steps: every form to sign and ret
 deadline, RSVP, or link he's meant to open. Link the source with descriptive text per the
 `document-authoring` voice, never a bare URL. Order by what's most worth knowing first.
 
-**Resolve pointers, don't restate them.** An fyi item can be a **pointer** (a stub whose real content is
-behind a link - see `triage.md`): a school newsletter Smore link, a hosted "view in browser" bulletin, or
-a newsletter whose real content is a hosted PDF or a body-referenced attachment (a Finalsite "Attachments:
-X.pdf" line whose file is a hosted/reference attachment, not a true inline one).
-Open and read the real content per the resolve-a-pointer step in `worker-core.md` § 2b - the same mechanic
-a worker uses for needs-you, here at digest time for fyi, which also covers retrieving the hosted PDF or
-attachment when that is where the story lives, plus the browser-chauffeur fallback for a plain fetch that
-returns only a JS-rendered shell and how to extract what you find. The digest's fyi summary is that
-resolved content - for a hosted-PDF or attachment newsletter, read the file, then summarize it and pull
-its **action items for you** to-dos exactly as for a link-hosted bulletin - never the pointer stub restated.
+**Resolve pointers automatically, and never pause to ask.**
+An fyi item can be a **pointer** (a stub whose real content is behind a link - see `triage.md`): a school newsletter Smore link, a hosted "view in browser" bulletin, or a newsletter whose real content is a hosted PDF or a body-referenced attachment (a Finalsite "Attachments: X.pdf" line whose file is a hosted/reference attachment, not a true inline one).
+Open and read the real content per the resolve-a-pointer step in `worker-core.md` § 2b - the same mechanic a worker uses for needs-you, here at digest time for fyi, which also covers retrieving the hosted PDF or attachment when that is where the story lives, plus the browser-chauffeur fallback for a plain fetch that returns only a JS-rendered shell and how to extract what you find.
+Resolving a pointer only reads the content Russell would have read himself, so it is part of *gathering* this item's summary, not an action that disposes of anything: do it on your own the moment you meet a pointer, exactly as you read any captured body.
+Step 4's review gate governs CLEAR (disposal) alone, never this read - so resolving never waits for a go-ahead, and offering to resolve instead of just doing it is the one failure this section closes.
+**A plain fetch that comes back as only a JavaScript or marketing shell is itself the trigger to render it now**: a near-empty body from a client-rendered host (Smore `smore.com`, Finalsite, Mailchimp, or any hosted "view in browser" bulletin) means the story is behind the render, so fall back to browser-chauffeur immediately - drive it in a browser-chauffeur subagent so the render stays out of this session's context - load the real URL, read the rendered body, and summarize that.
+Resolve it in the same pass that gathers the digest, and present Russell the finished summary rather than an offer to go fetch it.
+The digest's fyi summary is that resolved content - for a hosted-PDF or attachment newsletter, read the file, then summarize it and pull its **action items for you** to-dos exactly as for a link-hosted bulletin - never the pointer stub restated.
 
 **Before framing any item as still needing Russell** — an open ask, an awaited reply, anything that
 implies he still owes a response — run that provider's **SITUATIONAL-CHECK** first (search Sent +
