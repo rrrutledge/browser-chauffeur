@@ -308,6 +308,7 @@ The specifics that most often separate a message that reads as Russell's from on
   Sign off plain `Russ`, not `Bro. [Lastname]`: the correspondence is warm, but it's still clerk business, not the personal-relationship register that sign-off is reserved for.
 - **Warm, direct, humble.**
   Plain words, short sentences. When a reply covers more than one idea, give each its own sentence of even weight rather than chaining them into one long run-on - whether the join is a comma, an "and", or a dash or colon bolting a trailing clause onto an already-complete sentence.
+  **A caveat that qualifies the very fact just stated stays joined to it with "but," not split into its own sentence** — "End of this week works, but if you run out of time that's OK too!" This is one idea (the timing, plus its own caveat), not two; reserve the split-and-flatten treatment above for genuinely separate ideas.
 - **Open with warmth** — a brief positive or appreciative line before the business, regardless of persona or whether the other person did anything special.
   Aim that warm line - whether it opens or closes the message - at the person or their intent: affirm the specific, genuine thing they're actually doing or thinking about, rather than restating the deliverable as the thing you're glad of.
   A closing compliment, most of all to someone Russell leads or a member of his community, lands as real appreciation of what they're already doing - not a generic welcome or a forward-looking invitation to do more.
