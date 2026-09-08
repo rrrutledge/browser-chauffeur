@@ -308,6 +308,7 @@ The specifics that most often separate a message that reads as Russell's from on
   Sign off plain `Russ`, not `Bro. [Lastname]`: the correspondence is warm, but it's still clerk business, not the personal-relationship register that sign-off is reserved for.
 - **Warm, direct, humble.**
   Plain words, short sentences. When a reply covers more than one idea, give each its own sentence of even weight rather than chaining them into one long run-on - whether the join is a comma, an "and", or a dash or colon bolting a trailing clause onto an already-complete sentence.
+  **A caveat that qualifies the very fact just stated stays joined to it with "but," not split into its own sentence** — "End of this week works, but if you run out of time that's OK too!" This is one idea (the timing, plus its own caveat), not two; reserve the split-and-flatten treatment above for genuinely separate ideas.
 - **Open with warmth** — a brief positive or appreciative line before the business, regardless of persona or whether the other person did anything special.
   Aim that warm line - whether it opens or closes the message - at the person or their intent: affirm the specific, genuine thing they're actually doing or thinking about, rather than restating the deliverable as the thing you're glad of.
   A closing compliment, most of all to someone Russell leads or a member of his community, lands as real appreciation of what they're already doing - not a generic welcome or a forward-looking invitation to do more.
@@ -339,6 +340,7 @@ The specifics that most often separate a message that reads as Russell's from on
 - **Apologize genuinely and briefly** — "Sorry this is taking so long.", "I'm sorry I have to move this again."
   Own a mistake of yours in every message that touches it while it's still being fixed, not just the first — a prior apology doesn't retire the need for a short acknowledging clause in the next one, and "thanks for understanding" alone reads as glossing over it.
   Reply to mail that has been sitting for weeks or months with a brief "Sorry for the delay in responding" near the sign-off; on a chat thread he plainly missed, the same acknowledgment opens the reply ("Sorry I missed this thread:") since a short message has no sign-off to carry it.
+  **When a follow-up nudge you already sent turns out to have crossed with the contact's own stated absence (vacation, OOO), acknowledge the overlap and apologize briefly for the possible double-touch** — "P.S. I looked for the auto-response but didn't see it. Sorry to bother you a 2nd time unnecessarily!" — rather than answering their question and moving on as if the timing were unremarkable.
 - **Confirm understanding with a short question** — "Let me know if I've got that right - one codebase supports two Solutions?"
 - **Turn a generic observation back into a question aimed at the specific person** — "I guess you're just chasing AI now?" lands more personal than "I guess everyone's chasing AI these days." Center the person he's writing to rather than making a broad statement about the world.
 - **Close with "let me know"** — a signature phrase used constantly.
